@@ -89,12 +89,17 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   ]);
 });
 
-test("approved-frame mode hides extra references, limits animation choices and keeps the frame ratio", () => {
+test("approved-frame mode preserves all three cards and normal ratio selector while limiting animation choices", () => {
   const tree = harness().render({ startingFrameMode: true, startingFrameControl: "Approved frame and Sound", generationSettings: { model: "google_omni", duration: 4, quantity: 1, resolution: "720p", aspectRatio: "9:16" } });
   const all = nodes(tree);
-  assert.equal(all.find(node => node.props["aria-label"] === "Optional references").props.hidden, true);
-  assert.equal(all.some(node => node.type === "select" && node.props.ariaLabel === "Hook aspect ratio"), false);
-  assert.match(text(tree), /9:16.*From your frame/);
+  assert.equal(all.find(node => node.props["aria-label"] === "Optional references").props.hidden, undefined);
+  const ratio = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook aspect ratio");
+  assert.ok(ratio); assert.deepEqual(Array.from(ratio.props.options, option => option.value), ["9:16"]);
+  assert.doesNotMatch(text(tree), /From your frame/);
+  const group = all.find(node => node.props["aria-label"] === "Optional references");
+  const grid = nodes(group).find(node => node.props.className === "referenceGrid");
+  assert.equal(grid.props.children.length, 3);
+  assert.match(text(grid.props.children[0]), /Approved frame and Sound/);
   const model = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.ok(model.props.options.every(option => startingFrameVideo.isHookStartingFrameVideoModel(option.value)));
   const duration = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook duration");

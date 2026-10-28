@@ -100,6 +100,26 @@ test("starting-frame GPT, Sunburst and Seedream routes preserve scene/person ord
   }
 });
 
+test("new opening-only image receipts deliver t=0 plus identity with cleanup roles and no later anchor", async () => {
+  for (const model of ["gpt_image", "gpt_image_2_5", "seedream_5_pro"]) {
+    const f = seedreamFixture(), prompt = "Keep source lighting and clothing. Remove captions, logos and readable text.";
+    const partial = { version: 5, imageModel: model, ownerId: "fixture-user", draftId: "00000000-0000-4000-8000-000000000001",
+      referenceId: "hook", sourceSha256: "a".repeat(64), sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280,
+        sha256: createHash("sha256").update(sceneBytes).digest("hex") }, personImageAssetIds: ["00000000-0000-4000-8000-000000000002"], instructions: "" };
+    partial.preparationInputKey = JSON.stringify({ version: 4, ownerId: partial.ownerId, draftId: partial.draftId, referenceId: partial.referenceId,
+      sourceSha256: partial.sourceSha256, sourceFrame: partial.sourceFrame, imageAssetIds: partial.personImageAssetIds, instructions: "", imageModel: model });
+    const receipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 7, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: createHash("sha256").update(prompt).digest("hex") };
+    const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${partial.sourceSha256}/${partial.sourceFrame.sha256}.png`, "https://media.example.test/person.png"];
+    f.imageJob.input_json = { generationId: "fixture-generation", model, ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
+      prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt };
+    const output = await runGenerateImageJob(f.imageJob, f.context);
+    assert.deepEqual(output.hookKeyframe, receipt); assert.equal(receipt.animationOpeningFrame, undefined);
+    const request = model === "seedream_5_pro" ? openrouterCalls.at(-1) : received.at(-1);
+    assert.deepEqual(model === "seedream_5_pro" ? request.referenceImageUrls : request.reference, refs);
+    assert.match(request.prompt, /lighting/); assert.match(request.prompt, /logos/i);
+  }
+});
+
 test("curated v3 receipt reaches every still-model worker route with the approved later-frame bytes", async () => {
   const selected = curatedFrames.frames[0], originalBytes = sceneBytes;
   try {
@@ -212,6 +232,17 @@ test("influencer jobs send all ordered references to every supported model witho
       assert.equal(received.at(-1).prompt, prompt);
     }
     assert.deepEqual(resolvedReferences.slice(before), urls.map(url => ({ url, owner: "fixture-user" })));
+  }
+});
+
+test("influencer skill instructions reach each provider once while presentation metadata stays out of the prompt", async () => {
+  const { CHARACTER_PROMPT_SKILLS, composeCharacterPrompt } = await import("../../../lib/characters/prompt-skills.ts");
+  const prompt = composeCharacterPrompt("My portrait by the window.", [CHARACTER_PROMPT_SKILLS[0]]);
+  for (const model of ["gpt_image", "gpt_image_2_5", "nano_banana_2", "gemini_3_pro", "seedream_5_pro"]) {
+    const imageJob = job(model, prompt);
+    imageJob.input_json.characterPromptPresentation = { userPrompt: "My portrait by the window.", skills: [{ id: "realistic-skin", name: "Realistic Skin", instruction: CHARACTER_PROMPT_SKILLS[0].instruction }] };
+    await runGenerateImageJob(imageJob, context);
+    assert.equal(model === "seedream_5_pro" ? seedreamCalls.at(-1).prompt : received.at(-1).prompt, prompt);
   }
 });
 

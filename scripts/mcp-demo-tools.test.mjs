@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as confirmToken from "../lib/mcp/confirm-token.ts";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
@@ -27,7 +28,7 @@ const row = n => ({ id: id(n), user_id: "owner-a", project_id: "test-project-001
 function harness(options = {}) {
   const calls = [], tools = new Map(), rows = [row(1), row(2), row(3)];
   const toolModule = load("lib/mcp/demo-tools.ts", {
-    "server-only": {}, "zod": { z }, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
+    "server-only": {}, "zod": { z }, "./confirm-token": confirmToken, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
     "./read-tools": { executeTool, oauthMetadata, principal, ToolFailure }, "./asset-cursor": { decodeAssetCursor, encodeAssetCursor },
     "@/lib/demo/demo-storage": { findDemoVideo: async input => {
       calls.push(["find", input]); return input.userId === "owner-a" && input.projectId === "test-project-001" && input.demoId === id(1) ? rows[0] : null;
@@ -45,8 +46,13 @@ function harness(options = {}) {
   });
   toolModule.registerDemoMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
   async function call(name, input = {}, owner = "owner-a", scopes = ["assets:read", "assets:write"]) {
-    const tool = tools.get(name), parsed = tool.config.inputSchema.parse(input);
-    const result = await tool.callback(parsed, { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });
+    const tool = tools.get(name);
+    const invoke = async (next) => tool.callback(tool.config.inputSchema.parse(next), { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });
+    let result = await invoke(input);
+    const preview = result.structuredContent;
+    if (!result.isError && preview?.confirmation_required === true && typeof preview.confirm_token === "string") {
+      result = await invoke({ ...input, confirm_token: preview.confirm_token });
+    }
     if (!result.isError) tool.config.outputSchema.parse(result.structuredContent);
     return result;
   }

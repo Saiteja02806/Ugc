@@ -57,5 +57,5 @@ export async function resolveApprovedHookStartingFrame(params: { assetId: string
   if (!source || source.videoSha256 !== result.sourceSha256) throw new HookKeyframeGenerationError("The Hook source changed. Prepare a new starting image.", 409);
   const workflow = "workflow" in source && source.workflow === "wall_text" ? "wall_text" as const
     : "workflow" in source && source.workflow === "talking_head" ? "talking_head" as const : "hook" as const;
-  return { ...result, workflow, exploreFormat: workflow === "wall_text" ? "wall_text" as const : "hook" as const };
+  return { ...result, sourceDurationSeconds: "durationSeconds" in source ? source.durationSeconds as number : undefined, workflow, exploreFormat: workflow === "wall_text" ? "wall_text" as const : "hook" as const };
 }

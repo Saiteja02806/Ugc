@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { CONTENT_PLAN_OPENAI_TIMEOUT_MS, CONTENT_PLAN_OPENAI_MAX_RETRIES } from "./content-plan-provider-retry.js";
+import { decodeCarouselSlidePositions } from "./carousel-slide-positions.js";
 import { CAROUSEL_BATCH_POSITION_KEYS, readCarouselBatchPositions } from "./carousel-batch-positions.js";
 import { applyScopedPlanRepair, buildScopedPlanRepairSchema, getScopedPlanRepair } from "./carousel-scoped-plan-repair.js";
 import { buildCountedBodyRepairSchema, decodeCountedPlanBodies, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, withCountedPlanBodies, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
@@ -41,7 +43,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v59-scoped-visual-repair";
+  "llm-carousel-planner-v60-keyed-slide-positions";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -835,7 +837,7 @@ function parseCarouselContentPlanShape(
   collectVisualIssues = false,
 ) {
   const slideCount = clampSlideCount(requestedSlideCount);
-  const record = asRecord(value, "carousel plan");
+  const record = asRecord(decodeCarouselSlidePositions(value), "carousel plan");
   const concept = getRequiredString(record.concept, 120, "concept");
   const broadSituations = getStringList(
     record.broadSituations,
@@ -3057,7 +3059,13 @@ function buildCarouselContentPlanSchema(
             type: "object",
           }
         : { type: "null" },
-      slides: {
+      slides: grammarContext ? {
+        type: "object",
+        additionalProperties: false,
+        properties: Object.fromEntries(grammarContext.format.slides.map((_, index) =>
+          [`slide${index + 1}`, buildCarouselContentSlideSchema(slideCount, grammarContext, index)])),
+        required: grammarContext.format.slides.map((_, index) => `slide${index + 1}`),
+      } : {
         items: buildCarouselContentSlideSchema(slideCount, grammarContext),
         maxItems: slideCount,
         minItems: slideCount,
@@ -3130,6 +3138,7 @@ function buildNativeSlideOneFallbackResponseSchema(
 function buildCarouselContentSlideSchema(
   slideCount: number,
   grammarContext: CarouselGrammarGenerationContext | null,
+  position?: number,
 ) {
   const buildSlideSchema = (
     definition: CarouselContentFormatDefinition["slides"][number] | null,
@@ -3250,6 +3259,9 @@ function buildCarouselContentSlideSchema(
     } as const;
   };
 
+  if (grammarContext && position !== undefined) {
+    return buildSlideSchema(grammarContext.format.slides[position]!, position);
+  }
   return grammarContext
     ? {
         anyOf: grammarContext.format.slides.map((definition, index) =>
@@ -3281,7 +3293,7 @@ function getOpenAIClient() {
   }
 
   if (!openaiClient || openaiClientApiKey !== apiKey) {
-    openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
+    openaiClient = new OpenAI({ apiKey, maxRetries: CONTENT_PLAN_OPENAI_MAX_RETRIES, timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS });
     openaiClientApiKey = apiKey;
   }
 

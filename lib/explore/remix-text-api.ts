@@ -1,3 +1,4 @@
+import { assertSourceRelativeHookLength } from "../../worker/src/lib/hook-remix-source-relative.ts";
 import "server-only";
 import { createHash } from "node:crypto";
 import OpenAI from "openai";
@@ -13,6 +14,7 @@ import { REMIX_TEXT_PROMPT_VERSION, REMIX_TEXT_SYSTEM_PROMPT, remixTextPrompt } 
 import { HOOK_BRAND_REMIX_PROMPT_VERSION, hookBrandRemixSystemPrompt } from "./hook-remix-brand-prompt";
 import { remixInputSource } from "./remix-text-input";
 import { hookRemixSource } from "./hook-remix-source";
+import { wallTextProfile } from "../../worker/src/lib/wall-initial-text-layout.ts";
 import { canAccessCreatorAccounts, isCreatorAccountReference } from "./creator-account-access.ts";
 import { isCreatorSlideshowReference } from "./creator-slideshows.ts";
 import { HookRemixReviewSchema, HookRemixQualityError, hookRemixReviewPayload, acceptHookRemixReview } from "./hook-remix-quality";
@@ -48,7 +50,9 @@ export async function handleReferenceText(request: Request) {
       automaticTextRemaining = Math.max(0, 20 - (allowance.count ?? 20));
     }
     return json({ ok: true, source: source ? hookRemixSource(source) : null, enabled,
-      ...(url.searchParams.get("automatic") === "true" ? { automaticTextEnabled: enabled && process.env.EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true", automaticTextRemaining } : {}),
+      ...(url.searchParams.get("automatic") === "true" ? { automaticTextEnabled: enabled && (source?.format === "wall_text"
+        ? process.env.EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED === "true" && Boolean(wallTextProfile(source.referenceId, source.sourceSha256))
+        : process.env.EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true"), automaticTextRemaining } : {}),
       businessContext: { name: profile?.context.businessName ?? null, ready: Boolean(profile?.context.businessName && profile.context.productSummary) } });
   } catch (error) { return errorResponse(error); }
 }
@@ -109,7 +113,7 @@ export async function remixTextForOwner(userId: string, value: unknown, actor?: 
       const providerDeadline = Date.now() + 70000;
       const completion = await ai.chat.completions.parse({
         model, ...(/^gpt-5/.test(model) ? { reasoning_effort: "medium" as const } : { temperature: 0.2 }), max_completion_tokens: 4000,
-        messages: [{ role: "system", content: source.format === "hook" ? hookBrandRemixSystemPrompt(source) : REMIX_TEXT_SYSTEM_PROMPT }, { role: "user", content: remixTextPrompt(source, profile.context, body.instructions) }],
+        messages: [{ role: "system", content: source.format === "hook" ? hookBrandRemixSystemPrompt(source, profile.context) : REMIX_TEXT_SYSTEM_PROMPT }, { role: "user", content: remixTextPrompt(source, profile.context, body.instructions) }],
         response_format: zodResponseFormat(RemixOutputSchema, "reference_text_remix"),
       });
       let output;
@@ -119,14 +123,15 @@ export async function remixTextForOwner(userId: string, value: unknown, actor?: 
         if (remaining <= 0) throw new HookRemixQualityError("review_deadline");
         const reviewed = await ai.chat.completions.parse({
           model, ...(/^gpt-5/.test(model) ? { reasoning_effort: "medium" as const } : { temperature: 0.2 }), max_completion_tokens: 4000,
-          messages: [{ role: "system", content: HOOK_REMIX_REVIEW_PROMPT }, { role: "user", content: hookRemixReviewPayload(source, profile.context, body.instructions, draft) }],
+          messages: [{ role: "system", content: HOOK_REMIX_REVIEW_PROMPT }, { role: "user", content: hookRemixReviewPayload(source, profile.context, body.instructions, draft, HOOK_REMIX_REVIEW_VERSION) }],
           response_format: zodResponseFormat(HookRemixReviewSchema, "hook_remix_review"),
         }, { timeout: Math.min(35000, remaining) });
-        const accepted = acceptHookRemixReview(reviewed.choices[0]?.message.parsed, source, profile.context, body.instructions, draft);
+        const accepted = acceptHookRemixReview(reviewed.choices[0]?.message.parsed, source, profile.context, body.instructions, draft, HOOK_REMIX_REVIEW_VERSION);
         output = accepted.output;
         // Operational counts without customer source text or business facts in logs.
         console.info("Hook remix quality review", { requestKey: body.requestKey, version: HOOK_REMIX_REVIEW_VERSION, decision: accepted.review.decision, providerMs: 70000 - (providerDeadline - Date.now()) });
       } else output = validateRemixOutput(completion.choices[0]?.message.parsed, source);
+      if (source.format === "hook") assertSourceRelativeHookLength(output.blocks, source, profile.context);
       const saved = await db.from("explore_text_remixes").update({ status: "completed", output_json: output, updated_at: new Date().toISOString() }).eq("user_id", userId).eq("request_key", body.requestKey).eq("status", "pending").select("request_key").single();
       if (saved.error) return json({ ok: false, outcome: "uncertain", message: "The AI answered, but saving its result could not be confirmed. This request will not run again automatically." }, 503);
       return json({ ok: true, output, source });

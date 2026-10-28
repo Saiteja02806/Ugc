@@ -84,7 +84,9 @@ test("automation service preserves snapshot isolation and strict collection-only
     /default backgrounds are never substituted automatically/,
   );
   assert.match(service, /createAutomationSlotIdempotencyKey/);
-  assert.match(service, /eq\("idempotency_key", idempotencyKey\)/);
+  assert.match(service, /get\(idempotencyKey\)/);
+  assert.match(service, /rpc\("claim_slideshow_automation"/);
+  assert.match(service, /rpc\("checkpoint_slideshow_automation_slot"/);
   assert.match(service, /selectSlotsToCancelOnPause/);
   assert.match(mainRoute, /requireFirebaseUser/);
   assert.match(activateRoute, /activateSlideshowAutomation/);
@@ -104,10 +106,10 @@ test("background replenishment and worker reconciliation safely sweep active sli
   );
   assert.match(
     dailyReplenishmentSweep,
-    /try \{\s*await sweepActiveSlideshowAutomationForUser\(\{[\s\S]*?\}\);\s*\} catch \{/,
+    /try \{\s*await sweepActiveSlideshowAutomationForUser\(\{[\s\S]*?\}\);\s*\} catch \(automationError\) \{/,
   );
   assert.match(
     reconcileCompletedFeed,
-    /if \(dependencies\.sweepSlideshowAutomation\) \{\s*try \{\s*await dependencies\.sweepSlideshowAutomation\(userId\);\s*\} catch \{/,
+    /if \(dependencies\.sweepSlideshowAutomation\) \{\s*try \{\s*await dependencies\.sweepSlideshowAutomation\(userId\);\s*\} catch \(automationError\) \{/,
   );
 });

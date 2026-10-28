@@ -58,19 +58,26 @@ export function isOwnedBusinessLogoStorageKey(params: {
   );
 }
 
-export async function inspectBusinessLogo(params: {
+export class BusinessLogoValidationError extends Error {}
+
+export async function inspectBusinessLogo(params: {key:string;userId:string}): Promise<BusinessLogoAsset> {
+  return (await inspectBusinessLogoWithChecksum(params)).logo;
+}
+
+export async function inspectBusinessLogoWithChecksum(params: {
   key: string;
   userId: string;
-}): Promise<BusinessLogoAsset> {
+  expected?: {mimeType:BusinessLogoMimeType;fileSizeBytes:number;sha256:string};
+}): Promise<{logo:BusinessLogoAsset;sha256:string}> {
   if (!isOwnedBusinessLogoStorageKey(params)) {
-    throw new Error("That logo upload does not belong to this business profile.");
+    throw new BusinessLogoValidationError("That logo upload does not belong to this business profile.");
   }
 
   const head = await headStorageObject({ key: params.key });
   const declaredSize = head.ContentLength ?? 0;
 
   if (declaredSize < 1 || declaredSize > BUSINESS_LOGO_MAX_BYTES) {
-    throw new Error("Choose a logo smaller than 2 MB.");
+    throw new BusinessLogoValidationError("Choose a logo smaller than 2 MB.");
   }
 
   const object = await getStorageObject({
@@ -87,16 +94,17 @@ export async function inspectBusinessLogo(params: {
   );
 
   if (buffer.length < 1 || buffer.length > BUSINESS_LOGO_MAX_BYTES) {
-    throw new Error("Choose a logo smaller than 2 MB.");
+    throw new BusinessLogoValidationError("Choose a logo smaller than 2 MB.");
   }
 
-  const metadata = await sharp(buffer, { failOn: "error" }).metadata();
+  const image = sharp(buffer, { failOn: "error", limitInputPixels: BUSINESS_LOGO_MAX_DIMENSION ** 2 });
+  const metadata = await image.metadata().catch(() => {throw new BusinessLogoValidationError("The uploaded logo image could not be decoded.");});
   const mimeType = getMimeTypeForFormat(metadata.format);
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
 
   if (!mimeType) {
-    throw new Error("Upload a PNG, JPEG, or WebP logo.");
+    throw new BusinessLogoValidationError("Upload a PNG, JPEG, or WebP logo.");
   }
 
   if (
@@ -105,17 +113,22 @@ export async function inspectBusinessLogo(params: {
     width > BUSINESS_LOGO_MAX_DIMENSION ||
     height > BUSINESS_LOGO_MAX_DIMENSION
   ) {
-    throw new Error("Use a logo between 64 and 4096 pixels on each side.");
+    throw new BusinessLogoValidationError("Use a logo between 64 and 4096 pixels on each side.");
   }
 
-  return {
+  // A readable header is insufficient: decode the image before accepting it.
+  await image.raw().toBuffer().catch(() => {throw new BusinessLogoValidationError("The uploaded logo image could not be decoded.");});
+  const sha256=createHash("sha256").update(buffer).digest("hex");
+  if(params.expected && (params.expected.fileSizeBytes!==buffer.length || params.expected.mimeType!==mimeType || params.expected.sha256!==sha256))
+    throw new BusinessLogoValidationError("The uploaded logo differs from its reserved file.");
+  return {sha256,logo:{
     fileSizeBytes: buffer.length,
     height,
     mimeType,
     storageKey: params.key,
     url: buildPublicStorageUrl(params.key),
     width,
-  };
+  }};
 }
 
 function getBusinessLogoStoragePrefix(userId: string) {

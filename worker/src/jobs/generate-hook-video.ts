@@ -1,5 +1,7 @@
 import { logger } from "../logger.js";
 import { automaticHookEdit, type AutomaticHookTextPlan } from "../lib/automatic-hook-text.js";
+import { wallTextProfile } from "../lib/wall-initial-text-layout.js";
+import { parseHookSourceTimeline, type HookSourceTimeline } from "../lib/hook-source-timeline.js";
 import { generateAutomaticHookText } from "../lib/automatic-hook-text-worker.js";
 import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio, silenceGeneratedVideo } from "../lib/explore-generated-reference-audio.js";
@@ -65,6 +67,7 @@ type GenerateHookVideoBaseInput = {
   startingFrameAssetId?: string;
   startingFrameJobId?: string;
   startingFrameReceipt?: HookKeyframeGenerationReceipt;
+  hookSourceTimeline?: HookSourceTimeline;
   userId: string;
   videoId: string;
 };
@@ -99,16 +102,20 @@ export async function runGenerateHookVideoJob(
   const raw = isJsonObject(job.input_json) ? job.input_json.automaticHookText : null;
   if (!raw) return runGenerateHookVideo(job, context);
   const plan = raw as unknown as AutomaticHookTextPlan;
-  if (job.user_id !== input.userId || plan.version !== 1 || plan.source?.format !== "hook" || plan.source.status !== "ready" ||
-      !isJsonObject(job.input_json) || job.input_json.exploreFormat !== "hook" || plan.source.referenceId !== job.input_json.referenceId)
+  if (job.user_id !== input.userId || plan.version !== 1 || !["hook", "wall_text"].includes(plan.source?.format) || plan.source.status !== "ready" ||
+      !isJsonObject(job.input_json) || job.input_json.exploreFormat !== plan.source.format || plan.source.referenceId !== job.input_json.referenceId ||
+      plan.source.format === "wall_text" && (input.hookSourceTimeline !== undefined || !plan.wallLayout))
     throw new ProviderRequestNotSubmittedError("The automatic Hook text source could not be verified.");
+  if (plan.source.format === "wall_text" && (input.aspectRatio !== "9:16" ||
+      JSON.stringify(wallTextProfile(plan.source.referenceId, plan.source.sourceSha256)) !== JSON.stringify(plan.wallLayout)))
+    throw new ProviderRequestNotSubmittedError("The automatic Wall text layout could not be verified.");
   const text = generateAutomaticHookText(job.user_id!, plan).catch(() => null);
   try {
     const output = await runGenerateHookVideo(job, context);
     const copy = await text;
     try {
       if (!copy) throw new Error("Automatic text needs review.");
-      const editing = automaticHookEdit(copy, plan, Number(output.durationSeconds), String(output.ratio));
+      const editing = automaticHookEdit(copy, plan, input.hookSourceTimeline ? input.hookSourceTimeline.trimEndMs / 1000 : Number(output.durationSeconds), String(output.ratio));
       return { ...output, automaticHookText: { version: 1, requestKey: plan.requestKey, status: "ready", editing: editing as unknown as Json } };
     } catch {
       return { ...output, automaticHookText: { version: 1, requestKey: plan.requestKey, status: "needs_review" } };
@@ -392,6 +399,7 @@ async function generateWithProvider(
       startingFrameJobId: input.startingFrameJobId,
       startingFrameReceipt: input.startingFrameReceipt,
     } : {}),
+    ...(input.hookSourceTimeline ? { hookSourceTimeline: input.hookSourceTimeline } : {}),
     videoId: input.videoId,
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
@@ -575,6 +583,11 @@ function buildOutput(params: {
     resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
+    ...(params.input.hookSourceTimeline ? {
+      hookSourceTimeline: params.input.hookSourceTimeline as unknown as Json,
+      initialHookEdit: { version: 1, format: "hook", trimStartMs: 0, trimEndMs: params.input.hookSourceTimeline.trimEndMs,
+        originalVolume: 1, musicVolume: .2, text: null } as Json,
+    } : {}),
     ...(params.input.generateAudio !== undefined ? { generateAudio: params.input.generateAudio } : {}),
     ...(params.referenceSoundtrack && !isSilentExploreReference(params.referenceSoundtrack) ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
   };
@@ -664,7 +677,13 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId, startingFrameJobId: imageJobId,
       startingFrameReceipt: receipt, generateAudio: sharedInput.generateAudio ?? false,
     });
+    if (job.input_json.hookSourceTimeline !== undefined) {
+      if (job.input_json.exploreFormat !== "hook") throw new ProviderRequestNotSubmittedError("Original-opening trim is only valid for Hook videos.");
+      try { Object.assign(sharedInput, { hookSourceTimeline: parseHookSourceTimeline(job.input_json.hookSourceTimeline, receipt, sharedInput.durationSeconds) }); }
+      catch { throw new ProviderRequestNotSubmittedError("This original-opening action timeline could not be verified. No new video was submitted."); }
+    }
   }
+  if (!hasStartingFrame && job.input_json.hookSourceTimeline !== undefined) throw new ProviderRequestNotSubmittedError("Original-opening trim requires its approved starting image.");
 
   if (promptMode === "direct") {
     return { ...sharedInput, promptMode: "direct" };

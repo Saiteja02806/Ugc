@@ -67,10 +67,11 @@ try {
       const navigation = page.locator("header");
       assert.equal(await navigation.getByRole("link", { name: "MCP", exact: true }).count(), 0);
       if (route === "/") {
-        const badge = page.locator('a[href="#workflow"]').filter({ hasText: "Post right away" });
+        const badge = page.locator('[data-landing-rotating-badge]');
         await badge.waitFor();
+        assert.equal(await badge.locator("svg, img").count(), 4);
         assert.equal(await badge.getAttribute("href"), "#workflow");
-        assert.equal(await badge.locator("svg").count(), 3);
+        assert.equal(await badge.getAttribute("data-landing-rotating-badge"), "social");
         assert.equal(await page.getByRole("link", { name: "Connect Claude or Codex", exact: true }).count(), 0);
         assert.equal(await page.getByRole("link", { name: "See how it works", exact: true }).getAttribute("href"), "#workflow");
         const gallery = await page.locator("[data-hero-gallery]").evaluate(element => {

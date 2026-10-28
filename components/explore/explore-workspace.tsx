@@ -22,8 +22,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground-strong">Explore</h1>
           <p className="mt-2 text-sm text-muted">Find your next format. Start with a workflow or a creation tool.</p>
         </header>
-        <section aria-labelledby="explore-workflows-title">
-          <h2 id="explore-workflows-title" className="mb-3 text-sm font-medium text-muted">Workflows</h2>
+        <section aria-label="Workflows">
           <div className={styles.workflowGrid}>
             {EXPLORE_WORKFLOWS.map((workflow) => (
               <ExploreWorkflowCard key={workflow.id} workflow={workflow} localPreview={localPreview} />

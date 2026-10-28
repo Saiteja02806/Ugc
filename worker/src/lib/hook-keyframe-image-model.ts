@@ -16,6 +16,6 @@ export function hookKeyframeMaxPersonImages(model: HookKeyframeImageModel): numb
   return model === "nano_banana_2" ? 4 : 5;
 }
 export function hookKeyframePromptLimit(model: HookKeyframeImageModel) { return model === "seedream_5_pro" ? 4_000 : 8_000; }
-export function hookKeyframeReceiptImageModel(receipt: { version: 1 | 2 | 3 | 4; imageModel?: HookKeyframeImageModel }): HookKeyframeImageModel {
+export function hookKeyframeReceiptImageModel(receipt: { version: 1 | 2 | 3 | 4 | 5; imageModel?: HookKeyframeImageModel }): HookKeyframeImageModel {
   return receipt.version !== 1 ? receipt.imageModel! : "nano_banana_2";
 }

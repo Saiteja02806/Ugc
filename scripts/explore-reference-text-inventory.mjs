@@ -7,7 +7,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 /** Local catalogue identity inventory; no credentials, provider imports or calls. */
 export function sourceInventory({ includeStagedHookRelease = false } = {}) {
   const catalog = JSON.parse(readFileSync(path.join(root, "lib/explore/imported-catalog.json"), "utf8"));
-  const refs = catalog.mediaStatus === "published" ? catalog.items.map(item => ({ referenceId: item.id, format: item.format,
+  const importedItems = [...catalog.items];
+  for (const file of ["slideshow-reference-additions.json", "slideshow-reference-oct23.json"]) {
+    const addition = JSON.parse(readFileSync(path.join(root, "lib/explore", file), "utf8"));
+    if (addition.mediaStatus === "published") importedItems.push(...addition.items);
+  }
+  const refs = catalog.mediaStatus === "published" ? importedItems.map(item => ({ referenceId: item.id, format: item.format,
     units: item.format === "slideshow" ? item.slides.map(s => ({ slideId: s.id, key: `explore/recreate/v1/${s.file}`, hash: s.file.split(".")[0] }))
       : [{ slideId: null, key: `explore/recreate/v1/${item.videoFile}`, hash: item.videoFile.split(".")[0] }] })) : [];
   for (const [file, format] of [["hook-video-library.ts", "hook"], ["wall-text-video-library.ts", "wall_text"]]) {
@@ -16,15 +21,17 @@ export function sourceInventory({ includeStagedHookRelease = false } = {}) {
       refs.push({ referenceId: match[1], format, units: [{ slideId: null, hash: match[2], key: `${format === "hook" ? "explore/hook-videos/2026-08-29" : "explore/wall-text-videos/2026-09-03"}/${match[2]}.mp4` }] });
     }
   }
-  const pairedPath = path.join(root, "worker/src/lib/explore-paired-reference-catalog.json");
-  if (existsSync(pairedPath)) {
-    const paired = JSON.parse(readFileSync(pairedPath, "utf8"));
-    if (paired.mediaStatus === "published") for (const item of paired.items) {
-      refs.push({ referenceId: item.id, format: item.format,
-        units: [{ slideId: null, hash: item.videoSha256, key: item.videoStorageKey }] });
+  for (const file of ["explore-paired-reference-catalog.json", "explore-wall-money-reference-release.json"]) {
+    const pairedPath = path.join(root, "worker/src/lib", file);
+    if (existsSync(pairedPath)) {
+      const paired = JSON.parse(readFileSync(pairedPath, "utf8"));
+      if (paired.mediaStatus === "published") for (const item of paired.items) {
+        refs.push({ referenceId: item.id, format: item.format,
+          units: [{ slideId: null, hash: item.videoSha256, key: item.videoStorageKey }] });
+      }
     }
   }
-  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json", "explore-hook-reference-new-batch-release.json"]) {
+  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json", "explore-hook-reference-new-batch-release.json", "explore-hook-reference-oct23-release.json", "explore-hook-reference-oct23-refresh-release.json"]) {
     const release = JSON.parse(readFileSync(path.join(root, "worker/src/lib", file), "utf8"));
     if (includeStagedHookRelease || release.mediaStatus === "published") for (const item of release.items) {
       const existing = refs.find(ref => ref.referenceId === item.id);

@@ -9,7 +9,7 @@ const creatorSources = readCreatorPrivateJson<CreatorCatalog>("creator-accounts.
 export function getAdditionalStartingFrameSources() {
   return [
     ...creatorSources.accounts.flatMap(account => account.items.map(item => ({ id: item.id, videoSha256: item.sourceSha256,
-      videoStorageKey: "", width: item.width, height: item.height, workflow: "hook" as const }))),
+      videoStorageKey: "", width: item.width, height: item.height, durationSeconds: item.durationSeconds, workflow: "hook" as const }))),
     ...getExploreWallTextVideoAssetsForImport().map(item => ({
       id: item.id, videoSha256: item.sourceFileSha256, videoStorageKey: item.storageKey,
       workflow: "wall_text" as const, width: 0, height: 0,

@@ -508,7 +508,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         </section></details>
         <div className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>
           <RemixTextSection editorNavigation owner={owner} targetKey={`demo:${demo?.id ?? preview.url}`} format="hook" disabled={busy} localPreview={localPreview} scopeLabel="Only this demo clip. The hook stays unchanged." onUse={(output, source) => {
-            try { const editing = applyVideoTextRemix(draft.editing, output, source); setRemixError(null); change({ ...draft, editing }); seekDemoText(formatTextOverlays(editing)[0]?.startMs ?? 0); return true; }
+            try { const editing = applyVideoTextRemix(draft.editing, output, source, { width, height }); setRemixError(null); change({ ...draft, editing }); seekDemoText(formatTextOverlays(editing)[0]?.startMs ?? 0); return true; }
             catch (error) { setRemixError(error instanceof Error ? error.message : "Review the remixed text."); return false; }
           }}>
             <FormatVideoTextFields styleTarget={textStyleTarget} editing={draft.editing} onChange={editing => change({ ...draft, editing })} timeMs={previewTime} onSeek={seekDemoText} />

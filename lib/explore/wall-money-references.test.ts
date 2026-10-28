@@ -68,10 +68,26 @@ test("preview uses the matching Wall suggestion and preserves explicit user edit
   assert.equal(preview.suggestedDirections, getWallMoneyMotion(row.referenceId, row.sourceSha256));
   assert.ok(preview.animationPrompt?.includes("–4s"));
   assert.equal(preview.canSubmitPaidAnimation, false);
+  assert.equal(preview.reviewedWallMotion, true);
   assert.equal(getHookKeyframePromptPreview({ ...draft, motionInstructions: "My edited movement." }, "wall_text").directions, "My edited movement.");
   assert.equal(getHookKeyframePromptPreview({ ...draft, motionInstructions: "" }, "wall_text").directions, "");
   const mismatch = getHookKeyframePromptPreview({ ...draft, scope: { ...draft.scope, sourceSha256: "0".repeat(64) } }, "wall_text");
   assert.match(mismatch.directions, /subtle natural movement/);
+  assert.equal(mismatch.reviewedWallMotion, false);
+});
+
+test("each reviewed Wall prompt shown during preparation is the same compiled animation input", () => {
+  for (const row of reviews.entries) {
+    const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: row.referenceId, sourceSha256: row.sourceSha256 });
+    for (const motionInstructions of [null, "Keep my saved custom direction.", ""]) {
+      const preview = getHookKeyframePromptPreview({ ...draft, motionInstructions }, "wall_text");
+      assert.equal(preview.reviewedWallMotion, true);
+      if (motionInstructions === "") assert.equal(preview.animationPrompt, null);
+      else assert.equal(preview.animationPrompt, buildStartingFrameAnimationPrompt({ workflow: "wall_text", directions: preview.directions, durationSeconds: preview.durationSeconds, generateAudio: preview.generateAudio, removePhysicalText: true }));
+    }
+    assert.equal(getHookKeyframePromptPreview(draft, "talking_head").reviewedWallMotion, false);
+    assert.equal(getHookKeyframePromptPreview(draft, "hook").reviewedWallMotion, false);
+  }
 });
 
 test("published batch appears in both galleries' existing category filter and canonical source/audio paths", () => {

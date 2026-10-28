@@ -2,7 +2,7 @@ import "server-only";
 
 import { requireAIStudioProUser } from "../ai-studio/server-access.ts";
 import { FirebaseAuthRequestError } from "../firebase/server-auth.ts";
-import { getHookSourceFrame, HookSourceFrameError } from "./hook-source-frame.ts";
+import { getHookSourceFrame, getHookOpeningSourceFrame, HookSourceFrameError } from "./hook-source-frame.ts";
 import { canAccessCreatorAccounts, isCreatorAccountReference } from "./creator-account-access.ts";
 
 const headers = { "Cache-Control": "private, no-store", Vary: "Authorization", "X-Content-Type-Options": "nosniff" };
@@ -44,11 +44,12 @@ export async function handleHookStartingFrame(request: Request) {
     catch { return json("Choose a Hook from the reference library.", 400); }
     if (!input || typeof input !== "object" || Array.isArray(input)
       || Object.keys(input).some(key => !["referenceId","sourceFrameSha256"].includes(key)) || !("referenceId" in input) || typeof input.referenceId !== "string"
-      || "sourceFrameSha256" in input && (!isCreatorAccountReference(input.referenceId) || typeof input.sourceFrameSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.sourceFrameSha256))) {
+      || "sourceFrameSha256" in input && (typeof input.sourceFrameSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.sourceFrameSha256))) {
       return json("Choose a Hook from the reference library.", 400);
     }
     if (isCreatorAccountReference(input.referenceId) && !canAccessCreatorAccounts(user)) return json("This reference is unavailable.", 404);
-    const frame = await getHookSourceFrame(input.referenceId, "sourceFrameSha256" in input ? input.sourceFrameSha256 as string : undefined);
+    const frame = "sourceFrameSha256" in input ? await getHookSourceFrame(input.referenceId, input.sourceFrameSha256 as string) : await getHookOpeningSourceFrame(input.referenceId);
+    if ("sourceFrameSha256" in input && frame.frameSha256 !== input.sourceFrameSha256) return json("The saved source frame changed.", 409);
     return new Response(new Uint8Array(frame.png), { headers: {
       ...headers, "Content-Type": "image/png", "Content-Length": String(frame.png.length),
       "Content-Disposition": `inline; filename="hook-starting-frame.png"`,

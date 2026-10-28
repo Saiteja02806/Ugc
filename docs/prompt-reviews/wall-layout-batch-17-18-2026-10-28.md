@@ -1,0 +1,7 @@
+# Wall layout batch: 17 and 18
+
+Local only; automatic Wall text remains disabled. Source-hash-matched videos reviewed with 40 and 31 quarter-second samples, native opening frames and source text. Wall 17 uses three separated paragraphs; Wall 18 contains a heading and list. Profiles preserve source positions and blank-line structure. Renderer comparisons: `outputs/wall-layout-batch-20261028/wall17-comparison.png` and `wall18-comparison.png`. Font and geometry are approximations; Wall 17 source varies outline strength and a uniform style is an approximation. Source wording and claims are not validated business facts.
+
+Changed worker/src/lib/wall-initial-text-layout.ts, its test, scripts/wall-automatic-text.browser.cjs, this receipt and local output artifacts. Forty focused plan/layout/editor/recovery tests PASS; worker build, TypeScript and scoped lint PASS. Local browser fixture PASS for editable words, saving/reopening, saved width, blank removal, full 12-second export JSON and mobile bounds. Uses neutral background and mocked persistence: real model outputs, generated-video contrast and production are NOT VERIFIED. UGC-UI-046 remains open.
+
+No paid calls, video generation or deployment. Preflight: provided AGENTS.md, context-memory/immutable-contracts/frame-analysis/regression-gate skills, relevant Wall context and nonnegotiables, preflight tool and tests. Full Explore/incident ledger output was not reread in full in this turn; prior context used. Existing worktree changes preserved.

@@ -59,6 +59,24 @@ export function buildHookFullRecreationOpeningImagePrompt(input: {
   return { version: 5 as const, prompt, imageCount: input.personImageCount + 2 };
 }
 
+/** New requests use original source frame0 only; old builders remain frozen for receipts. */
+export function buildOriginalOpeningImagePrompt(input: { personImageCount: number; instructions?: string; referenceId?: string; sourceSha256?: string }) {
+  if (!Number.isInteger(input.personImageCount) || input.personImageCount < 1 || input.personImageCount > HOOK_KEYFRAME_MAX_PERSON_IMAGES) throw new Error("Choose supported photos of the same person.");
+  const instructions = input.instructions ?? "";
+  if (typeof instructions !== "string" || instructions.length > HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(instructions)) throw new Error("Shorten the starting-image instructions.");
+  const prompt = [
+    "Create one photorealistic original-opening photograph for review before video generation. Image1 is the source video's first decoded frame at elapsed t=0, not a later clarity frame. Recreate this exact opening with the influencer from Image2 and supporting identity photos.",
+    "SOURCE SHOT — Image1 alone controls camera height and tilt, framing/crop, subject size and placement, background geometry, clothing, body pose, head angle, gaze, expression, hands, held props and their contact/occlusion. Preserve the opening moment, including face obstruction. Do not clear the face, lower an object, change the outfit or jump to a later action.",
+    "LIGHTING — Match Image1's light direction, softness, exposure, contrast, color cast, highlights, shadows and reflections. Relight the influencer naturally into that source environment while keeping their recognizable facial proportions and skin detail. Do not copy lighting or color grading from identity photos.",
+    "IDENTITY — Image2 and later images depict the SAME selected influencer. Use only their recognizable facial features, proportions, hairline and natural appearance. They do not supply clothing, background, pose, expression or lighting. Do not blend the source performer's identity into the result.",
+    "REMOVE ALL TEXT AND LOGOS — Remove creator captions, subtitles, hook words, emojis, watermarks and graphic overlays, including outlines and shadows. Also remove physical logos, branding and readable text on clothing, objects, packaging, screens, signs and background surfaces. Reconstruct plain underlying fabric or material with matching lighting and texture. Keep the objects and clothing themselves, their shape, color and placement; do not crop, blur or cover them with boxes. Do not generate replacement lettering or logos.",
+    "OUTPUT — One complete image matching Image1's aspect ratio and composition, natural skin and anatomy, realistic fingers and prop contact. No new person, extra hand, beauty filter or scene redesign. Preserve source lighting and outfit except the requested logo/text cleanup.",
+    instructions.trim() ? `USER IMAGE INSTRUCTIONS:\n${instructions.trim()}` : "",
+  ].filter(Boolean).join("\n\n");
+  if (prompt.length > HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH) throw new Error("Shorten the starting-image instructions.");
+  return { version: 7 as const, prompt, imageCount: input.personImageCount + 1 };
+}
+
 /** Ordered multi-image editing contract, separate from slideshow prompts and the
  * later animation prompt. Image numbers refer to the real transmitted order. */
 export function buildHookKeyframeImagePrompt(input: { personImageCount: number; instructions?: string; referenceId?: string; sourceSha256?: string; sourceFrameIndex?: number; promptVersion?: 4 | 5 | 6 }) {

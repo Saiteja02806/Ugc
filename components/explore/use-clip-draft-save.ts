@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { ClipDraftSaveSession, clipDraftPendingKey, loadClipDraft, saveClipDraft } from "@/lib/explore/clip-draft-client";
+import { ClipDraftSaveSession, clipDraftPendingKey, loadClipDraftWithInitial, saveClipDraft } from "@/lib/explore/clip-draft-client";
 import { parseClipDraftContent, type ExploreClipDraft, type ExploreClipDraftContent } from "@/lib/explore/clip-draft-contract";
 
 /** Saves edits, not pixels. Export and publishing continue to use their own receipts. */
@@ -22,7 +22,7 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
     if (!enabled || !owner || !sourceAssetId || !storageKey) return;
     let stopped = false;
     // Recovery only reads the saved draft. Mounting cannot submit a save/render.
-    void loadClipDraft(deps(), sourceAssetId, scope).then(draft => {
+    void loadClipDraftWithInitial(deps(), sourceAssetId, scope).then(({ draft, initialContent }) => {
       if (stopped) return;
       let pending: unknown = null;
       const raw = localStorage.getItem(storageKey);
@@ -38,7 +38,10 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
         // Persist the identity before sending so a lost response/reload can replay.
         if (request) localStorage.setItem(storageKey, JSON.stringify(request)); else localStorage.removeItem(storageKey);
       }, pending);
-      setSavedEntry({ key: storageKey, draft }); if (draft) onRestore(draft.content, loadAttempt > 0); setLoadedKey(storageKey); setError(null);
+      setSavedEntry({ key: storageKey, draft });
+      if (draft) onRestore(draft.content, loadAttempt > 0);
+      else if (!pending && initialContent) onRestore(initialContent, false);
+      setLoadedKey(storageKey); setError(null);
     }).catch(error => { if (!stopped) { setLoadedKey(null); setError(error instanceof Error ? error.message : "Could not load your saved edits."); } });
     return () => { stopped = true; };
   }, [enabled, owner, sourceAssetId, scope, storageKey, deps, loadAttempt, onRestore]);

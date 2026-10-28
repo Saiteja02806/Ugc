@@ -22,7 +22,7 @@ type GoogleSignInButtonProps = {
 export function GoogleSignInButton({
   appearance = "card",
   label = "Continue with Google",
-  successPath = "/dashboard",
+  successPath = "/explore",
   verificationPath = "/verify-email",
 }: GoogleSignInButtonProps) {
   const router = useRouter();

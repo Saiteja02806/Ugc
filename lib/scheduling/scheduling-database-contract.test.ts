@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -80,6 +80,9 @@ const postCaptionField = readProjectFile(
 );
 const hookVideoScheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
+);
+const workflowTimePicker = readProjectFile(
+  "components/scheduling/workflow-time-picker.tsx",
 );
 const hookVideoComposer = readProjectFile(
   "components/trending/hook-video-composer.tsx",
@@ -962,10 +965,10 @@ test("the inline carousel modal implements publishing-account content and time s
     carouselScheduleModal,
     /self-start overflow-hidden rounded-card border border-border bg-card/,
   );
-  assert.match(carouselScheduleModal, /label="Post Right away"/);
-  assert.match(carouselScheduleModal, /label="Schedule for later"/);
+  assert.match(carouselScheduleModal, /"Schedule post" : "Post now"/);
+  assert.doesNotMatch(carouselScheduleModal, /label="Post Right away"|label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);
-  assert.match(carouselScheduleModal, /type="time"/);
+  assert.match(carouselScheduleModal, /<WorkflowTimePicker/);
   assert.match(carouselScheduleModal, /getScheduleTargetSettingsError as getPublishingSettingsError/);
   assert.doesNotMatch(carouselScheduleModal, /Connect Instagram or TikTok above/);
   assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
@@ -1078,12 +1081,12 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   assert.match(schedulesRoute, /minimumScheduleLeadMinutes/);
 
   for (const schedulingUi of [carouselScheduleModal, hookVideoScheduleDrawer]) {
-    assert.match(
-      schedulingUi,
-      /step=\{SOCIAL_SCHEDULING_TIME_STEP_SECONDS\}/,
-    );
+    assert.match(schedulingUi, /<WorkflowTimePicker/);
     assert.doesNotMatch(schedulingUi, /getMinutes\(\) \/ 15/);
   }
+  assert.match(workflowTimePicker, /length: 60/);
+  assert.match(workflowTimePicker, /canonicalPickerHour/);
+  assert.match(workflowTimePicker, /useDeviceTimeFormat/);
 
   assert.match(
     scheduleEditor,
@@ -1114,7 +1117,8 @@ test("the main scheduler uses one video picker with direct uploads and existing 
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);
-  assert.match(scheduleEditor, /Use 24-hour time \(00:00–23:59\) in the selected timezone\./);
+  assert.match(scheduleEditor, /useDeviceTimeFormat\(\)/);
+  assert.match(scheduleEditor, /canonicalPickerHour/);
   assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
     scheduleEditor,

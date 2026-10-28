@@ -33,14 +33,12 @@ export function registerEditDraftMcpTools(server: McpServer) {
     outputSchema: z.strictObject({ draft: summarySchema, content: editDraftInput.nullable(), source_asset_id: z.uuid(), reused: z.boolean() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
-  }, (args, ctx) => executeTool(async () => {
+  }, (args, ctx) => executeTool(() => errors(async () => {
     const userId = principal(ctx, "creative:write");
-    return errors(async () => {
-      const opened = await openEditDraftForOwner(userId, args.asset_id);
-      return { draft: summary(opened.video), content: normalizeEditableVideoDraftInput(opened.video.draft_json),
-        source_asset_id: args.asset_id, reused: opened.reused };
-    });
-  }));
+    const opened = await openEditDraftForOwner(userId, args.asset_id);
+    return { draft: summary(opened.video), content: normalizeEditableVideoDraftInput(opened.video.draft_json),
+      source_asset_id: args.asset_id, reused: opened.reused };
+  })));
   server.registerTool("list_edit_drafts", {
     description: "List the connected account's existing Edit-page projects and saved drafts, including website edits. Explore compositions and slideshows use separate draft systems. No render is submitted.",
     inputSchema: z.strictObject({ project_id: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/).optional(),
@@ -81,12 +79,10 @@ export function registerEditDraftMcpTools(server: McpServer) {
     outputSchema: z.strictObject({ draft: summarySchema, content: editDraftInput, request_id: z.uuid(), replayed: z.boolean() }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
-  }, (args, ctx) => executeTool(async () => {
+  }, (args, ctx) => executeTool(() => errors(async () => {
     const userId = principal(ctx, "creative:write");
-    return errors(async () => {
-      const receipt = await updateSavedEditDraftForOwner({ userId, draftId: args.draft_id, requestId: args.request_id,
-        expectedRevision: args.expected_revision, draft: args.content });
-      return { draft: summary(receipt.video), content: editDraftInput.parse(receipt.video.draft_json), request_id: args.request_id, replayed: receipt.replayed };
-    });
-  }));
+    const receipt = await updateSavedEditDraftForOwner({ userId, draftId: args.draft_id, requestId: args.request_id,
+      expectedRevision: args.expected_revision, draft: args.content });
+    return { draft: summary(receipt.video), content: editDraftInput.parse(receipt.video.draft_json), request_id: args.request_id, replayed: receipt.replayed };
+  })));
 }

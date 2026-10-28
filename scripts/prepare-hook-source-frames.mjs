@@ -8,10 +8,12 @@ import { hasCuratedHookFrame } from "../worker/src/lib/hook-curated-frames.ts";
 import { createHookSourceFrameService } from "../lib/explore/hook-source-frame.ts";
 import { createStoredHookFrames } from "../lib/explore/hook-source-frame-store.ts";
 import { getHookFullRecreationPilot } from "../worker/src/lib/hook-full-recreation-pilot.ts";
+import { getAdditionalStartingFrameSources } from "../lib/explore/starting-frame-reference-source.ts";
 
 const args = process.argv.slice(2);
-if (args.some(arg => arg !== "--write")) throw new Error("Only --write is supported.");
-const items = getHookReferenceGalleryItems().filter(item => !hasCuratedHookFrame(item.id) || getHookFullRecreationPilot(item.id, item.videoSha256));
+if (args.some(arg => arg !== "--write" && arg !== "--wall")) throw new Error("Only --write and --wall are supported.");
+const items = args.includes("--wall") ? getAdditionalStartingFrameSources().filter(item => item.workflow === "wall_text")
+  : getHookReferenceGalleryItems().filter(item => !hasCuratedHookFrame(item.id) || getHookFullRecreationPilot(item.id, item.videoSha256));
 const store = createStoredHookFrames();
 const extract = createHookSourceFrameService({ items: () => items, useCuratedFrame: false });
 let missing = 0;

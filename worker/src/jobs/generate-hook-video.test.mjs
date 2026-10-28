@@ -107,6 +107,24 @@ function startingFrameInput(patch = {}) {
     hookIdea: "Animate the approved starting image into an 8-second video. Raise the eyebrows and hold a smile.", ...patch };
 }
 
+test("new frame-zero timing retains the raw clip, initializes source-end trim and rejects altered timing before submission", async () => {
+  const input = startingFrameInput({ model: "google_omni", provider: "gemini", durationSeconds: 3 });
+  const receipt = { ...input.startingFrameReceipt, version: 5, promptVersion: 7, imageModel: "nano_banana_2" };
+  receipt.preparationInputKey = JSON.stringify({ version: 4, ownerId: receipt.ownerId, draftId: receipt.draftId,
+    referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: receipt.sourceFrame,
+    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, imageModel: receipt.imageModel });
+  receipt.inputKey = hookKeyframeGenerationInputKey(receipt); input.startingFrameReceipt = receipt;
+  input.hookSourceTimeline = { version: 1, policy: "source_speed", referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256,
+    sourceDurationSeconds: 73 / 30, generatedDurationSeconds: 3, actionDurationSeconds: 73 / 30, trimEndMs: 2433 };
+  const f = fixture(input), output = await runGenerateHookVideoJob(f.job, f.context);
+  assert.equal(received.at(-1).durationSeconds, 3); assert.equal(output.durationSeconds, 3);
+  assert.equal(output.initialHookEdit.trimEndMs, 2433); assert.equal(output.initialHookEdit.text, null);
+  assert.deepEqual(output.hookSourceTimeline, input.hookSourceTimeline);
+  const before = received.length;
+  await assert.rejects(runGenerateHookVideoJob(fixture({ ...input, hookSourceTimeline: { ...input.hookSourceTimeline, trimEndMs: 3000 } }).job, f.context), /timeline could not be verified.*No new video was submitted/);
+  assert.equal(received.length, before);
+});
+
 test("first-frame worker dispatch preserves one owned frame, fixed duration and silence without replaying portrait or source inputs", async () => {
   const beforeMusic = referenceAudioCalls.length, beforeSilence = silenceCalls.length, beforeReads = privateReads.length;
   const f = fixture(startingFrameInput());
@@ -479,4 +497,30 @@ test("completed Hook jobs carry fitted editable text for the exact output, inclu
   finally { automaticTextResult = previous; }
   const before = automaticTextCalls.length; f.job.user_id = "other";
   await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /could not be verified/); assert.equal(automaticTextCalls.length, before);
+});
+
+test("Wall jobs use their own frozen layout and full output duration, with unsafe plans rejected before providers", async()=>{
+  const {wallTextProfile}=await import('../../dist/lib/wall-initial-text-layout.js');
+  const release=(await import('../../dist/lib/explore-wall-money-reference-release.json',{with:{type:'json'}})).default;
+  const item=release.items[2],profile=wallTextProfile(item.id,item.videoSha256);
+  const plan={version:1,requestKey:'wall-test',promptVersion:2,source:{format:'wall_text',status:'ready',referenceId:item.id,sourceSha256:item.videoSha256,blocks:[{text:'Your next video is already drafted',startMs:0,endMs:6900}]},wallLayout:profile};
+  const f=fixture({automaticHookText:plan,exploreFormat:'wall_text',referenceId:item.id,durationSeconds:6});f.job.user_id='fixture-user';
+  const output=await runGenerateHookVideoJob(f.job,f.context);
+  assert.equal(output.automaticHookText.status,'ready');assert.equal(output.automaticHookText.editing.format,'wall_text');
+  assert.equal(output.automaticHookText.editing.trimEndMs,output.durationSeconds*1000);
+  assert.equal(output.automaticHookText.editing.textOverlays[0].endMs,output.durationSeconds*1000);
+  assert.equal(output.automaticHookText.editing.textOverlays[0].lineHeight,profile.lineHeight);
+  const before=automaticTextCalls.length;f.job.input_json.automaticHookText={...plan,wallLayout:{...profile,sourceSha256:'f'.repeat(64)}};
+  await assert.rejects(runGenerateHookVideoJob(f.job,f.context),/Wall text layout could not be verified/);assert.equal(automaticTextCalls.length,before);
+});
+
+test("structured Wall 04 output passes through the actual worker as two full-duration editable layers",async()=>{
+ const {wallTextProfile}=await import('../../dist/lib/wall-initial-text-layout.js');const profile=wallTextProfile('explore-wall-text-04');
+ const plan={version:1,requestKey:'wall-04',promptVersion:2,source:{format:'wall_text',status:'ready',referenceId:profile.referenceId,sourceSha256:profile.sourceSha256,blocks:[{text:'Source list '.repeat(35),startMs:0,endMs:7000}]},wallLayout:profile};
+ const f=fixture({automaticHookText:plan,exploreFormat:'wall_text',referenceId:profile.referenceId,durationSeconds:6});f.job.user_id='fixture-user';
+ const old=automaticTextResult;automaticTextResult={blocks:[],heading:'Video ideas',body:'Choose a topic.\n\nFind a reference.\n\nReview your video.'};
+ try {const output=await runGenerateHookVideoJob(f.job,f.context);assert.equal(output.automaticHookText.status,'ready');
+  const edit=output.automaticHookText.editing;assert.equal(edit.format,'wall_text');assert.equal(edit.trimEndMs,output.durationSeconds*1000);
+  assert.deepEqual(edit.textOverlays.map(t=>t.value),[automaticTextResult.heading,automaticTextResult.body]);assert.ok(edit.textOverlays.every(t=>t.endMs===edit.trimEndMs));
+ }finally{automaticTextResult=old;}
 });

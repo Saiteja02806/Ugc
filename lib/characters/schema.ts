@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CHARACTER_IMAGE_MODELS, getCharacterPromptLimit, MAX_CHARACTER_PROMPT_LENGTH, MAX_CHARACTER_REFERENCES } from "./image-models.ts";
+import { CHARACTER_PROMPT_SKILLS, composeCharacterPrompt, resolveCharacterPromptSkills } from "./prompt-skills.ts";
 
 export { MAX_CHARACTER_PROMPT_LENGTH } from "./image-models.ts";
 
@@ -15,6 +16,7 @@ export const CharacterGenerateRequestSchema = z.strictObject({
   mode: z.literal("custom"),
   model: CharacterImageModelSchema,
   imageCount: CharacterImageCountSchema.optional(),
+  skillIds: z.array(z.string().min(1).max(80)).max(20).refine(ids => new Set(ids).size === ids.length, "Choose each skill only once.").optional(),
   prompt: z.string().trim().min(1, "Describe your influencer before generating.").max(MAX_CHARACTER_PROMPT_LENGTH, "Your description is too long to send. Please shorten it."),
   referenceCharacterId: z.uuid().optional(),
   referenceCharacterIds: z.array(z.uuid()).min(1).max(MAX_CHARACTER_REFERENCES).refine((ids) => new Set(ids).size === ids.length, "Choose each reference image only once.").optional(),
@@ -22,6 +24,14 @@ export const CharacterGenerateRequestSchema = z.strictObject({
   referenceImageAssetIds: z.array(z.uuid()).min(1).max(MAX_CHARACTER_REFERENCES).refine((ids) => new Set(ids).size === ids.length, "Choose each reference image only once.").optional(),
   idempotencyKey: z.string().trim().min(1).max(200),
 }).superRefine((request, context) => {
+  if (request.skillIds?.some(id => !CHARACTER_PROMPT_SKILLS.some(skill => skill.id === id))) {
+    context.addIssue({ code: "custom", path: ["skillIds"], message: "Choose an available skill before generating." });
+    return;
+  }
+  const fullPrompt = composeCharacterPrompt(request.prompt, resolveCharacterPromptSkills(request.skillIds));
+  if (request.skillIds?.length && fullPrompt.length > getCharacterPromptLimit(request.model)) {
+    context.addIssue({ code: "custom", path: ["prompt"], message: "Your description and selected skills are too long for this model. Shorten the description or remove a skill." });
+  }
   if (request.referenceCharacterId && request.referenceCharacterIds || request.referenceImageAssetId && request.referenceImageAssetIds) {
     context.addIssue({ code: "custom", path: ["referenceImageAssetIds"], message: "Use one image list for each reference source." });
   }

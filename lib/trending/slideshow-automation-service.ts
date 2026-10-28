@@ -1,7 +1,8 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 
 import {
   listCarouselGenerationStatusesForUser,
@@ -21,10 +22,7 @@ import {
 import { isAvailableLibraryImage } from "@/lib/media/image-library";
 import type { MediaAsset } from "@/lib/media/types";
 import { getPublishingPreferences } from "@/lib/scheduling/publishing-preferences-db";
-import {
-  DEFAULT_PUBLISHING_PREFERENCES,
-  type PublishingPreferences,
-} from "@/lib/scheduling/publishing-preferences";
+import type { PublishingPreferences } from "@/lib/scheduling/publishing-preferences";
 import { getSavedCaptions } from "@/lib/scheduling/saved-captions-db";
 import {
   cancelUserSchedule,
@@ -252,16 +250,29 @@ async function updateAutomationRowInStorage(
   userId: string,
   patch: Partial<AutomationRow>,
   dailyAllowance: number,
+  expected?: Pick<TrendingSlideshowAutomationRecord, "revision" | "status">,
 ): Promise<TrendingSlideshowAutomationRecord> {
-  const { data, error } = await getClient()
+  let query = getClient()
     .from(AUTOMATIONS_TABLE)
     .update(patch)
-    .eq("user_id", userId)
-    .select("*")
-    .single();
+    .eq("user_id", userId);
+  if (expected) {
+    // Pause deliberately does not change revision. Fence both fields in the
+    // UPDATE itself so a newer pause or settings save wins the race.
+    query = query.eq("revision", expected.revision).eq("status", expected.status);
+  }
+  const result = query.select("*");
+  const { data, error } = await (expected ? result.maybeSingle() : result.single());
 
   if (!error && data) {
     return serializeAutomationRow(data as AutomationRow, dailyAllowance);
+  }
+
+  if (expected) {
+    if (!error) throw new SlideshowAutomationError("Automation changed while saving. Refresh to load its current settings and pause state before trying again.", 409);
+    // Legacy whole-envelope storage cannot perform this conditional write.
+    // Never fall back to an unfenced save after a failed guarded update.
+    throw new SlideshowAutomationError("Could not safely save automation settings. Refresh and try again.", 503);
   }
 
   if (isMissingTableError(error)) {
@@ -316,13 +327,7 @@ export async function loadSlideshowAutomationWorkspaceState(params: {
   timezone?: string | null;
   userId: string;
 }): Promise<SlideshowAutomationWorkspaceState> {
-  const entitlement = await getTrendingPlanEntitlement(params.userId).catch(
-    () => ({
-      dailyLimit: 3,
-      displayName: "Growth" as const,
-      planKey: "creator" as const,
-    }),
-  );
+  const entitlement = await getTrendingPlanEntitlement(params.userId);
   const dailyAllowance = Math.min(5, Math.max(1, entitlement.dailyLimit));
 
   const [initialAutomation, savedStyles, collections, captionsLib] =
@@ -433,13 +438,7 @@ export async function sweepActiveSlideshowAutomationForUser(params: {
     return { preparedSlotCount: 0, scheduledSlotCount: 0, skipped: true };
   }
 
-  const entitlement = await getTrendingPlanEntitlement(params.userId).catch(
-    () => ({
-      dailyLimit: 3,
-      displayName: "Growth" as const,
-      planKey: "creator" as const,
-    }),
-  );
+  const entitlement = await getTrendingPlanEntitlement(params.userId);
   const dailyAllowance = Math.min(5, Math.max(1, entitlement.dailyLimit));
 
   const existing = await getExistingAutomationRecord({
@@ -515,11 +514,15 @@ export async function getOrCreateAutomationRecord(params: {
   const defaultRow = buildDefaultAutomationRow(params);
   const { data: inserted, error: insertError } = await getClient()
     .from(AUTOMATIONS_TABLE)
-    .upsert(defaultRow, { onConflict: "user_id" })
+    .insert(defaultRow)
     .select("*")
     .single();
 
   if (insertError || !inserted) {
+    if (insertError?.code === "23505") {
+      const raced = await getExistingAutomationRecord({ dailyAllowance: params.dailyAllowance, userId: params.userId });
+      if (raced) return raced;
+    }
     throw new SlideshowAutomationError(
       `Could not initialize slideshow automation draft: ${insertError?.message ?? "Unknown error"}`,
       500,
@@ -537,13 +540,7 @@ export async function saveAutomationDraftOrSettings(params: {
   timezone?: string | null;
   userId: string;
 }): Promise<TrendingSlideshowAutomationRecord> {
-  const entitlement = await getTrendingPlanEntitlement(params.userId).catch(
-    () => ({
-      dailyLimit: 3,
-      displayName: "Growth" as const,
-      planKey: "creator" as const,
-    }),
-  );
+  const entitlement = await getTrendingPlanEntitlement(params.userId);
   const dailyAllowance = Math.min(5, Math.max(1, entitlement.dailyLimit));
   const countsValidation = validateAutomationContentCounts(
     params.config.counts,
@@ -589,6 +586,7 @@ export async function saveAutomationDraftOrSettings(params: {
     existing.status === "active" ||
     existing.status === "needs_attention"
   ) {
+    assertAutomationStructureSupply(normalizedConfig, entitlement.dailyLimit);
     if (normalizedConfig.backgrounds.mode === "collection_only") {
       const usableAssets = await loadUsableCollectionAssets({
         collectionId: normalizedConfig.backgrounds.collectionId,
@@ -626,7 +624,14 @@ export async function saveAutomationDraftOrSettings(params: {
       updated_at: nowIso,
     },
     dailyAllowance,
+    existing,
   );
+}
+
+function assertAutomationStructureSupply(config: TrendingSlideshowAutomationConfig, dailyLimit: number) {
+  if (config.counts.educationalTipsCount > 0 && config.counts.productStoriesCount > 0 && dailyLimit < 10) {
+    throw new SlideshowAutomationError("Your daily pack has one generation batch of five slideshows, so it can supply one structure at a time. Choose all Educational Tips or all Product Stories for an active automation.", 409);
+  }
 }
 
 export async function activateSlideshowAutomation(params: {
@@ -636,13 +641,7 @@ export async function activateSlideshowAutomation(params: {
   automation: TrendingSlideshowAutomationRecord;
   slots: TrendingSlideshowAutomationSlotRecord[];
 }> {
-  const entitlement = await getTrendingPlanEntitlement(params.userId).catch(
-    () => ({
-      dailyLimit: 3,
-      displayName: "Growth" as const,
-      planKey: "creator" as const,
-    }),
-  );
+  const entitlement = await getTrendingPlanEntitlement(params.userId);
   const dailyAllowance = Math.min(5, Math.max(1, entitlement.dailyLimit));
 
   if (params.config) {
@@ -683,9 +682,15 @@ export async function activateSlideshowAutomation(params: {
       400,
     );
   }
+  assertAutomationStructureSupply(existing.config, entitlement.dailyLimit);
 
   const nowIso = new Date().toISOString();
   const nextRevision = existing.revision + 1;
+
+  const storageReady = await getClient().rpc("claim_slideshow_automation", {
+    p_user_id: params.userId, p_token: randomUUID(), p_revision: -1,
+  });
+  if (storageReady.error) throw new SlideshowAutomationError("Safe automation storage is unavailable. Apply the checkpoint migration before activation.", 503);
 
   const activeRecord = await updateAutomationRowInStorage(
     params.userId,
@@ -699,6 +704,7 @@ export async function activateSlideshowAutomation(params: {
       updated_at: nowIso,
     },
     dailyAllowance,
+    existing,
   );
 
   const preparedSlots = await prepareUpcomingAutomationSlots({
@@ -739,22 +745,8 @@ export async function pauseSlideshowAutomation(params: {
   cancelledSlotCount: number;
   slots: TrendingSlideshowAutomationSlotRecord[];
 }> {
-  const entitlement = await getTrendingPlanEntitlement(params.userId).catch(
-    () => ({
-      dailyLimit: 3,
-      displayName: "Growth" as const,
-      planKey: "creator" as const,
-    }),
-  );
+  const entitlement = await getTrendingPlanEntitlement(params.userId);
   const dailyAllowance = Math.min(5, Math.max(1, entitlement.dailyLimit));
-  const currentSlots = await reconcileAutomationSlotsWithSchedules(
-    params.userId,
-  );
-  const slotIdsToCancel = selectSlotsToCancelOnPause({
-    action: params.action,
-    slots: currentSlots,
-  });
-
   const nowIso = new Date().toISOString();
 
   // Stop new sweeps before cancelling any schedules. A partial cancellation failure
@@ -764,6 +756,11 @@ export async function pauseSlideshowAutomation(params: {
     { paused_at: nowIso, status: "paused", updated_at: nowIso },
     dailyAllowance,
   );
+
+  // The SQL handoff locks this same automation row. Read slots after pausing,
+  // so a handoff that won the race is included, and later handoffs are fenced.
+  const currentSlots = await reconcileAutomationSlotsWithSchedules(params.userId);
+  const slotIdsToCancel = selectSlotsToCancelOnPause({ action: params.action, slots: currentSlots });
 
   if (slotIdsToCancel.length > 0) {
     const slotsToCancel = currentSlots.filter((slot) =>
@@ -799,7 +796,7 @@ export async function mutateAutomationSlot(params: {
   slots: TrendingSlideshowAutomationSlotRecord[];
 }> {
   const currentSlots = await listAutomationSlots(params.userId);
-  const slot = currentSlots.find((item) => item.id === params.slotId);
+  let slot = currentSlots.find((item) => item.id === params.slotId);
 
   if (!slot) {
     throw new SlideshowAutomationError("Automation slot not found.", 404);
@@ -808,6 +805,9 @@ export async function mutateAutomationSlot(params: {
   const nowIso = new Date().toISOString();
 
   if (params.action === "cancel" || params.action === "skip") {
+    const fence = await getClient().rpc("fence_slideshow_automation_slot", { p_user_id: params.userId, p_slot_id: slot.id });
+    if (fence.error || !fence.data) throw new SlideshowAutomationError("Could not stop preparation safely. Try again.", 503);
+    slot = serializeSlotRow(fence.data as SlotRow);
     if (slot.scheduleId) {
       await cancelAutomationSchedule(slot.scheduleId, params.userId);
     }
@@ -822,11 +822,14 @@ export async function mutateAutomationSlot(params: {
       user_modified: true,
     });
   } else if (params.action === "retry") {
+    if (slot.scheduleId) throw new SlideshowAutomationError("This post already has a saved schedule. Retry its failed destination in Schedule; no replacement post was created.", 409);
+    if (slot.status === "cancelled_by_user") throw new SlideshowAutomationError("This slot was cancelled. Use a future daily slot; it will not be restarted automatically.", 409);
     const timing = evaluateAutomationSlotTiming({
       localDate: slot.localDate,
       slotTime: slot.slotTime,
       timezone: slot.timezone,
     });
+    if (!timing.ok) throw new SlideshowAutomationError("This posting time has passed. Use a future daily slot; no late post was created.", 409);
     await updateSlotRowInStorage(params.userId, slot.id, {
       hold_message: timing.ok
         ? null
@@ -834,6 +837,13 @@ export async function mutateAutomationSlot(params: {
       status: "preparing",
       updated_at: nowIso,
     });
+    const current = await getExistingAutomationRecord({ userId: params.userId, dailyAllowance: 5 });
+    if (current?.status === "needs_attention" && current.activatedAt) {
+      const { error } = await getClient().from(AUTOMATIONS_TABLE)
+        .update({ status: "active", attention_reason: null, attention_message: null, updated_at: nowIso })
+        .eq("user_id", params.userId).eq("status", "needs_attention").eq("revision", current.revision);
+      if (error) throw new SlideshowAutomationError("Could not resume this automation retry. Its slot remains saved.", 503);
+    }
   }
 
   const state = await loadSlideshowAutomationWorkspaceState({
@@ -1023,8 +1033,8 @@ export async function listAutomationSlots(
     .from(SLOTS_TABLE)
     .select("*")
     .eq("user_id", userId)
-    .order("scheduled_for", { ascending: true })
-    .limit(30);
+    .order("scheduled_for", { ascending: false })
+    .limit(500);
 
   if (error) {
     if (isMissingTableError(error)) {
@@ -1042,59 +1052,22 @@ export async function listAutomationSlots(
     );
   }
 
-  return (data ?? []).map((row) => serializeSlotRow(row as SlotRow));
-}
-
-async function insertSlotRowInStorage(
-  userId: string,
-  row: Omit<SlotRow, "id"> & { id?: string },
-): Promise<TrendingSlideshowAutomationSlotRecord> {
-  const slotId = row.id ?? randomUUID();
-  const fullRow: SlotRow = {
-    ...row,
-    id: slotId,
-  };
-
-  const { data, error } = await getClient()
-    .from(SLOTS_TABLE)
-    .insert(fullRow)
-    .select("*")
-    .single();
-
-  if (!error && data) {
-    return serializeSlotRow(data as SlotRow);
-  }
-
-  if (isMissingTableError(error)) {
-    const envelope = await readFallbackEnvelope(userId);
-    const existingIdx = envelope.slots.findIndex(
-      (s) => s.idempotency_key === fullRow.idempotency_key,
-    );
-    if (existingIdx >= 0) {
-      envelope.slots[existingIdx] = fullRow;
-    } else {
-      envelope.slots.push(fullRow);
-    }
-    await writeFallbackEnvelope(userId, envelope);
-    return serializeSlotRow(fullRow);
-  }
-
-  throw new SlideshowAutomationError(
-    `Could not save automation slot: ${error?.message ?? "Unknown error"}`,
-    500,
-  );
+  return (data ?? []).map((row) => serializeSlotRow(row as SlotRow))
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
 }
 
 async function updateSlotRowInStorage(
   userId: string,
   slotId: string,
   patch: Partial<SlotRow>,
+  preparationOnly = false,
 ): Promise<void> {
-  const { error } = await getClient()
+  const query = getClient()
     .from(SLOTS_TABLE)
     .update(patch)
     .eq("id", slotId)
     .eq("user_id", userId);
+  const { error } = await (preparationOnly ? query.is("cancel_requested_at", null) : query);
 
   if (!error) {
     return;
@@ -1128,7 +1101,7 @@ async function reconcileAutomationSlotsWithSchedules(
     return slots;
   }
 
-  const userSchedules = await listUserSchedules({ userId }).catch(() => []);
+  const userSchedules = await listUserSchedules({ userId });
   if (userSchedules.length === 0) {
     return slots;
   }
@@ -1153,6 +1126,10 @@ async function reconcileAutomationSlotsWithSchedules(
       schedule.scheduledFor &&
       Date.parse(schedule.scheduledFor) !== Date.parse(slot.scheduledFor)
     ) {
+      nextUserModified = true;
+    }
+    if (schedule.caption !== slot.snapshot.captionText || schedule.libraryItemId !== slot.libraryItemId ||
+      schedule.targets.map(target => target.socialConnectionId).sort().join(",") !== slot.snapshot.targets.map(target => target.connectionId).sort().join(",")) {
       nextUserModified = true;
     }
 
@@ -1235,14 +1212,16 @@ async function loadReadyUnusedCarouselsForUser(params: {
   userId: string;
 }): Promise<CarouselGenerationRecord[]> {
   try {
-    const statuses = await listCarouselGenerationStatusesForUser({
-      limit: 50,
-      userId: params.userId,
-    });
+    const [statuses, profile] = await Promise.all([
+      listCarouselGenerationStatusesForUser({ limit: 50, userId: params.userId }),
+      getBusinessProfileForUser(params.userId),
+    ]);
+    if (!profile) throw new Error("The active business profile is unavailable.");
 
     return statuses
       .filter((entry) => {
         if (entry.generation.status !== "completed") return false;
+        if (entry.generation.businessProfileId !== profile.id || entry.generation.businessProfileVersion !== profile.profileVersion) return false;
         if (params.excludeCarouselIds.has(entry.generation.id)) return false;
         const readySlides = entry.slides.filter(
           (slide) => slide.status === "ready" && Boolean(slide.renderedUrl),
@@ -1253,8 +1232,8 @@ async function loadReadyUnusedCarouselsForUser(params: {
         );
       })
       .map((entry) => entry.generation);
-  } catch {
-    return [];
+  } catch (error) {
+    throw new SlideshowAutomationError(`Could not read ready slideshow inventory: ${error instanceof Error ? error.message : "Try again."}`, 503);
   }
 }
 
@@ -1262,15 +1241,54 @@ async function prepareUpcomingAutomationSlots(params: {
   automation: TrendingSlideshowAutomationRecord;
   usableCollectionAssets: MediaAsset[];
 }): Promise<TrendingSlideshowAutomationSlotRecord[]> {
+  const token = randomUUID();
+  const claim = await getClient().rpc("claim_slideshow_automation", {
+    p_user_id: params.automation.userId, p_token: token, p_revision: params.automation.revision,
+  });
+  if (claim.error) throw new SlideshowAutomationError("Safe automation storage is unavailable. Apply the automation checkpoint migration before activating.", 503);
+  if (claim.data !== true) return listAutomationSlots(params.automation.userId);
+  try {
+    return await prepareClaimedAutomationSlots({ ...params, executionToken: token });
+  } finally {
+    const released = await getClient().rpc("release_slideshow_automation", { p_user_id: params.automation.userId, p_token: token });
+    if (released.error) console.error("Automation lease release failed", { code: released.error.code });
+  }
+}
+
+async function prepareClaimedAutomationSlots(params: {
+  automation: TrendingSlideshowAutomationRecord;
+  usableCollectionAssets: MediaAsset[];
+  executionToken: string;
+}): Promise<TrendingSlideshowAutomationSlotRecord[]> {
+  const persistCheckpoint = async (row: Omit<SlotRow, "id"> & { id?: string }) => {
+    const result = await getClient().rpc("checkpoint_slideshow_automation_slot", {
+      p_user_id: params.automation.userId, p_token: params.executionToken, p_revision: params.automation.revision, p_row: row,
+    });
+    if (result.error || !result.data) throw new SlideshowAutomationError("Automation preparation changed or its checkpoint could not be confirmed. The saved slot will be recovered.", 409);
+    return serializeSlotRow(result.data as SlotRow);
+  };
   const occurrences = planUpcomingAutomationOccurrences({
     config: params.automation.config,
     horizonHours: 36,
   });
 
   const existingSlots = await listAutomationSlots(params.automation.userId);
+  for (const slot of existingSlots) {
+    if (slot.status === "preparing" && !slot.scheduleId && Date.parse(slot.scheduledFor) <= Date.now()) {
+      await updateSlotRowInStorage(params.automation.userId, slot.id, {
+        status: "missed_posting_time", hold_message: "Preparation did not finish before this posting time. No late post was sent.", updated_at: new Date().toISOString(),
+      }, true);
+    }
+  }
   const existingByKey = new Map(
     existingSlots.map((slot) => [slot.idempotencyKey, slot]),
   );
+  const reservedCreativeIds = new Set(existingSlots.map(slot => slot.creativeId).filter(Boolean));
+  const savedSchedules = await listUserSchedules({ userId: params.automation.userId });
+  const alreadyPostedSources = new Set(savedSchedules
+    .filter(post => post.status !== "cancelled")
+    .map(post => post.metadata?.carouselId)
+    .filter((id): id is string => typeof id === "string"));
 
   const usedCarouselIds = new Set<string>(
     existingSlots
@@ -1286,7 +1304,7 @@ async function prepareUpcomingAutomationSlots(params: {
 
   const publishingPreferences = await getPublishingPreferences(
     params.automation.userId,
-  ).catch(() => ({ ...DEFAULT_PUBLISHING_PREFERENCES }));
+  );
 
   let rotationCursor = params.automation.rotationCursor;
   const availableCollectionIds = params.usableCollectionAssets.map(
@@ -1303,23 +1321,18 @@ async function prepareUpcomingAutomationSlots(params: {
       userId: params.automation.userId,
     });
 
-    const { data: dbExistingSlot } = await getClient()
-      .from(SLOTS_TABLE)
-      .select("id")
-      .eq("idempotency_key", idempotencyKey)
-      .maybeSingle();
-
-    const existingSlot = existingByKey.get(idempotencyKey);
+    let existingSlot = existingByKey.get(idempotencyKey);
     if (
-      (existingSlot || dbExistingSlot) &&
+      existingSlot && (Boolean(existingSlot.scheduleId) ||
       existingSlot?.status !== "preparing" &&
-      Boolean(existingSlot?.scheduleId || existingSlot?.status !== "scheduled")
+      Boolean(existingSlot?.scheduleId || existingSlot?.status !== "scheduled"))
     ) {
       continue;
     }
 
     let backgroundAssetIds: string[] =
       existingSlot?.snapshot.backgroundAssetIds ?? [];
+    let ctaScreenshotAssetId = existingSlot?.snapshot.ctaScreenshotAssetId ?? null;
     let slotStatus: TrendingSlideshowAutomationSlotStatus = "scheduled";
     let holdMessage: string | null = null;
 
@@ -1372,10 +1385,38 @@ async function prepareUpcomingAutomationSlots(params: {
         ? `${formatMeta.title} · Daily Authority Pack (${occurrence.localDate})`
         : `${formatMeta.title} · Problem-to-Solution Story (${occurrence.localDate})`;
 
+    const snapshotNow = (): TrendingSlideshowAutomationSlotSnapshot => ({
+      backgroundAssetIds, ctaScreenshotAssetId, backgroundMode: params.automation.config.backgrounds.mode,
+      captionText: params.automation.config.caption.mode === "saved_caption" ? params.automation.config.caption.captionText
+        : params.automation.config.caption.mode === "blank" ? "" : headlinePreview,
+      collectionId: params.automation.config.backgrounds.mode === "collection_only" ? params.automation.config.backgrounds.collectionId : null,
+      collectionName: params.automation.config.backgrounds.mode === "collection_only" ? params.automation.config.backgrounds.collectionName : null,
+      configRevision: params.automation.revision, format: occurrence.format, headlinePreview,
+      slideCount: availableCarousels.find(item => item.id === creativeId)?.slideCount ?? existingSlot?.snapshot.slideCount ?? 6,
+      structureId: desiredStructureId, targets: params.automation.config.targets,
+      visualStyle: params.automation.config.visualStyle.style, textPosition: params.automation.config.visualStyle.textPosition, visualStyleName,
+    });
+    const checkpoint = async () => {
+      existingSlot = await persistCheckpoint({
+        id: existingSlot?.id,
+        creative_id: creativeId, library_item_id: libraryItemId, snapshot: snapshotNow(), updated_at: new Date().toISOString(),
+        created_at: nowIso, format: occurrence.format, hold_message: null, idempotency_key: idempotencyKey,
+        local_date: occurrence.localDate, schedule_id: null, scheduled_for: occurrence.scheduledFor,
+        slot_index: occurrence.slotIndex, slot_time: occurrence.slotTime, status: "preparing", timezone: params.automation.config.timezone,
+        user_id: params.automation.userId, user_modified: false,
+      });
+      if (existingSlot.userModified || existingSlot.scheduleId || existingSlot.status === "cancelled_by_user") {
+        throw new SlideshowAutomationError("This slot was stopped or already scheduled. Its accepted output will not be changed.", 409);
+      }
+    };
+
     if (slotStatus === "scheduled") {
       const matchingCarousel = availableCarousels.find(
           (gen) =>
             !usedCarouselIds.has(gen.id) &&
+            !alreadyPostedSources.has(gen.id) &&
+            (!gen.availableOnLocalDate || gen.availableOnLocalDate <= occurrence.localDate) &&
+            (!reservedCreativeIds.has(gen.id) || gen.id === existingSlot?.creativeId) &&
             (!existingSlot?.creativeId || gen.id === existingSlot.creativeId) &&
             gen.structureId === desiredStructureId,
         ) ?? null;
@@ -1390,6 +1431,13 @@ async function prepareUpcomingAutomationSlots(params: {
 
         let schedulingStarted = false;
         try {
+          if (existingSlot?.libraryItemId && existingSlot.snapshot.configRevision !== params.automation.revision) {
+            throw new Error("This prepared slot belongs to earlier settings. Skip it or use the next daily slot; its saved output will not be rewritten.");
+          }
+          if (existingSlot?.libraryItemId) {
+            headlinePreview = existingSlot.snapshot.headlinePreview;
+          } else {
+          await checkpoint();
           const librarySaveInput =
             await prepareGeneratedCarouselLibrarySaveForOwner(
               params.automation.userId,
@@ -1405,9 +1453,15 @@ async function prepareUpcomingAutomationSlots(params: {
             idempotencyKey,
           });
           backgroundAssetIds = prepared.backgroundAssetIds;
+          ctaScreenshotAssetId = prepared.ctaScreenshotAssetId;
           rotationCursor = prepared.nextRotationCursor;
+          // The render can outlive the lease. Revalidate before saving its
+          // Library revision; content-addressed uploads themselves are immutable.
+          await checkpoint();
           const savedLibrary = await saveGeneratedCarouselToLibrary(prepared.input);
           libraryItemId = savedLibrary.item.id;
+          await checkpoint();
+          }
 
           const resolvedCaption =
             params.automation.config.caption.mode === "saved_caption"
@@ -1430,13 +1484,18 @@ async function prepareUpcomingAutomationSlots(params: {
           if (currentAutomation?.status !== "active" || currentAutomation.revision !== params.automation.revision) {
             return listAutomationSlots(params.automation.userId);
           }
+          const renewed = await getClient().rpc("claim_slideshow_automation", {
+            p_user_id: params.automation.userId, p_token: params.executionToken, p_revision: params.automation.revision,
+          });
+          if (renewed.error || renewed.data !== true) return listAutomationSlots(params.automation.userId);
           schedulingStarted = true;
           const createdSchedule = await createUserSchedule({
+            automationGuard: { slotId: existingSlot!.id, token: params.executionToken, revision: params.automation.revision },
             allowTikTokTargets: true,
             allowYouTubeTargets: false,
             input: {
               caption: resolvedCaption,
-              idempotencyKey: `auto-slot:${idempotencyKey}`.slice(0, 120),
+              idempotencyKey: `auto-slot:${createHash("sha256").update(idempotencyKey).digest("hex")}`,
               metadata: {
                 carouselId: matchingCarousel.id,
                 mediaMode: "carousel",
@@ -1450,7 +1509,7 @@ async function prepareUpcomingAutomationSlots(params: {
               scheduledFor: occurrence.scheduledFor,
               scheduledTime: occurrence.slotTime,
               source: {
-                id: savedLibrary.item.id,
+                id: libraryItemId!,
                 kind: "library_item",
               },
               targets: scheduleTargets,
@@ -1464,13 +1523,28 @@ async function prepareUpcomingAutomationSlots(params: {
           slotStatus = "scheduled";
           holdMessage = null;
         } catch (scheduleError) {
+          const latest = await getExistingAutomationRecord({ userId: params.automation.userId, dailyAllowance: params.automation.config.counts.dailyTotal });
+          if (latest?.status !== "active" || latest.revision !== params.automation.revision) return listAutomationSlots(params.automation.userId);
+          if (schedulingStarted) {
+            // The atomic SQL handoff may have committed even when its response
+            // or scheduler acknowledgement was lost. Never erase that receipt.
+            const persisted = await getClient().from(SLOTS_TABLE).select("*").eq("user_id", params.automation.userId).eq("id", existingSlot!.id).maybeSingle();
+            if (persisted.error) throw scheduleError;
+            if (persisted.data?.schedule_id) {
+              scheduleId = persisted.data.schedule_id;
+              slotStatus = "scheduled";
+              holdMessage = "Schedule saved; delivery status will recover from the original request.";
+              continue;
+            }
+          }
           const errMessage =
             scheduleError instanceof Error
               ? scheduleError.message
               : "Could not schedule this automated slideshow.";
-          slotStatus = schedulingStarted ? "action_required_account" : "preparing";
+          const accountFailure = schedulingStarted && /account|reconnect|connection|token expired|invalid_grant/i.test(errMessage);
+          slotStatus = accountFailure ? "action_required_account" : "preparing";
           holdMessage = errMessage.slice(0, 600);
-          if (schedulingStarted) {
+          if (accountFailure) {
             attentionReason = "account_reconnect_required";
             attentionMessage = holdMessage;
           }
@@ -1487,6 +1561,7 @@ async function prepareUpcomingAutomationSlots(params: {
 
     const snapshot: TrendingSlideshowAutomationSlotSnapshot = {
       backgroundAssetIds,
+      ctaScreenshotAssetId,
       backgroundMode: params.automation.config.backgrounds.mode,
       captionText,
       collectionId:
@@ -1508,18 +1583,9 @@ async function prepareUpcomingAutomationSlots(params: {
       visualStyleName,
     };
 
-    if (existingSlot) {
-      await updateSlotRowInStorage(params.automation.userId, existingSlot.id, {
-        creative_id: creativeId,
-        hold_message: holdMessage,
-        library_item_id: libraryItemId,
-        schedule_id: scheduleId,
-        snapshot,
-        status: slotStatus,
-        updated_at: nowIso,
-      });
-    } else {
-      await insertSlotRowInStorage(params.automation.userId, {
+    {
+      await persistCheckpoint({
+        id: existingSlot?.id,
         created_at: nowIso,
         creative_id: creativeId,
         format: occurrence.format,
@@ -1545,21 +1611,11 @@ async function prepareUpcomingAutomationSlots(params: {
     rotationCursor !== params.automation.rotationCursor ||
     attentionReason !== null
   ) {
-    await updateAutomationRowInStorage(
-      params.automation.userId,
-      {
-        ...(attentionReason
-          ? {
-              attention_message: attentionMessage,
-              attention_reason: attentionReason,
-              status: "needs_attention" as const,
-            }
-          : {}),
-        rotation_cursor: rotationCursor,
-        updated_at: nowIso,
-      },
-      params.automation.config.counts.dailyTotal,
-    );
+    const finished = await getClient().rpc("finish_slideshow_automation", {
+      p_user_id: params.automation.userId, p_token: params.executionToken, p_revision: params.automation.revision,
+      p_rotation: rotationCursor, p_reason: attentionReason, p_message: attentionMessage,
+    });
+    if (finished.error) throw new SlideshowAutomationError("Automation progress could not be confirmed. Retry status recovery.", 503);
   }
 
   return listAutomationSlots(params.automation.userId);
@@ -1617,7 +1673,7 @@ async function loadUsableCollectionAssets(params: {
   const result = await listCreativeAssetGroupAssets({
     groupId: params.collectionId,
     userId: params.userId,
-  }).catch(() => null);
+  });
 
   if (!result) {
     return [];
@@ -1804,6 +1860,7 @@ function serializeSlotRow(row: SlotRow): TrendingSlideshowAutomationSlotRecord {
     slotIndex: row.slot_index,
     slotTime: row.slot_time,
     snapshot: {
+      ctaScreenshotAssetId: typeof rawSnapshot.ctaScreenshotAssetId === "string" ? rawSnapshot.ctaScreenshotAssetId : null,
       backgroundAssetIds: Array.isArray(rawSnapshot.backgroundAssetIds)
         ? rawSnapshot.backgroundAssetIds.map(String)
         : [],

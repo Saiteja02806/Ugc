@@ -164,7 +164,7 @@ export async function generateGemini3ProImageBuffer(params: {
 function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<typeof downloadReferenceImageContext>> | undefined,
   receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2") {
   if (!receipt) return undefined;
-  if (!parseHookKeyframeGenerationReceipt(receipt) || ![2, 3, 4, 5].includes(receipt.promptVersion) ||
+  if (!parseHookKeyframeGenerationReceipt(receipt) || ![2, 3, 4, 5, 7].includes(receipt.promptVersion) ||
     hookKeyframeReceiptImageModel(receipt) !== model ||
     hookKeyframePromptSha256(prompt) !== receipt.promptSha256 || !images ||
     images.length !== hookKeyframeReferenceImageCount(receipt)) {

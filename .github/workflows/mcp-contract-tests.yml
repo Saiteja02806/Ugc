@@ -6,6 +6,10 @@ on:
       - "app/mcp/**"
       - "app/oauth/**"
       - "lib/mcp/**"
+      - "lib/business-profiles/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+      - "scripts/onboarding-background*.mjs"
       - "lib/library/**"
       - "app/api/library/**"
       - "lib/explore/slideshow-api.ts"
@@ -38,6 +42,8 @@ on:
       - "worker/package*.json"
       - "worker/Dockerfile"
       - "scripts/*mcp*"
+      - "scripts/*agent-staging*"
+      - "lib/marketing/mcp-tool-catalog.json"
       - "scripts/*ugc-pilot*"
       - "supabase/migrations/*mcp*"
       - "package*.json"
@@ -48,6 +54,10 @@ on:
       - "app/mcp/**"
       - "app/oauth/**"
       - "lib/mcp/**"
+      - "lib/business-profiles/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+      - "scripts/onboarding-background*.mjs"
       - "lib/library/**"
       - "app/api/library/**"
       - "lib/explore/slideshow-api.ts"
@@ -80,6 +90,8 @@ on:
       - "worker/package*.json"
       - "worker/Dockerfile"
       - "scripts/*mcp*"
+      - "scripts/*agent-staging*"
+      - "lib/marketing/mcp-tool-catalog.json"
       - "scripts/*ugc-pilot*"
       - "supabase/migrations/*mcp*"
       - "package*.json"
@@ -98,7 +110,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Check registry catalogue and staging isolation safeguards
+        run: |
+          node scripts/mcp-tool-catalog.mjs --check
+          node --test scripts/mcp-tool-catalog.test.mjs scripts/check-agent-staging-isolation.test.mjs
       - run: npm run test:mcp
+      - run: npm run test:onboarding-background
+      - run: npm run test:onboarding-concurrency
       - run: node --test scripts/validate-ugc-pilot-plugin.test.mjs
       - run: python3 scripts/test-ugc-pilot-plugin-build.py
       - run: npm audit --omit=dev --audit-level=high

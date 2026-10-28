@@ -1,4 +1,4 @@
-import { getCuratedHookFrame, matchesCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
+import { matchesCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { HOOK_KEYFRAME_MOTION_VERSION, type HookMotionCompilation } from "./hook-keyframe-motion.ts";
 import { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, isHookKeyframeImageModel, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 export { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, HOOK_KEYFRAME_IMAGE_MODELS, HOOK_KEYFRAME_IMAGE_MODEL_OPTIONS, hookKeyframeMaxPersonImages, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
@@ -19,10 +19,10 @@ export type HookKeyframeScope = {
 export type HookSourceFrame = {
   index: number; timeSeconds: number; width: number; height: number; sha256: string;
 };
-type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 | 2 | 3 | 4 | 5 };
+type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7 };
 type ApprovedImage = { assetId: string; inputKey: string };
 export type HookKeyframeDraft = {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   imageModel: HookKeyframeImageModel;
   scope: HookKeyframeScope;
   sourceFrame: HookSourceFrame | null;
@@ -70,7 +70,7 @@ export function hookKeyframeDraftStorageKey(ownerId: string, draftId: string, re
 }
 export function createHookKeyframeDraft(scope: HookKeyframeScope): HookKeyframeDraft {
   if (!validScope(scope)) invalid();
-  return { version: getCuratedHookFrame(scope.referenceId, scope.sourceSha256) ? 3 : 2, imageModel: DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, scope: { ...scope }, sourceFrame: null, imageAssetIds: [], instructions: "", motionInstructions: null,
+  return { version: 4, imageModel: DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, scope: { ...scope }, sourceFrame: null, imageAssetIds: [], instructions: "", motionInstructions: null,
     generateAudio: false, generatedImage: null, approval: null };
 }
 
@@ -79,7 +79,7 @@ export function createHookKeyframeDraft(scope: HookKeyframeScope): HookKeyframeD
 export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "sourceFrame" | "imageAssetIds" | "instructions"> & Partial<Pick<HookKeyframeDraft, "version" | "imageModel">>) {
   const { ownerId, draftId, referenceId, sourceSha256 } = draft.scope;
   const frame = draft.sourceFrame;
-  return JSON.stringify({ version: draft.version === 3 ? 3 : draft.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
+  return JSON.stringify({ version: draft.version === 4 ? 4 : draft.version === 3 ? 3 : draft.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
     sourceFrame: frame ? { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 } : null,
     imageAssetIds: draft.imageAssetIds, instructions: draft.instructions,
     ...(draft.version !== 1 ? { imageModel: draft.imageModel } : {}) });
@@ -87,7 +87,7 @@ export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "s
 
 function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft {
   if (!validScope(scope) || !object(value) || !fields(value, ["version", "imageModel", "scope", "sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio", "generatedImage", "approval"]) ||
-    value.version !== 1 && value.version !== 2 && value.version !== 3 || (value.version === 2 || value.version === 3) && !isHookKeyframeImageModel(value.imageModel) ||
+    value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 || (value.version === 2 || value.version === 3 || value.version === 4) && !isHookKeyframeImageModel(value.imageModel) ||
     value.version === 1 && value.imageModel !== undefined && value.imageModel !== "nano_banana_2" || !validScope(value.scope) ||
     Object.keys(scope).some(key => value.scope !== null && (value.scope as HookKeyframeScope)[key as keyof HookKeyframeScope] !== scope[key as keyof HookKeyframeScope]) ||
     value.sourceFrame !== null && !validFrame(value.sourceFrame, scope, value.version) ||
@@ -105,7 +105,7 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
   if (value.generatedImage !== null) {
     const image = value.generatedImage;
     if (!object(image) || !fields(image, ["assetId", "inputKey", "promptVersion"]) || !assetId(image.assetId) ||
-      image.promptVersion !== 1 && image.promptVersion !== 2 && image.promptVersion !== 3 && image.promptVersion !== 4 && image.promptVersion !== 5 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
+      image.promptVersion !== 1 && image.promptVersion !== 2 && image.promptVersion !== 3 && image.promptVersion !== 4 && image.promptVersion !== 5 && image.promptVersion !== 7 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
       draft.imageAssetIds.some(id => id.toLowerCase() === (image.assetId as string).toLowerCase())) invalid();
     draft.generatedImage = { assetId: image.assetId, inputKey: image.inputKey as string, promptVersion: image.promptVersion };
   }
@@ -131,7 +131,7 @@ export function updateHookKeyframeDraft(draft: HookKeyframeDraft, patch: Partial
   const previous = parseDraft(draft, draft.scope);
   if (!object(patch) || !fields(patch, ["imageModel", "sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio"])) invalid();
   // Validate the new inputs independently of the old generated-image binding.
-  const next = parseDraft({ ...previous, ...patch, ...((patch.sourceFrame && getCuratedHookFrame(previous.scope.referenceId, previous.scope.sourceSha256)) || previous.version === 3 ? { version: 3 } : patch.imageModel === undefined ? {} : { version: 2 }), generatedImage: null, approval: null }, previous.scope);
+  const next = parseDraft({ ...previous, ...patch, ...(previous.version === 4 ? { version: 4 } : previous.version === 3 ? { version: 3 } : patch.imageModel === undefined ? {} : { version: 2 }), generatedImage: null, approval: null }, previous.scope);
   if (hookKeyframeInputKey(next) === hookKeyframeInputKey(previous)) {
     next.generatedImage = previous.generatedImage; next.approval = previous.approval;
   }

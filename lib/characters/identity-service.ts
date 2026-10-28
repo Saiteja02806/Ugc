@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { characterPromptPresentation } from "./prompt-skills.ts";
 
 import type { BackgroundJobRecord } from "../jobs/background-jobs.ts";
 import type { MediaAssetRow } from "../media/media-storage.ts";
@@ -14,6 +15,7 @@ export type PublicCharacter = {
   model: CharacterImageModel;
   gender: "male" | "female" | null;
   createdAt: string;
+  prompt?: string;
 };
 
 export type TrustedCharacter = PublicCharacter & {
@@ -171,6 +173,7 @@ export function serializePublicCharacter(character: TrustedCharacter): PublicCha
     model: character.model,
     gender: character.gender,
     createdAt: character.createdAt,
+    ...(character.userPrompt ? { prompt: character.userPrompt } : {}),
   };
 }
 
@@ -187,6 +190,7 @@ export function serializeCharacterHistoryImage(
       generationId: String((job!.input as Record<string, unknown>).generationId),
       mediaAssetId: asset.id, url: candidate.url, model: candidate.model,
       prompt: candidate.userPrompt, createdAt: asset.created_at,
+      ...(candidate.userPrompt ? characterPromptPresentation(job!.input) : {}),
       saved: asset.collection === "influencer" && marker?.jobId === candidate.jobId,
     };
   } catch (error) {

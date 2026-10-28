@@ -1390,6 +1390,36 @@ Last updated: 2026-10-14
   `docs/demo-library-explore-fix-2026-10-14.md` (169 focused regressions, web
   TypeScript and scoped lint with no errors).
 
+## 2026-10-13 Combined MCP candidate reconciliation (unreleased)
+
+- The business release integration retains both the reviewed MCP Business
+  Context/onboarding/logo candidates and the latest live application source
+  `07a4e516407151d5411f37e05fece468e8dcfdbd` (PR #57), including its Explore
+  navigation/preview and editor-loading fixes. No production promotion, worker
+  update, schema application or write enablement has occurred in this branch.
+- Existing application release decisions and deployment holds below remain
+  recorded. The combined source must be validated against current production
+  and its migration history before any specifically authorized release.
+- Screenshot upload/matcher changes remain future MCP work; dedicated logo
+  reservations do not substitute for app screenshots or Carousel product assets.
+
+
+## 2026-10-13 MCP onboarding candidate (not released)
+
+- The separate MCP onboarding candidate adapts both existing legacy profile
+  setup and saved background drafts. Reads never prepare Trending content.
+  Onboarding writes are disabled by default and require `brand:write`.
+- Background completion retains the existing worker finalization/prebuild.
+  Legacy MCP submission atomically completes the profile and reserves a
+  `media_analysis` job; its existing authenticated application callback invokes
+  `prebuildTrendingAfterOnboarding` only if the owned completed profile still
+  matches the accepted version. Failed queue publication remains recoverable.
+  No worker rollout or Carousel generation/copy/layout policy is changed.
+- Legacy analysis callbacks use an owner/source/profile fence so cancelled or
+  replaced source jobs cannot reset newer website answers or active context.
+  The candidate migration must precede deploying its callback code. Source
+  acceptance, durable jobs and immutable MCP receipts commit atomically.
+
 ## 2026-10-13 Landing slideshow showcase (local; deployment held by user)
 
 - The landing page's former three-format interactive daily-feed demo is now a
@@ -8434,3 +8464,29 @@ Explore slideshow receives compact In1hour/In3hours buttons through shared sched
 - Local verification:91 focused/database tests,41 worker renderer/edit tests, existing desktop/mobile Trending Adjust/editor browser fixtures, types, scoped lint and Webpack production build PASS. Actual Library/cancellation SQL and automation schema exercised in local PGlite. Five relevant server routes each trace18font files.
 - Three broader scheduling UI source-contract assertions fail in unrelated, already-modified UI files; not changed by this patch. Hosted migration, actual storage upload/publishing/scheduler execution and signed-in production acceptance remain NOT VERIFIED. Production database previously lacked automation tables; no deployment/apply/activation in this task.
 - Receipt:docs/trending-automation-gap-fixes-2026-10-27.md. Incident UGC-SCH-011 remains OPEN for hosted acceptance.
+
+## 2026-10-27 Manual Explore slideshow return recovery (local; not deployed)
+
+Manual Explore removes the two permanent finished-slide upload shortcuts at the user's request, retaining Add slides uploads. Completed slideshow browser hints and pre-job clarification messages survive route return/reload; recovered versions require explicit selection before replacing edited sequences. Planner revision3 resolves a supplied screenshot linked to a named slide's replacement laptop, retaining ambiguity checks and per-slide source/person/screenshot roles. Automated Trending Carousel planning, workers, rendering, schema and publishing are unchanged.204focused tests and local browser recovery/editor/responsive fixtures pass; authenticated production/model-output acceptance remainsNOTVERIFIED. No deployment or new image job. Evidence: docs/slideshow-generation-recovery-2026-10-27.md and UGC-UI-037/UGC-OPS-012.
+
+## 2026-10-28 Trending automation follow-up (local, not deployed)
+
+- Automation controls use pill corners locally, including dialogs; global Button styling is unchanged. Base single-column grid prevents existing mobile min-content clipping; desktop two-column geometry remains.
+- Structure2 automation CTA prioritizes the newest active/ready/approved app screenshot in the source business/category. Prefer the final CTA over earlier proof/reflection roles. Other slides use the selected collection. Without a screenshot, selected/default backgrounds remain. Explicit screenshot lookup/render failures block preparation, not silent substitution. Snapshot records ctaScreenshotAssetId. Original creatives remain untouched.
+- Structure1 planner v60 constrains provider slides to slide1..slide6 object keys with fixed per-position number/role. Decode to the existing persisted array; legacy arrays remain strict. This addresses observed repeated-slide5 model output without renumbering malformed plans or weakening copy/fit/grounding checks.
+- Read-only production audit: no dedicated automation tables, one fallback draft, zero active automations/auto-slot schedules. Existing ordinary schedules have recent publication evidence. No claim of activated automation execution. Initial seven-day generation window:1030completed/235failed;36invalid-number failures plus timeout/quality failures. No historical failures were retried or rewritten. No active product screenshots;8archived.
+- UGC-TREND-001 remains OPEN for hosted acceptance. Receipt: docs/trending-automation-followup-2026-10-28.md. No migration/apply/deploy/activation/provider call in this task.
+
+## 2026-10-28 Automation durability follow-up (database applied; application/worker local)
+
+- Dedicated automation storage now exists in production. Transactional fallback backfill preserves the sole draft/revision9/config/cursor without activation. Hosted migration versions20261027194354 and20261027194405 correspond to local20261026141500 and20261027185410 respectively; do not bulk-apply unrelated migration drift.
+- Revision-bound preparation lease and durable checkpoints precede Library/schedule handoff. Automatic scheduled post, targets, jobs and slot receipt commit atomically under the automation/slot fence. Pause, owner cancellation, revision changes and expired leases block handoff. Stable automatic keys require an internal guard; accepted receipts cannot be overwritten by stale preparation. Ordinary manual scheduling retains its existing path.
+- Current profile/version, requested structure and date availability constrain source inventory. Failed entitlement/preferences reads no longer default. Active automation guides future structure inventory, preserving manual Adjust and reserved packs. Mixed structures use balanced generation batches while posting exact saved counts; fewer than ten daily items cannot supply both five-item structure batches and activation explains the limitation.
+- Transient initial provider interruptions use durable worker retry, not five candidate repairs/failure settlement; timeout120seconds/SDK retries0. Reservation retries once only for SQL57014/55P03 rolled-back operations. Structure2 v27 heading-only repair changes no body/CTA/roles and retains full semantic/layout checks. Existing fixed-position Structure1 schema remains.
+- Local70app/SQL,103worker and3recovery tests pass, types/worker build/scoped lint pass. No user activation, paid generation, historical replay, publication or website/worker deployment. Browser-independent production execution and generated visual quality remain NOT VERIFIED. Receipt:docs/trending-automation-backend-reliability-2026-10-28.md. UGC-TREND-002 remains open for hosted acceptance.
+
+## 2026-10-28 Settings-save race and mixed-structure fixes (local)
+
+- Settings saves and final activation writes match both expected revision and status atomically. Pause does not increment revision: a status-only check or revision-only check is insufficient. Newer Pause/settings changes return409 for the stale request without overwriting stored intent; failed guarded writes never fall back to whole-envelope storage.
+- Shared structure-supply validation runs for activation and active/needs-attention settings updates. Mixed structures need dailyLimit>=10 for two whole five-item batches. Drafts/paused setups remain editable; saving them never activates. Valid explicit activation resumes paused setups, while activation racing a newer pause/draft edit conflicts.
+- Eleven new regressions include the installed Supabase client and actual local PostgreSQL filtered UPDATE after Pause commits.83app/SQL tests, TypeScript and scoped lint PASS. No UI, worker, schema, live activation or publication change; website deployment/hosted execution NOT VERIFIED. Receipt:docs/trending-settings-race-fixes-2026-10-28.md. Incident UGC-TREND-003 locally repaired; hosted acceptance remains open.

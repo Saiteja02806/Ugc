@@ -28,7 +28,7 @@ export function ProductLogoMark({
         height={500}
         sizes={sizes}
         unoptimized
-        className={cn("h-full w-full object-contain", imageClassName)}
+        className={cn("h-full w-full object-contain dark:brightness-0 dark:invert", imageClassName)}
       />
     </span>
   );

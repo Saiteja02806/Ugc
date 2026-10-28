@@ -29,6 +29,7 @@ import { personReferenceRoles } from "@/lib/explore/person-reference";
 import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
 import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
 import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
+import { createHookSourceTimeline } from "@/worker/src/lib/hook-source-timeline";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 
 import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
@@ -328,7 +329,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         (body?.referenceType !== undefined && body.referenceType !== startingFrame.exploreFormat)) {
         return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
       }
-      if (prompt.includes("PHASE [") && startingFrame.receipt?.version !== 4) {
+      if (prompt.includes("PHASE [") && startingFrame.receipt?.version !== 4 && startingFrame.receipt?.version !== 5) {
         return NextResponse.json({ ok: false, error: "These full-video directions need a newly prepared original-opening image. Your saved image and edits are kept; prepare a new starting image before using this timeline." }, { status: 409 });
       }
       if (referenceImageUrls.includes(startingFrame.imageUrl)) {
@@ -387,8 +388,14 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const inputInstructions = startingFrame ? { intent: "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
     imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
   let generationPrompt: string;
+  let hookSourceTimeline;
   try {
-    generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true })
+    if (startingFrame?.receipt.version === 5 && startingFrame.workflow === "hook" && prompt.includes("PHASE [")) {
+      hookSourceTimeline = createHookSourceTimeline(startingFrame.receipt,
+        (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds);
+    }
+    generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true,
+      ...(startingFrame.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
       : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
@@ -618,6 +625,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
     : model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
   const startingFrameInput = startingFrame ? {
+    ...(hookSourceTimeline ? { hookSourceTimeline: hookSourceTimeline as unknown as Json } : {}),
     startingFrameAssetId: startingFrame.assetId,
     startingFrameJobId: startingFrame.imageJobId,
     startingFrameImageUrl: startingFrame.imageUrl,
@@ -631,6 +639,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     automaticHookText = body?.automaticHookText === undefined || body.automaticHookText === false ? null : await (await import("@/lib/explore/automatic-hook-text-plan")).prepareAutomaticHookText({ enabled: body?.automaticHookText, format: body?.exploreFormat,
       referenceId: startingFrame?.referenceId ?? body?.referenceId, owner: user, requestKey: baseIdempotencyKey,
       firstJobKey: options ? `explore:${baseIdempotencyKey}:1` : getChildIdempotencyKey(baseIdempotencyKey, 0, quantity) });
+    if (automaticHookText?.source.format === "wall_text" && aspectRatio !== "9:16") throw new Error("Use 9:16 for this Wall text layout, or turn off automatic text.");
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Could not prepare automatic text. No video was started." }, { status: 409 });
   }

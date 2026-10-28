@@ -39,10 +39,11 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
   startingFrameControl?: ReactNode;
   startingFrameMode?: boolean;
+  startingFrameSoundControl?: ReactNode;
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, startingFrameMode = false }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, startingFrameMode = false, startingFrameSoundControl }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -56,7 +57,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
   const referenceCount = (imageReferences?.assets.length ?? Number(Boolean(creator.asset))) + [videoReference.asset, audio.asset].filter(Boolean).length;
   const qualityField = <SettingField label="Quality"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>;
   const quantityField = <SettingField label="Videos"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>;
-  const ratioField = <SettingField label="Ratio">{startingFrameMode ? <p className="flex min-h-10 items-center gap-2 text-sm"><span>{aspectRatio}</span><span className="text-xs text-muted">From your frame</span></p> : <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} />}</SettingField>;
+  const ratioField = <SettingField label="Ratio"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={startingFrameMode ? RATIOS.filter(option => option.value === aspectRatio) : RATIOS} /></SettingField>;
 
   return <section aria-label={kind === "hook" ? "Hook composer" : "Phone video composer"} className={creation.composer}>
     <h2 className="sr-only">Create</h2>
@@ -64,12 +65,11 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <h3 className="text-sm font-medium">Inside the phone</h3>
       {appScreenControl}
     </section> : null}
-    {startingFrameControl}
-    <section hidden={startingFrameMode} aria-label="Optional references" className={kind === "hook" ? creation.classicReferences : sections.references}>
+    <section aria-label="Optional references" className={kind === "hook" ? creation.classicReferences : sections.references}>
       <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
-        <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile={kind === "hook"} />
+        {startingFrameControl ?? <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile={kind === "hook"} />}
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
@@ -119,6 +119,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <SettingField label="Duration">{startingFrameMode ? <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} duration`} value={String(duration)} onChange={value => onGenerationSettingsChange({ duration: Number(value) as AIStudioVideoDuration })} options={hookStartingFrameVideoDurations(model).map(value => ({ value: String(value), label: `${value} seconds` }))} /> : <WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} />}</SettingField>
       {qualityField}{quantityField}
       {ratioField}
+      {startingFrameSoundControl}
     </div>
     </section>
   </section>;

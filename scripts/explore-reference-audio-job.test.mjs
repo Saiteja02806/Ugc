@@ -48,9 +48,9 @@ test("the owned final hook/demo and wall-text jobs use the registered MP3 even w
   }
 });
 
-test("all 107 Hook + Demo jobs honor silence while historical paired tracks retain their saved volume", async () => {
+test("all 107 active Hook references honor silence while historical paired tracks retain their saved volume", async () => {
   const { getHookReferenceGalleryItems } = await import("../worker/dist/lib/explore-hook-reference-release.js");
-  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 104);
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 107);
   for (const reference of references) for (const clean of [false, true]) {
     const f = fixture({ reference, clean, custom: true }); await f.run();
     if (reference.audioPolicy === "silent" && !clean) {

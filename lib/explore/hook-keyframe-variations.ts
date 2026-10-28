@@ -52,7 +52,7 @@ export function readHookKeyframeVariations(raw: string | null, scope: HookKeyfra
       const checkpoint = readHookKeyframeCheckpoint(JSON.stringify(entry.checkpoint), scope);
       if (!checkpoint || keys.has(checkpoint.requestKey.toLowerCase())) invalid();
       const input = JSON.parse(checkpoint.inputKey) as Record<string, unknown>;
-      if (!object(input) || input.version !== 1 && input.version !== 2 && input.version !== 3 ||
+      if (!object(input) || input.version !== 1 && input.version !== 2 && input.version !== 3 && input.version !== 4 ||
         Object.keys(scope).some(key => input[key] !== scope[key as keyof HookKeyframeScope])) invalid();
       if ((entry.state === "planned" || entry.state === "submitting" || entry.state === "rejected") && checkpoint.jobId !== null ||
         (entry.state === "accepted" || entry.state === "settled") && !checkpoint.jobId || entry.state !== "rejected" && entry.error !== null) invalid();

@@ -1,5 +1,6 @@
 import type { CarouselPlanValidationIssue } from "./carousel-llm-slide-plan.js";
 import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
+import { decodeCarouselSlidePositions } from "./carousel-slide-positions.js";
 
 export const CAROUSEL_COUNTED_BODY_REPAIR_VERSION = "structure-1-counted-body-repair-v1";
 export type CarouselCountedBodyRepairPolicy = { version: typeof CAROUSEL_COUNTED_BODY_REPAIR_VERSION };
@@ -71,6 +72,7 @@ export function withCountedPlanBodies<T>(schema: T): T {
 }
 
 export function decodeCountedPlanBodies(value: unknown) {
+  value = decodeCarouselSlidePositions(value);
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const plan = value as Record<string, unknown>;
   if (!Array.isArray(plan.slides)) return value;

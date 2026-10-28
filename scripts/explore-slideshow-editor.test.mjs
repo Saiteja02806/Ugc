@@ -240,12 +240,14 @@ test("Save and review waits for successful recovery and never submits a schedule
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
 
-test("direct finished-slide action opens the file picker without an Add slides dialog", async () => {
+test("finished-slide upload stays inside Add slides without a permanent duplicate button", async () => {
   const h = await editor(); let opened = 0;
   h.control("input", "Use my finished slides").props.ref.current = { click: () => opened++ };
-  h.control("Button", "Use my finished slides").props.onClick();
-  assert.equal(opened, 1);
+  assert.equal(h.control("Button", "Use my finished slides"), undefined);
   assert.equal(nodes(h.render()).some(node => node.type === "SlideshowAddSlides"), false);
+  h.control("Button", "Add slides").props.onClick();
+  nodes(h.render()).find(node => node.type === "SlideshowAddSlides").props.onUpload();
+  assert.equal(opened, 1);
   h.props.active = false; h.props.previewActive = false; h.render();
   h.controller.current.uploadSlides(); assert.equal(opened, 2, "Create can open the same picker while the editor is hidden");
 });

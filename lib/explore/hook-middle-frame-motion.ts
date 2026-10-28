@@ -83,9 +83,10 @@ export function buildSourceMotionDirections(entry: MiddleFrameMotionEntry): stri
 
 /** Normalized authoring boundaries are mapped only at submission/preview duration.
  * Words remain exactly as edited; ordinary manual/legacy prose is untouched. */
-export function retimeSourceMotionDirections(directions: string, durationSeconds: number): string {
+export function retimeSourceMotionDirections(directions: string, durationSeconds: number, actionDurationSeconds?: number): string {
   if (!directions.includes("PHASE [")) return directions;
   if (!Number.isSafeInteger(durationSeconds) || durationSeconds < 3 || durationSeconds > 15) throw new Error("Choose a supported animation duration.");
+  if (actionDurationSeconds !== undefined && (!Number.isFinite(actionDurationSeconds) || actionDurationSeconds < 1 || actionDurationSeconds > durationSeconds)) throw new Error("Review the original-opening action duration.");
   const pattern = /PHASE \[(\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)\]/g;
   const matches = [...directions.matchAll(pattern)];
   if (!matches.length || matches.length !== directions.split("PHASE [").length - 1) throw new Error("Review the complete motion timeline before generating.");
@@ -96,6 +97,8 @@ export function retimeSourceMotionDirections(directions: string, durationSeconds
     cursor = end;
   }
   if (Math.abs(cursor - 1) > epsilon) throw new Error("The motion timeline must include the complete ending.");
-  const seconds = (value: number) => Number((value * durationSeconds).toFixed(2)).toString();
-  return directions.replace(pattern, (_match, start: string, end: string) => `${seconds(Number(start))}–${seconds(Number(end))}s`);
+  const actionDuration = actionDurationSeconds ?? durationSeconds;
+  const seconds = (value: number) => Number((value * actionDuration).toFixed(actionDurationSeconds === undefined ? 2 : 3)).toString();
+  const timed = directions.replace(pattern, (_match, start: string, end: string) => `${seconds(Number(start))}–${seconds(Number(end))}s`);
+  return actionDuration < durationSeconds ? `${timed}\n\nFINAL HOLD ${seconds(1)}–${durationSeconds}s: Keep the completed ending pose, expression, hand and prop contact, lighting and camera composition continuous. Introduce no new gesture or scene change.` : timed;
 }

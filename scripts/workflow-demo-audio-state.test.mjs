@@ -20,6 +20,7 @@ function layout(kind) {
   let cursor = 0, mediaCursor = 0;
   const generationInputs = [];
   const frameScopes = [];
+  let photoRestore = { pending: false, error: null, apply: null, remembered: [] };
   const frameSelection = { frame: null, ready: true, error: null, setFrame(value) { this.frame = value; return true; }, retry() {} };
   const reference = { id: "talking-car-story", sourceSha256: "a".repeat(64) };
   const recoveryInputs = [];
@@ -81,7 +82,10 @@ function layout(kind) {
     "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
     "./starting-frame-animation-references": { StartingFrameAnimationReferences: "animation-references" },
     "next/dynamic": { default: () => "starting-frame-preparation" },
+    "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
     "next/image": { default: "image" },
+    "./use-starting-frame-photos": { useStartingFramePhotos: (frame, model, enabled, apply) => { photoRestore = { ...photoRestore, frame, model, enabled, apply }; return { pending: photoRestore.pending, error: photoRestore.error, remember(photos) { photoRestore.remembered.push(photos); } }; } },
+    "@/lib/explore/starting-frame-photo-selection": { startingFramePhotoKey: frame => `${frame.ownerId}:${frame.jobId}:${frame.assetId}` },
     "./use-hook-composer-selection": { useHookComposerSelection: (...scope) => { frameScopes.push(scope); return frameSelection; } },
     "@/worker/src/lib/hook-starting-frame-video": startingFrameVideo,
     "./use-talking-head-reference": { useTalkingHeadReference: () => ({
@@ -165,6 +169,8 @@ function layout(kind) {
       };
     },
     demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction, frameScopes, frameSelection, reference,
+    photoRestore() { return photoRestore; },
+    setPhotoRestoreState(patch) { photoRestore = { ...photoRestore, ...patch }; },
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
     setFinishedOutput(output) { finishedOutput = output; },
   };
@@ -199,11 +205,12 @@ test("Talking Head Recreate approves only the current draft, preserves Demo/scri
   nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
   current = render(); prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame, frame);
-  const sound = nodes(nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props.frameControl).find(node => node.type === "input" && node.props.type === "checkbox");
+  const sound = nodes(current.composer.startingFrameSoundControl).find(node => node.type === "input" && node.props.type === "checkbox");
   sound.props.onChange({ target: { checked: true } }); current = render();
   assert.equal(current.generationDraft.startingFrame.generateAudio, true);
   const faceControl = () => nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props;
   const photos = [{ asset: { id: "face-a", title: "Face A", url: "https://owned.test/a.png" } }, { asset: { id: "face-b", title: "Face B", url: "https://owned.test/b.png" } }];
+  current.composer.onGenerationSettingsChange({ model: "google_omni" }); current = render();
   faceControl().onPhotosChange(photos); current = render();
   assert.deepEqual(Array.from(current.generationDraft.startingFramePhotos, photo => photo.assetId), ["face-a", "face-b"]);
   faceControl().onPendingChange(true); current = render(); assert.equal(current.generationDraft.referencesPending, true);
@@ -425,3 +432,27 @@ for (const kind of ["hook", "phone"]) {
     assert.equal(actual.demo.removed, 0);
   });
 }
+
+test("Talking Head scopes restored identity photos to the selected frame and supported model", () => {
+  const h = layout("hook"), props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: "draft" } };
+  let state = h.render(props);
+  state.composer.onGenerationSettingsChange({ model: "google_omni" });
+  const frameA = { ownerId: "owner", draftId: "draft", referenceId: h.reference.id, jobId: "job-a", assetId: "frame-a", url: "https://owned.test/frame-a", width: 720, height: 1280, motionInstructions: "Move", identityAssetIds: ["face-a"] };
+  h.frameSelection.setFrame(frameA); state = h.render(props);
+  assert.equal(h.photoRestore().frame, frameA); assert.equal(h.photoRestore().enabled, true);
+  h.setPhotoRestoreState({ pending: true }); state = h.render(props); assert.equal(state.generationDraft.referencesPending, true);
+  h.setPhotoRestoreState({ pending: false, error: "Photo unavailable" }); state = h.render(props); assert.equal(state.generationDraft.referencesError, "Photo unavailable");
+  h.setPhotoRestoreState({ error: null });
+  h.photoRestore().apply([{ kind: "image", asset: { id: "face-a", title: "Face A", url: "https://owned.test/a" } }]);
+  state = h.render(props); assert.deepEqual(Array.from(state.generationDraft.startingFramePhotos, p => p.assetId), ["face-a"]);
+  const control = nodes(state.composer.startingFrameControl).find(n => n.type === "animation-references").props;
+  control.onPhotosChange([]); state = h.render(props); assert.equal(h.photoRestore().remembered.at(-1).length, 0);
+  assert.equal(state.generationDraft.startingFramePhotos.length, 0);
+  control.onPhotosChange([{ kind: "image", asset: { id: "face-a", title: "Face A", url: "https://owned.test/a" } }]);
+  h.frameSelection.setFrame({ ...frameA, jobId: "job-b", assetId: "frame-b", identityAssetIds: ["face-b"] });
+  state = h.render(props); assert.equal(state.generationDraft.startingFramePhotos.length, 0, "old frame photos cannot leak during restore");
+  h.photoRestore().apply([{ kind: "image", asset: { id: "face-b", title: "Face B", url: "https://owned.test/b" } }]);
+  state = h.render(props); assert.deepEqual(Array.from(state.generationDraft.startingFramePhotos, p => p.assetId), ["face-b"]);
+  state.composer.onGenerationSettingsChange({ model: "wan_3_0" }); state = h.render(props);
+  assert.equal(state.generationDraft.startingFramePhotos.length, 0, "unsupported models receive no appearance photos");
+});

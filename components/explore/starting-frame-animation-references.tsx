@@ -2,6 +2,12 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import { WorkflowReferencePreview } from "./workflow-reference-preview";
+import previewStyles from "./workflow-reference-preview.module.css";
+import creation from "./workflow-creation.module.css";
 import { FormatGenerationReferences } from "./format-generation-references";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -14,7 +20,7 @@ import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-cli
 import { hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import styles from "./starting-frame-animation-references.module.css";
 
-export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange, frameControl }: {
+export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange, frameControl, compact = false, onPrepareFrame }: {
   frame: HookStartingFrameSelection; model: string; photos: AIStudioReferenceMedia[];
   onPhotosChange: (photos: AIStudioReferenceMedia[]) => void;
   onSelectFrame?: (frame: HookStartingFrameSelection) => void; onClearFrame?: () => void;
@@ -22,6 +28,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
   ownerId?: string; preview: boolean; active?: boolean; disabled: boolean;
   onPendingChange: (pending: boolean) => void; onErrorChange: (error: string | null) => void;
   frameControl?: ReactNode;
+  compact?: boolean; onPrepareFrame?: () => void;
 }) {
   const limit = hookStartingFrameFaceReferenceLimit(model);
   const [selectionError, setSelectionError] = useState<string | null>(null);
@@ -77,7 +84,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
       if (request === revision.current) { pending.current = false; onPendingChange(false); }
     }
   }
-  return <div className={styles.root} data-starting-frame-references>
+  const controls = <div className={styles.root} data-starting-frame-references>
     {frameControl ?? <FormatGenerationReferences startingFrame={frame} startingFramesOnly onSelectStartingFrame={onSelectFrame} onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
       heading="Starting frame" selection={null} imageSelections={[]} imagePurpose="general" videoInputEnabled={false} audioInputEnabled={false}
       active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />}
@@ -89,7 +96,19 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
           loadingMore: history.isFetchingNextPage, onRetry: () => void history.refetch(), onLoadMore: () => void history.fetchNextPage(), onSelect: selectInfluencer }}
         onChange={selection => onPhotosChange(selection?.kind === "image" ? [...photos.filter(photo => photo.asset.id !== selection.asset.id), selection] : [])}
         onPendingChange={onPendingChange} onErrorChange={onErrorChange} />
-      <p className={styles.hint}>{limit ? "Add clear photos of the same person for facial guidance. Your starting frame keeps the scene, clothing and pose." : "Choose Omni Flash 1.1 to add face references alongside the starting frame. Existing face photos are kept; remove them to use this model."}</p>
+
     </div>
+  </div>;
+  if (!compact) return controls;
+  return <div className={previewStyles.picker}>
+    <WorkflowReferencePreview url={frame.url} name="Starting frame" disabled={disabled} onRemove={onClearFrame} />
+    <Popover>
+      <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Change starting frame" data-state="selected" disabled={disabled} className={`${creation.referenceButton} ${previewStyles.action}`} />}><Plus aria-hidden="true" /></PopoverTrigger>
+      <PopoverContent side="bottom" align="center" className="max-h-[70dvh] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-border bg-card p-4 text-foreground shadow-xl">
+        <PopoverTitle>Choose image</PopoverTitle>
+        {controls}
+        {onPrepareFrame ? <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={onPrepareFrame}>Create starting frame</Button> : null}
+      </PopoverContent>
+    </Popover>
   </div>;
 }

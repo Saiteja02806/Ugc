@@ -223,6 +223,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
   const visibleStatuses = historyImage ? [{
     id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
     prompt: historyImage.prompt, batchId: historyImage.jobId,
+    displayPrompt: historyImage.displayPrompt, skills: historyImage.skills,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
   }] : jobs.data;
   const resetSelection = select.reset;

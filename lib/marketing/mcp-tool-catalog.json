@@ -1,5 +1,5 @@
 {
-  "toolCount": 79,
+  "toolCount": 106,
   "groups": [
     {
       "id": "account-and-media",
@@ -49,17 +49,17 @@
       "tools": [
         {
           "name": "create_upload",
-          "description": "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation.",
+          "description": "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation. This does not make the asset ready. confirm_upload verifies the stored bytes and marks the asset ready.",
           "scope": "assets:write"
         },
         {
           "name": "confirm_upload",
-          "description": "Verify an owned temporary upload in storage and make its asset ready.",
+          "description": "Verify an owned temporary upload in storage and make its asset ready. create_upload and renew_upload only reserve or refresh the transfer link. This does not spend credits.",
           "scope": "assets:write"
         },
         {
           "name": "delete_asset",
-          "description": "Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted.",
+          "description": "Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "assets:write"
         }
       ]
@@ -73,12 +73,12 @@
       "tools": [
         {
           "name": "generate_image",
-          "description": "Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs.",
+          "description": "Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "generation:write"
         },
         {
           "name": "generate_video",
-          "description": "Reserve video credits by duration and queue 1, 2, or 4 videos. Reusing the request ID with the same input returns the existing jobs.",
+          "description": "Reserve video credits by duration and queue 1, 2, or 4 videos. Reusing the request ID with the same input returns the existing jobs. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "generation:write"
         },
         {
@@ -102,7 +102,7 @@
         },
         {
           "name": "finish_video",
-          "description": "Save and queue owned video edits or opening-plus-demo composition. Prepare edits/framing in separate stages before demo/subtitle composition. Reuse the exact request key and draft after interruption; returns a durable receipt, not an instant video.",
+          "description": "Save and queue owned video edits or opening-plus-demo composition. Prepare edits/framing in separate stages before demo/subtitle composition. Reuse the exact request key and draft after interruption; returns a durable receipt, not an instant video. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "creative:write"
         },
         {
@@ -136,7 +136,7 @@
         },
         {
           "name": "delete_demo",
-          "description": "Remove an owned Demo and its linked source asset from the active libraries together. Retains stored bytes for existing renders. Repeating deletion is safe; does not cancel jobs or erase finished outputs.",
+          "description": "Remove an owned Demo and its linked source asset from the active libraries together. Retains stored bytes for existing renders. Repeating deletion is safe; does not cancel jobs or erase finished outputs. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "assets:write"
         }
       ]
@@ -160,7 +160,7 @@
         },
         {
           "name": "renew_upload",
-          "description": "Renew the create-only PUT link for the same owned pending reservation. If bytes already exist, confirm the existing upload instead of transferring again.",
+          "description": "Renew the create-only PUT link for the same owned pending reservation. If bytes already exist, confirm the existing upload instead of transferring again. Renewing a link does not make the asset ready; confirm_upload verifies the stored bytes.",
           "scope": "assets:write"
         }
       ]
@@ -189,7 +189,7 @@
         },
         {
           "name": "retry_operation",
-          "description": "Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry.",
+          "description": "Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "jobs:write"
         }
       ]
@@ -237,7 +237,7 @@
         },
         {
           "name": "export_edit_draft",
-          "description": "Render the selected SAVED Edit-page draft revision with the website's renderer. Read/save the draft first. This submits real video processing; use only for a requested export. Save a request UUID and reuse it with identical draft ID/revision after interruption; it recovers one durable job without rendering newer edits. Returns a receipt, not an immediate download. Check get_edit_export, then get_asset for the ready output.",
+          "description": "Render the selected SAVED Edit-page draft revision with the website's renderer. Read/save the draft first. This submits real video processing and does not spend generation credits. Use only for a requested export. Save a request UUID and reuse it with identical draft ID/revision after interruption; it recovers one durable job without rendering newer edits. Returns a receipt, not an immediate download. Check get_edit_export, then get_asset for the ready output.",
           "scope": "creative:write"
         },
         {
@@ -286,7 +286,7 @@
         },
         {
           "name": "generate_audio",
-          "description": "Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter.",
+          "description": "Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "generation:write"
         },
         {
@@ -306,7 +306,7 @@
         },
         {
           "name": "create_audio_upload",
-          "description": "Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
+          "description": "Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. There is no separate audio confirm tool: the helper POST stores the bytes. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
           "scope": "assets:write"
         }
       ]
@@ -354,7 +354,7 @@
         },
         {
           "name": "remix_reference_text",
-          "description": "Generate and save a requested business-specific text remix through the application's same provider/claim service. May use provider allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. First-use submission may initialize the application's standard one-time free allowance. This does not edit a draft or render media.",
+          "description": "Generate and save a requested business-specific text remix through the application's same provider/claim service. This does not deduct account credits; it uses the daily remix quota and may initialize the one-time free allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. This does not edit a draft or render media.",
           "scope": "generation:write brand:read"
         },
         {
@@ -408,7 +408,7 @@
         },
         {
           "name": "delete_asset_group",
-          "description": "Delete the selected group and its membership at an exact revision. Preserves all media files/library assets. This group removal has no application undo; only perform when explicitly requested. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "description": "Delete the selected group and its membership at an exact revision. Preserves all media files/library assets. This group removal has no application undo; only perform when explicitly requested. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "assets:write"
         },
         {
@@ -477,7 +477,7 @@
         },
         {
           "name": "remove_library_item",
-          "description": "Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Existing scheduling rules remain authoritative; this does not cancel or schedule posts. Preserve request UUID/inputs for recovery.",
+          "description": "Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Existing scheduling rules remain authoritative; this does not cancel or schedule posts. Preserve request UUID/inputs for recovery. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
           "scope": "assets:write"
         },
         {
@@ -511,7 +511,7 @@
         },
         {
           "name": "update_publishing_preferences",
-          "description": "Update only requested account publishing-default fields at their saved publishing_revision. Requires fresh account:write consent and enabled rollout. Existing scheduled posts and target restrictions remain unchanged. Preserve request UUID and exact inputs; recover lost responses before retrying.",
+          "description": "Update only requested account publishing-default fields at their saved publishing_revision. Requires fresh account:write consent and enabled rollout. Existing scheduled posts and target restrictions remain unchanged. This does not publish or schedule a post. Preserve request UUID and exact inputs; recover lost responses before retrying.",
           "scope": "account:write"
         },
         {
@@ -528,6 +528,186 @@
           "name": "list_account_settings_requests",
           "description": "Discover accepted account settings request UUIDs and timestamps after interruption. Reads only the connected account; never resubmits a change.",
           "scope": "account:read"
+        }
+      ]
+    },
+    {
+      "id": "business-context",
+      "title": "Business context",
+      "summary": "Read the business profile and recover context receipts. Draft and profile writes require their consent and rollout gate.",
+      "registry": "registeredBusinessContextMcpTools",
+      "source": "lib/mcp/business-context-tools.ts",
+      "tools": [
+        {
+          "name": "get_business_context_capabilities",
+          "description": "Read Business Context editing gate and limits. Does not analyze a website, initialize onboarding, alter a profile or generate content.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "get_business_context",
+          "description": "Read the active Business Context, goals and shared Settings draft with exact revisions and factual readiness. Missing profile is null. Reads never start analysis, onboarding or content generation.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "save_business_context_draft",
+          "description": "Save the requested Business Context into the application's shared Settings draft without changing active profile/version. Preserves saved goals and rejects stale context/profile/draft revisions. No provider request. Requires brand:write and enabled gate; preserve UUID and exact inputs.",
+          "scope": "brand:write"
+        },
+        {
+          "name": "apply_business_context",
+          "description": "Apply exactly reviewed Business Context to a new active profile version using the website's atomic promotion. Requires factual anchors, current context/profile/draft revisions, fresh brand:write consent and enabled gate. Existing content and today's pinned pack stay unchanged; next local-day content uses the new version. Preserve UUID and exact inputs for recovery. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
+          "scope": "brand:write"
+        },
+        {
+          "name": "get_business_context_request",
+          "description": "Recover an owned immutable accepted Business Context receipt without repeating a save or apply. Its state is historical; get_business_context reads current website state. Works while writes are disabled.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "list_business_context_requests",
+          "description": "Discover accepted Business Context request UUIDs after interruption using owner-scoped stable paging. Never repeats a mutation.",
+          "scope": "brand:read"
+        }
+      ]
+    },
+    {
+      "id": "business-onboarding",
+      "title": "Business onboarding",
+      "summary": "Read saved onboarding progress and receipts. Requested onboarding changes require their consent and rollout gate.",
+      "registry": "registeredBusinessOnboardingMcpTools",
+      "source": "lib/mcp/business-onboarding-tools.ts",
+      "tools": [
+        {
+          "name": "get_business_onboarding_capabilities",
+          "description": "Read onboarding storage, background enrollment and analysis queue configuration. Read capability calls never start analysis, grant application access or prepare content. Saved mode must be read with get_business_onboarding; enrollment does not replace persisted legacy/draft state.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "get_business_onboarding",
+          "description": "Read your existing website onboarding mode, profile completion, saved background answers and analysis/finalization job IDs, or the latest 20 legacy setup jobs. Missing profile/draft is null. Never starts or retries analysis, submits setup, changes goals/logos or renders content. Job IDs can be used with get_job for current status. Reads are observations, not an atomic mutation receipt.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "mutate_business_onboarding",
+          "description": "Start or resume the application's saved onboarding: website, manual details/description or mobile-app IDE facts; save identity and verified owned logo; save goals; submit goals/timezone; reopen a background submission. Use the exact expected_state from get_business_onboarding and a saved UUID. Omit logo_storage_key to preserve the current logo, null to remove it. Legacy edit/reopen is unsupported. Requires brand:write, deployed schema and an enabled write gate. Start can analyze a source; submit can activate application access/trial and prepare Trending content. Preserve exact UUID/inputs; recover receipts after a lost response before any new action. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
+          "scope": "brand:write"
+        },
+        {
+          "name": "get_business_onboarding_request",
+          "description": "Recover your immutable accepted onboarding receipt and durable job IDs without repeating the action. Accepted answers/profile are historical; get_business_onboarding reads current progress. Works while onboarding writes are disabled. Use get_operation/retry_operation only under their supported job policies.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "list_business_onboarding_requests",
+          "description": "Discover your accepted onboarding UUIDs with stable owner-bound paging after interruption. Never repeats setup, submits goals or prepares content.",
+          "scope": "brand:read"
+        }
+      ]
+    },
+    {
+      "id": "business-logo",
+      "title": "Business logos",
+      "summary": "Read logo upload readiness and reservations. Upload and verification require their consent and rollout gate.",
+      "registry": "registeredBusinessLogoMcpTools",
+      "source": "lib/mcp/business-logo-tools.ts",
+      "tools": [
+        {
+          "name": "get_business_logo_upload_capabilities",
+          "description": "Read logo upload limits, storage configuration and write gate. Does not reserve a file, issue links, upload bytes or change the active logo. Dedicated screenshot upload remains separate.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "create_business_logo_upload",
+          "description": "Reserve a supplied local business logo with exact filename, MIME, bytes and SHA-256. Persist UUID/inputs first. Returns a durable reservation before signing; renew_business_logo_upload issues its create-only link. Same UUID/input returns the same reservation. Does not attach a logo or analyze the business. Reserving a logo does not verify bytes; confirm_business_logo_upload verifies them and does not change the active logo.",
+          "scope": "brand:write"
+        },
+        {
+          "name": "get_business_logo_upload",
+          "description": "Recover an owned logo reservation by upload ID or saved request UUID, without signed URLs, uploads or attachment. Verified logo keys become available after server confirmation.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "list_business_logo_uploads",
+          "description": "Discover your saved logo reservations after interruption with stable owner-bound paging. No URLs, byte transfer or attachment.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "renew_business_logo_upload",
+          "description": "Issue a ten-minute create-only PUT link for the same owned pending logo (within 24 hours of reservation). If bytes exist, confirm them instead. Pass ephemeral URL through the local helper's stdin; preserve all signed headers. Does not replace existing bytes or attach the logo. Refreshing the link does not verify bytes; confirm_business_logo_upload verifies them and does not change the active logo.",
+          "scope": "brand:write"
+        },
+        {
+          "name": "confirm_business_logo_upload",
+          "description": "Verify actual owned logo bytes, SHA-256, full image decoding, MIME/size and 64–4096 dimensions. Verification is recoverable and exposes the inspected storage key for an intended onboarding identity action; it does not change the active logo or spend credits. Reuse the same upload ID after a lost response.",
+          "scope": "brand:write"
+        }
+      ]
+    },
+    {
+      "id": "scheduling",
+      "title": "Scheduling",
+      "summary": "Read owned connections and schedules. Schedule creation requires explicit confirmation, consent and its rollout gate.",
+      "registry": "registeredSchedulingMcpTools",
+      "source": "lib/mcp/scheduling-tools.ts",
+      "tools": [
+        {
+          "name": "get_scheduling_capabilities",
+          "description": "Read whether the account's existing Scheduling service is configured. This does not connect a social account, create a post, publish media, or alter publishing defaults.",
+          "scope": "publishing:read"
+        },
+        {
+          "name": "list_social_connections",
+          "description": "List social accounts owned by the connected UGC Pilot account. Returns connection health and public account labels only; it never returns OAuth tokens, provider credentials, or hidden scheduler data.",
+          "scope": "publishing:read"
+        },
+        {
+          "name": "list_schedules",
+          "description": "List this account's existing schedules and safe per-target delivery state. Filter to a narrow ISO date range when possible. The output excludes provider credentials, target settings, scheduler identifiers, and internal metadata.",
+          "scope": "publishing:read"
+        },
+        {
+          "name": "get_schedule",
+          "description": "Read one schedule owned by this account, including safe target delivery state. Use the returned updated_at only for later gated editing when that feature becomes available.",
+          "scope": "publishing:read"
+        },
+        {
+          "name": "create_schedule",
+          "description": "Create one requested future schedule for selected owned media or a saved Library item and selected owned social connections. Requires an explicit schedule time and stable request ID. This does not connect a social account, publish immediately, edit/cancel/retry a schedule, or return provider credentials. The first call without confirm_token returns a preview and does not perform the action. Show that preview to the user and ask for an explicit yes. Pass the returned confirm_token only after they agree. The token expires in 10 minutes, works once, and fails if the account, tool, or arguments change.",
+          "scope": "publishing:write"
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "title": "Saved social analytics",
+      "summary": "Read owner-scoped saved analytics snapshots with the required consent and verified identity. Reads do not refresh providers.",
+      "registry": "registeredAnalyticsMcpTools",
+      "source": "lib/mcp/analytics-tools.ts",
+      "tools": [
+        {
+          "name": "get_analytics_capabilities",
+          "description": "Check whether the connected account may read its saved social analytics. This never contacts a social provider, refreshes reports, or changes any connection.",
+          "scope": "analytics:read"
+        },
+        {
+          "name": "get_instagram_account_analytics",
+          "description": "Read the connected account's saved Instagram account insights for one range. This returns only stored snapshots and never refreshes Meta data.",
+          "scope": "analytics:read"
+        },
+        {
+          "name": "get_instagram_content_analytics",
+          "description": "Read saved Instagram post, Reel, and carousel metrics for one range. This never contacts Meta or starts a refresh; truncated results state the saved total.",
+          "scope": "analytics:read"
+        },
+        {
+          "name": "get_tiktok_analytics",
+          "description": "Read saved TikTok video analytics for the connected account. This never contacts TikTok, accesses publishing records, or starts a refresh.",
+          "scope": "analytics:read"
+        },
+        {
+          "name": "get_youtube_analytics",
+          "description": "Read saved YouTube channel and uploaded-video analytics for the connected account. This never contacts YouTube or starts a refresh.",
+          "scope": "analytics:read"
         }
       ]
     }

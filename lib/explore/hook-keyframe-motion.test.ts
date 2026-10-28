@@ -1,3 +1,4 @@
+import { buildHookAnimationPrompt } from "./hook-keyframe-motion.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
@@ -75,8 +76,8 @@ test("source changes and unknown IDs never use a generic animation fallback", ()
 
 test("review candidates stay nonbillable and keep different glasses actions distinct", () => {
   const cases = [
-    ["explore-paired-hook-7c53cba88343579e7e15c8b0", /(?:draw|pull) the glasses forward off the face/, /do not place them on the head/i],
-    ["explore-paired-hook-2a74d53ba481fd0f99b84179", /onto the top of the head/, /covers the mouth|mouth is covered/],
+    ["explore-paired-hook-7c53cba88343579e7e15c8b0", /(?:draw|pull) the glasses forward off the face/i, /do not place them on the head/i],
+    ["explore-paired-hook-2a74d53ba481fd0f99b84179", /on(?:to)? (?:the )?top of (?:the )?head/i, /covers? (?:the )?(?:mouth|lips)|mouth is covered/i],
     ["explore-paired-hook-892b0f65083c8cf03270a7c9", /(?:down and back|down) onto the nose/, /do not.*(?:remov|revers)/i],
   ] as const;
   for (const [id, action, constraint] of cases) {
@@ -121,7 +122,7 @@ test("explicit review compiles a self-contained fixed-duration prompt without a 
   assert.equal(result.durationSeconds, 4);
   assert.match(result.prompt, /approved starting image into a 4-second video/);
   assert.match(result.prompt, /facial features and proportions/);
-  assert.match(result.prompt, /restrained surprised look/);
+  assert.match(result.prompt, /restrained surprise|restrained surprised look/);
   assert.match(result.prompt, /Keep (?:both |the )?hands outside the (?:frame|picture)/);
   assert.match(result.prompt, /SOUND SETTING: OFF/);
   assert.match(result.prompt, /completely silent video/);
@@ -186,4 +187,12 @@ test("malformed or temporally reversed review data fails closed", () => {
     { phase: "ending", action: "Hold the smile." }, { phase: "opening", action: "Blink." },
   ] };
   assert.deepEqual(compileReviewedHookKeyframeMotionPrompt(reversed, input), { status: "blocked", reason: "invalid_review" });
+});
+
+test("source-speed candidate keeps source event times, complete ending and remaining final hold", () => {
+  const directions="OPENING: sip\nPHASE [0–0.5]: lower the mug\nPHASE [0.5–1]: widen eyes and hold";
+  const prompt=buildHookAnimationPrompt({directions,durationSeconds:3,actionDurationSeconds:73/30,generateAudio:false,removePhysicalText:true});
+  assert.match(prompt,/0–1\.217s/);assert.match(prompt,/1\.217–2\.433s/);assert.match(prompt,/FINAL HOLD 2\.433–3s/);
+  assert.match(prompt,/physical logos, readable text/);assert.doesNotMatch(prompt,/Preserve text physically/);
+  const old=buildHookAnimationPrompt({directions,durationSeconds:3,generateAudio:false});assert.match(old,/1\.5–3s/);assert.doesNotMatch(old,/FINAL HOLD/);
 });

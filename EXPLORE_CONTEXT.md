@@ -1,5 +1,9 @@
 # Explore context and UI decision record
 
+28 October Wall next batch: three non-numbered source-hash-bound profiles (652f/e95c/2fe0) added locally, bringing this continuation to eleven new profiles. 41 tests/types/lint and fixture browser editing/reopen/blank/full-duration/mobile checks pass. Saved styles retain priority; automatic Wall remains gated off. No deploy/generation. See docs/prompt-reviews/wall-three-nonnumbered-admission-2026-10-28.md; hosted and remaining reference acceptance unverified.
+
+28 October 2026 Wall placement continuation: user authorized scoped context/evidence preflight. Added eight local source-hash-bound profiles (49/52/56/58/62/63, then45/57), preserving existing profiles, saved edits and duration. Wall58 outline8, Wall63 outline4 readability adaptation, Wall52 top.525. 38 tests/types/lint and actual-profile fixture browser pass. No deployment/video generation; automatic Wall flags stay disabled. Receipt: docs/prompt-reviews/wall-eight-local-admission-2026-10-28.md. Other references remain unfinished.
+
 ## 2026-10-26 Public Hook Video Bundle (local; hosted verification pending)
 
 - Owner requests no sign-in, one ZIP of all ordinary public Hook references and
@@ -3136,7 +3140,6 @@
   production soak or proof the deployed app is fixed. See
   `docs/idle-tab-refresh-fix-2026-10-19.md` for scope, commands and acceptance limits.
 
-
 ### Trending same-quota older-post recovery — 19 October 2026, local correction
 
 - Recovery scope is the same quota/delivered feed, including posts viewed hours
@@ -6124,3 +6127,190 @@ Resume prompt live follow-up2026-10-27: dpl_7RCmDsbfGBjZsX8E3M78p15keGgE promote
   and outline pixel checks. Actual exported frame inspected. Desktop/mobile
   browser and hosted acceptance remain NOT VERIFIED (browser access disabled).
   No deployment. Receipt: docs/workflow-proxima-font-2026-10-27.md.
+
+
+## 2026-10-27 Core workflow audit - production versus contract evidence
+Website dpl_7RCmDsbfGBjZsX8E3M78p15keGgE and generation worker45bf657be7624aa2b0de6f95f3d19cb049feddd0 verified; four critical adapters match tested source. Omni uploaded-audio references are blocked by client/API; actual live valid-prompt+silent-audio case leaves Generate disabled. Picker still allows unsupported local attachment (UGC-UI-028, UX gap). Seedance/WAN ordered image/video/audio wire fields and special starting-frame/edit rules verified by tests, not fresh paid acceptance. Existing7Explorepublications have target/scheduler/completedjob/provider IDs. UGC-SCH-006 retryRPC remains old and blocks restored connection; local fix4/4PASS not deployed. Historical Seedance collection record remains unpersisted; known exact-host fix active. No recent audio-reference or Kling production jobs. Broader UI fixtures not fully green. No new code/deployment/publication. Receipt docs/core-workflow-audit-2026-10-27.md.
+
+## 2026-10-27 Sign-in entry and Recreate recovery update
+Ordinary verified email/Google sign-in now targets /explore; explicit paid-plan checkout and OAuth consent retain their destinations. Recreate warms the starting-frame code on pointer/keyboard intent. Recent account-scoped photos may populate an untouched empty preparation; explicit photo choices/clears, saved requests, generated images and approvals take priority. Photo IDs are resolved through owned APIs before display. Missing uncertain starting-image receipts recover through slow read-only status polling; no replacement generation is submitted. User screenshot job completed with a ready matching media record; the screenshot-specific pending-state cause remains unproven. Incidents UGC-UI-035/036 and UGC-VID-021; production acceptance remains pending.
+
+
+## 2026-10-27 Failed creator starting-frame retry (local verification)
+UGC-UI-038: original-frame creator preparations (v2) must not be treated as obsolete merely because they have a saved image request. Retain the earlier-source gate only when a curated replacement actually exists. Failed/cancelled terminal jobs allow deliberate same-source regeneration with fresh request identity and model selection; running/uncertain requests still block duplicate submissions. Provider402diagnostics now describe failure/retry without exposing httpMeta or inventing credit/refund explanations. Reproduced before/after at1440/390 including reopen;64focused+25API/clienttests,types/lintPASS. No paid inference or deployment; provider402root cause and authenticated production retry acceptance NOT VERIFIED. Receipt docs/starting-frame-retry-fix-2026-10-27.md.
+
+## 2026-10-27 Slideshow generation admission and return recovery (local)
+
+- Latest production plan e4c021d8-3700-4318-8eb8-e0de3253b800 at17:51:29IST saved a clarification about UploadB's destination and zero slides. The saved request links the website screenshot to slide5's replacement laptop; no new slideshow image jobs exist for this attempt. Saved-plan completed is not generated-image completion.
+- User supersedes25October's two permanent finished-slide shortcuts: remove them from Create and Your slides; retain Add slides → Use my finished slides and existing reference uploads/fitting.
+- Owner-scoped slideshow job hints now restore completed results after clean-route return/reload. Planning clarifications persist even though no job exists. Recovery opens generated results once; deliberate Your Slides/Edit/Library navigation remains authoritative. Recovered history cannot auto-replace the edited sequence, including cached processing receipts; only the mounted visit's explicit submission can auto-assemble. New session clears only slideshow hints/URL.
+- Planner revision3 resolves a screenshot linked to a named slide's replacement device; genuine competing destinations still clarify. Old durable plans remain immutable. Per-slide scene/person/screenshot roles, business grounding, credit admission and queues remain intact.
+- Local combined204tests, actual-panel recovery fixture, responsive picker and editor/upload/save/touch fixtures PASS. Production browser redirects to sign-in. No deployment or new image generation. Live planner replay was rejected before execution by automatic approval review for missing explicit permission to send the saved private input/images to OpenAI; no bypass. Actual planner/image fidelity remains NOTVERIFIED.
+- Incidents UGC-UI-037 and UGC-OPS-012. Full file/check/artifact receipt: docs/slideshow-generation-recovery-2026-10-27.md.
+
+
+## 2026-10-27 Starting-frame pending feedback and changed-photo audit (local)
+UGC-UI-039: shared starting-frame result shows an animated/reduced-motion-safe busy indicator while awaiting an owned request, with checking/queued/generating/finishing text. Pending recreation thumbnails show spinners; terminal/read-error states do not. No new controls, paid retries or polling cadence changes. One-photo first request and three-photo second request confirmed in actual saved production jobs for talking-bittenbyaturtle, and independently by UI/API/provider tests. Each explicit Generate another freezes current photos; older receipt unchanged. Those Seedream runs spent58.43/69.43s in provider-wait stage,under1squeue/outputpersistence; single completed-image download3.37sfromauditmachine. No broad speedup claimed or model changed. Locally128tests,types/lint/workerbuild and1440/390browserPASS; not deployed/authenticatedacceptanceNOTVERIFIED. Receipt docs/starting-frame-loading-audit-2026-10-27.md.
+
+## 2026-10-27 Slideshow gallery names removed by product rule (local)
+
+Slideshow reference gallery cards must not display reference/category names such as Slideshow1/2,Fitness,Marketing beneath their images. This is a format rule in ReferenceCard, not a catalogue rename or removal of source metadata. Retain descriptive accessible Preview/Recreate identities, original IDs, slide-count badges, source links (Creator profile/Original post), selection and exact callbacks. Slideshow Recreate buttons now use pill corners; Hook/Wall styling and captions stay unchanged. Protected rule also recorded in docs/ai-context/nonnegotiables.md. UGC-UI-040-SLIDESHOW; validation receipt docs/slideshow-card-ui-2026-10-27.md. Local change only; no deployment/generation.
+
+## 2026-10-27 Loaded animation controls clarity follow-up (local)
+
+- User screenshot shows shared VideoGenerationStudioPanel loaded starting frame
+  with Change plus separate Choose photos. Use the existing compact
+  StartingFrameAnimationReferences branch in that caller, retaining both scene
+  replacement and optional person-photo controls inside Change. Remove the
+  persistent animation/facial-consistency guidance paragraph. Keep actionable
+  validation, model-specific face limits and selected-photo preservation.
+- New starting-frame handoff and model switch default to3seconds for google_omni
+  and wan_3_0,4seconds for seedance_2_5. Existing supported-duration menus remain;
+  explicit custom duration survives ordinary rerender. No provider/model rename.
+-12focused tests PASS; broader source/generation UI suite99/100, with separate
+  slideshow neighboring-card assertion failing. TypeScript/scoped lint PASS.
+  Browser access recovered and live Hook page opens, but these newest changes
+  are local and post-deployment visual acceptance remains NOT VERIFIED.
+  Recurrence UGC-UI-023; receipt docs/starting-frame-controls-clarity-2026-10-27.md.
+
+
+## 2026-10-27 Restore established Talking Head input cards (local)
+UGC-UI-040: user explicitly rejects replacing Choose image/Video reference/Select audio with a verbose starting-frame panel. Keep the existing three-card row visible when a starting frame is selected; the approved frame occupies the image slot. Existing Change opens frame/photo selectors, with no permanent second photo chooser or model-promotion hint. Remove the speech/audio explanatory paragraph. Sound remains in Video settings; existing validation still blocks incompatible image/video/audio combinations. Ratio keeps normal selector geometry, offers the current frame ratio only, and has no From your frame text. Preserve prompt/source/draft/identity and Demo/Schedule behavior.153tests,types/lint/diff plus1440/390actualcomponentfixturePASS; not deployed. User screenshots are requested design evidence, not approved final screenshots. Receipt docs/restore-starting-frame-reference-cards-2026-10-27.md.
+
+## 2026-10-27 Reviewed prompt activation candidate (LOCAL ONLY)
+
+- Corrected116Hook assignments are now wired locally from the completed source
+  review:104public/12private,85normal/31middle.111records change;5already match.
+  Runtime tables, not audit documents, drive new Recreate preparation. Source-video
+  and approved-image animation now share source-bound reviewed motion; full source
+  clock and chosen output clock remain distinct. Hook01includes phone pickup and
+  continued final shake. Existing image-prompt versions/models are unchanged.
+- Private12assignments are repackaged in the two local encrypted runtime files;
+  actual production-mode decryption and all12source joins pass. No key exported.
+- Preserve user-authored instructions, frozen requests, original frame/clarity
+  bindings, legacy continuation paths and five existing decision gates
+  (Hooks22/51/57/72/83). Source-reviewed does not mean perfect generated output.
+-43prompt tests,38related integration tests,12private runtime checks/types/lint
+  PASS. No paid generation or live deployment. UGC-VID-021 remains pending hosted
+  activation. User explicitly asks to be told before deployment; do not promote
+  this candidate silently. Receipt:docs/reviewed-prompt-activation-2026-10-27.md.
+
+### Investing & Money prompt display — 2026-10-27
+Production deployment dpl_C1UzT3KFgb91yCiTtcrhimJA5acV includes the six reviewed Wall prompts and forwards their directions after starting-image approval; its initial Recreate preparation popup omitted the animation prompt. Local correction displays the source-ID/SHA/opening-index-matched compiled preview in an expanded Video prompt disclosure for those six refs only. Saved custom/empty directions retain precedence, the existing four-second preparation preview remains, and final video compilation still follows selected duration/sound. 57 focused tests/types/lint and six-reference desktop/mobile component fixtures pass. No deployment or authenticated hosted acceptance; paid historical usage remains unknown. See docs/prompt-reviews/wall-money-production-prompt-check-2026-10-27.md and UGC-VID-022. Do not conflate this shipped Wall wiring with the separate116Hook activation candidate.
+
+
+## 2026-10-27 AI influencer horizontal image workspace (local)
+
+User requests removal of the batch-count status and permanent reference helper from the component. Results now share one horizontal, overflow-x:auto / overflow-y:hidden rail across successive batches; fixed 220px desktop / 180px mobile portrait cards include pending and failed results. Two-line CSS-clamped batch prompts retain the existing upper-right Copy control and full-text clipboard payload; native title tooltip is available. Fixed prompt/footer/action space keeps pending-to-completed and appended-batch height stable. Completed images expose a separate expand control on hover/focus and always on touch. Existing shared Dialog opens the original output URL with Close/outside/Escape dismissal and previous/next buttons/arrow keys over completed visible images only. Opening it does not select references or submit generation.
+
+Reference IDs/order, prompt payloads, saving, downloads, workspace-only dismissal, History, account scoping and uncertain-request recovery retain their existing behavior. 89 focused UI/session/API tests, TypeScript, scoped lint and actual-component desktop/mobile/touch browser fixture pass locally. Fixture auth/API/media are substituted; production browser profile is in use, so authenticated hosted acceptance remains NOT VERIFIED. No deployment or paid generation. Receipt: docs/influencer-image-rail-2026-10-27.md.
+
+
+## 2026-10-27 AI influencer prompt Skills (local)
+
+User explicitly adds opt-in multi-select reusable prompt presets to Build AI influencer. Skills pill sits after Model/Ratio/Count; picker toggles named descriptions and active presets have removable chips above the prompt. Seed only Realistic Skin in lib/characters/prompt-skills.ts; future entries require config edits only. Authored text stays in textarea/two-line result/History preview; Copy uses complete frozen model prompt. No-selected-skills behavior remains unchanged.
+
+The authenticated request carries authored prompt plus optional skillIds. Server validates catalog IDs, duplicates and combined model limits, appends ordered instructions once on first admission, and saves original text/names/instructions in existing job JSON. Status and History expose original text plus names independently of complete prompt. Retry recovers admitted jobs; no second credit reservation or instruction append. Published IDs/instructions must stay immutable; revised wording gets a new ID. Old jobs remain unchanged and are never parsed heuristically to infer skills. No DB migration or worker runtime change.
+
+93focused UI/session/API tests and2actual compiled-worker provider-boundary tests PASS (mock providers); types/scoped lint and desktop/mobile real-component browser PASS. Multi-selection/config extension tested using second fixture-only preset. Original rail/lightbox/reference/download/history/recovery tests retained. No paid generation or deployment; authenticated hosted behavior and generated image realism NOT VERIFIED. Receipt docs/influencer-prompt-skills-2026-10-27.md.
+
+
+## 2026-10-27 My influencers per-image Copy prompt (local)
+
+User requests a Copy prompt icon directly after each saved image's existing Download icon, using matching styling and brief checkmark feedback. Copy uses that verified image's full persisted v2 user/model prompt, including opted-in Skill instructions, consistently with result-card Copy. The authenticated library already bulk-loads completed source jobs; serialize their verified userPrompt as optional prompt without additional queries. Preserve v1/internal-planner prompt privacy and omit the control when no eligible prompt exists. Names, current drafts and current Skill config are never substituted. Clipboard rejection is displayed inside the modal, with no false copied state; copying neither changes reference selection nor closes the modal. Optional hover/long-press prompt preview is not included in this narrow patch.
+
+44focused UI/list/identity/API tests, TypeScript, scoped lint and real-component desktop/mobile fixture PASS. Existing reference/download/history/recovery/rail/Skills checks retained. Source-job persistence and image-to-job binding are code/test verified; live production database rows and authenticated hosted behavior NOT VERIFIED. No migration, extra per-image fetch, paid generation or deployment. Receipt docs/influencer-library-copy-prompt-2026-10-27.md.
+
+## 2026-10-27 Starting-image photo toggles and receipt/status recovery (local)
+- User explicitly requests true multi-selection in saved AI influencer library. Supersedes earlier different-influencer reset behavior: thumbnail clicks add/remove independently, with all selections checked and model cap enforced. Existing strip/Change/upload/Clear/Done and ordered request input remain. User chooses same-person photos; no automatic identity inference.
+- UGC-UI-041: JSONB property reordering invalidated nested v4 opening/preparation frame serialization. Canonical field order fixes unchanged persisted receipts without relaxing owner/source/time/hash/model/photo bindings. Exact matching production failed job was pre-dispatch, no output; its credit reservation was already released.
+- Job error appears once in result. Refresh status reads unresolved saved jobs/requests only, never POSTs a replacement, reserves credits or restarts a failed job. Unknown outcomes remain guarded. Existing polling and explicit generation/approval stay.
+- Local tests/types/worker build/lint and desktop/mobile fixture verification; no deployment, production write or paid generation. Receipt docs/starting-image-selection-recovery-2026-10-27.md. Hosted acceptance remains open.
+
+
+## 2026-10-27 My influencers footer clarity correction (local)
+
+User rejects repeated visible My AI influencer names and detached icon rows. Supersedes preceding icon-only placement: remove visible name text here (retain accessible image identity), put labelled Download and Copy Prompt buttons inside each card's bordered footer, and keep selection feedback on the image. Copy briefly reads Copied after successful clipboard write. Full saved merged prompt semantics and missing-prompt omission remain. Optional label on ImageDownloadButton affects only this library caller; main results stay icon-only.
+
+UGC-UI-042-INFLUENCER records reported clipboard uncertainty separately from local verified copying.45focusedtests/types/lintPASS; realcomponent desktop/mobile browser verifies exactclipboard,success/failure/retry,non-overlappingcards,attachedfooterbounds,hiddennames and original selection/download/recovery workflows. Local grid-row compression regression caught by browser was corrected with max-content auto rows before completion. No paid generation or deployment; authenticated hosted copying remains NOT VERIFIED. Receipt docs/influencer-library-copy-prompt-2026-10-27.md.
+
+## 2026-10-27 My Influencers in both photo pickers (local)
+- User clarifies Person photos remains and Other images becomes a separate My Influencers section in the same header position. This is actual owned-library navigation, not a renamed general-purpose toggle. Compact picker uses the same My Influencers name. UGC Pilot images remains separate; no four-tab redesign.
+- General picker lazily reads existing owner-scoped Build AI Influencer history and resolves selected owned assets. Preserve supplied libraries, ordered multi-selection, model caps, uploads and source roles. Refresh targets the active source. No automatic same-person filtering or generation on selection/refresh.
+-115focusedtests/types/scopedlint/diffPASS;1440/390actualsharedpickerbefore/afterfixturesPASSselection/caps/refresh/catalogue/reopen/personrole/nooverflow. Screenshots inspected. Auth/API/optimizer/appshell substituted; no hosted acceptance, paid call, production write or deployment.
+- UGC-UI-043-PICKER; receipt docs/my-influencers-picker-2026-10-27.md. Preserve prior starting-image recovery and unrelated work.
+
+## 2026-10-28 Source-relative Hook Remix v9 (local)
+- User approves implementing the second five-case tested policy for manual Remix and automatic Hook text. Shared base instructions/version9: KEEP suitable copy exactly, SMALL EDIT named tool where sufficient, ADAPT mismatched situations/unsupported claims while retaining reaction. Source-relative length, not universal two lines. Longer hooks may stay long.
+- New results have shared per-block source-character budgets with explicit longer named-brand allowance; overflow fails without truncation or paid retry. Old manual receipts and automatic plans retain frozen behavior; user editor changes/empty drafts still win. No model/quota/flag/UI/other-format/schema change.
+- Optional reviewer v3 shares KEEP/adapt/budget policy, permits evidenced obsolete-tool removal on a meaningful rewrite, retains grounding/human/no-brand safeguards and v2 caller compatibility. Reviewer remains opt-in; no added model call.
+-77focusedtests/types/lint/workerbuild/diffPASS. Five existing paid outputs pass exact-base/budget/editable-layout replay; no new provider call. Broader emoji/default-font and catalogue-count tests fail identically without any changed runtime imports; deployment held. User sees limitations; not a full release green light.
+- UGC-VID-023-REMIX; receipt docs/remix-v9-implementation-2026-10-28.md. Production unchanged; compatible generation worker precedes new server plans when rollout is separately cleared.
+
+## 2026-10-28 Remix v9 verification follow-up; no deployment
+- Fixed local test font expectation to approved Proxima Nova A600 and proved saved Poppins700 retention. Inventory helper now includes19missing published references and matches302runtime identities/paths. Historical retired Wall08/09 transcripts remain stored but unavailable, explicitly tested against exact hashes.
+-77focused +3render/catalogue checks PASS; TypeScript, worker build, scoped lint/diff PASS. No runtime/UI/data change in this follow-up; no new provider calls. Latest user says DO NOT DEPLOY; production acceptance remains NOT VERIFIED. Evidence/changed files: docs/remix-v9-implementation-2026-10-28.md; UGC-VID-023-REMIX.
+
+## 2026-10-28 Original-opening-only rules and Remix readability audit
+- User explicitly requires original source frame0 only for all new recreations, with no later clarity input. This supersedes previous middle-frame fallback for future work.31existing nonzero bindings and frozen jobs remain historical and unchanged; runtime migration/pilot acceptance not completed here.
+- Source opening lighting (direction/softness/color/exposure/contrast/shadows), outfit, scene, crop, hands/props and pose must survive preparation; identity photos control face/appearance only. Caption cleanup is a separate acceptance gate. Hook7sixstillreport containsv4green-shirtleakage, not proof of a video consistency gain.
+- Reuse same selected owned identity photos for video only when connected route supports strict first-frame plus appearance roles; respect explicit user removals/changes. Omni supports those roles; current WAN/SeedanceReAPIframe routes do not combine them. No automatic provider switch or duplicate chooser. Visual consistency remains to be tested.
+- Source-faithful motion means observable timed actions, gaze/expression/holds, camera and complete ending, not generic emotion alone. Source-speed+hold is required before trimming excess minimum generation duration; existing stretched timelines must not be cropped blindly.
+- New reported automatic Remix narrow/small text issue UGC-UI-044-REMIX; audit separates text-box width, preserved line breaks and shrink-only font sizing. User sketch expresses desired wider readable text, not literal zero-margin bleed or permission to reflow saved edits. No runtime default changed during this audit; visual proposals and evidence are kept separate from acceptance.
+- Durable current rules: docs/ai-context/nonnegotiables.md and docs/prompt-reviews/REPEATABLE_SOURCE_PROMPT_REVIEW.md. Old skills/history may describe superseded fallback; current explicit user instruction governs. No deployment or paid generation.
+
+
+## 2026-10-28 Explore heading cleanup (local)
+User removes redundant visible Workflows subheading above Explore cards. Preserve accessible namedregion without visualheight;32pxreclaimedat1440/390,cardlinks/order/geometryunchanged.13navigationtests andisolatedbrowserPASS;notdeployed. UGC-UI-045-EXPLORE. No workflowsettingorbackendbehavior removed.
+
+
+## 28 October 2026 — New opening-only policy implementation (local, no release)
+
+New starting-image submissions now require frame 0, draft v4 preparation binding, receipt v5 and prompt v7 for public/private source routes. No later clarity image is attached. Historical accepted jobs recover before new-policy validation, retaining their original receipt and exact image inputs. The preparation UI keeps historical results and offers an explicit new original-opening preparation rather than silently relabeling an old frame.
+
+Latest explicit user cleanup instruction overrides preserve-physical-text history: new image/animation instructions remove physical logos, branding and readable text as well as captions, retaining source materials, objects, lighting and wardrobe. Source versus influencer roles are separate. Generated-pixel fidelity is still unverified by a new real pilot.
+
+Omni automatically restores the approved image's owned identity assets via authenticated media reads, preserving order and browser-persisted explicit removals/replacements. Stale restores are cancelled. Unsupported WAN/Seedance starting-frame payloads contain only the first frame. No duplicate chooser or new ordinary Create control.
+
+New timed Hook jobs freeze a source-speed timeline: actions end at source duration if shorter than provider duration, followed by hold; raw output remains full length. Owned completed job output supplies an initial editor trim only when no saved draft exists; pending/local/explicit empty edits retain priority. Legacy jobs/custom untimed instructions do not acquire automatic timing defaults.
+
+New automatic Hook text plans freeze layout v1 (94% safe width, measured bounded growth); manual Remix shares this only for new unstyled Hook text. Missing versions preserve old fitting. Existing copy/newlines/style/position/trim stay intact. Local three-line sample grew from 52% to 90% ink width without an extra line.
+
+Verification receipt: docs/opening-policy-implementation-2026-10-28.md. 104 public + 12 private local prompt drafts have compiled numeric intervals. Prior production export is historical and has older untimed entries; no deployment or live prompt activation was performed here. No paid generation. Real image-first then video/ending acceptance remains pending.
+
+## 28 October 2026 — Frame-zero motion assignment correction (local only)
+New original-opening public preparation maps the validated source-bound former-middle motion record to frame0; private workspace uses its full-source generationPrompt for new frame0 instead of the old selected-frame fallback. Explicit edits and historical behavior retain priority. Local21 public and10 private assignment checks plus112 focused tests passed. Two older middle-frame fixture assertions still fail and need investigation; no generated-output or deployed acceptance claimed. UGC-VID-025-OPENING-PROMPT.
+
+## 28 October2026 — Reviewed45/80/86prompts assigned locally
+New Recreate selections use source-bound revised motion plans with6second initialduration to preserve observed source pauses/ending. Framehandoff/history/restore carries6;modelchange alsohonorsreviewed6;explicitdurationremainseditable. Existingdraftmotionoverridesstayunchanged. Hook86endingnowloweredeyelids/softsmile. No deployment/generatedqualification. Hook22clarification: right hand removes/retainsglasses andcomes tomouth,otherhandhandles recordingphone; warning reconciliation stillpending.
+
+## 28 October2026 — All revised Hook assignment verification and Hook22clarification
+104public+12localprivateoriginal-opening paths verifiedtimed; galleryprivateassignmentexplicitlyrequestsverifiedframe0. Missingprivatecorrectedpackageblocksnewdefaultinsteadofuntimedfallback. Historicalandusereditedtextretainpriority. Hook22warningreconciledwithuser: anatomicalrighthand(screen-leftinselfie)removes/retainsglasses,otherhandpicksuprecordingphone,glassesholdinghandcoversmouth. Revised22planalreadycontainedglassescontinuity;addedroleconstraintandremovedcontradictoryemptyhandgate. No deploy or productionqualification.115focusedtests/types/lintPASS.
+
+
+## 28 October 2026 — Wall workflow distinction and local storage/recovery fix
+
+User clarified: Wall may exceed five seconds and must not acquire Hook automatic cuts. Wall copy has its own multiline density (typically4–10lines), placement and font sizing; do not inherit Hook's short-copyfit. Sixreviewedmotionrecordsareacceptedcoverage; no request to auditallWallmotion.
+
+Inspected first64decodedthumbnailtiles for each ofsix Investing/Money sources from retained nativecontact sheets (384tiles). SourceMP4pathsfromoldmanifestunavailablelocally; this was existing extractedframeinspection,notfreshplayback/fullvideoreview. Textblocks vary across uppermiddle/center/lower face-chestarea and widths; noexactfont/pixelmeasurement or globalWalllayoutchangeperformed.
+
+Localimplementation: Wallframe0usespersistent content-addressedstore readthrough;missingframeextractsonce,persistsverifiedPNG/index,thenlatercoldservicecanreadwithoutMP4. PublicWallonly;privatecreatorbranchunchanged. Added--wall toexistingprepare-hook-source-frames.mjs soallcanonicalpublicWallframescanbeverified/preparedbeforetraffic. No hostedpreparationexecuted; firstuncachedrequestmaystillwait. Storageoutagesfailrecoverablyratherthanclaimingready. Do notpromiseinstantorzerolatency.
+
+WallhistorynowresolvesmatchinggetWallMoneyMotionbeforegenericfallback;all6reviewedrecordsretainmotiononreuse. TalkingHeadandunreviewedWallfallbackunchanged. NoWallautotrim/textfit/durationdefaultchange. Updatedtestexpectationforrequestedphysicaltextcleanup.
+
+29source/storage/Wall/recoverychecksPASS;tsc/lintPASS. Fixtureprovesnewserviceusesstoredframewithoutvideoread/decode;notrealcloudlatencyorproductionreadback. Nodecommandsuselocalrepositoryloader/transformtypes/modulemocks. Logs outputs/hooks-45-80-86-rewrite-20261028/wall-{fixes,types,lint}.log. No deploy/paidgeneration/remoteassetwrite.
+
+## 28 October 2026 — Six-reference automatic Wall text placement (local, disabled)
+New untouched 9:16 Wall generations can use source-ID/hash-bound layout v1 for the six reviewed Investing & Money references. Recovered native opening frames confirm 6/6/4/8/4/10 lines; thumbnail estimates 01/02 were corrected. Different placement/width/size/outline/spacing per reference; existing Proxima face is a candidate, not identified source font. Optional saved lineHeight preserves historical defaults when absent. Exact new words remain editable; saved/local/pending/explicit-empty drafts win. Full actual Wall duration retained, no Hook trim or Hook brevity rule. Existing automatic text checkbox reused only for eligible references behind separate EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED and NEXT_PUBLIC_EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED flags, both left unset/off. No deployment or hosted changes. 73 focused +25 worker +87 integration checks PASS, types/build/lint PASS. Local browser actual controls/draft hook fixture save/reopen/blank/mobile PASS. Seven actual renderer neutral MP4 exports all12seconds, opening/ending text checked. Hosted authenticated/generated copy/footage contrast not verified. Receipt docs/prompt-reviews/wall-automatic-placement-2026-10-28.md.
+
+
+## 2026-10-28 Talking Head identity handoff and labeling audit (local)
+UGC-VID-025: Talking Head now restores ordered owned identity photo IDs from each approved frame using the shared Hook restoration, with current-frame-scoped selection, explicit edits, missing-read blocking and supported-model restrictions. Omni uses generated first frame Image1, appearance Image2+; WAN/Seedance first-frame-only. No prompts/providerpayloadcontracts altered.223application+110worker/provider testsPASS. Live acceptance and visual consistency NOTVERIFIED. Full route matrix and character-route unlabeled-reference observation UGC-VID-027: docs/image-role-labeling-audit-2026-10-28.md.
+`n## 28 October 2026 — Wall layout batch 02/05 (local only)`nTwo original-source-hash profiles added for Explore Wall 02 and 05: seven pink lines and nine white lines respectively. Older six snapshots remain unchanged. 32 local tests and two twelve-second neutral export checks pass; browser and generated-scene acceptance remain unverified. Feature flags remain disabled; no deploy. See docs/prompt-reviews/wall-layout-batch-02-05-2026-10-28.md.
+`n## 28 October 2026 — Structured Wall Remix handoff (local, disabled)`nWall 04 freezes source, business context and heading/body profile and receives explicit structured text in two editable layers; Wall 03 uses condensed single-block layout. User wording is retained and overflow is reviewable. Existing plans/edits and full Wall duration protected. 35 focused tests plus 26 worker and 10 editor checks passed with fixtures; provider output, hosted browser and generated footage remain unverified. No deployment. See docs/prompt-reviews/wall-structured-remix-2026-10-28.md.
+`n## 28 October 2026 — Wall 04 heading fit and grounding (local, disabled)`nReal text-only Wall 04 result exposed fixed-heading wrapping and unsupported source-law/result claims. New structured plans freeze heading fit version 1 and prompt version 3. The exact saved heading fits at 61px; original shorter heading stays 65px; legacy plans remain unchanged and overflow requires review. Prompt discourages unsupported authority/outcome claims, not a guarantee. 38 focused and 26 worker tests plus types/build/lint pass. No new provider call, video or deployment; hosted and new-prompt output quality unverified. Receipt docs/prompt-reviews/wall04-heading-and-grounding-fix-2026-10-28.md.
+
+
+## 28 October 2026 — Wall to Hook reclassification (staged, not deployed)
+
+User directed Wall 21 be removed and Wall 06, 28 and 59 be moved to Hook with opening reaction clips. Wall 21 is removed from the local selectable Wall gallery, with historical source registry retained. Separate local Hook-only trims retain original files: 06 3.300s, 28 2.033s, 59 3.000s. Hook release, opening-only source text and source-specific phased motion are staged under an inactive release gate. On activation the three old Wall IDs retire from selection but remain resolvable for history. Nine storage objects have not been uploaded; source frames, hosted preview and generated-output quality remain unverified. Do not switch the release active until media/hash, prompt/source, frame and authenticated checks are complete. No deployment or hosted writes. See docs/prompt-reviews/wall-to-hook-reclassification-2026-10-28.md; UGC-VID-028 remains open.

@@ -12,10 +12,11 @@ import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
 import { LandingHeader } from "@/components/marketing/landing-header";
-import { LandingLogo } from "@/components/marketing/landing-logo";
+import { LandingFooter } from "@/components/marketing/landing-footer";
 import { LandingHeroGallery } from "@/components/marketing/landing-hero-gallery";
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
+import { LandingRotatingText } from "@/components/marketing/landing-rotating-text";
 import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
 import { homepageJsonLd } from "@/lib/marketing/mcp-public";
 
@@ -124,13 +125,11 @@ export default function Home() {
           <div className="w-full max-w-[1200px] text-center">
             <LandingPlatformBadge />
 
-            <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
+            <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.5rem)] font-normal leading-[1.12] tracking-[-0.05em] text-foreground-strong">
               <span className="block lg:whitespace-nowrap">
-                Find viral content.
+                Find viral content
               </span>
-              <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                Recreate for yours
-              </span>
+              <LandingRotatingText />
             </h1>
 
             <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
@@ -276,34 +275,10 @@ export default function Home() {
       {/* Closing call to action */}
       <LandingBottomCta initialHasSession={initialHasSession} />
 
-      <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
-          <div>
-            <div className="flex items-center gap-2">
-              <LandingLogo />
-              <div>
-                <p className="font-semibold text-foreground-strong">UGCPilot</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  AI UGC video &amp; content studio
-                </p>
-              </div>
-            </div>
-            <p className="mt-5 max-w-sm text-sm leading-6 text-muted">
-              Create and review AI UGC videos, carousels, and edits from your
-              own business context.
-            </p>
-          </div>
-
-          <FooterColumn title="Product" links={productFooterLinks} />
-          <FooterColumn title="Support" links={supportFooterLinks} />
-          <FooterColumn title="Legal" links={legalFooterLinks} />
-        </div>
-
-        <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
-          <p>Third-party names are trademarks of their owners.</p>
-        </div>
-      </footer>
+      <LandingFooter
+        legalLinks={legalFooterLinks}
+        moreLinks={[...productFooterLinks, ...supportFooterLinks.filter(link => !link.external)]}
+      />
     </main>
   );
 }
@@ -330,31 +305,5 @@ function MarketingPathCard({
         {cta} <span className="ml-2" aria-hidden="true">→</span>
       </span>
     </Link>
-  );
-}
-
-type FooterColumnProps = {
-  links: Array<{ external?: boolean; href: string; label: string }>;
-  title: string;
-};
-
-function FooterColumn({ links, title }: FooterColumnProps) {
-  return (
-    <div>
-      <h2 className="text-sm font-semibold text-foreground-strong">{title}</h2>
-      <nav className="mt-4 flex flex-col gap-3 text-sm text-muted">
-        {links.map((link) => (
-          <Link
-            key={`${title}-${link.label}`}
-            href={link.href}
-            target={link.external ? "_blank" : undefined}
-            rel={link.external ? "noopener noreferrer" : undefined}
-            className="rounded-control transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
-    </div>
   );
 }

@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { clipDraftScope, ExploreClipDraftError, parseClipDraftReceipt, parseClipDraftSave, type ExploreClipDraftSaveRequest } from "./clip-draft-contract";
+import { clipDraftScope, ExploreClipDraftError, parseClipDraftContent, parseClipDraftReceipt, parseClipDraftSave, type ExploreClipDraftSaveRequest } from "./clip-draft-contract";
+import { parseHookSourceTimeline } from "../../worker/src/lib/hook-source-timeline.ts";
+import { parseHookKeyframeGenerationReceipt } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 
 function database() {
   const url = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -11,6 +13,39 @@ function database() {
 /** JSON-only persistence. This store never submits render jobs or marks media ready. */
 export class ExploreClipDraftStore {
   constructor(private readonly db = database()) {}
+  /** Initial suggestion only: never fabricate a persisted revision or overwrite
+   * an explicit saved draft. All provenance comes from this owner's completed job. */
+  async initialContent(owner: string, sourceAssetId: string, scope: string) {
+    if (scope !== "hook" && scope !== "wall_text") return null;
+    const asset = await this.db.from("media_assets").select("id,user_id,source_record_id,status,collection,deleted_at")
+      .eq("user_id", owner).eq("id", sourceAssetId).maybeSingle();
+    if (asset.error) throw new ExploreClipDraftError("Could not load the initial clip timing.", 503);
+    if (!asset.data || asset.data.user_id !== owner || asset.data.id !== sourceAssetId || asset.data.status !== "ready" ||
+      asset.data.collection !== "video" || asset.data.deleted_at !== null || !asset.data.source_record_id) return null;
+    const job = await this.db.from("background_jobs").select("id,user_id,job_type,status,input_json,output_json")
+      .eq("user_id", owner).eq("id", asset.data.source_record_id).maybeSingle();
+    if (job.error) throw new ExploreClipDraftError("Could not load the initial clip timing.", 503);
+    const row = job.data;
+    if (!row || row.id !== asset.data.source_record_id || row.user_id !== owner || row.job_type !== "generate_hook_video" || row.status !== "completed" || row.input_json?.exploreFormat !== scope ||
+      row.output_json?.mediaAssetId !== sourceAssetId) return null;
+    if (scope === "wall_text") {
+      const plan = row.input_json.automaticHookText, result = row.output_json.automaticHookText;
+      const editing = result?.editing, durationMs = Math.floor(Number(row.output_json.durationSeconds) * 1000);
+      if (plan?.version !== 1 || plan.source?.format !== "wall_text" || plan.source.referenceId !== row.input_json.referenceId ||
+        plan.wallLayout?.version !== 1 || plan.wallLayout.referenceId !== plan.source.referenceId || plan.wallLayout.sourceSha256 !== plan.source.sourceSha256 ||
+        result?.status !== "ready" || result.requestKey !== plan.requestKey || editing?.format !== "wall_text" ||
+        editing.trimStartMs !== 0 || editing.trimEndMs !== durationMs || row.input_json.hookSourceTimeline) return null;
+      return parseClipDraftContent({ version: 1, sourceAssetId, editing, backgroundAssetId: null, backgroundPlayback: "once" });
+    }
+    if (!row.input_json?.hookSourceTimeline) return null;
+    const receipt = parseHookKeyframeGenerationReceipt(row.input_json.startingFrameReceipt);
+    if (!receipt || receipt.ownerId !== owner || receipt.version !== 5) return null;
+    const timeline = parseHookSourceTimeline(row.input_json.hookSourceTimeline, receipt, row.input_json.durationSeconds);
+    const output = row.output_json;
+    const editing = output.automaticHookText?.status === "ready" ? output.automaticHookText.editing : output.initialHookEdit;
+    if (!editing || editing.trimStartMs !== 0 || editing.trimEndMs !== timeline.trimEndMs) return null;
+    return parseClipDraftContent({ version: 1, sourceAssetId, editing, backgroundAssetId: null, backgroundPlayback: "once" });
+  }
   async listContentDemoEdits(owner: string, sourceAssetIds: string[]) {
     const edits = new Map<string, { scope: "hook:demo"; revision: number; updatedAt: string }>();
     for (let offset = 0; offset < sourceAssetIds.length; offset += 100) {

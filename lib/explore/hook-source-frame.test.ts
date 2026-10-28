@@ -157,3 +157,14 @@ test("real local FFmpeg extraction decodes the first picture at source resolutio
     await assert.rejects(decodeHookFirstFrame(Buffer.alloc(40), ffmpeg), /could not be decoded/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+
+test("Wall opening persists once and a new service reads storage without downloading or decoding video", async () => {
+ let saved: import("./hook-source-frame.ts").HookSourceFrame | null = null;
+ let downloads=0,decodes=0,prepares=0;
+ const store={read:async()=>saved,prepare:async (_:string,extract:()=>Promise<import("./hook-source-frame.ts").HookSourceFrame>)=>{prepares++;saved=await extract();return saved;}};
+ const options={sourceUrl:(key:string)=>`https://fixture.test/${key}`,items:()=>[{...source("wall-fixture"),workflow:"wall_text" as const}],wallFrameStore:store,download:async()=>{downloads++;return bytes;},decode:async()=>{decodes++;return frame();}};
+ const first=await createHookSourceFrameService(options)("wall-fixture");
+ const second=await createHookSourceFrameService(options)("wall-fixture");
+ assert.equal(downloads,1);assert.equal(decodes,1);assert.equal(prepares,1);assert.equal(second.frameIndex,0);assert.equal(second.frameSha256,first.frameSha256);
+});

@@ -114,7 +114,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
   );
   const localDate = getTrendingLocalDate(timezone);
   const [preference, storedPlan] = await Promise.all([
-    getTrendingContentMixPreference(params.userId),
+    getTrendingContentMixPreference(params.userId, { forGeneration: true }),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
   const existingPlan = storedPlan ? getTrendingDailyPlanForRuntime(storedPlan) : null;
@@ -494,7 +494,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
 
   const localDate = getTrendingLocalDate(timezone);
   const [preference, existingPlan] = await Promise.all([
-    getTrendingContentMixPreference(params.userId),
+    getTrendingContentMixPreference(params.userId, { forGeneration: true }),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
 

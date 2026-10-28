@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as keyframeContract from "../worker/src/lib/hook-keyframe-generation-contract.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
+import * as wallInitialTextLayout from "../worker/src/lib/wall-initial-text-layout.ts";
 
 function load(file, imports = {}) {
   const exports = {};
@@ -25,6 +26,8 @@ const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts
   "../lib/private-media.js": { resolveOwnedPrivateMediaUrl: async url => url },
   "../lib/hook-keyframe-generation-contract.js": keyframeContract,
   "../lib/hook-starting-frame-video.js": startingFrameVideo,
+  "../lib/wall-initial-text-layout.js": wallInitialTextLayout,
+  "../lib/hook-source-timeline.js": { parseHookSourceTimeline: () => assert.fail("Legacy jobs must not load a source timeline") },
   "../logger.js": { logger: { info() {} } },
   "../lib/generation-provider.js": { assertProviderOperationCanContinue: () => "submit", createGenerationRequestFingerprint: value => JSON.stringify(value),
     persistProviderSubmissionFailure: () => assert.fail("Unexpected provider failure"), toProviderPollingRetry: error => error,

@@ -16,6 +16,7 @@ import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { generationChildIdempotencyKey, generationRequestFingerprint } from "./generation-idempotency";
 import { MCP_VIDEO_DURATIONS } from "./generation-contract";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, generationCount, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 const uuid = z.uuid();
@@ -24,6 +25,22 @@ const jobStatus = z.enum([
   "queued", "rendering", "stalled", "uploading_output", "waiting_external_service",
 ]);
 const jobReceipt = z.strictObject({ job_id: uuid, status: jobStatus });
+const generationOutput = confirmableOutputSchema(z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }));
+const generateImageInput = withConfirmToken(z.strictObject({
+  prompt: z.string().trim().min(1).max(2000).describe("The image instruction, up to 2,000 characters."),
+  aspect_ratio: z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS).default("9:16").describe("Output image aspect ratio."),
+  reference_asset_id: uuid.optional().describe("Optional ID of one ready image in this account to use as a reference."),
+  count: generationCount.default(1),
+  client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
+}));
+const generateVideoInput = withConfirmToken(z.strictObject({
+  prompt: z.string().trim().min(1).max(1000).describe("The video instruction, up to 1,000 characters."),
+  aspect_ratio: z.enum(AI_STUDIO_VIDEO_ASPECT_RATIOS).default("9:16"),
+  duration_seconds: z.literal(MCP_VIDEO_DURATIONS).describe("Required duration in whole seconds, from 3 through 10. Credits are charged by duration."),
+  reference_asset_id: uuid.optional().describe("Optional ID of one ready image in this account to animate."),
+  count: generationCount.default(1),
+  client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
+}));
 const safeJobError = z.strictObject({
   code: z.string().min(1), message: z.string().min(1), retryable: z.boolean(),
 });
@@ -110,63 +127,68 @@ async function queueGeneration(params: {
 
 export function registerGenerationMcpTools(server: McpServer) {
   server.registerTool("generate_image", {
-    description: "Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs.",
-    inputSchema: z.strictObject({
-      prompt: z.string().trim().min(1).max(2000).describe("The image instruction, up to 2,000 characters."),
-      aspect_ratio: z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS).default("9:16").describe("Output image aspect ratio."),
-      reference_asset_id: uuid.optional().describe("Optional ID of one ready image in this account to use as a reference."),
-      count: generationCount.default(1),
-      client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
-    }),
-    outputSchema: z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }),
+    description: confirmedToolDescription("Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs."),
+    inputSchema: generateImageInput,
+    outputSchema: generationOutput,
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("generation:write"),
     _meta: oauthMetadata("generation:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "generation:write");
-    await requireGenerationAccess(userId, "generate_image");
-    const referenceImageUrl = await getReferenceImage(userId, args.reference_asset_id);
-    return queueGeneration({
-      userId, kind: "image", count: args.count, clientRequestId: args.client_request_id,
-      amount: getGenerationCreditCost("image"),
-      fingerprint: generationRequestFingerprint({
-        kind: "image", prompt: args.prompt, aspectRatio: args.aspect_ratio,
-        count: args.count, referenceAssetId: args.reference_asset_id,
-      }),
-      input: { aspectRatio: args.aspect_ratio, model: parseAIStudioImageModel(undefined), prompt: args.prompt, referenceImageUrl },
+    const creditCost = getGenerationCreditCost("image") * args.count;
+    return requireConfirmation({
+      tool: "generate_image", accountId: userId, args, effect: "spend_credits",
+      summary: `Reserve ${creditCost} credits and queue ${args.count} image generation${args.count === 1 ? "" : "s"}.`,
+      creditCost, creditCostIsEstimate: false,
+      affected: [{ type: "generation_request", id: args.client_request_id, label: `${args.count} image${args.count === 1 ? "" : "s"}` }],
+      run: async () => {
+        await requireGenerationAccess(userId, "generate_image");
+        const referenceImageUrl = await getReferenceImage(userId, args.reference_asset_id);
+        return queueGeneration({
+          userId, kind: "image", count: args.count, clientRequestId: args.client_request_id,
+          amount: getGenerationCreditCost("image"),
+          fingerprint: generationRequestFingerprint({
+            kind: "image", prompt: args.prompt, aspectRatio: args.aspect_ratio,
+            count: args.count, referenceAssetId: args.reference_asset_id,
+          }),
+          input: { aspectRatio: args.aspect_ratio, model: parseAIStudioImageModel(undefined), prompt: args.prompt, referenceImageUrl },
+        });
+      },
     });
   }));
 
   server.registerTool("generate_video", {
-    description: "Reserve video credits by duration and queue 1, 2, or 4 videos. Reusing the request ID with the same input returns the existing jobs.",
-    inputSchema: z.strictObject({
-      prompt: z.string().trim().min(1).max(1000).describe("The video instruction, up to 1,000 characters."),
-      aspect_ratio: z.enum(AI_STUDIO_VIDEO_ASPECT_RATIOS).default("9:16"),
-      duration_seconds: z.literal(MCP_VIDEO_DURATIONS).describe("Required duration in whole seconds, from 3 through 10. Credits are charged by duration."),
-      reference_asset_id: uuid.optional().describe("Optional ID of one ready image in this account to animate."),
-      count: generationCount.default(1),
-      client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
-    }),
-    outputSchema: z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }),
+    description: confirmedToolDescription("Reserve video credits by duration and queue 1, 2, or 4 videos. Reusing the request ID with the same input returns the existing jobs."),
+    inputSchema: generateVideoInput,
+    outputSchema: generationOutput,
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("generation:write"),
     _meta: oauthMetadata("generation:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "generation:write");
-    await requireGenerationAccess(userId, "generate_hook_video");
-    const referenceImageUrl = await getReferenceImage(userId, args.reference_asset_id);
-    return queueGeneration({
-      userId, kind: "video", count: args.count, clientRequestId: args.client_request_id,
-      amount: getGenerationCreditCost("video", args.duration_seconds),
-      fingerprint: generationRequestFingerprint({
-        kind: "video", prompt: args.prompt, aspectRatio: args.aspect_ratio,
-        count: args.count, referenceAssetId: args.reference_asset_id, durationSeconds: args.duration_seconds,
-      }),
-      input: {
-        aspectRatio: args.aspect_ratio, durationSeconds: args.duration_seconds,
-        avatarImageUrl: referenceImageUrl, hookIdea: args.prompt,
-        // Omni supports the complete V1 3-10 second range; Seedance starts at 4.
-        model: "google_omni", promptMode: "direct", projectId: "ai-studio", userId,
+    const creditCost = getGenerationCreditCost("video", args.duration_seconds) * args.count;
+    return requireConfirmation({
+      tool: "generate_video", accountId: userId, args, effect: "spend_credits",
+      summary: `Reserve ${creditCost} credits and queue ${args.count} ${args.duration_seconds}-second video${args.count === 1 ? "" : "s"}.`,
+      creditCost, creditCostIsEstimate: false,
+      affected: [{ type: "generation_request", id: args.client_request_id, label: `${args.count} video${args.count === 1 ? "" : "s"}` }],
+      run: async () => {
+        await requireGenerationAccess(userId, "generate_hook_video");
+        const referenceImageUrl = await getReferenceImage(userId, args.reference_asset_id);
+        return queueGeneration({
+          userId, kind: "video", count: args.count, clientRequestId: args.client_request_id,
+          amount: getGenerationCreditCost("video", args.duration_seconds),
+          fingerprint: generationRequestFingerprint({
+            kind: "video", prompt: args.prompt, aspectRatio: args.aspect_ratio,
+            count: args.count, referenceAssetId: args.reference_asset_id, durationSeconds: args.duration_seconds,
+          }),
+          input: {
+            aspectRatio: args.aspect_ratio, durationSeconds: args.duration_seconds,
+            avatarImageUrl: referenceImageUrl, hookIdea: args.prompt,
+            // Omni supports the complete V1 3-10 second range; Seedance starts at 4.
+            model: "google_omni", promptMode: "direct", projectId: "ai-studio", userId,
+          },
+        });
       },
     });
   }));

@@ -29,7 +29,7 @@ export function GoogleAuthRedirectHandler() {
       return;
     }
     const destination = window.location.pathname === "/sign-in"
-      ? getPostSignInDestination(new URLSearchParams(window.location.search)) : "/dashboard";
+      ? getPostSignInDestination(new URLSearchParams(window.location.search)) : "/explore";
     router.replace(user.emailVerified ? destination : "/verify-email");
   }, [loading, router, user]);
 

@@ -70,3 +70,20 @@ test("review input preserves exact source, business facts and separate preferenc
   assert.deepEqual(data.source,[source.blocks[0].text]);assert.deepEqual(data.businessFacts,context);assert.deepEqual(data.draft,draft);
   assert.equal(data.userPreferences,"Keep Spanish");assert.equal(data.maxTotalCharacters,80);assert.equal(data.expect,undefined);
 });
+
+
+test("v3 accepts evidenced obsolete named-tool removal only on the rewrite policy",()=>{
+  const unrelated={...source,blocks:[{text:"You use Photoshop to make this?",startMs:0,endMs:4000}]};
+  const value=review("Could this create daily posts?");value.brandPolicy="not_needed";value.namedToolEdits=[{sourceName:"Photoshop",replacementName:""}];
+  assert.equal(acceptHookRemixReview(value,unrelated,context,"",draft,3).output.blocks[0],value.output.blocks[0]);
+  assert.throws(()=>acceptHookRemixReview(value,unrelated,context,"",draft,2));
+  value.namedToolEdits=[];assert.throws(()=>acceptHookRemixReview(value,unrelated,context,"",draft,3));
+  value.namedToolEdits=[{sourceName:"Imaginary",replacementName:""}];assert.throws(()=>acceptHookRemixReview(value,unrelated,context,"",draft,3));
+});
+
+test("v3 review payload and acceptance share source-relative length, preserving v2 history policy",()=>{
+  const short={...source,blocks:[{text:"Wait, this works?",startMs:0,endMs:4000}]};
+  const payload=JSON.parse(hookRemixReviewPayload(short,context,"",draft,3));assert.deepEqual(payload.blockCharacterBudgets,[17]);assert.equal(payload.maxTotalCharacters,17);
+  const value=review("Wait, this creates all your marketing posts?");value.brandPolicy="not_needed";value.namedToolEdits=[];
+  assert.throws(()=>acceptHookRemixReview(value,short,context,"",draft,3),/expanded/);
+});

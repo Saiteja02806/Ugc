@@ -3,6 +3,7 @@ import type {
   Json,
   WebsiteBusinessAnalysis,
 } from "../types.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import type {
   CarouselCreativeBrief,
   CarouselRecentAcceptedCopy,
@@ -104,6 +105,7 @@ export async function generateCarouselStructure2Batch(params: {
       },
     });
   } catch (error) {
+    if (error instanceof RetryableJobError) throw error;
     await failEntireBatch(params, error);
     throw error;
   }

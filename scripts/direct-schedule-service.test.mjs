@@ -51,7 +51,7 @@ function fixture(options = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../lib/scheduling/service.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
     { exports, Date, Error, console: { error() {}, warn() {} }, process: { env: {} }, require: name => imports[name] ?? {} });
-  return { events, schedule: () => schedule, hash: () => commitHash, create: value => exports.createUserSchedule({ userId: "owner-a", input: value }) };
+  return { events, schedule: () => schedule, hash: () => commitHash, create: (value, automationGuard) => exports.createUserSchedule({ userId: "owner-a", input: value, automationGuard }) };
 }
 test("direct schedule commits once and hands off exact durable job/target IDs without split inserts", async () => {
   const h = fixture(); const result = await h.create(input);
@@ -93,4 +93,16 @@ test("clients cannot supply an immutable server creation hash", async () => {
   const h = fixture(); await assert.rejects(h.create({ ...input, metadata: { ...input.metadata, scheduleCreateRequestHash: "a".repeat(64) } }),
     error => error.status === 409 && error.code === "explore_schedule_contract_required");
   assert.deepEqual(h.events, []);
+});
+
+test("automation execution fence reaches atomic SQL only from trusted internal argument, with a stable creation hash", async () => {
+  const denied = fixture();
+  await assert.rejects(denied.create({ ...input, metadata: { ...input.metadata, automationExecution: { slotId: id(7) } } }), error => error.status === 409);
+  assert.deepEqual(denied.events, []);
+  const first = fixture(), second = fixture();
+  const guard = { slotId: id(7), token: id(8), revision: 9 };
+  await first.create(input, guard);
+  await second.create(input, { ...guard, token: id(9) });
+  assert.equal(first.schedule().metadata.automationExecution.token, id(8));
+  assert.equal(first.hash(), second.hash(), "rotating lease token cannot change immutable schedule request hash");
 });

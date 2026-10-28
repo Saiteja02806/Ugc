@@ -159,8 +159,14 @@ test("purchase intent survives authentication using validated values only", () =
   );
   assert.equal(
     getPostSignInDestination(new URLSearchParams("plan=unknown")),
-    "/dashboard",
+    "/explore",
   );
+});
+
+test("ordinary sign-in always opens Explore without accepting arbitrary redirects", () => {
+  for (const query of ["", "plan=free", "next=dashboard", "next=https://evil.test", "returnTo=//evil.test"]) {
+    assert.equal(getPostSignInDestination(new URLSearchParams(query)), "/explore");
+  }
 });
 
 test("webhook route requires Standard Webhooks headers and official unwrapping", () => {

@@ -10,11 +10,13 @@ const noSource = { ...refs[0], id: "no-source", title: "Without source", sourceU
 const write = (name, value) => fs.writeFileSync(path.join(out, name), value);
 write("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
 write("css.cjs", `module.exports=s=>'export default '+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g)].map(m=>[m[1],m[1]])))+';';`);
+write("auth.ts", "export const useAuth=()=>({user:null,loading:false});export const getCurrentUserIdToken=async()=>null;");
 const workspace = fs.readFileSync(path.join(root, "components/explore/recreate-workspace.tsx"), "utf8");
 write("card.tsx", `import {useState} from 'react';import {ArrowLeft,ArrowRight,Check,Layers3,RotateCcw} from 'lucide-react';
 import {Button} from '@/components/ui/button';import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {SocialPlatformIcon} from '@/components/social/platform-icon';import {getReferenceSource,referenceSourceLabel} from '@/lib/explore/reference-source-link';import {cn} from '@/lib/utils';
 import Link from 'next/link';import {ReferenceVideoPlayer} from '@/components/explore/reference-video-player';import {useCoverPlayback} from '@/components/explore/use-cover-playback';
+import {useCreatorVideoPreview} from '@/components/explore/use-creator-video-preview';
 import studio from '@/components/explore/workflow-studio.module.css';import type {RecreateReference} from '@/lib/explore/recreate-types';import {canOpenReferenceSource} from '@/lib/explore/reference-source-access';
 const useBillingSubscription=()=>{const free=new URLSearchParams(location.search).has('free');return {isSuccess:true,isFetching:false,isError:false,data:{isActive:!free,planKey:free?'free':'starter'}}};
 ${workspace.slice(workspace.indexOf("export function ReferenceCard("), workspace.indexOf("export function EmptyReferences("))}`);
@@ -26,7 +28,7 @@ async function main() {
   const globals = fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);') + '\n@source "../.tmp/slideshow-source-links-browser/card.tsx";\n@source "../components/ui/dialog.tsx";\n@source "../components/ui/button.tsx";';
   const css = (await require("postcss")([require("@tailwindcss/postcss")()]).process(globals, { from: path.join(root, "app/globals.css") })).css;
   write("style.css", css + '\n' + fs.readFileSync(path.join(root, "components/explore/workflow-studio.module.css")) + '\nbody{background:#202020;color:#fff;font-family:Arial}main{max-width:1120px;margin:20px auto;padding:16px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px}@media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}');
-  await new Promise((resolve, reject) => { const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, plugins: [new webpack.DefinePlugin({ "process.env": JSON.stringify({ NODE_ENV: "development" }) })], resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css.cjs") }] } }); compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || Error(stats.toString({ all: false, errors: true }))) : resolve())); });
+  await new Promise((resolve, reject) => { const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, plugins: [new webpack.DefinePlugin({ "process.env": JSON.stringify({ NODE_ENV: "development" }) })], resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@/contexts/auth-context":path.join(out,"auth.ts"), "@/lib/firebase/auth":path.join(out,"auth.ts"), "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css.cjs") }] } }); compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || Error(stats.toString({ all: false, errors: true }))) : resolve())); });
   const fallback = await require("sharp")({ create: { width: 1080, height: 1350, channels: 3, background: "#555044" } }).jpeg().toBuffer();
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, "http://fixture");
@@ -43,6 +45,11 @@ async function main() {
     const base = `http://127.0.0.1:${server.address().port}`, card = ref => page.locator(`article[data-reference-id="${ref.id}"]`);
     await page.goto(base);
     await page.getByRole("heading", { name: "Slideshow source references" }).waitFor();
+    for (const ref of [...refs, noSource]) {
+      assert.equal(await card(ref).locator('p[title]').count(), 0, 'Slideshow names stay hidden for every gallery reference');
+      const action = card(ref).getByRole('button', { name: `Recreate ${ref.title}`, exact: true });
+      assert.equal(await action.evaluate(node => parseFloat(getComputedStyle(node).borderTopLeftRadius) >= node.getBoundingClientRect().height / 2 - 1), true, 'Slideshow Recreate uses pill corners');
+    }
     if (!await card(refs[0]).getByRole("link").count()) { console.error((await card(refs[0]).innerText()).slice(0, 500)); await page.screenshot({ path: path.join(out, "missing-link.png") }); }
     for (const ref of refs) {
       const link = card(ref).getByRole("link"); await link.waitFor(); assert.equal(await link.getAttribute("href"), ref.sourceUrl); assert.equal(await link.textContent(), ref.sourceKind === "profile" ? "Creator profile" : "Original post");

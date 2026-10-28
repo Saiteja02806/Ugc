@@ -77,7 +77,7 @@
         "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
       },
       "openingState": "Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.",
-      "camera": "Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.",
+      "camera": "Fixed vertical medium upper-body view during the gestures. At the deliberate cut change to hands-down direct-to-camera framing in the same room; during the final held look move gradually closer into the tighter ending crop.",
       "beats": [
         {
           "startSeconds": 0,
@@ -106,11 +106,16 @@
         },
         {
           "startSeconds": 5.666666666666667,
+          "endSeconds": 7.8,
+          "action": "At a deliberate hard cut, change directly from lifted palms and sideways expression to both hands lowered outside view and a neutral closed-mouth look toward the lens. Hold the new pose with minimal head movement; do not animate an invented continuous lowering gesture across the cut."
+        },
+        {
+          "startSeconds": 7.8,
           "endSeconds": 8.6,
-          "action": "Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile."
+          "action": "Keep the hands down and gaze toward the lens while a restrained closed-mouth smile develops. Move the viewpoint closer into a tighter face-and-upper-chest crop through the final frame; do not add a new hand gesture."
         }
       ],
-      "endingState": "Hands down, mostly still, looking toward camera with a restrained closed-mouth smile.",
+      "endingState": "Hands outside view, direct gaze and restrained closed-mouth smile, ending in a tighter face-and-upper-chest crop.",
       "constraints": [
         "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
         "Influencer portraits control identity; later clarity frame is preparation evidence only.",
@@ -207,23 +212,23 @@
         "reviewedFrameCount": 97,
         "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
       },
-      "openingState": "Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.",
+      "openingState": "Person in gray sweatshirt, eyes briefly closed, both hands raised beside/in front of the face, moving inward toward the mouth and nose.",
       "camera": "Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.",
       "beats": [
         {
           "startSeconds": 0,
           "endSeconds": 0.16666666666666666,
-          "action": "Complete bringing hand over mouth; other hand lowers out of the main face area."
+          "action": "Bring both palms together across the mouth and nose as the eyes open; keep both hands visible with fingertips pointing upward."
         },
         {
           "startSeconds": 0.16666666666666666,
           "endSeconds": 1.3333333333333333,
-          "action": "Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness."
+          "action": "Hold BOTH palms together against the mouth and nose, fingers upright along the cheeks. Keep wide eyes looking slightly screen-left and preserve the startled pause."
         },
         {
           "startSeconds": 1.3333333333333333,
           "endSeconds": 2,
-          "action": "Raise both hands along cheeks to sides/back of head as mouth opens widely."
+          "action": "Separate the two palms outward along the cheeks and slide both hands to the sides and back of the head; elbows spread and the mouth opens widely."
         },
         {
           "startSeconds": 2,
@@ -331,7 +336,7 @@
         "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
       },
       "openingState": "Close portrait of seated person, hand diagonally covers mouth, brows slightly furrowed, gaze lowered toward screen-left.",
-      "camera": "Mostly stationary portrait phone shot against pale textured wall; slight handheld wobble.",
+      "camera": "Close portrait against the same pale textured wall. Preserve slight handheld wobble and progressively tighter facial framing through the ending; do not add a phone prop or claim a specific unseen grip.",
       "beats": [
         {
           "startSeconds": 0,
@@ -354,7 +359,7 @@
           "action": "Hold open-mouth disbelief with hand at chin and eyes fixed slightly off-camera."
         }
       ],
-      "endingState": "Hand at chin, mouth open, eyes wide in disbelief.",
+      "endingState": "Hand at chin, mouth open, eyes wide slightly off-camera; face noticeably larger in the final close framing.",
       "constraints": [
         "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
         "Influencer portraits control identity; later clarity frame is preparation evidence only.",
@@ -469,15 +474,15 @@
         {
           "startSeconds": 2.2333333333333334,
           "endSeconds": 3.3333333333333335,
-          "action": "Drop glasses out of frame, turn head slightly sideways and back, maintaining surprised expression."
+          "action": "Lower the sunglasses fully below the picture while retaining the wide-eyed open mouth, turn the head slightly sideways and back. Do not show the glasses falling from a visible hand; their placement below view is unobserved."
         },
         {
           "startSeconds": 3.3333333333333335,
           "endSeconds": 3.8666666666666667,
-          "action": "Bring hand to forehead/hairline and lean slightly closer; lips purse while eyes remain wide."
+          "action": "Bring the hand to the forehead/hairline and lean closer; purse the lips while keeping the eyes very wide, then begin parting the lips again at the very end without removing the hand."
         }
       ],
-      "endingState": "Hand at forehead/hairline, wide eyes and rounded/pursed lips; glasses no longer over eyes.",
+      "endingState": "Hand at forehead/hairline in a closer crop, eyes wide; lips briefly purse then begin opening again by the final frame.",
       "constraints": [
         "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
         "Influencer portraits control identity; later clarity frame is preparation evidence only.",
@@ -575,33 +580,34 @@
       "camera": "Portrait close/upper-body phone framing; gray angled wall behind, strong warm side light, mostly fixed.",
       "beats": [
         {
-          "startSeconds": 0,
-          "endSeconds": 0.43333333333333335,
+          "startSeconds": 0.0,
+          "endSeconds": 0.39962962962962967,
           "action": "Bring eyeglasses toward face from screen-right; eyes open while mouth stays open."
         },
         {
-          "startSeconds": 0.43333333333333335,
-          "endSeconds": 0.8333333333333334,
+          "startSeconds": 0.39962962962962967,
+          "endSeconds": 0.7685185185185185,
           "action": "Set glasses onto nose and over eyes, fingers at screen-right temple."
         },
         {
-          "startSeconds": 0.8333333333333334,
-          "endSeconds": 1.5,
+          "startSeconds": 0.7685185185185185,
+          "endSeconds": 1.3833333333333333,
           "action": "Keep fingers at temple, peer through glasses with raised brows, open mouth and small head tilt."
         },
         {
-          "startSeconds": 1.5,
-          "endSeconds": 2.7666666666666666,
+          "startSeconds": 1.3833333333333333,
+          "endSeconds": 2.5514814814814812,
           "action": "Hold glasses-on pose with small head/eye movements and sustained incredulous open-mouth look."
+        },
+        {
+          "startSeconds": 2.5514814814814812,
+          "endSeconds": 2.7666666666666666,
+          "action": "Sustain the final pose and expression with tiny natural motion; keep hand and prop positions, without another gesture or scene transition."
         }
       ],
       "endingState": "Eyeglasses on eyes, fingers still touching temple, mouth open.",
       "constraints": [
-        "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
-        "Influencer portraits control identity; later clarity frame is preparation evidence only.",
-        "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
-        "Remove baked captions at image preparation; editable overlay text is applied separately.",
-        "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "captionCleanup": {
         "text": "Part time job ❌ Coloring Books ✅",
@@ -635,19 +641,24 @@
       "camera": "Portrait close-up with slight handheld drift, dim pale wall and dark doorway behind; no cut.",
       "beats": [
         {
-          "startSeconds": 0,
-          "endSeconds": 0.2,
+          "startSeconds": 0.0,
+          "endSeconds": 0.18666666666666665,
           "action": "Keep the open-mouthed sideward stare and fingertips at the lower lip."
         },
         {
-          "startSeconds": 0.2,
-          "endSeconds": 1,
+          "startSeconds": 0.18666666666666665,
+          "endSeconds": 0.9333333333333332,
           "action": "Turn the head and gaze gradually toward the lens, keeping raised brows and the rounded open mouth."
         },
         {
-          "startSeconds": 1,
-          "endSeconds": 2.8,
+          "startSeconds": 0.9333333333333332,
+          "endSeconds": 2.613333333333333,
           "action": "Hold the direct-camera surprised stare with slight natural head movement and fingertips still below the lip."
+        },
+        {
+          "startSeconds": 2.613333333333333,
+          "endSeconds": 2.8,
+          "action": "Sustain the final pose and expression with tiny natural motion; keep hand and prop positions, without another gesture or scene transition."
         }
       ],
       "endingState": "Front-facing wide-eyed, open-mouthed stare; hand remains near chin/lower lip.",
@@ -661,10 +672,7 @@
         "Caption transcription is partial; remove the complete source overlay rather than regenerate it."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -689,7 +697,7 @@
       "camera": "Fixed portrait medium shot from table height; ceiling fan and dark cabinet remain in background.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 0.2,
           "action": "Open the eyes and close the mouth into a small tense smile while keeping both hands against temples."
         },
@@ -720,10 +728,7 @@
         "Top caption exact wording unverified."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -748,12 +753,12 @@
       "camera": "Portrait phone view pulls back/reframes in the opening to reveal tabletop and open laptop, then steadies; approved ceiling pipes/greenery remain.",
       "beats": [
         {
-          "startSeconds": 0,
-          "endSeconds": 0.87,
+          "startSeconds": 0.0,
+          "endSeconds": 0.8700000000000001,
           "action": "Keep wide eyes and a sustained open mouth while the extended arm/phone movement widens the framing to reveal the laptop at lower-left."
         },
         {
-          "startSeconds": 0.87,
+          "startSeconds": 0.8700000000000001,
           "endSeconds": 1.63,
           "action": "Hold the astonished gaze over the laptop with the arm still reaching toward the foreground."
         },
@@ -779,10 +784,8 @@
         "Fine hand placement near laptop should receive full-resolution generation QA."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+        "Keep the over-ear headphones on throughout the camera reframe and arm withdrawal."
       ],
       "visualQualification": "not_tested"
     },
@@ -807,7 +810,7 @@
       "camera": "Handheld portrait selfie shakes and changes distance/angle as the person moves; patterned fabric/pillow background remains continuous.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 1.07,
           "action": "Maintain the hand over mouth and distressed brow/eyelid expression while the handheld framing wobbles."
         },
@@ -838,10 +841,7 @@
         "Do not reinterpret distressed expression as laughter just because mouth opens."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -866,7 +866,7 @@
       "camera": "Mostly steady portrait close-up; framing creeps closer during the clip with small handheld drift.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 1.3,
           "action": "Hold hand over mouth/nose and stare toward the lens; keep the restrained wide-eyed expression."
         },
@@ -902,10 +902,7 @@
         "Long covered-mouth hold is deliberate; do not accelerate uncovering to the anchor time or force all clips to three seconds."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -930,24 +927,29 @@
       "camera": "Steady portrait medium close-up; light wall and red wall section/cabinets behind.",
       "beats": [
         {
-          "startSeconds": 0,
-          "endSeconds": 1.13,
+          "startSeconds": 0.0,
+          "endSeconds": 1.0295555555555556,
           "action": "Hold fingertips at lips and look screen-right with lifted brows and a growing smile."
         },
         {
-          "startSeconds": 1.13,
-          "endSeconds": 1.43,
+          "startSeconds": 1.0295555555555556,
+          "endSeconds": 1.3028888888888888,
           "action": "Lower the hand away from lips to chest while opening into a broad smile, gaze still screen-right."
         },
         {
-          "startSeconds": 1.43,
-          "endSeconds": 1.93,
+          "startSeconds": 1.3028888888888888,
+          "endSeconds": 1.7584444444444445,
           "action": "Hold the open smiling reaction, briefly narrowing/closing eyes with small head movement."
         },
         {
-          "startSeconds": 1.93,
-          "endSeconds": 2.733333333333333,
+          "startSeconds": 1.7584444444444445,
+          "endSeconds": 2.49037037037037,
           "action": "Lift the hand upward and place it across the forehead while leaning/tilting head slightly, smiling through the final frame."
+        },
+        {
+          "startSeconds": 2.4903703703703703,
+          "endSeconds": 2.7333333333333334,
+          "action": "Sustain the final pose and expression with tiny natural motion; keep hand and prop positions, without another gesture or scene transition."
         }
       ],
       "endingState": "Hand rests across forehead, eyes narrowed with broad open smile and head tilted.",
@@ -961,10 +963,7 @@
         "Caption exact wording unverified."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -989,7 +988,7 @@
       "camera": "Fixed portrait medium desk shot, warm overhead light, wall decor and chair remain unchanged.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 0.57,
           "action": "Hold glasses at temple and stare slightly upward with closed/pursed lips."
         },
@@ -1020,10 +1019,7 @@
         "Decorative overlay symbols should be removed; keep real wall decorations."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -1048,24 +1044,29 @@
       "camera": "Fixed portrait medium desk view with warm ceiling light and wall decor.",
       "beats": [
         {
-          "startSeconds": 0,
-          "endSeconds": 0.83,
+          "startSeconds": 0.0,
+          "endSeconds": 0.7931111111111111,
           "action": "Hold both hands over mouth and nose, eyes looking upward/forward in surprise."
         },
         {
-          "startSeconds": 0.83,
-          "endSeconds": 1.23,
+          "startSeconds": 0.7931111111111111,
+          "endSeconds": 1.1753333333333333,
           "action": "Lower both hands together from mouth toward chin/chest, revealing an open rounded mouth."
         },
         {
-          "startSeconds": 1.23,
-          "endSeconds": 1.7,
+          "startSeconds": 1.1753333333333333,
+          "endSeconds": 1.6244444444444444,
           "action": "Keep palms together at upper chest and hold the open-mouth, raised-gaze reaction."
         },
         {
-          "startSeconds": 1.7,
-          "endSeconds": 2.8666666666666667,
+          "startSeconds": 1.6244444444444444,
+          "endSeconds": 2.7392592592592595,
           "action": "Remain seated with palms together and small natural finger/head movement; keep eyes lifted and mouth partly open through the ending."
+        },
+        {
+          "startSeconds": 2.7392592592592595,
+          "endSeconds": 2.8666666666666667,
+          "action": "Sustain the final pose and expression with tiny natural motion; keep hand and prop positions, without another gesture or scene transition."
         }
       ],
       "endingState": "Palms together at chest, mouth open, gaze slightly upward.",
@@ -1079,10 +1080,7 @@
         "Avoid interpreting joined hands as repeated clapping."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -1107,7 +1105,7 @@
       "camera": "Portrait low-angle close-up with slight phone drift; tilted beams and bright window remain fixed scene authority.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 0.5,
           "action": "Hold the glasses at temple and the sideward wide-eyed stare with parted lips."
         },
@@ -1123,11 +1121,11 @@
         },
         {
           "startSeconds": 1.6,
-          "endSeconds": 1.93,
+          "endSeconds": 1.9299999999999997,
           "action": "Blink and turn the head/gaze toward the camera."
         },
         {
-          "startSeconds": 1.93,
+          "startSeconds": 1.9299999999999997,
           "endSeconds": 2.9,
           "action": "Hold the direct-camera wide-eyed surprise with parted lips, without smiling or continuously turning."
         },
@@ -1149,10 +1147,7 @@
         "Do not carry optional portrait identity-reference background into the ending."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -1177,7 +1172,7 @@
       "camera": "Handheld portrait camera rapidly reorients from very low skyward angle to a face-centered street selfie, revealing bright magenta sign and illuminated buildings; continued walking/turning causes background parallax.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 0.3,
           "action": "Keep chin high in low upward view while the phone begins to lift/reorient, face emerging from lower frame."
         },
@@ -1219,10 +1214,7 @@
         "Hand rises only after the centered smiling phase."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     },
@@ -1247,7 +1239,7 @@
       "camera": "Portrait medium close-up initially stable, then a gradual closer lean/reframe as reaction builds; purple room and chair stay continuous.",
       "beats": [
         {
-          "startSeconds": 0,
+          "startSeconds": 0.0,
           "endSeconds": 0.63,
           "action": "Read the phone with lowered gaze and slight lip movement, maintaining the initially restrained expression."
         },
@@ -1284,10 +1276,7 @@
         "Foreground phone and covering hand need continuity QA."
       ],
       "constraints": [
-        "Source video controls scene, pose, camera and chronology; selected influencer photos control identity.",
-        "Prepare and visually approve a distinct influencer opening matching original source t0; later clarity frame is never automatically animation frame zero.",
-        "Retain the full source sequence; map these elapsed source boundaries to the explicitly requested output duration before provider submission.",
-        "Generate no overlay text or audio; preserve hand/prop continuity and the source ending."
+        "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
       ],
       "visualQualification": "not_tested"
     }

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import {after,beforeEach,afterEach,mock,test} from "node:test";
 import {fixture} from "./mcp-creative-groups-fixture.mjs";
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
@@ -48,7 +49,7 @@ const handler=createMcpHandler(()=>{const s=new McpServer({name:"group-fixture",
 let sequence=0;
 async function rpc(method,params,owner="owner-a",scopes=["account:read","assets:read","assets:write"]){const request=new Request("https://mcp.getugcpilot.com/mcp",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json, text/event-stream"},body:JSON.stringify({jsonrpc:"2.0",id:++sequence,method,params})});
  const response=await handler.fetch(request,{authInfo:{token:"offline-fixture",clientId:"fixture",scopes,extra:{firebaseUid:owner}}});const text=await response.text(),line=text.split("\n").find(l=>l.startsWith("data: "));return JSON.parse(line?line.slice(6):text);}
-async function call(name,args={},owner,scopes){const body=await rpc("tools/call",{name,arguments:args},owner,scopes);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};}
+async function call(name,args={},owner,scopes){return confirmToolResult(async(next)=>{const body=await rpc("tools/call",{name,arguments:next},owner,scopes);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};},args);}
 function error(r){assert.equal(r.isError,true,JSON.stringify(r));try{return JSON.parse(r.content[0].text);}catch{return{message:r.content[0].text};}}
 async function create(key=id(1),name="My group"){return(await call("create_asset_group",{request_id:key,name,media_type:"image"})).structuredContent;}
 async function state(group=id(1)){return(await call("get_asset_group",{group_id:group})).structuredContent;}

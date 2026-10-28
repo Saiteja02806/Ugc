@@ -1,4 +1,5 @@
 "use client";
+import { wallTextProfile } from "../../worker/src/lib/wall-initial-text-layout.ts";
 
 import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
@@ -43,13 +44,14 @@ import { ReferenceFilesUpload } from "@/components/video/reference-files-upload"
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { StartingFrameAnimationReferences } from "@/components/explore/starting-frame-animation-references";
 import { startingFrameAnimationInput, startingFrameFaceReferenceError } from "@/lib/explore/starting-frame-animation-input";
+import { useStartingFramePhotos } from "@/components/explore/use-starting-frame-photos";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import resultLayout from "@/components/video/video-results.module.css";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameDefaultDuration, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -423,16 +425,20 @@ export function VideoGenerationStudioPanel({
       // Keep a supported model choice when changing the approved scene.
       setPrompt(startingFrame.motionInstructions);
       if (!isHookStartingFrameVideoModel(model) || !isAIStudioVideoModelAvailable(model)) setModel("google_omni");
-      setDurationSeconds(startingFrame.durationSeconds); setQuantity(1);
+      setDurationSeconds(startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(model)); setQuantity(1);
       setAspectRatio(startingFrame.width > startingFrame.height ? "16:9" : "9:16");
       setSoundPreference({ owner: startingFrame.ownerId, format: workflowFormat ?? "hook", enabled: startingFrame.generateAudio });
-      // An approved scene is independent of optional identity photos. Replacing
-      // it must not discard the person's clearer facial references.
+      // Clear stale URLs; restore this frame's owned photos and explicit
+      // selection overrides through useStartingFramePhotos below.
       setUploadedVideoReference(null); setAudioReferences([]); setImagePurpose("person");
+      setUploadedReference(null); setAdditionalImageReferences([]);
       setReferencePromptDraft(null); setReferenceSelectionError(null); setSelectedCreatorReferenceId(null);
       setWorkflowSourceMode("reference");
     }
   }
+  const startingFramePhotos = useStartingFramePhotos(startingFrame, model, Boolean(user && !recreateView?.preview), photos => {
+    setUploadedReference(photos[0] ?? null); setAdditionalImageReferences(photos.slice(1));
+  });
   const storedJobIds = useStoredBackgroundJobIds(user ? `${VIDEO_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
@@ -493,8 +499,9 @@ export function VideoGenerationStudioPanel({
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const galleryVideoReference = workflow && !startingFrame && !startingFramePreparation ? recreateView?.styleVideo : undefined;
   const [automaticHookText, setAutomaticHookText] = useState(true);
-  const automaticHookTextAvailable = process.env.NEXT_PUBLIC_EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true" && workflowFormat === "hook" && Boolean(startingFrame?.referenceId ?? galleryVideoReference?.id ?? referenceContext?.id);
   const automaticTextReferenceId = startingFrame?.referenceId ?? galleryVideoReference?.id ?? referenceContext?.id;
+  const automaticHookTextAvailable = Boolean(automaticTextReferenceId) && (workflowFormat === "hook" && process.env.NEXT_PUBLIC_EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true" ||
+    workflowFormat === "wall_text" && process.env.NEXT_PUBLIC_EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED === "true" && Boolean(wallTextProfile(automaticTextReferenceId!)));
   const automaticTextReadiness = useQuery({ queryKey: ["automatic-hook-text-readiness", user?.uid, automaticTextReferenceId],
     enabled: automaticHookTextAvailable && automaticHookText && Boolean(user) && !recreateView?.preview,
     staleTime: 30000, retry: false,
@@ -508,7 +515,7 @@ export function VideoGenerationStudioPanel({
         return value;
       }, signal);
       if (!value.automaticTextEnabled) return "Automatic text is unavailable. Turn it off to generate footage only.";
-      if (value.source?.status !== "ready" || value.source?.format !== "hook") return "This reference's text is not prepared. Choose another reference or turn off automatic text.";
+      if (value.source?.status !== "ready" || value.source?.format !== workflowFormat) return "This reference's text is not prepared. Choose another reference or turn off automatic text.";
       if (!value.businessContext?.ready) return "Add your business context in Settings, or turn off automatic text.";
       if (!(value.automaticTextRemaining > 0)) return "You've used today's 20 text remixes. Turn off automatic text or try again tomorrow.";
       return null;
@@ -541,7 +548,7 @@ export function VideoGenerationStudioPanel({
       : hasWorkflowVideoReference && !sourceDuration ? "Credits are based on the source clip's duration, checked before generation."
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
-  const referenceImages = awaitingStartingFrame ? [] : [
+  const referenceImages = awaitingStartingFrame || startingFrame && !hookStartingFrameFaceReferenceLimit(model) ? [] : [
     ...(uploadedReference ? [uploadedReference] : []),
     ...additionalImageReferences,
   ];
@@ -572,7 +579,9 @@ export function VideoGenerationStudioPanel({
     : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to ${model === "google_omni" ? 10 : 15} seconds.`
     : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
   const startingFramePhotosError = startingFrame ? startingFrameFaceReferenceError(model, startingFrame, referenceImages) : null;
-  const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null) ?? startingFrameError ?? startingFramePhotosError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
+  const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null)
+    ?? (startingFramePhotos.pending ? "Restoring your selected face photos…" : startingFramePhotos.error)
+    ?? startingFrameError ?? startingFramePhotosError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
   const activeReferenceImageUrl = startingFrame?.url ?? (awaitingStartingFrame ? null : uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null)) ?? null;
   const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo || galleryVideoReference), referenceVideoMode: hasWorkflowVideoReference ? "edit" : undefined, format: workflowFormat === "slideshow" ? undefined : workflowFormat, personPhotos: Boolean(workflow && imagePurpose === "person" && referenceImages.length), imageCount: referenceImages.length, generateAudio: supportsWorkflowSound ? generateAudio : undefined });
   const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
@@ -592,6 +601,7 @@ export function VideoGenerationStudioPanel({
       const changedKind = selection?.kind ?? kind;
       if (changedKind === "image") {
         const images = selection ? [...referenceImages.filter(image => image.asset.id !== selection.asset.id), selection] : [];
+        startingFramePhotos.remember(images);
         setUploadedReference(images[0] ?? null); setAdditionalImageReferences(images.slice(1));
       }
       if (changedKind === "video") setUploadedVideoReference(selection);
@@ -608,6 +618,7 @@ export function VideoGenerationStudioPanel({
   }
 
   function handleImageReferencesChange(selections: AIStudioReferenceMedia[]) {
+    startingFramePhotos.remember(selections);
     submissionKeyRef.current = null;
     setReferenceSelectionError(null);
     setSelectedCreatorReferenceId(null);
@@ -1434,7 +1445,6 @@ export function VideoGenerationStudioPanel({
           Sound {generateAudio ? "on" : "off"}
         </button> : undefined}
         promptSupplement={workflow ? <>
-          {startingFrame ? <p className="mb-3 text-xs leading-5 text-muted">Animate this image with your selected model. Review the result for facial consistency.</p> : null}
           {hasVideoReference ? <div className="mb-3 space-y-1.5">
             <label className="flex flex-wrap items-center justify-between gap-2 text-sm">Use source video
               <select aria-label="Source video task" value={workflowSourceMode} disabled={isGenerating || Boolean(pendingSubmission)} onChange={event => {
@@ -1469,7 +1479,7 @@ export function VideoGenerationStudioPanel({
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${hasWorkflowVideoReference && model === "seedance_2_5" ? "Source shape" : aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         referenceControls={awaitingStartingFrame ? <section aria-label="Starting frame required" className="space-y-3 rounded-xl border border-border p-3"><p className="text-sm font-medium">Start with your image</p><p className="text-xs leading-5 text-muted">Create a starting frame from this reference, then choose the image you want to animate.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={startingFramePreparation?.onOpen}>Create starting frame</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div></section> : workflow && startingFrame ? <StartingFrameAnimationReferences key={user?.uid ?? "preview"}
-          frame={startingFrame} model={model} photos={referenceImages} onPhotosChange={handleImageReferencesChange}
+          compact frame={startingFrame} model={model} photos={referenceImages} onPhotosChange={handleImageReferencesChange}
           onSelectFrame={recreateView?.onSelectStartingFrame} onClearFrame={recreateView?.onClearStartingFrame}
           previewFrames={recreateView?.previewStartingFrames} previewInfluencers={recreateView?.previewFaceReferenceImages}
           ownerId={user?.uid} preview={Boolean(recreateView?.preview)} active={workflow.controlsActive}
@@ -1480,7 +1490,7 @@ export function VideoGenerationStudioPanel({
         active={workflow?.controlsActive ?? active}
         ariaLabel="Video prompt"
         contextBanner={
-          <>{automaticHookTextAvailable ? <div><label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={automaticHookText} onChange={event => setAutomaticHookText(event.target.checked)} disabled={isGenerating || Boolean(pendingSubmission)} className="mt-1 accent-primary" /><span>Automatically adapt and add Hook text<span className="block text-xs text-muted">Uses your business context and one text remix per batch. You can edit the text on the video.</span></span></label>{automaticTextProblem ? <p role="status" className="mt-2 text-xs text-muted">{automaticTextProblem}{automaticTextReadiness.isError ? <button type="button" onClick={() => void automaticTextReadiness.refetch()} className="ml-2 underline">Retry</button> : null}</p> : null}</div> : null}{recreateView?.contextBanner ?? (referenceContext ? (
+          <>{automaticHookTextAvailable ? <div><label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={automaticHookText} onChange={event => setAutomaticHookText(event.target.checked)} disabled={isGenerating || Boolean(pendingSubmission)} className="mt-1 accent-primary" /><span>Automatically adapt and add {workflowFormat === "wall_text" ? "Wall" : "Hook"} text<span className="block text-xs text-muted">Uses your business context and one text remix per batch. You can edit the text on the video.</span></span></label>{automaticTextProblem ? <p role="status" className="mt-2 text-xs text-muted">{automaticTextProblem}{automaticTextReadiness.isError ? <button type="button" onClick={() => void automaticTextReadiness.refetch()} className="ml-2 underline">Retry</button> : null}</p> : null}</div> : null}{recreateView?.contextBanner ?? (referenceContext ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
               <div className="flex items-center gap-2 truncate">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
@@ -1612,7 +1622,9 @@ export function VideoGenerationStudioPanel({
                 const nextModel = value as AIStudioVideoModel;
                 if (!isAIStudioVideoModelAvailable(nextModel) || startingFrame && !isHookStartingFrameVideoModel(nextModel)) return;
                 const durations = startingFrame ? hookStartingFrameVideoDurations(nextModel) : getAIStudioVideoDurations(nextModel);
-                if (!durations.includes(durationSeconds)) {
+                if (startingFrame) {
+                  setDurationSeconds(startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(nextModel));
+                } else if (!durations.includes(durationSeconds)) {
                   setDurationSeconds(Math.min(Math.max(durationSeconds, durations[0]), durations[durations.length - 1]) as AIStudioVideoDuration);
                 }
                 if (value === "kling_3_0" && durationSeconds > 15) {

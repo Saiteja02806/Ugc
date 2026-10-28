@@ -201,6 +201,8 @@ export type TrendingSlideshowAutomationSlotStatus =
   | "cancelled_by_user";
 
 export type TrendingSlideshowAutomationSlotSnapshot = {
+  /** Uploaded app screenshot used specifically on the Structure 2 CTA. */
+  ctaScreenshotAssetId?: string | null;
   backgroundAssetIds: string[];
   backgroundMode: "default" | "collection_only";
   captionText: string;

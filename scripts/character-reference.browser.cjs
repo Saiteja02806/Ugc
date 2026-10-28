@@ -28,6 +28,7 @@ const uuid = () => require("node:crypto").randomUUID();
 const readBody = async req => { const chunks = []; for await (const chunk of req) chunks.push(chunk); return JSON.parse(Buffer.concat(chunks).toString()); };
 
 async function main() {
+  const { CHARACTER_PROMPT_SKILLS, composeCharacterPrompt, resolveCharacterPromptSkills } = await import("../lib/characters/prompt-skills.ts");
   console.log("Preparing influencer browser fixture…");
   await new Promise((resolve, reject) => {
     const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" },
@@ -51,8 +52,8 @@ async function main() {
     if (url.pathname.endsWith(".png") || url.pathname.endsWith(".webp")) { res.writeHead(200, { "Content-Type": "image/webp" }); res.end(fs.readFileSync(path.join(root, "public/explore/characters/creator-office-v2.webp"))); return; }
     if (url.pathname.startsWith("/api/")) assert.equal(req.headers.authorization, "Bearer fixture-token");
     if (url.pathname === "/api/characters/access") { json({ ok: true, access: { affordableImageCount: 3, creditsRemaining: 20, imageCreditCost: 1, isPaid: true } }); return; }
-    if (url.pathname === "/api/characters") { json({ ok: true, characters: [...generated.values()].map(job => ({ id: job.output.mediaAssetId, url: job.output.url, name: "My AI influencer", sourceJobId: job.id })) }); return; }
-    if (url.pathname === "/api/characters/history") { json({ ok: true, images: [...generated.values()].map(job => ({ jobId: job.id, generationId: job.output.generationId, mediaAssetId: job.output.mediaAssetId, url: job.output.url, createdAt: new Date().toISOString(), prompt: "Generated influencer", saved: true, model: "gpt_image" })), nextCursor: null }); return; }
+    if (url.pathname === "/api/characters") { json({ ok: true, characters: [...generated.values()].map(job => ({ id: job.output.mediaAssetId, url: job.output.url, name: "My AI influencer", prompt: job.prompt, sourceJobId: job.id })) }); return; }
+    if (url.pathname === "/api/characters/history") { json({ ok: true, images: [...generated.values()].map(job => ({ jobId: job.id, generationId: job.output.generationId, mediaAssetId: job.output.mediaAssetId, url: job.output.url, createdAt: new Date().toISOString(), prompt: job.skills?.length ? job.prompt : "Generated influencer", displayPrompt: job.displayPrompt, skills: job.skills, saved: true, model: "gpt_image" })), nextCursor: null }); return; }
     if (url.pathname === "/api/characters/select") {
       const body = await readBody(req); selections.push(body);
       assert.deepEqual(Object.keys(body), ["jobId"]);
@@ -87,9 +88,11 @@ async function main() {
     }
     if (url.pathname === "/api/characters/status") {
       const id = url.searchParams.get("jobId");
+      if (mode === "pending-output") { json({ ok: true, job: { id, status: "processing", model: "gpt_image", isTerminal: false } }); return; }
       const submitted = requests.find(body => receipts.get(body.idempotencyKey)?.jobs.some(job => job.jobId === id));
       if (!generated.has(id)) generated.set(id, { id, status: "completed", model: "gpt_image", isTerminal: true,
-        prompt: submitted?.prompt, batchId: submitted ? receipts.get(submitted.idempotencyKey).jobs[0].jobId : null,
+        prompt: submitted ? composeCharacterPrompt(submitted.prompt, resolveCharacterPromptSkills(submitted.skillIds)) : null,
+        ...(submitted?.skillIds?.length ? { displayPrompt: submitted.prompt, skills: resolveCharacterPromptSkills(submitted.skillIds).map(({ id, name }) => ({ id, name })) } : {}), batchId: submitted ? receipts.get(submitted.idempotencyKey).jobs[0].jobId : null,
         output: { url: `${base}/generated.png`, mediaAssetId: uuid(), generationId: uuid(), ratio: "9:16" } });
       json({ ok: true, job: generated.get(id) }); return;
     }
@@ -123,7 +126,7 @@ async function main() {
     await page.getByRole("button", { name: "Preview Ref 1: reference image 1", exact: true }).waitFor();
     await page.getByRole("button", { name: "Preview Ref 2: reference image 2", exact: true }).waitFor();
     await page.getByRole("button", { name: "Generate", exact: true }).click();
-    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    await page.getByRole("button", { name: /Enlarge influencer image/ }).last().waitFor();
     assert.equal(await page.getByRole("button", { name: "New session", exact: true }).count(), 0);
     assert.deepEqual(requests[0].referenceImageAssetIds, [...assets.keys()].slice(0, 2));
     assert.equal(requests[0].prompt, "Give me an influencer image in a similar style to this reference.");
@@ -138,7 +141,7 @@ async function main() {
       await page.getByRole("button", { name: `Preview Ref ${event === "paste" ? 3 : 4}: reference image ${event === "paste" ? 3 : 4}`, exact: true }).waitFor();
       await page.getByRole("button", { name: "Generate", exact: true }).click();
       const expected = event === "paste" ? 2 : 3;
-      await page.getByRole("status").filter({ hasText: `${expected} of ${expected} images created` }).waitFor();
+      await page.getByRole("button", { name: `Enlarge influencer image ${expected}`, exact: true }).waitFor();
     }
     assert.equal(requests.length, 3);
     assert.deepEqual(requests.map(body => body.referenceImageAssetIds.length), [2, 3, 4]);
@@ -150,7 +153,7 @@ async function main() {
     const submittedText = page.getByRole("button", { name: "Copy prompt", exact: true }).locator("..").locator("p");
     assert.deepEqual(await submittedText.allTextContents(), requests.map(body => body.prompt));
     const promptLayout = await page.getByRole("button", { name: "Copy prompt", exact: true }).first().locator("..").evaluate(element => {
-      const image = element.nextElementSibling.querySelector("article").getBoundingClientRect();
+      const image = element.parentElement.nextElementSibling.querySelector("article").getBoundingClientRect();
       const row = element.getBoundingClientRect(), text = element.querySelector("p");
       return { widthDifference: Math.abs(row.width - image.width), leftDifference: Math.abs(row.left - image.left), textHeight: text.clientHeight };
     });
@@ -162,31 +165,45 @@ async function main() {
     await page.clock.runFor(2_001);
     await page.getByRole("button", { name: "Copy prompt", exact: true }).first().blur();
     await page.screenshot({ path: path.join(out, "submitted-prompt-desktop.png"), fullPage: false });
-    const checkComposerOcclusion = async () => {
-      await page.evaluate(() => {
-        const cardControl = document.querySelector('button[aria-label="Remove image 3 from workspace"]');
-        const composer = document.querySelector('form[data-layout="unified"]');
-        const control = cardControl.getBoundingClientRect(), bar = composer.getBoundingClientRect();
-        window.scrollTo(0, window.scrollY + control.top + control.height / 2 - (bar.top + 40));
+    const checkRail = async () => {
+      const layout = await page.getByRole("region", { name: "Generated influencer images" }).evaluate(rail => {
+        const cards = [...rail.querySelectorAll("article")].map(card => card.getBoundingClientRect());
+        return { overflowX: getComputedStyle(rail).overflowX, overflowY: getComputedStyle(rail).overflowY,
+          scrollable: rail.scrollWidth > rail.clientWidth, tops: cards.map(card => card.top), widths: cards.map(card => card.width),
+          pageFits: document.documentElement.scrollWidth <= innerWidth };
       });
-      await page.clock.runFor(100);
-      const hit = await page.evaluate(() => {
-        const control = document.querySelector('button[aria-label="Remove image 3 from workspace"]').getBoundingClientRect();
-        const composer = document.querySelector('form[data-layout="unified"]');
-        const bar = composer.getBoundingClientRect();
-        const x = control.x + control.width / 2, y = control.y + control.height / 2;
-        return { overlaps: x > bar.left && x < bar.right && y > bar.top && y < bar.bottom,
-          composerWins: composer.contains(document.elementFromPoint(x, y)) };
-      });
-      assert.deepEqual(hit, { overlaps: true, composerWins: true }, "an image remove control scrolled behind the composer cannot paint or receive clicks above it");
+      assert.equal(layout.overflowX, "auto"); assert.equal(layout.overflowY, "hidden");
+      assert.equal(new Set(layout.tops).size, 1); assert.equal(new Set(layout.widths).size, 1);
+      assert.equal(layout.pageFits, true);
+      return layout;
     };
-    await checkComposerOcclusion();
-    await page.screenshot({ path: path.join(out, "composer-scroll-desktop.png"), fullPage: false });
-    await page.screenshot({ path: path.join(out, "pasted-references-desktop.png"), fullPage: true });
+    await checkRail();
+    await page.getByRole("button", { name: "Enlarge influencer image 1", exact: true }).click();
+    await page.getByRole("dialog").waitFor();
+    await page.screenshot({ path: path.join(out, "lightbox-desktop.png"), fullPage: true });
+    await page.keyboard.press("Escape"); await page.clock.runFor(200);
+    await page.screenshot({ path: path.join(out, "rail-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await checkComposerOcclusion();
-    await page.screenshot({ path: path.join(out, "composer-scroll-mobile.png"), fullPage: false });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal((await checkRail()).scrollable, true);
+    await page.screenshot({ path: path.join(out, "rail-mobile.png"), fullPage: true });
+    await page.getByRole("button", { name: "Enlarge influencer image 1", exact: true }).click();
+    const lightbox = page.getByRole("dialog");
+    await lightbox.waitFor();
+    assert.equal(await lightbox.locator("img").getAttribute("src"), [...generated.values()][0].output.url);
+    await page.screenshot({ path: path.join(out, "lightbox-mobile.png"), fullPage: true });
+    await lightbox.getByRole("button", { name: "Next image", exact: true }).click();
+    assert.equal(await lightbox.getByRole("heading").textContent(), "Influencer image 2");
+    await page.keyboard.press("ArrowLeft");
+    assert.equal(await lightbox.getByRole("heading").textContent(), "Influencer image 1");
+    await page.keyboard.press("Escape"); await page.clock.runFor(200);
+    await lightbox.waitFor({ state: "hidden" });
+    assert.equal(await page.getByRole("button", { name: "Select influencer image 1", exact: true }).getAttribute("aria-pressed"), "false");
+    await page.getByRole("button", { name: "Enlarge influencer image 1", exact: true }).click();
+    await lightbox.getByRole("button", { name: "Close", exact: true }).click();
+    await page.clock.runFor(200); await lightbox.waitFor({ state: "hidden" });
+    await page.getByRole("button", { name: "Enlarge influencer image 1", exact: true }).click();
+    await page.locator('[data-slot="dialog-overlay"]').click({ position: { x: 2, y: 2 } });
+    await page.clock.runFor(200); await lightbox.waitFor({ state: "hidden" });
     await page.screenshot({ path: path.join(out, "pasted-references-mobile.png"), fullPage: true });
     await page.setViewportSize({ width: 1100, height: 900 });
     await page.getByRole("button", { name: "Remove reference image 2", exact: true }).click();
@@ -268,7 +285,7 @@ async function main() {
     await page.getByRole("button", { name: "Retry request", exact: true }).waitFor();
     mode = "success";
     await page.getByRole("button", { name: "Retry request", exact: true }).click();
-    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    await page.getByRole("button", { name: /Enlarge influencer image/ }).last().waitFor();
     assert.deepEqual(requests.at(-1), original); assert.equal(receipts.size, 4);
     await page.screenshot({ path: path.join(out, "desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -315,7 +332,7 @@ async function main() {
     await page.getByRole("button", { name: "Preview Ref 2: influencer reference 2", exact: true }).waitFor();
     await prompt.fill("Use image 1 for the person and image 2 for the setting.");
     await page.getByRole("button", { name: "Generate", exact: true }).click();
-    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    await page.getByRole("button", { name: /Enlarge influencer image/ }).last().waitFor();
     assert.deepEqual(requests.at(-1).referenceCharacterIds, [...generated.values()].slice(0, 2).map(job => job.output.mediaAssetId));
     assert.equal(requests.at(-1).referenceImageAssetId, undefined);
     await page.screenshot({ path: path.join(out, "multi-reference-desktop.png"), fullPage: true });
@@ -394,7 +411,7 @@ async function main() {
     const longPrompt = "Keep all three influencer references.\n" + "Use both uploaded images for the setting, lighting and wardrobe.\n".repeat(40);
     await prompt.fill(longPrompt);
     await page.getByRole("button", { name: "Generate", exact: true }).click();
-    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    await page.getByRole("button", { name: /Enlarge influencer image/ }).last().waitFor();
     const mixedRequest = requests.at(-1);
     assert.equal(mixedRequest.referenceCharacterIds.length, 3);
     assert.equal(mixedRequest.referenceImageAssetIds.length, 2);
@@ -409,8 +426,8 @@ async function main() {
         return { height: text.clientHeight, total: text.scrollHeight, maxHeight: getComputedStyle(text).maxHeight, overflow: getComputedStyle(text).overflowY,
           copyBesideText: copyRect.left >= textRect.right && Math.abs(copyRect.top - textRect.top) < 8 };
       });
-      assert.ok(promptBounds.height > 126 && promptBounds.total <= promptBounds.height + 1, "the full long prompt expands without clipping or internal scrolling");
-      assert.equal(promptBounds.maxHeight, "none"); assert.equal(promptBounds.overflow, "visible");
+      assert.ok(promptBounds.height <= 42 && promptBounds.total > promptBounds.height, "long prompt is clamped to two lines");
+      assert.equal(promptBounds.overflow, "hidden");
       assert.equal(promptBounds.copyBesideText, true, "Copy stays beside the top of the prompt");
     };
     await assertFullPrompt();
@@ -432,10 +449,152 @@ async function main() {
     await page.getByRole("button", { name: "Remove influencer reference 1", exact: true }).click();
     assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+: reference image/ }).count(), 1);
     await page.clock.runFor(2_001);
-    await page.evaluate(() => Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: async () => { throw Error("Clipboard denied"); } }));
+    await page.evaluate(() => {
+      window.fixtureClipboardWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+      Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: async () => { throw Error("Clipboard denied"); } });
+    });
     await page.getByRole("button", { name: "Copy prompt", exact: true }).last().click();
     await page.getByRole("status").filter({ hasText: "Could not copy the prompt." }).waitFor();
     assert.equal(await page.getByRole("status").filter({ hasText: "Prompt copied" }).count(), 0, "clipboard denial does not claim a successful copy");
+    await page.evaluate(() => Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: window.fixtureClipboardWriteText }));
+    await page.getByRole("button", { name: "Dismiss notification", exact: true }).click();
+    const railBeforePending = await page.getByRole("region", { name: "Generated influencer images" }).evaluate(rail => ({ height: rail.clientHeight, pageHeight: document.documentElement.scrollHeight, width: rail.scrollWidth }));
+    mode = "pending-output";
+    await page.getByRole("button", { name: "Generate", exact: true }).click();
+    await page.getByText(/Creating candidate/).waitFor();
+    const railPending = await page.getByRole("region", { name: "Generated influencer images" }).evaluate(rail => ({ height: rail.clientHeight, pageHeight: document.documentElement.scrollHeight, width: rail.scrollWidth }));
+    assert.equal(railPending.height, railBeforePending.height, "appending a pending batch keeps the rail height");
+    assert.equal(railPending.pageHeight, railBeforePending.pageHeight, "new generations do not grow the page vertically");
+    assert.ok(railPending.width > railBeforePending.width, "new generation extends horizontally");
+    await page.getByText(/Creating candidate/).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, "pending-rail-mobile.png"), fullPage: true });
+    mode = "success";
+    await page.clock.runFor(10_000);
+    await page.getByText(/Creating candidate/).waitFor({ state: "hidden" });
+    assert.equal(await page.getByRole("region", { name: "Generated influencer images" }).evaluate(rail => rail.clientHeight), railPending.height, "completed result retains placeholder geometry");
+    const touch = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    await touch.goto(base);
+    await touch.getByRole("button", { name: "Influencer image history", exact: true }).click();
+    await touch.getByRole("dialog").getByRole("button", { name: /Generated influencer/ }).first().click();
+    await touch.locator('[data-slot="dialog-overlay"]').waitFor({ state: "hidden" });
+    const expand = touch.getByRole("button", { name: "Enlarge influencer image 1", exact: true });
+    await expand.waitFor();
+    assert.equal(await expand.evaluate(button => getComputedStyle(button).opacity), "1", "touch devices always show expand");
+    const expandBounds = await expand.evaluate(button => {
+      const rect = button.getBoundingClientRect(), portrait = button.parentElement.querySelector('button[aria-label^="Select influencer"]').getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, portraitTop: portrait.top, portraitBottom: portrait.bottom, computedTop: getComputedStyle(button).top };
+    });
+
+    assert.ok(expandBounds.top >= expandBounds.portraitTop && expandBounds.bottom <= expandBounds.portraitBottom, "expand stays inside the image corner");
+    assert.equal(await expand.evaluate(button => {
+      const rect = button.getBoundingClientRect();
+      return button.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+    }), true, "expand receives touch hits above the portrait");
+    await touch.screenshot({ path: path.join(out, "touch-rail-mobile.png"), fullPage: true });
+    await expand.click();
+    await touch.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+    await touch.close();
+    console.log("Checking prompt Skills and frozen result/history presentation…");
+    const skin = CHARACTER_PROMPT_SKILLS[0];
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await prompt.fill("An adult creator sitting by the window.");
+    const authoredPrompt = await prompt.inputValue();
+    await page.getByRole("button", { name: "Skills", exact: true }).click();
+    const skillToggle = page.getByRole("checkbox", { name: "Realistic Skin", exact: true });
+    await skillToggle.click();
+    assert.equal(await skillToggle.getAttribute("aria-checked"), "true");
+    assert.equal(await prompt.inputValue(), authoredPrompt);
+    await page.screenshot({ path: path.join(out, "skills-picker-desktop.png"), fullPage: true, animations: "disabled" });
+    await page.keyboard.press("Escape"); await page.clock.runFor(200);
+    await page.getByRole("button", { name: "Remove Realistic Skin skill", exact: true }).waitFor();
+    await page.screenshot({ path: path.join(out, "skills-selected-desktop.png"), fullPage: true, animations: "disabled" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "Skills (1)", exact: true }).click();
+    await skillToggle.waitFor();
+    await page.screenshot({ path: path.join(out, "skills-picker-mobile.png"), fullPage: true, animations: "disabled" });
+    await page.keyboard.press("Escape"); await page.clock.runFor(200);
+    await page.getByRole("button", { name: "Generate", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('button[aria-label="Generate"]:disabled'));
+    const skillRequest = requests.at(-1);
+    assert.deepEqual(skillRequest.skillIds, ["realistic-skin"]);
+    assert.equal(skillRequest.prompt, authoredPrompt);
+    await page.getByRole("region", { name: "Generated influencer images" }).getByText(authoredPrompt, { exact: true }).waitFor();
+    const skillCopy = page.getByRole("button", { name: "Copy prompt", exact: true }).last();
+    assert.equal(await skillCopy.locator("..").locator("p").textContent(), authoredPrompt);
+    assert.equal(await skillCopy.locator("..").getAttribute("title"), authoredPrompt);
+    await skillCopy.click(); await page.clock.runFor(100);
+    assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), composeCharacterPrompt(authoredPrompt, [skin]));
+    assert.equal(await page.getByText(skin.instruction, { exact: true }).count(), 0, "raw skill instruction never renders in the UI");
+    await page.getByRole("button", { name: "Remove Realistic Skin skill", exact: true }).click();
+    assert.equal(await prompt.inputValue(), authoredPrompt);
+    await page.screenshot({ path: path.join(out, "skills-result-mobile.png"), fullPage: true, animations: "disabled" });
+    await page.reload();
+    await page.getByRole("button", { name: "Influencer image history", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /An adult creator sitting by the window/ }).click();
+    await page.clock.runFor(200);
+    const historyCopy = page.getByRole("button", { name: "Copy prompt", exact: true });
+    assert.equal(await historyCopy.locator("..").locator("p").textContent(), authoredPrompt);
+    await historyCopy.click(); await page.clock.runFor(100);
+    assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), composeCharacterPrompt(authoredPrompt, [skin]));
+    assert.equal(await page.getByRole("region", { name: "Generated influencer images" }).getByText("Realistic Skin", { exact: true }).count(), 1);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "skills-history-mobile.png"), fullPage: true, animations: "disabled" });
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    const savedPromptIndex = [...generated.values()].findIndex(job => job.displayPrompt === authoredPrompt) + 1;
+    assert.ok(savedPromptIndex > 0);
+    const savedPromptCopy = page.getByRole("dialog").getByRole("button", { name: `Copy prompt for saved image ${savedPromptIndex}`, exact: true });
+    await savedPromptCopy.waitFor();
+    const beforeSelection = await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).evaluateAll(buttons => buttons.map(button => button.getAttribute("aria-pressed")));
+    await savedPromptCopy.click(); await page.clock.runFor(100);
+    assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), composeCharacterPrompt(authoredPrompt, [skin]));
+    assert.equal(await savedPromptCopy.getAttribute("title"), "Copied");
+    assert.deepEqual(await savedPromptCopy.locator("..").locator("button").evaluateAll(buttons => buttons.map(button => button.getAttribute("aria-label"))), [`Download saved image ${savedPromptIndex}`, `Copy prompt for saved image ${savedPromptIndex}`]);
+    assert.deepEqual(await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).evaluateAll(buttons => buttons.map(button => button.getAttribute("aria-pressed"))), beforeSelection);
+    assert.equal(await page.getByRole("dialog").getByText("My AI influencer", { exact: true }).count(), 0, "names are hidden from the card UI");
+    const checkSavedFooter = async () => {
+      assert.equal(await page.getByRole("dialog").locator(".savedCharacterCard").evaluateAll(cards => {
+        const boxes = cards.map(card => card.getBoundingClientRect());
+        return boxes.every((a, index) => boxes.slice(index + 1).every(b => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top));
+      }), true, "saved cards and their footers never overlap adjacent rows");
+      const geometry = await savedPromptCopy.evaluate(copy => {
+        const footer = copy.parentElement, card = footer.parentElement;
+        const image = card.querySelector('button[aria-label^="Select saved"]');
+        const download = footer.querySelector('button[aria-label^="Download saved"]');
+        const f = footer.getBoundingClientRect(), c = card.getBoundingClientRect(), i = image.getBoundingClientRect(), d = download.getBoundingClientRect(), p = copy.getBoundingClientRect();
+        return { inside: f.left >= c.left && f.right <= c.right && f.bottom <= c.bottom,
+          attached: Math.abs(f.top - i.bottom) < 2,
+          sameRow: Math.abs(d.top - p.top) < 1,
+          copyFits: p.right <= c.right && p.left >= c.left,
+          labels: [download.textContent, copy.textContent] };
+      });
+      assert.equal(geometry.inside, true); assert.equal(geometry.attached, true);
+      assert.equal(geometry.sameRow, true); assert.equal(geometry.copyFits, true);
+      assert.deepEqual(geometry.labels.map(text => text.trim()), ["Download", "Copied"]);
+    };
+    await checkSavedFooter();
+    await savedPromptCopy.locator("../..").evaluate(card => card.scrollIntoView({ block: "center" }));
+    await page.clock.runFor(100);
+    await savedPromptCopy.locator("../..").screenshot({ path: path.join(out, "library-copy-card-mobile.png"), animations: "disabled" });
+    await page.screenshot({ path: path.join(out, "library-copy-mobile.png"), fullPage: true, animations: "disabled" });
+    await page.clock.runFor(2_001);
+    assert.equal(await savedPromptCopy.getAttribute("title"), "Copy prompt");
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await savedPromptCopy.locator("../..").evaluate(card => card.scrollIntoView({ block: "center" }));
+    await page.clock.runFor(100);
+    await page.screenshot({ path: path.join(out, "library-copy-desktop.png"), fullPage: true, animations: "disabled" });
+    await page.evaluate(() => {
+      window.fixtureClipboardWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+      Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: async () => { throw Error("Denied"); } });
+    });
+    await savedPromptCopy.click(); await page.clock.runFor(100);
+    await page.getByRole("dialog").getByRole("alert").filter({ hasText: "Allow clipboard access" }).waitFor();
+    assert.equal(await savedPromptCopy.getAttribute("title"), "Copy prompt");
+    await page.evaluate(() => Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: window.fixtureClipboardWriteText }));
+    await savedPromptCopy.click(); await page.clock.runFor(100);
+    await checkSavedFooter();
+    await page.screenshot({ path: path.join(out, "library-labelled-footer-desktop.png"), fullPage: true, animations: "disabled" });
+    assert.equal(await page.getByRole("dialog").getByRole("alert").count(), 0);
+    assert.equal(await page.getByRole("dialog").count(), 1, "copy keeps My influencers open");
     assert.deepEqual(errors, []);
     console.log("PASS: multiple references reach generation in order; image downloads save a file; workspace dismissal preserves My influencers and History; pointer/keyboard selection, upload/paste/drop, continuous generation, idle reset and uncertain-request recovery work; desktop and mobile fit.");
   } finally {

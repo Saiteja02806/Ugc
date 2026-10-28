@@ -10,14 +10,21 @@ Alternatively, with the user's authorization to add this server, run:
 
 ```sh
 codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp
-codex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write
+codex mcp login ugc-pilot --scopes account:read,account:write,brand:read,brand:write,assets:read,assets:write,generation:write,jobs:read,jobs:write,creative:write,analytics:read,publishing:read,publishing:write
 ```
 
 The add command may already offer OAuth; use login only if sign-in is still needed. Reuse a correct existing entry. If it points elsewhere, explain the mismatch before replacing it. Start a new session after installation if tools are not discovered. A local MCP config does not automatically connect ChatGPT web.
 
 ### Load the bundled skills locally
 
-For a supported repository marketplace, copy the extracted `ugc-pilot` folder into your workspace's `plugins/` directory. Add an entry to `.agents/plugins/marketplace.json` at that workspace root (merge with an existing catalogue rather than replacing it):
+This repository includes `.agents/plugins/marketplace.json` with `authentication: "ON_INSTALL"` for the local UGC Pilot package. Add the checkout root as a marketplace, then install it:
+
+```sh
+codex plugin marketplace add /absolute/path/to/UGC
+codex plugin add ugc-pilot@ugc-pilot-local
+```
+
+A noninteractive install reports the policy but cannot complete a browser sign-in. Start a new interactive Codex chat to complete normal OAuth before using protected tools. For a different supported repository marketplace, copy the extracted `ugc-pilot` folder into your workspace's `plugins/` directory and add an entry to `.agents/plugins/marketplace.json` at that workspace root (merge with an existing catalogue rather than replacing it):
 
 ```json
 {
@@ -63,7 +70,7 @@ Uploading this Markdown guide or a ZIP to an ordinary web conversation does not 
 
 Extract a new version into a fresh folder so the older bundle remains available. In Claude Code, restart with `claude --plugin-dir /absolute/path/to/ugc-pilot` pointing to the new folder and use `/mcp` to check the connection. In Codex, update the same `ugc-pilot` plugin through its supported local source or Plugins Directory flow; a repository/personal marketplace can point at the extracted folder. Do not edit installed cache files or create duplicate server entries to force an update. Follow the host's supported refresh/restart flow, then verify discovered tools in a new session when necessary.
 
-Adding the MCP endpoint connects server tools; loading the package adds its skills and local helper. Neither step proves both are active. The reviewed server catalog contains 79 tools; older active conversations can retain a cached catalogue. Discovery and live capabilities decide availability. The existing Edit surface includes `open_edit_draft`, `update_edit_draft`, `get_edit_export_capabilities`, `export_edit_draft` and `get_edit_export`. If discovery is stale, refresh the connection through the client. Reauthenticate only for expired sign-in or missing scopes, not merely because new tools appeared. An existing `creative:write` grant covers the Edit tools. Account-default updates separately need `account:write`, only after the account-settings server/schema rollout; request that scope when the user intends those changes. An older media-only consent does not expand automatically. Do not generate media or change a draft just to check discovery.
+Adding the MCP endpoint connects server tools; loading the package adds its skills and local helper. Neither step proves both are active. The reviewed production catalog contains 79 tools; this 0.2.10 candidate registers 106 after its server/schema release. Paid generation, permanent deletes, `create_schedule`, and live brand-profile writes return a preview first. Draft edits, library saves, uploads and verification, audio uploads and voice settings, group membership edits, timezone initialization, logo verification, demo registration, business-context drafts, publishing defaults, remix text, edit export, and cancellation run directly. Show each preview and wait for an explicit yes before sending `confirm_token`. Older active conversations can retain a cached catalogue. Discovery and live capabilities decide availability. The existing Edit surface includes `open_edit_draft`, `update_edit_draft`, `get_edit_export_capabilities`, `export_edit_draft` and `get_edit_export`. If discovery is stale, refresh the connection through the client. Reauthenticate only for expired sign-in or a missing requested scope, not merely because new tools appeared. An existing `creative:write` grant covers the Edit tools. Account-default updates separately need `account:write`, only after the account-settings server/schema rollout; request that scope when the user intends those changes. Business Context writes separately require `brand:write` after its schema/server rollout; reads and receipt recovery use `brand:read`. Schedule and connected-social-account reads, including capability checks, separately need `publishing:read`. Saved Instagram, TikTok and YouTube report reads, including capability checks, separately need `analytics:read` and a verified account identity; they cannot refresh a provider report. Gated schedule creation separately needs `publishing:write`, current live capability, and for TikTok/YouTube a token obtained after the verified-identity migration. The plugin cannot edit, cancel, retry, publish or connect a provider. These scopes are granted only through normal OAuth consent for an intended task. An older media-only consent does not expand automatically. Do not generate media or change a draft just to check discovery.
 
 The local transfer helper needs Node.js 22+, ffprobe and a host process API that can pass ephemeral JSON on stdin. A browser-only connector cannot read an IDE file path. Use the bundled local transfer reference after the package is loaded.
 

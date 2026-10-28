@@ -174,6 +174,7 @@ export function createHookSourceFrameService(options: {
   /** A stored-only read never falls through to MP4 decoding on a cache miss. */
   readStoredFrame?: (sourceSha256: string) => Promise<Frame | null>;
   storedOnly?: boolean;
+  wallFrameStore?: ReturnType<typeof import("./hook-source-frame-store.ts").createStoredHookFrames>;
   /** Internal full-recreation preparation can require canonical frame zero even
    * when the ordinary UI preview uses a reviewed later clarity frame. */
   useCuratedFrame?: boolean;
@@ -243,6 +244,12 @@ export function createHookSourceFrameService(options: {
         throw new HookSourceFrameError("Starting frames are being prepared. Try again shortly.", 429);
       }
       work = (async () => {
+        const wallStore = source.workflow === "wall_text" && (!options.items || options.wallFrameStore)
+          ? options.wallFrameStore ?? (await import("./hook-source-frame-store.ts")).createStoredHookFrames() : null;
+        if (wallStore) {
+          const stored = await wallStore.read(source.videoSha256);
+          if (stored) return remember(key, checkedFrame(stored.png, source));
+        }
         if (options.readStoredFrame || options.storedOnly || !options.items && (!source.workflow || source.workflow === "hook") && process.env.EXPLORE_STORED_SOURCE_FRAMES_ENABLED === "true") {
           const read = options.readStoredFrame ?? (await import("./hook-source-frame-store.ts")).createStoredHookFrames().read;
           const stored = await read(source.videoSha256);
@@ -262,6 +269,10 @@ export function createHookSourceFrameService(options: {
           throw new HookSourceFrameError("The Hook source changed. Refresh the library before continuing.", 409);
         }
         const frame = checkedFrame(await (options.decode ?? decodeHookFirstFrame)(bytes), source);
+        if (wallStore) {
+          const stored = await wallStore.prepare(source.videoSha256, async () => ({ ...frame, referenceId, workflow: "wall_text" }));
+          return remember(key, checkedFrame(stored.png, source));
+        }
         return remember(key, frame);
       })();
       pending.set(key, work);

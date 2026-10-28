@@ -109,7 +109,7 @@ test("image and video controls send selected settings to generation APIs", () =>
     /getGenerationCreditCost\("video", durationSeconds\)/,
   );
   assert.match(videoWorkspace, /AiStudioRatioPicker/);
-  assert.match(videoWorkspace, /allowedRatios=\{\["9:16", "16:9"\]\}/);
+  assert.match(videoWorkspace, /allowedRatios=\{startingFrame \? \[startingFrame\.width > startingFrame\.height \? "16:9" : "9:16"\] : \["9:16", "16:9"\]\}/);
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
 });
 
@@ -182,7 +182,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   );
   assert.equal(
     videoWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
-    4,
+    5,
   );
 
   for (const ariaLabel of ["Image model", "Number of images"]) {
@@ -199,7 +199,8 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   }
 
   assert.doesNotMatch(imageWorkspace, /<select|<option/);
-  assert.doesNotMatch(videoWorkspace, /<select|<option/);
+  const settingsStart = videoWorkspace.indexOf("settings={");
+  assert.doesNotMatch(videoWorkspace.slice(settingsStart, videoWorkspace.indexOf("<Dialog", settingsStart)), /<select|<option/);
 });
 
 test("video references start empty and offer optional creator references", () => {
@@ -207,7 +208,7 @@ test("video references start empty and offer optional creator references", () =>
   assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
   assert.match(videoWorkspace, /<CreatorReferencePicker/);
   assert.match(videoWorkspace, /settings=\{[\s\S]*?<CreatorReferencePicker/);
-  assert.match(videoWorkspace, /referenceControls=\{workflow \?[\s\S]*? : undefined\}/);
+  assert.match(videoWorkspace, /referenceControls=\{awaitingStartingFrame \?[\s\S]*?workflow && startingFrame \? <StartingFrameAnimationReferences/);
   assert.match(creatorReferencePicker, /<Popover open=\{open\}/);
   assert.match(creatorReferencePicker, /Creator reference/);
   assert.match(creatorReferencePicker, /Optional\. Choose a look or upload your own image/);
@@ -324,7 +325,7 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.match(videoResultCard, /video\.prompt/);
   assert.match(
     videoResultCard,
-    /max-w-\[54rem\][\s\S]*?sm:flex-row/,
+    /max-w-\[64rem\][\s\S]*?resultLayout\.row/,
   );
   assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
@@ -389,7 +390,7 @@ test("image previews remain compact and video results use the dedicated history 
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "w-\[min\(100%,calc\(34dvh\*9\/16\),11\.25rem\)\]"/,
+    /"9:16": "w-\[min\(100%,calc\(\(100dvh-260px\)\*9\/16\),22rem\)\]"/,
   );
   assert.match(
     videoWorkspace,

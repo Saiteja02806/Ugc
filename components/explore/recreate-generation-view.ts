@@ -28,6 +28,7 @@ export type RecreateGenerationView = {
     actionsTarget?: HTMLElement | null;
     resultsTarget: HTMLElement | null;
     onGenerationStart: () => void;
+    onGenerationRestore?: () => void;
     onBusyChange?: (busy: boolean) => void;
     onSelectVideo?: (result: AIStudioVideoResult) => void;
     onGeneratedVideo?: (result: AIStudioVideoResult) => void;

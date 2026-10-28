@@ -1,0 +1,14 @@
+{
+  "result": {
+    "deployments": {
+      "deployments": [
+        {"name":"ugc", "state":"READY", "target":"production", "created":1792932014987, "meta":{"githubCommitSha":"abc123"}, "cpuMinutes":6},
+        {"name":"ugc-mcp", "state":"READY", "target":"production", "created":1792932017745, "meta":{"githubCommitSha":"abc123"}, "cpuMinutes":4},
+        {"name":"trending-release-web-3f35202", "state":"ERROR", "target":"production", "created":1792931983413, "meta":{"githubCommitSha":"abc123"}},
+        {"name":"trending-release-web-3f35202", "state":"ERROR", "target":"production", "created":1792931871597, "meta":{"githubCommitSha":"abc122"}},
+        {"name":"trending-release-web-3f35202", "state":"ERROR", "target":"production", "created":1792931591988, "meta":{"githubCommitSha":"abc121"}},
+        {"name":"ugc", "state":"CANCELED", "target":"production", "created":1792931983522, "meta":{"githubCommitSha":"abc123"}}
+      ]
+    }
+  }
+}

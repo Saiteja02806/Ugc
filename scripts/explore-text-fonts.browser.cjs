@@ -72,13 +72,13 @@ async function main() {
     async function checkPresetSwitch(wall=false) {
       const preset=page.getByRole("combobox",{name:"Text preset",exact:true}),text=page.getByRole("textbox",{name:wall?"Wall of text":"Overlay text",exact:true}),copy=await text.inputValue(),font=await select.inputValue();
       await preset.selectOption("snapchat-classic");
-      assert.equal(await preset.inputValue(),"snapchat-classic");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),1);assert.equal(await weight.inputValue(),"400");
+      assert.equal(await preset.inputValue(),"snapchat-classic");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),1);assert.equal(await weight.inputValue(),font==="proximanovaa"?"600":"400");
       await preset.selectOption("bold");
-      assert.equal(await preset.inputValue(),"bold");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);assert.equal(await weight.inputValue(),"700");
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);assert.equal(await weight.inputValue(),font==="proximanovaa"?"600":"700");
       assert.equal(await page.getByRole("slider",{name:"Caption background opacity",exact:true}).count(),0);assert.equal(await select.inputValue(),font);assert.equal(await text.inputValue(),copy);
       await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.getByRole("status").waitFor();await page.reload();
       if(wall)await page.getByRole("button",{name:"Edit",exact:true}).click();
-      assert.equal(await preset.inputValue(),"bold");assert.equal(await text.inputValue(),copy);assert.equal(await select.inputValue(),font);assert.equal(await weight.inputValue(),"700");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await text.inputValue(),copy);assert.equal(await select.inputValue(),font);assert.equal(await weight.inputValue(),font==="proximanovaa"?"600":"700");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);
       console.log("PASS preset Snapchat → Bold white, preview background removed, copy/font and save/reopen preserved: "+(wall?"Wall":"Hook")+" "+JSON.stringify(page.viewportSize()));
     }
     async function checkDrag() {

@@ -8,6 +8,7 @@ import {
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
 import { prepareBusinessContextCandidate } from "@/lib/business-profiles/business-context-candidate";
+import { businessContextValidationMessage } from "@/lib/business-profiles/business-context-form";
 import { applyPrimaryGoals } from "@/lib/business-profiles/schema";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { analyzeBusinessDescription } from "@/lib/website-analysis/analyze-business";
@@ -60,8 +61,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const userId = (await requireFirebaseUser(request)).uid;
-    const body = requestSchema.safeParse(await request.json().catch(() => null));
-    if (!body.success) return json({ ok: false, message: "Send a valid Business Context action." }, 400);
+    const input: unknown = await request.json().catch(() => null);
+    const body = requestSchema.safeParse(input);
+    if (!body.success) {
+      const record = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : null;
+      const contextError = record && (record.action === "apply" || record.action === "save_draft")
+        ? businessContextValidationMessage(record.context) : null;
+      return json({ ok: false, message: contextError ?? "Send a valid Business Context action." }, 400);
+    }
 
     const profile = await getBusinessProfileForUser(userId);
     if (!profile) return json({ ok: false, message: "Complete Business Context before editing it." }, 404);

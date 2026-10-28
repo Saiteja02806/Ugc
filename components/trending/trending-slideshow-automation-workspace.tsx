@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -32,7 +32,8 @@ import {
   CarouselManualText,
   CarouselTextControls,
 } from "@/components/trending/carousel-text-controls";
-import { Button } from "@/components/ui/button";
+import { Button as BaseButton } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +78,11 @@ import type { SlideshowAutomationCollectionSummary } from "@/lib/trending/slides
 
 type SetupStep = "content" | "appearance" | "posting" | "review";
 type WorkspaceMode = "setup" | "overview";
+
+// Scope the requested pill corners to this workspace, including its dialogs.
+function Button({ className, ...props }: ComponentProps<typeof BaseButton>) {
+  return <BaseButton {...props} className={cn(className, "rounded-full")} />;
+}
 
 const SETUP_STEPS: ReadonlyArray<{ id: SetupStep; label: string; number: number }> = [
   { id: "content", label: "Content", number: 1 },
@@ -1275,7 +1281,7 @@ export function TrendingSlideshowAutomationWorkspace({
             /* ============================================================
                4-STEP GUIDED SETUP WORKSPACE + STICKY LIVE PREVIEW
                ============================================================ */
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               {/* Left column: Guided setup step content */}
               <div className="space-y-6">
                 {step === "content" ? (
@@ -1325,7 +1331,7 @@ export function TrendingSlideshowAutomationWorkspace({
                               disabled={disabled}
                               aria-pressed={selected}
                               onClick={() => handleDailyTotalChange(count)}
-                              className={`flex h-11 items-center justify-center rounded-xl border text-sm font-semibold transition-all ${
+                              className={`flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition-all ${
                                 selected
                                   ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
                                   : "border-border bg-card-muted text-foreground hover:border-primary/40"
@@ -1598,6 +1604,7 @@ export function TrendingSlideshowAutomationWorkspace({
                             Optional: if enabled, every slide background comes
                             strictly from your chosen Media library collection.
                             Never substitutes stock or AI images.
+                            {" "}Product Stories CTA slides use your uploaded app screenshot when available.
                           </span>
                         </label>
                       </div>
@@ -2666,8 +2673,8 @@ export function TrendingSlideshowAutomationWorkspace({
               <DialogTitle>Choose an image collection</DialogTitle>
               <DialogDescription>
                 When collection-only mode is enabled, every automated slideshow
-                background comes exclusively from the collection you choose
-                here.
+                background comes from this collection, except Product Stories CTA
+                slides, which use your uploaded app screenshot when available.
               </DialogDescription>
             </DialogHeader>
 

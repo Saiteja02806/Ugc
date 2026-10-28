@@ -84,9 +84,9 @@ export function registerReferenceMcpTools(server: McpServer) {
     catch (error) { return referenceFailure(error); }
   }));
   server.registerTool("remix_reference_text",{
-    description:"Generate and save a requested business-specific text remix through the application's same provider/claim service. May use provider allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. First-use submission may initialize the application's standard one-time free allowance. This does not edit a draft or render media.",
+    description:"Generate and save a requested business-specific text remix through the application's same provider/claim service. This does not deduct account credits; it uses the daily remix quota and may initialize the one-time free allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. This does not edit a draft or render media.",
     inputSchema:RemixRequestSchema, outputSchema:resultSchema,
-    annotations:{ readOnlyHint:false, destructiveHint:true, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("generation:write","brand:read"), _meta:oauthMetadata("generation:write",{securitySchemes:[{type:"oauth2",scopes:["generation:write","brand:read"]}]}),
+    annotations:{ readOnlyHint:false, destructiveHint:false, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("generation:write","brand:read"), _meta:oauthMetadata("generation:write",{securitySchemes:[{type:"oauth2",scopes:["generation:write","brand:read"]}]}),
   },async (args,ctx) => executeTool(async () => {
     const owner = principal(ctx,"generation:write");
     principal(ctx,"brand:read");

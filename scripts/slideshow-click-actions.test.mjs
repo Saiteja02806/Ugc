@@ -29,13 +29,13 @@ test("Select all chooses every reference slide in order without generating or im
   const all = component("slideshow-reference-picker.tsx", "SlideshowReferencePicker", { ...props, selectedSlideIds: ["a", "b", "c"] });
   assert.equal(nodes(all).find(n => n.type === "Button" && text(n) === "Select all").props.disabled, true);
 });
-test("reference and finished-slide buttons invoke their respective pickers directly", () => {
-  let reference = 0, finished = 0;
-  const tree = component("slideshow-reference-picker.tsx", "SlideshowReferencePicker", { reference: null, selectedSlideIds: [], disabled: false, onUseFinishedSlides: () => finished++ });
+test("Create retains reference upload without a duplicate finished-slide action", () => {
+  let reference = 0;
+  const tree = component("slideshow-reference-picker.tsx", "SlideshowReferencePicker", { reference: null, selectedSlideIds: [], disabled: false });
   nodes(tree).find(n => n.type === "input").props.ref.current = { click: () => reference++ };
   nodes(tree).find(n => n.type === "Button" && text(n) === "Upload reference slides").props.onClick();
-  nodes(tree).find(n => n.type === "Button" && text(n) === "Use my finished slides").props.onClick();
-  assert.equal(reference, 1); assert.equal(finished, 1);
+  assert.equal(nodes(tree).some(n => n.type === "Button" && text(n) === "Use my finished slides"), false);
+  assert.equal(reference, 1);
 });
 test("finished-slide upload inside Add slides opens the picker immediately", () => {
   let opened = 0;

@@ -43,8 +43,8 @@ test("Add to hook preserves the reported emoji caption through draft recovery, c
     const remixed = applyVideoTextRemix(edit, { blocks: [copy], heading: "", body: "" }, source);
     const restored = readFormatEditDraft(JSON.parse(JSON.stringify(remixed)));
     assert.equal(restored.textOverlays[0].value, copy);
-    assert.equal(restored.textOverlays[0].font, "poppins");
-    assert.equal(restored.textOverlays[0].fontWeight, 700);
+    assert.equal(restored.textOverlays[0].font, "proximanovaa");
+    assert.equal(restored.textOverlays[0].fontWeight, 600);
     for (const mode of ["clip", "composition"]) {
       const parent = join(dir, `${index}-${mode}`);
       await mkdir(parent);
@@ -70,4 +70,15 @@ test("Add to hook preserves the reported emoji caption through draft recovery, c
   }
   assert.deepEqual(await readFile(sourcePath), original);
   console.log(`Hook Remix emoji evidence: ${dir}`);
+});
+
+test("Remixing a saved caption retains its explicit legacy font and weight", () => {
+  const edit = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 1500, originalVolume: 1, musicVolume: .2,
+    text: null, textOverlays: [{ value: "Saved words", width: .84, y: .18, fontSize: 48, color: "#ffffff",
+      startMs: 0, endMs: 1500, font: "poppins", fontWeight: 700 }] };
+  const remixed = applyVideoTextRemix(edit, { blocks: [source.blocks[0].text], heading: "", body: "" }, source);
+  const restored = readFormatEditDraft(JSON.parse(JSON.stringify(remixed)));
+  assert.equal(restored.textOverlays[0].font, "poppins");
+  assert.equal(restored.textOverlays[0].fontWeight, 700);
+  assert.equal(edit.textOverlays[0].value, "Saved words");
 });

@@ -12,10 +12,19 @@ registerHooks({
     if (specifier === "server-only") {
       return { shortCircuit: true, url: serverOnlyModule };
     }
+    if (specifier === "next/server") {
+      return nextResolve("next/server.js", context);
+    }
     if (specifier.startsWith("@/")) {
-      const candidate = new URL(`../${specifier.slice(2)}.ts`, import.meta.url);
-      if (existsSync(fileURLToPath(candidate))) {
-        return { shortCircuit: true, url: candidate.href };
+      const candidates = [
+        new URL(`../${specifier.slice(2)}`, import.meta.url),
+        new URL(`../${specifier.slice(2)}.ts`, import.meta.url),
+        new URL(`../${specifier.slice(2)}.tsx`, import.meta.url),
+      ];
+      for (const candidate of candidates) {
+        if (existsSync(fileURLToPath(candidate))) {
+          return { shortCircuit: true, url: candidate.href };
+        }
       }
     }
 

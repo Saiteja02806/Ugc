@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { buildHookKeyframeImagePrompt, HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH } from "./hook-keyframe-image-prompt.ts";
+import { buildOriginalOpeningImagePrompt, buildHookKeyframeImagePrompt, HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH } from "./hook-keyframe-image-prompt.ts";
 
 test("the default reproduces the exact v4 prompt used in the user-approved image test", () => {
   const result = buildHookKeyframeImagePrompt({
@@ -102,4 +102,12 @@ test("v6 remains opt-in with the same input order, source provenance and instruc
   const full = buildHookKeyframeImagePrompt({ ...scope, promptVersion: 6, personImageCount: 5, instructions });
   assert.ok(full.prompt.endsWith(`USER IMAGE INSTRUCTIONS:\n${instructions}`));
   assert.ok(full.prompt.length < HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH);
+});
+
+test("new frame-zero cleanup freezes no later inputs and preserves source lighting and outfit explicitly", () => {
+  const prompt = buildOriginalOpeningImagePrompt({personImageCount:2,instructions:"Keep hands natural."});
+  assert.equal(prompt.version,7);assert.equal(prompt.imageCount,3);
+  assert.doesNotMatch(prompt.prompt, /\uFFFD/);
+  for(const phrase of [/first decoded frame at elapsed t=0/,/light direction, softness, exposure, contrast, color cast/,/do not copy lighting/i,/physical logos/,/readable text on clothing/,/Keep the objects and clothing themselves/,/face obstruction/])assert.match(prompt.prompt,phrase);
+  assert.doesNotMatch(prompt.prompt,/Preserve text physically|Image 2 is the later clarity/);
 });

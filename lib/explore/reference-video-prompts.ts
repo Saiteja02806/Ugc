@@ -1,5 +1,8 @@
 import octoberRefresh from "./hook-reference-oct23-refresh-prompts.json" with { type: "json" };
 import wallMoney from "./wall-money-reference-prompts.json" with { type: "json" };
+import reclassifiedHookMotion from "./hook-wall-reclassification-motion.json" with { type: "json" };
+import { getHookKeyframeMotionReviewDraft, hookKeyframeMotionCatalog, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
+import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
 export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
@@ -13,6 +16,17 @@ export type ReferenceVideoPrompt = {
   performance: string;
 };
 
+/** Keeps JSON catalogue metadata inside the reviewed-prompt contract at import time. */
+export function parseReferenceVideoReviewMethod(
+  value: unknown,
+): ReferenceVideoPrompt["reviewMethod"] {
+  if (value === "sampled_frames" || value === "all_decoded_frames") {
+    return value;
+  }
+
+  throw new Error(`Unsupported reference-video review method: ${String(value)}`);
+}
+
 const wallMoneyVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Object.fromEntries(wallMoney.entries.map(entry => [entry.referenceId, {
     version: 2 as const, sourceSha256: entry.sourceSha256, reviewMethod: "all_decoded_frames" as const,
     reviewedFrameCount: entry.reviewedFrameCount,
@@ -20,6 +34,40 @@ const wallMoneyVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Ob
     performance: [`Preserve the complete ${entry.sourceDurationSeconds.toFixed(3)}-second source performance. ${entry.scene}`,
       ...entry.beats.map(beat => `${beat.startSeconds.toFixed(2)}–${beat.endSeconds.toFixed(2)}s: ${beat.action}`)].join("\n"),
   }]));
+
+/**
+ * Wall 06, 28 and 59 were deliberately cut to their opening reactions and
+ * promoted into the Hook catalogue.  Their source-specific motion review is
+ * stored separately from the original Wall assets so the prompt, caption and
+ * release item must all bind the same retained MP4 hash.
+ */
+function reviewedReclassifiedPerformance(entry: typeof reclassifiedHookMotion.entries[number]) {
+  const toSourceSeconds = (fraction: string) =>
+    Number((Number(fraction) * entry.sourceDurationSeconds).toFixed(3));
+  const beats = entry.plan.beats.map(beat => beat.action.replace(
+    /PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/,
+    (_phase, start: string, end: string) => `${toSourceSeconds(start)}–${toSourceSeconds(end)}s:`,
+  ));
+  return [
+    `Follow the original ${entry.sourceDurationSeconds.toFixed(3)}-second opening reaction only. Do not introduce the removed product demo.`,
+    `OPENING STATE: ${entry.plan.openingState}`,
+    ...beats,
+    `CAMERA: ${entry.plan.camera}`,
+    `ENDING STATE: ${entry.plan.endingState}`,
+    `CONSTRAINTS: ${entry.plan.constraints.join(" ")}`,
+  ].join("\n");
+}
+
+const reclassifiedHookVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Object.fromEntries(
+  reclassifiedHookMotion.entries.map(entry => [entry.referenceId, {
+    version: 2 as const,
+    sourceSha256: entry.sourceSha256,
+    reviewMethod: parseReferenceVideoReviewMethod(entry.reviewMethod),
+    reviewedFrameCount: entry.reviewedFrameCount,
+    reviewNotes: entry.reviewNotes,
+    performance: reviewedReclassifiedPerformance(entry),
+  } satisfies ReferenceVideoPrompt]),
+);
 
 export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = {
   ...Object.fromEntries(octoberRefresh.entries.map(({ referenceId, ...entry }) => [referenceId, entry as ReferenceVideoPrompt])),
@@ -575,15 +623,27 @@ export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
     reviewNotes: "All 107 decoded frames inspected sequentially. Upright magenta phone remains early, then lowers out of view; upward eye roll becomes pursed-lip questioning gaze in tighter crop. No cut. Prompt content reviewed; generation quality not tested.",
     performance: "Follow the original performance and timing: begin in a low-angle close shot holding the magenta-cased phone upright on screen-right, looking between its screen and the camera with knitted brows and slightly parted lips. Open the eyes much wider, blink and hold the incredulous stare. Briefly roll the eyes upward off screen-left, then return them forward and press the lips into a skeptical closed-mouth expression. Lower the phone out of view, move the camera closer and slightly sideways, and finish with a small pursed-lip, questioning look in the tighter off-center crop. Preserve the dark V-neck top, long straight highlighted hair, layered necklaces with dark pendant, pale room and long rectangular ceiling light, natural indoor light, original camera movement and full source duration.",
   },
+  ...reclassifiedHookVideoPrompts,
 };
 
 export function getReferenceVideoPrompt(id: string, videoUrl: string | undefined): string | undefined {
   const entry = referenceVideoPrompts[id] ?? wallMoneyVideoPrompts[id];
-  if (!entry || !videoUrl) return undefined;
+  const source = hookKeyframeMotionCatalog[id];
+  const sourceSha256 = entry?.sourceSha256 ?? source?.sourceSha256;
+  if (!sourceSha256 || !videoUrl) return undefined;
   // References use content-addressed storage; a replacement file needs review.
   const filename = videoUrl.split("?")[0].split("/").at(-1);
-  if (filename !== `${entry.sourceSha256}.mp4`) return undefined;
-  return `If an influencer image is attached, replace the performer's facial identity with the person in that image. Keep the source hairstyle, clothing and accessories unless requested otherwise. Use the image for appearance and the video for performance.\n\n${entry.performance}\n\n${REFERENCE_TEXT_REMOVAL}`;
+  if (filename !== `${sourceSha256}.mp4`) return undefined;
+  // Both Recreate routes use the same source-bound reviewed performance. A
+  // source-video request retains its source clock; image animation retimes later.
+  const frame = source && getCuratedHookFrame(id, sourceSha256);
+  const reviewed = source && getHookKeyframeMotionReviewDraft(id, sourceSha256, frame?.index ?? 0);
+  const performance = reviewed?.candidatePlan
+    ? hookMotionPlanDirections(reviewed.candidatePlan).replace(/PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/g,
+      (_phase, start: string, end: string) => `${Number((Number(start) * source.sourceDurationSeconds).toFixed(3))}–${Number((Number(end) * source.sourceDurationSeconds).toFixed(3))}s:`)
+    : entry?.performance;
+  if (!performance) return undefined;
+  return `If an influencer image is attached, replace the performer's facial identity with the person in that image. Keep the source hairstyle, clothing and accessories unless requested otherwise. Use the image for appearance and the video for performance.\n\n${performance}\n\n${REFERENCE_TEXT_REMOVAL}`;
 }
 
 export function combineReferenceVideoPrompt(referencePrompt: string, userPrompt: string): string {

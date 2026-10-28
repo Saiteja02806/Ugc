@@ -7,7 +7,7 @@ export class HookStartingImageReadError extends Error {
 
 export function isRecoverableStartingImageRead(error: unknown) {
   if (error instanceof HookStartingImageReadError) {
-    return [408, 409, 429].includes(error.status) || error.status >= 500;
+    return [404, 408, 409, 429].includes(error.status) || error.status >= 500;
   }
   return error instanceof TypeError || error instanceof Error &&
     (error.name === "TimeoutError" || error.message === "Loading took too long. Try again.");
@@ -25,6 +25,7 @@ export const startingImageStatusPolling = {
   refetchOnReconnect: canRecoverOnReturn,
   refetchInterval: (query: StatusQuery) => {
     if (query.state.data?.isTerminal) return false;
+    if (query.state.error instanceof HookStartingImageReadError && query.state.error.status === 404) return 30_000;
     if (query.state.error) return isRecoverableStartingImageRead(query.state.error) ? 15_000 : false;
     return 3_000;
   },

@@ -26,7 +26,9 @@ export async function handleClipDraftRead(request: Request) {
     const query = new URL(request.url).searchParams, source = query.get("sourceAssetId"), scope = clipDraftScope(query.get("scope"));
     if (!isExploreUuid(source) || query.getAll("sourceAssetId").length !== 1 || query.getAll("scope").length !== 1 ||
         Array.from(query.keys()).some(key => key !== "sourceAssetId" && key !== "scope")) throw new ExploreClipDraftError("Choose a saved clip to edit.");
-    return json({ ok: true, draft: await new ExploreClipDraftStore().read(owner, source.toLowerCase(), scope) });
+    const store = new ExploreClipDraftStore();
+    const draft = await store.read(owner, source.toLowerCase(), scope);
+    return json({ ok: true, draft, initialContent: draft ? null : await store.initialContent(owner, source.toLowerCase(), scope) });
   } catch (error) { return failure(error); }
 }
 export async function handleClipDraftSave(request: Request) {

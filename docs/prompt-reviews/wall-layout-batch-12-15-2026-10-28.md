@@ -1,0 +1,9 @@
+# Wall layout batch: 12 and 15
+
+Local only; automatic Wall text remains disabled. Reviewed hash-matched source files using 33 and 31 quarter-second sampled frames and native opening frames. Both use a static centered block: Wall 12 has six compact lines; Wall 15 has eleven wider lines. Added source-ID/hash-bound profiles. Source-to-neutral-render comparisons: `outputs/wall-layout-batch-20261028/wall12-comparison.png` and `wall15-comparison.png`. Font/geometry are approximations. Wall 12 white text has low contrast against parts of the source's bright background; contrast on actual output requires review.
+
+Files changed this batch: `worker/src/lib/wall-initial-text-layout.ts`, `worker/src/lib/wall-initial-text-layout.test.ts`, `scripts/wall-automatic-text.browser.cjs`, this receipt and local review artifacts. Forty focused tests passed; worker build, TypeScript, targeted lint and local browser fixture passed. The browser fixture covers editable text, saved width, reopening, blank removal, full 12-second export JSON and mobile overflow. It uses neutral background and mocked persistence; generated footage, real model text, hosted backend and production remain NOT VERIFIED. Related UGC-UI-046 remains open; no new incident.
+
+No paid calls, video generation, deployment or hosted changes. Existing drafts retain precedence under local component tests; no full application cross-feature or production-domain acceptance. Source matching and 0.25-second samples do not imply every frame was inspected.
+
+Preflight carried forward from immediately prior batch: provided AGENTS.md, preflight tool, context-memory, immutable-contracts, frame-analysis, ui-clarity and regression-gate skills, relevant context excerpts and contracts. Full Explore context/incident ledger output was truncated and not fully reread; existing dirty worktree preserved.

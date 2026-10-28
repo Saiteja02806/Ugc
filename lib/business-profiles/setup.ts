@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { parseAiIdeBusinessContext } from "./ai-context";
-import { saveBusinessProfile } from "./db";
+import { saveBusinessProfileFromSetupJob } from "./db";
 import { dispatchOnboardingJobs, getOnboardingDraft, mutateOnboardingDraft } from "./onboarding-drafts";
 import {
   BusinessDescriptionSchema,
@@ -83,14 +83,15 @@ export async function processBusinessProfileSetupJob(params: {
     await dispatchOnboardingJobs(updated);
     return { operation: "business_profile_setup" as const, draftId: updated.id, analysisId: normalized.analysisId };
   }
-  const saved = await saveBusinessProfile({
+  const saved = await saveBusinessProfileFromSetupJob({
     analysis: normalized.analysis,
     analysisId: normalized.analysisId,
     intakeType: params.input.intakeType,
-    sourceContext: normalized.sourceContext,
-    sourceUrl: normalized.websiteUrl,
+    jobId: params.jobId,
     userId: params.userId,
   });
+
+  if (!saved.profile) return { operation: "business_profile_setup" as const, skipped: saved.skipped ?? "superseded" };
 
   return {
     operation: "business_profile_setup" as const,

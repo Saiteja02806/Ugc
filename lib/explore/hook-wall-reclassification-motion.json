@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "referenceId": "explore-paired-hook-d426f4a2248708f61298bf7f",
+      "sourceSha256": "d426f4a2248708f61298bf7fc9a57500c3201811b2680509013680d177d40a1f",
+      "sourceDurationSeconds": 3.3,
+      "displayTitle": "Reclassified reference 06",
+      "plan": {
+        "openingState": "Seated facing the camera in the kitchen, one hand covers the mouth and chin, with gaze slightly lowered.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0.000–0.273]: Hold the hand against the mouth and chin, with small blinks and a slight gaze shift."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.273–0.515]: Lift the gaze and lower that hand toward the chin as a restrained closed-mouth smile appears."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.515–1.000]: Raise the same hand beside the face, palm toward the camera, and hold the small smile with softened eyes through the ending."
+          }
+        ],
+        "camera": "Keep the front-facing camera steady.",
+        "endingState": "Hold the raised hand beside the face and the restrained smile.",
+        "constraints": [
+          "Keep the same hand continuous through the gesture."
+        ]
+      },
+      "reviewedFrameCount": 99,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 99 decoded frames inspected in ordered contact sheets; motion transitions checked in targeted native-resolution stills. Reaction-only retained clip ends before the demo. Generated image and video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-0dd34d729ad756dbd87888cc",
+      "sourceSha256": "0dd34d729ad756dbd87888cc7d16220bf9fbb6acd3a7b8919ae58700cc948727",
+      "sourceDurationSeconds": 2.033008,
+      "displayTitle": "Reclassified reference 28",
+      "plan": {
+        "openingState": "Seated in a bright room behind a silver laptop, eyes lowered toward it, with one hand gripping its upper edge and relaxed lips.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0.000–0.295]: Tilt and lower the laptop lid into the lower foreground while the gaze lifts slightly; the gripping hand moves with its edge."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.295–0.590]: Release the laptop edge and move that hand outward toward screen-right, keeping the other hand low."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.590–1.000]: Bring both hands up beside the face toward the hair and ears, purse the lips slightly and lift the chin; finish with the fingers beside the hair."
+          }
+        ],
+        "camera": "Keep the portrait camera steady with the laptop in the foreground.",
+        "endingState": "Hold both hands near the ears and hair.",
+        "constraints": [
+          "Keep both hands separate and preserve the laptop in the foreground."
+        ]
+      },
+      "reviewedFrameCount": 61,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 61 decoded frames inspected in ordered contact sheets; motion transitions checked in targeted native-resolution stills. Reaction-only retained clip ends before the demo. Generated image and video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-6030a6af486760af6b5d64b1",
+      "sourceSha256": "6030a6af486760af6b5d64b1d2b1ec1dce7f3df2ca2f8876b13891b4938891d5",
+      "sourceDurationSeconds": 3.0,
+      "displayTitle": "Reclassified reference 59",
+      "plan": {
+        "openingState": "In a tight front-facing close-up, look into the lens with furrowed brows and slightly parted lips.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0.000–0.133]: Hold the front-facing questioning look with furrowed brows and slightly parted lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.133–0.367]: Raise one hand across the nose and mouth while squeezing the eyes closed; briefly hold the covered face."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.367–0.533]: Lower that hand out of the face and open the eyes wide."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.533–0.633]: Briefly squeeze the eyes closed again and pull the brows together, with the hand kept lowered."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.633–1.000]: Lean closer to the lens, open the eyes wide and the mouth in surprise, holding this closer expression through the ending."
+          }
+        ],
+        "camera": "Preserve the close front-facing perspective as the face moves nearer.",
+        "endingState": "Hold the wide-eyed open-mouth close-up.",
+        "constraints": [
+          "Keep the hand motion continuous and natural."
+        ]
+      },
+      "reviewedFrameCount": 90,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 90 decoded frames inspected in ordered contact sheets; motion transitions checked in targeted native-resolution stills. Reaction-only retained clip ends before the demo. Generated image and video quality not tested."
+    }
+  ]
+}

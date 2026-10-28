@@ -179,6 +179,24 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   }
 });
 
+test("named schedule time edits preserve other draft fields and support canonical edge values", () => {
+  const { WorkflowSchedulingPanel } = load(schedule);
+  const draft = { platform: "instagram", caption: "Keep this caption", date: "2026-10-30", time: "21:30", connectionId: "owned-account", captionInitialized: true };
+  const original = structuredClone(draft), changes = [];
+  const tree = WorkflowSchedulingPanel({ draft, timezone: "Asia/Kolkata", onChange: value => changes.push(value) });
+  assert.equal(changes.length, 0, "Rendering must not submit or modify a draft");
+  const timeField = nodes(tree).find(node => node.type === "time-picker");
+  assert.equal(timeField.props.value, "21:30");
+  for (const time of ["00:00", "09:30", "21:30", "23:59", ""]) {
+    timeField.props.onChange(time);
+    assert.deepEqual({ ...changes.at(-1) }, { ...original, time, publishMode: "scheduled", fiveMinutesFromSubmit: undefined });
+  }
+  assert.deepEqual(draft, original, "Controlled field must not mutate the accepted draft");
+  const restored = WorkflowSchedulingPanel({ draft: changes[2], timezone: "Asia/Kolkata", onChange() {} });
+  assert.equal(nodes(restored).find(node => node.type === "time-picker").props.value, "21:30");
+  assert.match(text(restored), /Asia\/Kolkata/);
+});
+
 test("Schedule footer stays clean without implying publishing is connected", () => {
   const { WorkflowCreationPanel } = load(panel);
   for (const kind of ["hook", "phone"]) {

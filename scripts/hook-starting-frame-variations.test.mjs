@@ -120,5 +120,5 @@ test("legacy single request imports unchanged for read recovery and can coexist 
   assert.deepEqual(accepted.entries[0].checkpoint, completedCheckpoint); assert.equal(accepted.selectedRequestKey, uuid(10));
   const next = batch(2, accepted, 20);
   assert.equal(JSON.parse(next.entries[0].checkpoint.inputKey).version, 1);
-  assert.equal(JSON.parse(next.entries[1].checkpoint.inputKey).version, 2);
+  assert.equal(JSON.parse(next.entries[1].checkpoint.inputKey).version, 4);
 });

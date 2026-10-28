@@ -1,0 +1,7 @@
+# Wall layout batch: 35 and 36
+
+Local only; automatic Wall text remains disabled. Hash-matched videos inspected through 25 and 30 quarter-second samples and native openings. Wall 35 is a pale yellow 13-line block; Wall 36 an outlined six-line block near the top. Source-bound profiles added; neutral comparisons at `outputs/wall-layout-batch-20261028/wall35-comparison.png` and `wall36-comparison.png`. Font, color and positions are approximate; Wall 35 crosses a busy warm-colored background and requires real-footage contrast review. Source psychology claims are not evidence of business claims.
+
+Changed worker/src/lib/wall-initial-text-layout.ts and test, scripts/wall-automatic-text.browser.cjs, this receipt and local artifacts. Forty focused plan/layout/editor/recovery tests PASS; worker build, TypeScript, targeted lint and local browser fixture PASS for editing/save/reopen, blank removal, full 12-second export JSON and mobile bounds. Fixture uses neutral background and mocked persistence; real model text, footage and hosted behavior NOT VERIFIED. No paid calls, video generation or deployment. UGC-UI-046 remains open.
+
+Preflight: provided AGENTS.md, applicable context-memory/immutable-contracts/frame-analysis/video-prompt/opening-frame and regression-gate skills from current/prior work, relevant Wall context, nonnegotiables and preflight tool. Full Explore context and incident ledger not independently reread in full this turn; prior context retained. Existing worktree preserved.

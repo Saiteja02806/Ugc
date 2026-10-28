@@ -13,6 +13,33 @@ const assignments = Array.from({ length: 5 }, (_, slotIndex) => ({
   emotion: "relief", storyFormatId: "wrong_belief" as const,
 }));
 const businessDescription = "Todaywise is an application for planning work when priorities change.";
+
+test("heading-only defects repair only optional headings and preserve every body, CTA and role", async () => {
+  const { buildCarouselStructure2StoryPlanBatch: buildHeadingBatch } = await import(new URL("./carousel-structure-2-planner.js?heading-only-regression", import.meta.url).href) as typeof import("./carousel-structure-2-planner.js");
+  const originalFetch = globalThis.fetch, originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "fixture-no-network";
+  const plans = Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, i) => {
+    const plan = rawPlan(true);
+    plan.slides.first!.storyText = ["why weekly plans collapse by Tuesday", "how i lost context after a change", "what kept restarting my campaign work", "my task list missed the next decision", "i stopped rebuilding my whole week"][i]!;
+    if (i === 0) Object.assign(plan.slides.second!, { headline: "This heading has far too many words and definitely cannot fit in two lines at this size", storyText: "I kept the next task visible when priorities changed." });
+    return [key, plan];
+  }));
+  const requests: Array<Record<string, unknown>> = [];
+  globalThis.fetch = async (_url, init) => {
+    const request = JSON.parse(String(init?.body)); requests.push(request);
+    const content = requests.length === 1 ? JSON.stringify({ plans }) : JSON.stringify({ headlinesBySlide: { slide2: null } });
+    return new Response(JSON.stringify({ choices: [{ message: { content }, finish_reason: "stop" }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const result = await buildHeadingBatch({ assignments, businessDescription });
+    assert.equal(result.length, 5); assert.equal(requests.length, 2);
+    assert.match(JSON.stringify(requests[1]), /heading_repair/);
+    const repaired = result.find(plan => plan.slotIndex === 0)!.plan;
+    assert.equal(repaired.slides[1]!.headline, null);
+    const before = Object.values(plans.first!.slides);
+    assert.deepEqual(repaired.slides.map(slide => [slide.storyText, slide.ctaText, slide.storyRole]), before.map(slide => [slide.storyText, slide.ctaText, slide.storyRole]));
+  } finally { globalThis.fetch = originalFetch; if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey; }
+});
 const copy = [
   "Why weekly plans collapse by Tuesday",
   "On Monday, one changed priority made me rebuild every task, delay the first decision, and lose the context I had already collected.",

@@ -3,6 +3,8 @@ import test from "node:test";
 import { createHookKeyframeDraft, updateHookKeyframeDraft } from "./hook-keyframe-draft.ts";
 import { hookKeyframeMotionCatalog, getHookKeyframeMotionPrompt } from "./hook-keyframe-motion.ts";
 import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
+import publicMiddle from "./hook-middle-frame-public.json" with { type: "json" };
+import { buildSourceMotionDirections, type MiddleFrameMotionEntry } from "./hook-middle-frame-motion.ts";
 
 const id = "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", entry = hookKeyframeMotionCatalog[id];
 const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId: id, sourceSha256: entry.sourceSha256 });
@@ -32,8 +34,8 @@ test("selected Hook supplies an image-only motion preview without importing the 
 test("main/support photos apply only to the image stage; sound applies only to animation", () => {
   const d = updateHookKeyframeDraft(draft, { imageAssetIds: ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"], instructions: "Keep the same clothing." });
   const silent = getHookKeyframePromptPreview(d), soundOn = getHookKeyframePromptPreview(updateHookKeyframeDraft(d, { generateAudio: true }));
-  assert.match(silent.imagePrompt!, /^Generate a new photograph of my influencer/); assert.match(silent.imagePrompt!, /Image 2 is the main face/);
-  assert.match(silent.imagePrompt!, /Image 3/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
+  assert.match(silent.imagePrompt!, /^Create one photorealistic original-opening/); assert.match(silent.imagePrompt!, /Image2 and later images/);
+  assert.match(silent.imagePrompt!, /supporting identity photos/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
   assert.equal(silent.imagePrompt, soundOn.imagePrompt); assert.equal(silent.directions, soundOn.directions);
   assert.match(soundOn.animationPrompt!, /SOUND SETTING: ON/); assert.doesNotMatch(soundOn.animationPrompt!, /SOUND SETTING: OFF/);
   assert.doesNotMatch(soundOn.animationPrompt!, /Image 2|Image 3|Keep the same clothing/);
@@ -62,6 +64,20 @@ test("a changed source hash never auto-fills a prompt from an earlier video", ()
   assert.equal(preview.sourceMatched, false); assert.equal(preview.suggestedDirections, ""); assert.equal(preview.animationPrompt, null);
 });
 
+test("every former public middle-frame case uses its full reviewed timeline at the original opening, while edits stay authoritative", () => {
+  assert.equal(publicMiddle.entries.length, 21);
+  for (const entry of publicMiddle.entries) {
+    const source = createHookKeyframeDraft({ ...draft.scope, referenceId: entry.referenceId, sourceSha256: entry.sourceSha256 });
+    const opening = updateHookKeyframeDraft(source, { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+    const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, entry.sourceDurationSeconds);
+    assert.equal(preview.suggestedDirections, buildSourceMotionDirections(entry as MiddleFrameMotionEntry));
+    assert.match(preview.directions, /PHASE \[0–/); assert.match(preview.directions, /ENDING STATE:/);
+    assert.ok(preview.animationPrompt, `${entry.referenceId}: ${preview.animationError}`);
+    const edited = getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." }));
+    assert.equal(edited.directions, "My own movement.");
+  }
+});
+
 test("Hook 15 auto-fills the requested eight-second variant, including after motion and sound edits", () => {
   const id = "explore-paired-hook-43cc1dae0a6cfcb03e0a9333", source = hookKeyframeMotionCatalog[id];
   const eight = createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 });
@@ -73,4 +89,14 @@ test("Hook 15 auto-fills the requested eight-second variant, including after mot
     assert.equal(preview.canSubmitPaidAnimation, false);
   }
   assert.equal(getHookKeyframePromptPreview(eight).requiresDecision, false);
+});
+
+
+test("Hooks45 80 86 select reviewed six-second source-speed prompts rather than old defaults", () => {
+ for(const id of ["explore-paired-hook-322af5b0d5778b474cfcfdf4","explore-paired-hook-2e28e18f894e3ba7de367ced","explore-paired-hook-717396089efc644caf411c79"]){
+  const entry=hookKeyframeMotionCatalog[id];const d=updateHookKeyframeDraft(createHookKeyframeDraft({...draft.scope,referenceId:id,sourceSha256:entry.sourceSha256}),{sourceFrame:{index:0,timeSeconds:0,width:720,height:1280,sha256:"b".repeat(64)}});
+  const p=getHookKeyframePromptPreview(d,"hook",undefined,undefined,undefined,entry.sourceDurationSeconds);
+  assert.equal(p.durationSeconds,6);assert.equal(p.requiresDecision,false);assert.equal(p.animationError,null);assert.match(p.animationPrompt!,/6-second video/);assert.match(p.animationPrompt!,/FINAL HOLD/);
+  if(id.endsWith("caf411c79"))assert.match(p.directions,/eyelids lowering|lower the eyelids/);
+ }
 });

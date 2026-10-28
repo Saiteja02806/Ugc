@@ -33,6 +33,7 @@ import {
 import type { CharacterGenerationAccess, CharacterJobStatusResponse } from "./types";
 import { CharacterImageModelSchema } from "./schema";
 import { characterAccessFromCredits, characterRequestCount } from "./access-policy";
+import { characterPromptPresentation } from "./prompt-skills";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
@@ -161,6 +162,7 @@ export function createCharacterGenerationHandlers(dependencies: CharacterApiDepe
             id: job.id,
             model: CharacterImageModelSchema.parse(input?.model),
             prompt: input?.promptSource === "user" && typeof input.prompt === "string" ? input.prompt : null,
+            ...(input?.promptSource === "user" ? characterPromptPresentation(input) : {}),
             batchId: typeof input?.batchId === "string" ? input.batchId : null,
             status: job.status,
             isTerminal: TERMINAL_STATUSES.has(job.status),

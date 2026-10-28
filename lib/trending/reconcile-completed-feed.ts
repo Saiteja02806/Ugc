@@ -69,8 +69,10 @@ export async function reconcileCompletedTrendingFeedForUser(
   if (dependencies.sweepSlideshowAutomation) {
     try {
       await dependencies.sweepSlideshowAutomation(userId);
-    } catch {
+    } catch (automationError) {
       // Isolate slideshow automation sweep so worker Trending reconciliation never fails.
+      console.error("Slideshow automation reconciliation failed", { userId,
+        message: automationError instanceof Error ? automationError.message.slice(0, 200) : "Unknown preparation failure" });
     }
   }
 

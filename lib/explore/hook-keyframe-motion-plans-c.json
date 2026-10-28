@@ -9,15 +9,23 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the subdued, stunned side glance, keeping the palm against the temple and the lips relaxed behind the high collar."
+            "action": "PHASE [0–0.49462354838709677]: Keep palm flat at temple, subdued sideward screen-right stare and relaxed lips behind high collar."
           },
           {
             "phase": "middle",
-            "action": "Close the eyes slowly, then reopen them toward the lens without moving the hand."
+            "action": "PHASE [0.49462354838709677–0.5913977419354839]: Close eyes slowly, hand never leaving temple."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5913977419354839–0.7634409677419355]: Reopen eyes toward lens and hold."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7634409677419355–0.8387096774193549]: Roll gaze upward and let eyelids narrow."
           },
           {
             "phase": "ending",
-            "action": "Roll the gaze upward and let the eyelids narrow again, maintaining a restrained exasperated expression."
+            "action": "PHASE [0.8387096774193549–1]: Finish with eyes mostly closed in restrained exasperation, palm still fixed at temple."
           }
         ],
         "camera": "Keep the medium-close selfie composition steady, allowing only small natural handheld drift.",
@@ -62,15 +70,23 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Bring both hands inward and upward, keeping the fingers relaxed as they approach the lips."
+            "action": "PHASE [0–0.25217402192817584]: Hold the small closed-lip smile with relaxed hands beside cheek and shoulder."
           },
           {
             "phase": "middle",
-            "action": "Overlap the fingers across the mouth, smile behind the hands, blink and glance upward toward screen-left."
+            "action": "PHASE [0.25217402192817584–0.4869566510397088]: Bring both hands inward/upward to overlap fingers across mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4869566510397088–0.7391304120982967]: Hold covered smile with blinks."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7391304120982967–0.8521740741020933]: Glance upward screen-left, then return eyes toward lens."
           },
           {
             "phase": "ending",
-            "action": "Return the gaze toward the lens and lower the hands just beneath the mouth, revealing an open delighted smile."
+            "action": "PHASE [0.8521740741020933–1]: Lower both hands just below lips to reveal an open delighted smile."
           }
         ],
         "camera": "Maintain a stable seated car-selfie view.",
@@ -115,15 +131,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Maintain the small pleased smile and slowly close the eyes."
+            "action": "PHASE [0–0.233567]: Keep knowing closed-lip smile while looking up screen-left."
           },
           {
             "phase": "middle",
-            "action": "Reopen the eyes toward the lens, then narrow them briefly while keeping the lips together."
+            "action": "PHASE [0.233567–0.3114226666666667]: Slowly close eyes."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3114226666666667–0.4893783333333333]: Reopen toward lens and hold pleased closed-lip smile."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4893783333333333–0.5561116666666667]: Narrow eyes briefly again."
           },
           {
             "phase": "ending",
-            "action": "Shift the eyes upward toward screen-right, turn the head slightly that way and broaden into a tooth-showing smile."
+            "action": "PHASE [0.5561116666666667–0.7119896666666666]: Look up screen-right, turn head slightly that way and broaden into tooth-showing smile."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.7119896666666666–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Allow gentle handheld drift while keeping the close portrait composition.",
@@ -168,15 +196,23 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Keep the mouth closed and lift one corner into a faint knowing smirk."
+            "action": "PHASE [0–0.3606557901101811]: Hold closed-mouth neutral-to-knowing smirk toward lens."
           },
           {
             "phase": "middle",
-            "action": "Blink naturally, shift the eyes upward toward screen-right and make only small head adjustments."
+            "action": "PHASE [0.3606557901101811–0.42622939129267284]: Blink briefly without opening mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.42622939129267284–0.6639343718086581]: Maintain restrained smirk as camera gradually drifts upward and closer."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6639343718086581–0.7704916581564215]: Shift eyes up screen-right with minimal head adjustment."
           },
           {
             "phase": "ending",
-            "action": "Return the gaze toward the lens, holding the same restrained closed-mouth smirk."
+            "action": "PHASE [0.7704916581564215–1]: Return gaze toward lens and retain closed-mouth smirk through ending."
           }
         ],
         "camera": "Let the handheld viewpoint gradually drift upward and closer.",
@@ -271,24 +307,36 @@
       "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
       "plan": {
         "openingState": "The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.",
+        "camera": "Seated portrait with slight tilt; camera tilts upward in the final phase, ending with wall/ceiling dominant and face low/left.",
         "beats": [
           {
             "phase": "opening",
-            "action": "Blink and turn the head slightly toward screen-left, pursing the lips while keeping the bottle upright against the chest."
+            "action": "PHASE [0–0.15706806282722513]: Keep the purple handled bottle upright against the chest at screen-left, with the holding fingers near the lower lip. Preserve the initial open-mouth tongue/finger movement without lifting the bottle to drink."
           },
           {
             "phase": "middle",
-            "action": "Turn back toward the lens and soften into a small smile, leaving the same hand near the lower lip."
+            "action": "PHASE [0.15706806282722513–0.25130890052356025]: Blink or briefly close the eyes and turn the head slightly screen-left, drawing the tongue back and pursing the lips. Keep the same bottle grip."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.25130890052356025–0.38219890052356026]: Turn toward the lens and settle briefly into a small closed-lip smile; hand and upright bottle stay near the chin and chest."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.38219890052356026–0.7591622513089005]: Repeat the visible small tongue/finger/lip movements with brief pauses, keeping the bottle upright. Preserve this repeated period rather than replacing it with a sip or a single new gesture."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7591622513089005–0.8795811518324608]: Turn the head slightly screen-left, purse the lips briefly, then resume the open-mouth finger/lip action while maintaining the bottle grip."
           },
           {
             "phase": "ending",
-            "action": "Open the mouth again and make a small sideways head turn as the camera tilts upward."
+            "action": "PHASE [0.8795811518324608–1]: Continue the mouth/hand action while the camera tilts upward toward the wall and ceiling. Let the performer move into the lower-left of the picture, with part of the head cut by the bottom edge in the final view. Do not recenter the person or add a bottle-to-mouth sip."
           }
         ],
-        "camera": "Use a slightly tilted handheld seated portrait view with an upward drift near the ending.",
-        "endingState": "The head is turned slightly sideways with the bottle upright and the holding hand beside the lower lip.",
+        "endingState": "Person low/left with head partly outside bottom edge, bottle still held upright and mouth/hand action ongoing; wall and ceiling dominate.",
         "constraints": [
-          "Keep bottle and hand contact continuous. Do not raise the bottle to drink or invent a drinking action."
+          "Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts."
         ]
       },
       "review": {
@@ -506,15 +554,39 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Close the eyes, glance sideways, then lift the palm a little and settle the fingertips across the brow while looking down."
+            "action": "PHASE [0–0.04586343803384935]: Hold palm across forehead, lips slightly open and gaze toward lens."
           },
           {
             "phase": "middle",
-            "action": "Raise the eyes toward the lens and close them briefly again while the fingertips remain against the brow."
+            "action": "PHASE [0.04586343803384935–0.10089945360243745]: Close eyes, then glance sideways."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.10089945360243745–0.1926260544900583]: Lift palm slightly and settle fingertips over brow while lowering gaze."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.1926260544900583–0.4402881245487047]: Keep fingertips across brow and look down through the pause."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4402881245487047–0.5595327332206196]: Raise eyes toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5595327332206196–0.6329141790387629]: Close eyes briefly then slide same hand down the face."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6329141790387629–0.7429862101759392]: Cover mouth with the watch-wearing hand."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7429862101759392–0.862230818847854]: Hold the stunned mouth cover with a small blink."
           },
           {
             "phase": "ending",
-            "action": "Slide that same hand down across the mouth, hold the stunned expression and make a late sideways glance."
+            "action": "PHASE [0.862230818847854–1]: Glance sideways near the ending without uncovering mouth."
           }
         ],
         "camera": "Maintain the reclining couch-selfie composition with subtle natural drift.",
@@ -559,15 +631,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Raise the watch-wearing hand from screen-right across the mouth, laying the fingers over the lips and keeping the elbow bent."
+            "action": "PHASE [0–0.04385973684210527]: Finish raising watch-wearing hand from screen-right to cover mouth."
           },
           {
             "phase": "middle",
-            "action": "Hold the mouth covered, blink and glance briefly toward screen-right."
+            "action": "PHASE [0.04385973684210527–0.2368421052631579]: Hold mouth cover with wide eyes toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.2368421052631579–0.28070184210526317]: Blink once with hand still in place."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.28070184210526317–0.5789473684210527]: Hold the cover and small head adjustments."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5789473684210527–0.631578947368421]: Glance briefly screen-right."
           },
           {
             "phase": "ending",
-            "action": "Return the wide-eyed gaze toward the lens with small head adjustments while keeping the same hand over the mouth."
+            "action": "PHASE [0.631578947368421–1]: Return wide-eyed gaze toward lens and sustain cover through ending."
           }
         ],
         "camera": "Keep the medium-close desk composition steady.",
@@ -612,19 +696,31 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Close the eyes briefly and begin turning the head toward the window on screen-left."
+            "action": "PHASE [0–0.13333333333333333]: Keep raised brows, wide eyes and pursed lips toward lens beside airplane window."
           },
           {
             "phase": "middle",
-            "action": "Hold a profile view while looking outside, keeping the posture relaxed."
+            "action": "PHASE [0.13333333333333333–0.3]: Close eyes briefly and turn head toward window screen-left."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3–0.7666666666666666]: Hold relaxed profile looking outside through the long pause."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7666666666666666–0.9]: Turn back toward lens."
           },
           {
             "phase": "ending",
-            "action": "Turn back toward the lens and settle into a small closed-lip knowing smile with slightly raised brows."
+            "action": "PHASE [0.9–0.9889973333333333]: Settle facing the lens with raised brows and a small pursed, downturned-lip expression."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9889973333333333–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Maintain the tilted close handheld airplane-seat composition.",
-        "endingState": "The performer faces the lens again with a small knowing smile.",
+        "endingState": "Facing lens with raised brows, wide eyes and pursed downturned lips.",
         "constraints": [
           "Keep both hands outside the frame. Keep the head turn natural and continuous through the profile."
         ]
@@ -665,15 +761,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Raise that same hand across the mouth and keep the fingers together over the lips."
+            "action": "PHASE [0–0.10310305449290567]: Raise same hand from lower lip to cover mouth, eyes wide."
           },
           {
             "phase": "middle",
-            "action": "Shift the eyes toward screen-right and hold an amused, disbelieving smile behind the fingers."
+            "action": "PHASE [0.10310305449290567–0.2886887381658196]: Hold covered smile toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.2886887381658196–0.5361363163963715]: Shift eyes screen-right with amused disbelief."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5361363163963715–0.5979982109540094]: Blink and start returning gaze toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5979982109540094–0.8042046292492936]: Keep mouth covered and gaze forward as handheld camera edges nearer."
           },
           {
             "phase": "ending",
-            "action": "Blink and return the eyes toward the lens while maintaining the covered-mouth smile."
+            "action": "PHASE [0.8042046292492936–1]: Continue nearer into tight face crop without releasing hand contact."
           }
         ],
         "camera": "Move the close handheld camera gradually nearer to the face.",
@@ -718,15 +826,19 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the phone upright and maintain the stunned wide-eyed look toward its screen."
+            "action": "PHASE [0–0.36666666666666664]: Keep pink phone upright at chest, rounded open mouth and very wide eyes aimed at screen."
           },
           {
             "phase": "middle",
-            "action": "Gradually tip the head back and roll the eyes upward while the upper hand remains against the brow."
+            "action": "PHASE [0.36666666666666664–0.5333333333333333]: Gradually tip head back and roll gaze upward, upper hand maintaining brow contact."
           },
           {
             "phase": "ending",
-            "action": "Slide the upper hand's fingers toward the bridge of the nose while keeping the mouth rounded open."
+            "action": "PHASE [0.5333333333333333–0.711328]: Slide upper fingers toward bridge of nose, holding rounded open mouth and phone position."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.711328–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Keep the low-angle desk composition fixed.",
@@ -767,19 +879,23 @@
       "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
       "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
       "plan": {
-        "openingState": "The performer is already covering the mouth with the hand from screen-right, with extremely wide eyes looking off screen-left.",
+        "openingState": "The performer is already covering the mouth with the hand from screen-right, with extremely wide eyes looking off screen-right.",
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the hand firmly across the lips and lower nose, keeping the eyebrows raised."
+            "action": "PHASE [0–0.5]: Hold mouth and lower nose already covered by screen-right hand, eyes very wide in a screen-right stare as camera gradually approaches."
           },
           {
             "phase": "middle",
-            "action": "Maintain the sideways stare while the camera moves gradually closer."
+            "action": "PHASE [0.5–0.5666666666666667]: Keep hand firm over mouth as framing tightens."
           },
           {
             "phase": "ending",
-            "action": "Shift the eyes toward the lens while continuing to hold the covered-mouth expression."
+            "action": "PHASE [0.5666666666666667–0.6555556666666666]: Shift eyes toward lens and hold covered-mouth reaction through ending."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.6555556666666666–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Use a gradual handheld push toward the face, ending in a tight close-up.",
@@ -824,15 +940,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Lift the ring-wearing hand from screen-right to the side of the nose and cheek, narrowing the eyes as the palm settles against the cheek."
+            "action": "PHASE [0–0.111111]: Lift ring-wearing hand from screen-right beside nose and cheek, eyes narrowing into smile."
           },
           {
             "phase": "middle",
-            "action": "Turn the gaze toward screen-right and hold a knowing, amused smile, keeping the hand lightly against the cheek and lips."
+            "action": "PHASE [0.111111–0.24444433333333335]: Settle palm lightly against cheek and lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.24444433333333335–0.7777776666666667]: Look screen-right and hold knowing amused smile with hand contact."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7777776666666667–0.8777776666666668]: Close eyes briefly."
           },
           {
             "phase": "ending",
-            "action": "Close the eyes briefly and return the gaze toward the lens while maintaining the small smile."
+            "action": "PHASE [0.8777776666666668–0.9776693333333334]: Return gaze toward lens and finish with same small smile."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9776693333333334–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Maintain the close handheld perspective with only gentle natural movement.",
@@ -873,23 +1001,43 @@
       "referenceId": "explore-paired-hook-2e28e18f894e3ba7de367ced",
       "sourceSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
       "plan": {
-        "openingState": "The performer looks upward off screen-left in close-up, mouth slightly open and a curled hand supporting the lower cheek on screen-left.",
+        "openingState": "Close handheld portrait in the warm café, textured pale wall and round wall light behind. Lips parted in astonishment, gaze above and toward screen-left, curled screen-left hand supporting the cheek/lower face.",
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the focused surprised stare with a small blink, then bring the same hand across the mouth."
+            "action": "PHASE [0.000000000000–0.355050090467]: Hold this upward sideward stare with parted lips and the hand supporting the cheek. Allow only small natural camera drift and facial adjustments; do not rush to a mouth cover."
           },
           {
             "phase": "middle",
-            "action": "After a brief covered-mouth pause, move the hand upward to the temple and forehead as the mouth opens wider."
+            "action": "PHASE [0.355050090467–0.402449277544]: Briefly close and reopen the eyes while keeping the hand and head in place."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.402449277544–0.491211800161]: Lift that same hand across the lips. Keep the surprised gaze aimed above screen-left."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.491211800161–0.621337658317]: Hold the brief mouth cover and upward stare; begin sliding the fingers upward along the cheek toward the brow near the end of this interval."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.621337658317–0.852120217120]: Settle fingertips against the screen-left temple/brow, mouth open, gaze still up and screen-left. Keep the same close camera angle and wall light."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.852120217120–0.905377730690]: Bring the gaze nearer the lens, then make the brief late eye closure and reopening while fingertips stay near the temple."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.905377730690–0.988281926814]: Open into a small astonished smile, eyes open again, and begin relaxing the fingers away from the temple. End before the hand has made a new gesture."
           },
           {
             "phase": "ending",
-            "action": "Keep the fingertips beside the temple, turn the gaze toward the lens and form a small delighted open-mouth smile while beginning to release the hand."
+            "action": "PHASE [0.988281926814–1.000000000000]: Hold the final open-mouth smile and near-temple hand position with only small natural handheld drift."
           }
         ],
-        "camera": "Keep the close composition steady with a small natural handheld adjustment.",
-        "endingState": "The performer smiles toward the lens with the fingertips beside the temple, starting to release.",
+        "camera": "Close café portrait with small natural handheld drift; no cut or large reframing.",
+        "endingState": "Small open-mouth smile, eyes reopened and fingers beginning to relax beside the temple.",
         "constraints": [
           "Keep one continuous cheek-to-mouth-to-temple hand path. Do not add a second hand."
         ]
@@ -898,7 +1046,7 @@
         "status": "static_reviewed",
         "startingFrameIndex": 0,
         "supportedDurationsSeconds": [
-          4
+          6
         ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
@@ -1071,11 +1219,12 @@
           166
         ],
         "frameCount": 167,
-        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. Also inspected every existing all-decoded-frame sheet page with matching source hash to verify hand/prop transitions. The four-second variant is a motion adaptation with proportionate holds, not a claim of unchanged timing or tested generated facial fidelity.",
+        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. Also inspected every existing all-decoded-frame sheet page with matching source hash to verify hand/prop transitions. The four-second variant is a motion adaptation with proportionate holds, not a claim of unchanged timing or tested generated facial fidelity. Re-reviewed 28 October on all decoded thumbnails and targeted original ending frames. Source-speed six-second preparation with final hold; no three-second pacing acceptance or generated-output qualification.",
         "issues": [],
         "sourceFileSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
         "visualQualification": "not_tested"
-      }
+      },
+      "previewDurationSeconds": 6
     },
     {
       "referenceId": "explore-paired-hook-5be30f0749eec90b5a70bd18",
@@ -1085,15 +1234,31 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the delighted expression, glance sideways and return the eyes toward the lens."
+            "action": "PHASE [0–0.37505719622242395]: Keep headphone-wearing seated pose, fingers at mouth/chin and delighted upward sideward look."
           },
           {
             "phase": "middle",
-            "action": "Lower the hand to reveal a broad open smile, then bring it back across the mouth as the camera moves closer."
+            "action": "PHASE [0.37505719622242395–0.49226257004193147]: Return eyes toward lens and begin lowering hand."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.49226257004193147–0.6172815573124903]: Expose broad smile with hand down; glance upward again."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6172815573124903–0.6641637068402932]: Raise same hand back across mouth as camera moves closer and lower."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6641637068402932–0.8516923049515053]: Hold covered smile in the tighter lower-angle view, briefly closing eyes."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8516923049515053–0.9063880679303594]: Lower hand again."
           },
           {
             "phase": "ending",
-            "action": "Hold the covered smile briefly, lower the hand again and finish facing the lens with a broad pleased smile."
+            "action": "PHASE [0.9063880679303594–1]: Finish facing lens with broad pleased smile and headphones on."
           }
         ],
         "camera": "Maintain the seated selfie angle, drifting closer and lower near the ending.",
@@ -1252,15 +1417,31 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the surprised stare with a small blink, then lift the fingertips away from the brow while keeping that hand beside the temple."
+            "action": "PHASE [0–0.43333325]: Hold sideward surprised stare, fingertips across forehead."
           },
           {
             "phase": "middle",
-            "action": "Turn the eyes toward the lens, leaving the mouth open as the camera drifts closer and lower."
+            "action": "PHASE [0.43333325–0.475]: Blink briefly, retaining brow contact."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.475–0.675]: Lift fingertips slightly away and leave hand beside temple."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.675–0.7833332500000001]: Turn eyes toward lens as viewpoint drifts closer and lower."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7833332500000001–0.8500000000000001]: Bring same hand down across mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8500000000000001–0.9083332500000001]: Briefly close eyes while mouth remains covered."
           },
           {
             "phase": "ending",
-            "action": "Bring the same hand down across the mouth, briefly close and reopen the eyes, then hold the covered-mouth stare."
+            "action": "PHASE [0.9083332500000001–1]: Reopen eyes and sustain covered-mouth stare toward lens."
           }
         ],
         "camera": "Move the handheld viewpoint gradually closer and lower, keeping the performer centered.",
@@ -1411,15 +1592,23 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold a quiet puzzled upward stare, keeping the partly visible mouth relaxed and slightly parted."
+            "action": "PHASE [0–0.22391321482054702]: Maintain the extreme low-angle view, partial face at the bottom and ceiling above, eyes looking upward with relaxed slightly parted lips."
           },
           {
             "phase": "middle",
-            "action": "Tighten the brows subtly and make a small sideways eye movement with a natural blink."
+            "action": "PHASE [0.22391321482054702–0.2612319346818283]: Briefly close the eyes, keeping the head and bottom-edge crop almost fixed."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.2612319346818283–0.47021775112314873]: Reopen the eyes and hold the upward gaze with subtle brow movement; no hand gesture or large head turn."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.47021775112314873–0.5000727717948167]: Briefly close the eyes a second time, retaining the same low camera angle."
           },
           {
             "phase": "ending",
-            "action": "Return to the upward gaze and hold the restrained puzzled expression."
+            "action": "PHASE [0.5000727717948167–1]: Reopen the eyes and maintain the quiet upward puzzled stare to the last frame; keep the face at the bottom rather than recentering it."
           }
         ],
         "camera": "Maintain the extreme low angle and tight bottom-edge facial crop with only slight handheld movement.",
@@ -1735,23 +1924,39 @@
       "referenceId": "explore-paired-hook-717396089efc644caf411c79",
       "sourceSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
       "plan": {
-        "openingState": "The performer faces a close selfie camera with fingertips resting at the temple on screen-left and a small closed-lip smile.",
+        "openingState": "Close portrait against a pale wall, screen-left fingertips continuously touching the temple, relaxed small closed-lip smile. Keep the camera nearly fixed, with slight natural drift.",
         "beats": [
           {
             "phase": "opening",
-            "action": "Lower the eyelids briefly, keeping the fingertips at the temple."
+            "action": "PHASE [0.000000000000–0.045383857838]: Hold the small knowing smile toward the lens, fingertips still at the temple."
           },
           {
             "phase": "middle",
-            "action": "Turn the eyes upward toward screen-right and hold a quietly amused, knowing look."
+            "action": "PHASE [0.045383857838–0.097390252872]: Gently lower and reopen the eyelids; preserve the smile and hand contact."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.097390252872–0.357032667028]: Shift the eyes upward toward screen-right and sustain the quietly amused smile. Head makes only a slight matching turn; do not lift the hand."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.357032667028–0.454422919900]: Close the eyes gently, then reopen them nearer the lens, keeping the same small smile."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.454422919900–0.915468376995]: Hold the relaxed lens-directed smile with subtle eye/head adjustments. Preserve the long quiet pause and continuous temple contact; no mouth cover or open-mouth reaction."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.915468376995–0.980525065914]: Make the small late sideward eye movement, then lower the eyelids toward the final nearly closed-eye smile. Do not finish with a new wide-eyed upward stare."
           },
           {
             "phase": "ending",
-            "action": "Return the gaze toward the lens, blink gently, then finish with another small sideways upward glance."
+            "action": "PHASE [0.980525065914–1.000000000000]: Sustain the final soft smile, lowered eyelids and temple contact. No new gesture, prop or scene transition."
           }
         ],
-        "camera": "Keep the close portrait composition steady.",
-        "endingState": "The hand remains at the temple with a small closed-lip smile and subtle upward side glance.",
+        "camera": "Nearly fixed close portrait with slight natural drift; no cut or large turn.",
+        "endingState": "Soft closed-lip smile, eyelids lowering toward nearly closed, fingertips still against the temple.",
         "constraints": [
           "Keep the reaction restrained. Do not turn the smile into an exaggerated shock or move the hand away."
         ]
@@ -1760,7 +1965,7 @@
         "status": "static_reviewed",
         "startingFrameIndex": 0,
         "supportedDurationsSeconds": [
-          4
+          6
         ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
@@ -1778,11 +1983,12 @@
           119
         ],
         "frameCount": 120,
-        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. The four-second variant is a motion adaptation with proportionate holds, not a claim of unchanged timing or tested generated facial fidelity.",
+        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. The four-second variant is a motion adaptation with proportionate holds, not a claim of unchanged timing or tested generated facial fidelity. Re-reviewed 28 October on all decoded thumbnails and targeted original ending frames. Source-speed six-second preparation with final hold; no three-second pacing acceptance or generated-output qualification.",
         "issues": [],
         "sourceFileSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
         "visualQualification": "not_tested"
-      }
+      },
+      "previewDurationSeconds": 6
     },
     {
       "referenceId": "explore-paired-hook-164ad3e6923d5d0d576114a5",
@@ -1792,15 +1998,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Broaden the smile and raise the hand from screen-left toward the mouth."
+            "action": "PHASE [0–0.23333333333333336]: Broaden open delighted smile in low selfie angle."
           },
           {
             "phase": "middle",
-            "action": "Lay the hand across the lips and chin as the cheeks lift and the eyes narrow with amusement."
+            "action": "PHASE [0.23333333333333336–0.3]: Raise screen-left hand toward mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3–0.5444443333333333]: Lay palm across lips and chin, cheeks lifted and eyes narrowing."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5444443333333333–0.7555553333333335]: Hold covered smile with slight head tilt as camera bobs downward."
           },
           {
             "phase": "ending",
-            "action": "Tilt the head slightly and hold the covered-mouth pleased expression through the ending."
+            "action": "PHASE [0.7555553333333335–0.9553386666666667]: Keep palm contact and pleased eyes as view bobs upward through ending."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9553386666666667–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Let the handheld viewpoint bob downward and back upward in one continuous shot.",
@@ -1845,15 +2063,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Lean a little closer and raise the bracelet-wearing hand from screen-left across the mouth."
+            "action": "PHASE [0–0.24444433333333335]: Lean a little closer with small incredulous closed-mouth smile."
           },
           {
             "phase": "middle",
-            "action": "Keep the palm over the lips, lift the cheeks and close the eyes briefly with amusement."
+            "action": "PHASE [0.24444433333333335–0.3333333333333333]: Raise bracelet-wearing hand from screen-left across lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3333333333333333–0.6222223333333333]: Hold palm contact, cheeks lifting and eyes closing briefly with amusement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6222223333333333–0.7000000000000001]: Reopen eyes wider while maintaining mouth cover."
           },
           {
             "phase": "ending",
-            "action": "Reopen the eyes wider and hold the covered smile as the camera moves closer and dips slightly."
+            "action": "PHASE [0.7000000000000001–0.911111]: Move camera closer with slight downward dip, ending in tight low-angle covered smile."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.911111–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Use a continuous low-angle handheld push toward the face with a small downward dip.",
@@ -1951,19 +2181,51 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Blink, open the eyes much wider and hold the surprised gaze toward the lens."
+            "action": "PHASE [0–0.0507245652173913]: Hold temple contact, brows drawn and mouth open."
           },
           {
             "phase": "middle",
-            "action": "Blink again, lower the hand out of view and furrow the brows more deeply while moving the face closer."
+            "action": "PHASE [0.0507245652173913–0.09420282608695653]: Blink once."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.09420282608695653–0.1739130434782609]: Reopen and widen eyes dramatically while jaw stays open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.1739130434782609–0.39855065217391306]: Maintain the wide-eyed surprised lens-directed gaze."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.39855065217391306–0.5289854347826087]: Blink again, then lower hand out of view."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5289854347826087–0.6449273913043478]: Knit brows more deeply while moving face closer."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6449273913043478–0.7101447826086957]: Hold open-mouth questioning look with hand lowered."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7101447826086957–0.7681158695652175]: Glance screen-right and round the lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7681158695652175–0.8260869565217392]: Briefly purse lips while returning eyes toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8260869565217392–0.8768115217391305]: Part lips again and move into tighter off-center crop."
           },
           {
             "phase": "ending",
-            "action": "Glance toward screen-right, briefly round and purse the lips, then return a questioning gaze to the lens."
+            "action": "PHASE [0.8768115217391305–1]: Finish with lips parted, face partly cropped at screen-left and hand still out of view."
           }
         ],
         "camera": "Drift into a tighter, slightly off-center handheld close-up.",
-        "endingState": "The hand is out of view and the performer holds a questioning, pursed-lip look in a tight off-center close-up.",
+        "endingState": "Hand out of view; tight off-center face partly cropped at screen-left, brows drawn and lips parted after the brief purse.",
         "constraints": [
           "Keep the hand lowered after it leaves the temple; do not add another gesture."
         ]
@@ -2004,15 +2266,35 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Raise the sleeve-covered hand from screen-left across the mouth while maintaining the wide-eyed stare."
+            "action": "PHASE [0–0.09090909090909091]: Raise the sleeve-covered hand from screen-left over the open mouth, keeping the eyes very wide toward the lens."
           },
           {
             "phase": "middle",
-            "action": "Make a brief side glance, return the eyes to the lens and blink, keeping the hand over the lower face."
+            "action": "PHASE [0.09090909090909091–0.28282818181818187]: Hold the mouth covered with the same hand, eyes remaining wide."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.28282818181818187–0.3333333333333333]: Glance briefly screen-left, then bring the eyes back toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3333333333333333–0.6464645454545456]: Maintain the covered-mouth stare through the long pause, with only small eye movement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6464645454545456–0.6969696969696971]: Briefly close the eyes during a small handheld jolt, keeping the hand in contact."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6969696969696971–0.7575757575757576]: Reopen the eyes as the viewpoint pulls back and shifts, momentarily revealing more wall and moving the face lower in the picture."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7575757575757576–0.8282827272727273]: Rapidly move the camera nearer again with natural handheld wobble and blur; keep the same hand covering the mouth."
           },
           {
             "phase": "ending",
-            "action": "Hold the covered-mouth expression as the camera jolts backward and then rapidly moves much closer."
+            "action": "PHASE [0.8282827272727273–1]: Finish in an extreme close-up of wide eyes, nose and the covering fingers, with the lower face partly beyond the frame."
           }
         ],
         "camera": "Use a handheld pullback followed by a quick push into an extreme close-up, without a cut.",
@@ -2057,15 +2339,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Snap the eyes toward the lens and open them very wide beneath raised brows."
+            "action": "PHASE [0–0.03738990514905149]: Keep the eyes looking up toward screen-left, lips slightly parted and head subtly tilted."
           },
           {
             "phase": "middle",
-            "action": "Glance off screen-left briefly, return to the lens and press the lips together into a small wry smile while the eyes remain wide."
+            "action": "PHASE [0.03738990514905149–0.40194239173352]: Snap the eyes toward the lens and hold them very wide under raised brows."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.40194239173352–0.46737479585060754]: Glance briefly off screen-left and return toward the lens while keeping the eyes wide."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.46737479585060754–0.5234597937866796]: Press the lips together into a small wry smile without changing the close framing."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5234597937866796–0.8693174680091172]: Hold the restrained closed-mouth smile and wide-eyed near-lens gaze."
           },
           {
             "phase": "ending",
-            "action": "Lift the gaze upward again and hold the restrained closed-mouth smile."
+            "action": "PHASE [0.8693174680091172–1]: Lift the eyes upward again, keeping the small closed-mouth smile through the ending."
           }
         ],
         "camera": "Keep the close composition steady with only small head adjustments.",
@@ -2392,15 +2686,19 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the open-mouth expression with raised, slightly knitted brows."
+            "action": "PHASE [0–0.24761885714285717]: Hold the hand beside the cheek and mouth with fingers together and palm inward, mouth rounded open and gaze upward screen-left."
           },
           {
             "phase": "middle",
-            "action": "Make a small sideways eye movement while keeping the same hand beside the cheek."
+            "action": "PHASE [0.24761885714285717–0.5714285714285714]: Sustain the surprised pose with small eye and brow movements; do not bring the hand across the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5714285714285714–0.7714285714285715]: Lift the gaze a little farther upward while maintaining the same raised-hand distance and rounded lips."
           },
           {
             "phase": "ending",
-            "action": "Blink naturally and return to the upward off-camera stare, leaving the mouth rounded open."
+            "action": "PHASE [0.7714285714285715–1]: Briefly blink and reopen into the upward off-camera stare, hand still beside the cheek through the final frame."
           }
         ],
         "camera": "Keep the slightly low desk-camera composition steady.",
@@ -2572,15 +2870,39 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Blink slowly, reopen the eyes wide and glance briefly toward screen-left before returning to the lens."
+            "action": "PHASE [0–0.09999999999999999]: Hold the very wide eyes, knitted brows and parted lips toward the lens with the head tilted."
           },
           {
             "phase": "middle",
-            "action": "Close the eyes again as the camera makes a small handheld jolt, then press the lips into a skeptical pout."
+            "action": "PHASE [0.09999999999999999–0.1416665]: Briefly close the eyes, keeping the face and mouth nearly fixed."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.1416665–0.24166650000000003]: Reopen the eyes wide toward the lens, retaining the questioning expression."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.24166650000000003–0.27499999999999997]: Close and reopen the eyes once more before returning to the wide-eyed stare."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.27499999999999997–0.44999999999999996]: Hold the startled skeptical look, then glance briefly screen-left without introducing a hand."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.44999999999999996–0.625]: Return the gaze toward the lens and hold the raised, knitted brow expression."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.625–0.6666665]: Briefly close the eyes as the handheld camera makes a short jolt."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6666665–0.7583332500000001]: Reopen the eyes wide and press the lips into a skeptical pout as the camera starts moving into a lower viewpoint."
           },
           {
             "phase": "ending",
-            "action": "Hold the furrowed-brow, wide-eyed stare and pursed lips as the camera moves lower and much closer."
+            "action": "PHASE [0.7583332500000001–1]: Continue the handheld approach into a very tight low-angle off-center crop, eyes wide and lips pursed through the ending."
           }
         ],
         "camera": "Use a continuous handheld movement into a lower, tighter off-center close-up.",
@@ -2625,15 +2947,35 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Open the eyes much wider, blink and hold an incredulous forward stare while keeping the phone upright."
+            "action": "PHASE [0–0.11010160175810238]: Hold the magenta-cased phone upright at screen-right, lips parted and brows questioning while looking forward."
           },
           {
             "phase": "middle",
-            "action": "Roll the eyes upward toward screen-left, then return the gaze forward and press the lips into a skeptical closed-mouth expression."
+            "action": "PHASE [0.11010160175810238–0.22937824524471184]: Widen the eyes into an incredulous stare and hold the phone steady."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.22937824524471184–0.27525400439525594]: Briefly close and reopen the eyes without lowering the phone."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.27525400439525594–0.4495814487609166]: Hold the wide-eyed forward stare with slightly parted lips and knitted brows."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4495814487609166–0.6147338513980701]: Blink, roll the gaze upward toward screen-left and bring it forward again, phone still upright."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6147338513980701–0.6881350109881399]: Press the lips closed into a small skeptical pout while keeping the questioning eyes."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6881350109881399–0.7982366127462424]: Lower the phone below the picture while maintaining the closed-mouth expression."
           },
           {
             "phase": "ending",
-            "action": "Lower the phone out of view and maintain the small pursed-lip questioning look while the camera moves closer and slightly sideways."
+            "action": "PHASE [0.7982366127462424–1]: Move the camera closer and sideways until the face is off-center toward screen-left, partly cropped by the left edge; finish with the pursed questioning look."
           }
         ],
         "camera": "Move continuously into a tighter off-center handheld close-up.",
@@ -2675,26 +3017,40 @@
       "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
       "plan": {
         "openingState": "The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.",
+        "camera": "One continuous handheld selfie, moving closer with an upward viewpoint change during the covered-mouth hold.",
         "beats": [
           {
             "phase": "opening",
-            "action": "Turn the surprised gaze toward the lens while keeping the raised hand beside the face."
+            "action": "PHASE [0–0.19512195121951223]: Hold the open-mouth surprised look with the already raised hand beside the cheek. Bring the screen-left gaze toward the lens without covering the mouth yet."
           },
           {
             "phase": "middle",
-            "action": "Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face."
+            "action": "PHASE [0.19512195121951223–0.24390243902439027]: Move that same raised hand across the mouth, maintaining a surprised gaze."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.24390243902439027–0.5203251219512195]: Hold the hand against the mouth continuously. Glance briefly screen-left then back toward the lens; keep the eyes open and alert."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5203251219512195–0.7967480487804879]: Keep the mouth covered while the handheld selfie camera moves closer and its viewpoint tilts upward. The face grows larger and ceiling becomes prominent. Do not substitute only a body lean for camera movement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7967480487804879–0.845528536585366]: Briefly close the eyes while the same hand still covers the mouth; retain the closer crop."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.845528536585366–0.8699187804878049]: Reopen the eyes and lower that same hand away from the mouth as the mouth opens again."
           },
           {
             "phase": "ending",
-            "action": "Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view."
+            "action": "PHASE [0.8699187804878049–1]: Keep the open-mouth reaction toward the lens through the final frame in the closer selfie view; no new gesture or scene transition."
           }
         ],
-        "camera": "Maintain one continuous handheld selfie; move closer through the middle and keep the room in the background.",
-        "endingState": "The hand has lowered, the mouth is open again, and the performer looks toward the camera in a closer crop.",
+        "endingState": "Same person in closer selfie, hand lowered after the brief eye closure, mouth open and gaze toward the lens.",
         "constraints": [
-          "Keep the same hand throughout the mouth-covering gesture.",
-          "No product-screen insert, scene cut or additional person.",
-          "Keep clothing, necklace and room consistent throughout the movement."
+          "Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts."
         ]
       },
       "review": {
@@ -3152,19 +3508,39 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Open the mouth wider in disbelief and lean closer toward the lens, keeping the questioning brow."
+            "action": "PHASE [0–0.08888866666666666]: Keep the knitted questioning brows and slightly parted lips while leaning toward the lens."
           },
           {
             "phase": "middle",
-            "action": "Raise the hand from screen-right and place it across the mouth as the camera moves into a tighter close-up."
+            "action": "PHASE [0.08888866666666666–0.32222200000000006]: Open the mouth farther in disbelief and move closer, retaining the furrowed brow."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.32222200000000006–0.38888866666666666]: Raise the hand from screen-right to cover the mouth as the framing tightens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.38888866666666666–0.5777776666666666]: Hold the mouth covered and gaze toward the lens with the same hand in contact."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5777776666666666–0.6666666666666666]: Briefly close the eyes while keeping the hand over the lower face."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6666666666666666–0.811111]: Reopen the eyes and slide the hand toward the chin, opening into an incredulous smile while glancing upward screen-left."
           },
           {
             "phase": "ending",
-            "action": "Briefly close the eyes, then lower the hand toward the chin, open the mouth into a surprised smile and glance upward off screen-left."
+            "action": "PHASE [0.811111–0.9220053333333333]: Return the gaze nearer the lens while retaining the open smile, knitted brows and hand near the chin in the final close-up."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9220053333333333–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Keep a single handheld room selfie, moving closer during the mouth-covering gesture and holding the tight ending crop.",
-        "endingState": "The hand rests below the mouth near the chin, the mouth is open in a surprised smile, and the eyes glance upward off screen-left.",
+        "endingState": "Same hand rests near chin under the open incredulous smile; eyes return nearer the lens after the upward side glance, brows still knitted.",
         "constraints": [
           "Use the same hand for the mouth-covering and lowering gesture. Keep the top, necklace and room consistent; no cut."
         ]
@@ -3274,15 +3650,31 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Widen the eyes and open the mouth in surprise while still looking off screen-left, keeping the can upright without drinking."
+            "action": "PHASE [0–0.111111]: Keep the tall light can upright at screen-left with extended finger near the lower lip, gaze upward screen-left and lips parted."
           },
           {
             "phase": "middle",
-            "action": "Lower the can and its hand out of the main face area as the gaze shifts toward the lens."
+            "action": "PHASE [0.111111–0.38888866666666666]: Widen the eyes and open the mouth into surprise; maintain the can grip without drinking."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.38888866666666666–0.47777766666666666]: Lower the can and hand fully below the main face area, keeping the mouth open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.47777766666666666–0.6444443333333333]: Bring the widened eyes toward the lens while holding the open-mouth reaction."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6444443333333333–0.7777776666666667]: Move the handheld view physically nearer with a short wobble and motion blur, transitioning from upper-body framing to a tighter face view; do not substitute a smooth digital zoom."
           },
           {
             "phase": "ending",
-            "action": "Move the handheld camera closer and hold a wide-eyed, open-mouth expression toward the viewer in the tight face crop."
+            "action": "PHASE [0.7777776666666667–0.9886720000000001]: Continue into the very close face crop with eyes wide and mouth open, glasses still on and orange room continuous; hold through the ending."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9886720000000001–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "One handheld selfie moves from a seated upper-body view into a close face view against the warm orange wall lighting.",
@@ -3543,15 +3935,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Raise the red-manicured hand from screen-right and place it over the mouth as the eyes lift briefly toward the lens."
+            "action": "PHASE [0–0.06666666666666665]: Remain seated beside the laptop, glasses on, mouth open and gaze toward the screen; begin raising the red-manicured hand."
           },
           {
             "phase": "middle",
-            "action": "Tilt the head slightly, hold the hand over the lower face and let the eyes soften into an amused expression."
+            "action": "PHASE [0.06666666666666665–0.111111]: Place the hand across the mouth as the eyes lift toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.111111–0.32222200000000006]: Hold the fingers over the mouth and nose, gradually tilting the head and softening the eyes into amusement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.32222200000000006–0.4888886666666667]: Keep the hand in contact with the lower face while the head tilt deepens into a smile."
           },
           {
             "phase": "ending",
-            "action": "Turn the gaze back toward the laptop and smile behind the hand, briefly lowering the eyelids."
+            "action": "PHASE [0.4888886666666667–0.6110026666666667]: Turn the eyes toward the laptop and lower the eyelids briefly, smiling behind the same hand to the end."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.6110026666666667–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Keep the steady seated medium-close view with the open laptop in the foreground and the pale room and stairs behind.",
@@ -3637,15 +4041,27 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Turn the widened eyes from screen-left toward the lens while keeping the mouth open and the ringed hand at the upper chest."
+            "action": "PHASE [0–0.13333333333333333]: Hold the wide-eyed open-mouth stare off screen-left, ringed hand resting against the throat and upper chest."
           },
           {
             "phase": "middle",
-            "action": "Hold the surprised stare toward the lens, lower the hand slightly along the chest, and make a slow natural blink."
+            "action": "PHASE [0.13333333333333333–0.22222200000000003]: Turn the face and eyes toward the lens while keeping the mouth open and the hand at the chest."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.22222200000000003–0.47777766666666666]: Hold the surprised direct stare; let the hand settle slightly lower along the upper chest without lifting it toward the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.47777766666666666–0.6555553333333333]: Make a slow eyelid closure with a brief partial reopening and another small closure, keeping the jaw open and hand at the chest."
           },
           {
             "phase": "ending",
-            "action": "Reopen the eyes wide and hold the open-mouth expression facing the viewer, with the hand resting at the upper chest."
+            "action": "PHASE [0.6555553333333333–0.9333333333333332]: Reopen the eyes wide and hold the open-mouth expression toward the lens through the final frame."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9333333333333332–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Keep the nearly fixed, front-facing upper-body view with warm wall lights and the pale bed and room behind.",
@@ -3760,15 +4176,19 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Keep the hand under the chin and shift the eyes subtly toward the lens while holding the small restrained smile."
+            "action": "PHASE [0–0.122222]: Keep the curled hand under the chin, index finger below the lips, with a small closed-mouth smile and gaze slightly screen-right."
           },
           {
             "phase": "middle",
-            "action": "Make a natural blink and a slight head adjustment, keeping the thoughtful finger position near the lips."
+            "action": "PHASE [0.122222–0.25555533333333336]: Make a subtle eye shift nearer the lens and back while retaining the thoughtful hand position and restrained expression."
           },
           {
             "phase": "ending",
-            "action": "Return the gaze slightly off screen-right and hold the same calm, faintly amused expression with the chin still supported."
+            "action": "PHASE [0.25555533333333336–0.3333333333333333]: Begin a soft blink at the end while maintaining the supported chin and small smile; no large head turn or new gesture."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.3333333333333333–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Maintain the close, mostly steady handheld selfie with a pale wall and white door behind.",

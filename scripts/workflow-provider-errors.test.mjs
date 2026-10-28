@@ -59,6 +59,7 @@ test("both Explore workflows render the actual public rejection as an alert inst
     "@/components/ui/button": {},
     "@/components/explore/workflow-creation.module.css": { default: {} },
     "@/components/video/video-generation-placeholder": {},
+    "@/components/video/video-result-prompt": { VideoPromptBubble() { return null; } },
   });
   const generation = { busy: false, results: [], error: getPublicBackgroundJob(failedJob).error.message };
   for (const kind of ["hook", "phone"]) {

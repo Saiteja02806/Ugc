@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getEmailVerificationPath, type EmailPurchaseIntent } from "@/lib/auth/email-policy";
 
 export function AuthMethodPicker({
-  successPath = "/dashboard", intent = {}, onAuthFlowStart,
+  successPath = "/explore", intent = {}, onAuthFlowStart,
 }: {
   successPath?: string;
   intent?: EmailPurchaseIntent;

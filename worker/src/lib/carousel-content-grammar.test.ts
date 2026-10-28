@@ -51,6 +51,28 @@ const analysis: WebsiteBusinessAnalysis = {
   visualKeywords: ["paper calendar", "organized desk"],
 };
 
+test("keyed slide positions preserve exact copy and decode into the legacy persisted plan", () => {
+  const keyed = { ...countedSyntheticFixture, slides: Object.fromEntries(
+    [...countedSyntheticFixture.slides].reverse().map(slide => [`slide${slide.slideNumber}`, slide])) };
+  const decoded = decodeCountedPlanBodies(keyed);
+  const accepted = parseCarouselContentPlanForAssignment(decoded, {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  });
+  assert.deepEqual(accepted.blockingIssues, []);
+  assert.deepEqual(accepted.plan.slides.map(slide => slide.slideNumber), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(decoded, decodeCountedPlanBodies(countedSyntheticFixture));
+  for (const malformed of [
+    { ...keyed, slides: { ...keyed.slides, slide2: keyed.slides.slide5 } },
+    { ...keyed, slides: { ...keyed.slides, extra: keyed.slides.slide1 } },
+    { ...keyed, slides: { slide1: keyed.slides.slide1 } },
+  ]) assert.throws(() => decodeCountedPlanBodies(malformed), /slide/);
+  const legacy = structuredClone(countedSyntheticFixture);
+  legacy.slides[1]!.slideNumber = 5;
+  assert.throws(() => parseCarouselContentPlanForAssignment(decodeCountedPlanBodies(legacy), {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  }), /invalid slide number/);
+});
+
 test("a provider-produced synthetic counted plan passes all publishing checks without rewriting copy", () => {
   const decoded = decodeCountedPlanBodies(countedSyntheticFixture);
   const checked = parseCarouselContentPlanForAssignment(decoded, {
@@ -758,6 +780,10 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
       } | null
     )?.response_format?.json_schema?.schema;
     assert.doesNotMatch(JSON.stringify(responseSchema), /"pattern":/);
+    const slideSchema = (responseSchema as { properties: { slides: { type: string; required: string[]; properties: Record<string, { properties: { slideNumber: { enum: number[] } } }> } } }).properties.slides;
+    assert.equal(slideSchema.type, "object", "provider cannot repeat the same allowed array item six times");
+    assert.deepEqual(slideSchema.required, ["slide1", "slide2", "slide3", "slide4", "slide5", "slide6"]);
+    for (let i = 1; i <= 6; i++) assert.deepEqual(slideSchema.properties[`slide${i}`]!.properties.slideNumber.enum, [i]);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;

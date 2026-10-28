@@ -32,11 +32,13 @@ For each reference, preserve its unique ID, original source file and SHA, durati
 
 **Normal:** prepare an influencer image matching the original source at t=0. Remove baked captions in the image-preparation prompt. Check the resulting image for identity, scene, framing, expression, hands, props and caption cleanup separately before using it for animation.
 
-**Middle-frame case:** the later clear frame is evidence for identity preparation, not permission to skip the opening actions. Reconstruct the influencer at the ORIGINAL t=0 pose using the original opening and later clarity evidence. Approve that reconstructed opening, then animate the complete original t=0-to-end sequence. Store the clarity timestamp separately from animationOpeningSourceTime=0.
+**Current user policy — 28 October 2026:** all new cases use the original source's first decoded frame at elapsed t=0. Do not attach a later clarity frame during starting-image preparation or animation. Preserve the opening pose, including hands/props obscuring the face, and review the generated image before animation. The earlier 31 middle-frame cases are a migration inventory, not a continuing new-request mode. Retain their old bindings and receipts unchanged for history.
 
-For example, if the source begins with a hand over the mouth but a later frame shows the face clearly, use the later frame to help prepare identity. The approved animation opening still needs the original hand-over-mouth pose, followed by the source's subsequent actions. Do not start the performance from the later uncovered pose.
+For example, if the source begins with a hand over the mouth, prepare that original hand-over-mouth opening with the selected influencer photos. Do not substitute the later uncovered pose or attach a later source still. If identity quality cannot be established, stop at image review rather than passing an unsuitable image onward.
 
-The video stage normally receives one approved starting image. Additional user-selected images are a separate explicit case; do not silently add a portrait, end frame or source video to a controlled test.
+The video stage receives one approved starting image. Reuse the same selected influencer photos as appearance references only on a verified supporting route, preserving explicit user changes/removals. Bind the literal first-frame and appearance roles in the actual request; a portrait must never become an end frame. Unsupported routes keep the single-image input. Freeze the input count/roles in every controlled comparison; do not silently change an old experiment. This may help identity consistency but is not a generated-output guarantee.
+
+**Lighting and outfit gate:** the source opening controls light direction, softness, color cast, exposure, contrast, shadow/reflection behavior, outfit, scene and camera. Identity photos control facial identity, not their clothes or lighting. Check those separately after generation. Hook7's six-still report records v4 outfit leakage and conflicting caption instructions in the face-swap alternative; it contains no video trial or reliable model-wide winner. Do not claim a prompt can preserve every exterior pixel exactly through generative recreation.
 
 ### 3. Inspect the complete source
 
@@ -67,7 +69,9 @@ Do not rewrite materially correct actions merely to make the prompt longer. Mark
 
 ### 6. Map timing deliberately
 
-Timing instructions apply to BOTH normal and middle-frame routes. They tell the generator when to hold, transition and finish. They belong in the animation prompt, not the still-image prompt.
+**Source-speed trim option, 28 October 2026:** when the provider's required duration exceeds the intended source action duration, preserve source event times and append a final hold through the generated end, then initialize a reversible trim to the source endpoint. Do not apply this trim to a prompt that stretched the action over the whole generated duration. Inspect the final action before the cut and the discarded tail; reject an ending that runs late rather than silently cutting it off. Use decoded frame timestamps, preserve the raw output and existing user edits. This is a prepared pilot policy, not a deployed automatic-trim feature.
+
+Timing instructions apply to every new original-opening recreation; historical first/middle-frame routes also required truthful time mapping. They tell the generator when to hold, transition and finish. They belong in the animation prompt, not the still-image prompt.
 
 Example: a 4-second source with actions at 0–1, 1–3 and 3–4 seconds can map proportionally to 0–0.75, 0.75–2.25 and 2.25–3 seconds for an explicitly chosen 3-second candidate. This retains order but speeds the performance; test whether that compression still feels right. Never drop the final action just to fit the duration.
 
@@ -105,3 +109,16 @@ Preserve a rollback copy and bind each accepted prompt to the correct reference 
 Disk exhaustion required removal of some task-created frame/sheet copies after inspection. Original sources, manifests, hashes and timing inputs were retained. Recreate missing sheets from those originals; do not claim they still exist or delete source media to free space.
 
 **Restart point:** source comparison is complete for these 116 records. Check that the source hashes and actual runtime baselines still match before reusing drafts. Next is a representative controlled generation and acceptance review, followed by deliberate assignment—not repeating the inventory or claiming a completed live rollout.
+
+
+## 28 October 2026 implementation policy update (local, not deployed)
+
+The user's latest decision supersedes the historical middle-frame fallback: every NEW image preparation uses the original decoded source frame 0 only. No later clarity image accompanies it. Old receipts and accepted requests keep their exact original inputs and timestamps for recovery. New preparation is draft version 4, image receipt version 5, image prompt version 7.
+
+Image 1 controls source pose, occlusion, lighting, clothing, scene, camera and props. Images 2 onward control influencer identity only. Remove captions AND physical logos/branding/readable text, preserving underlying objects and material. This explicitly supersedes older preserve-physical-text instructions in this guide/history. Review actual generated identity, lighting, outfit, hands and cleanup individually; an accepted provider job is not visual proof.
+
+Use source-specific normalized PHASE directions and compile to numeric generated-time intervals. For a shorter source, map action phases to the original source duration, then append a final hold to the provider duration. Freeze the source timeline and initialize a reversible editor trim only if no saved/local/pending edits take priority; keep the raw clip. If a deliberately shorter output than the source is requested, the existing full-action compression still applies. Verify the final gesture before accepting a trim.
+
+Reuse previously selected owned influencer photos only through Omni's supported appearance inputs, with the approved generated opening as literal first frame. An explicit empty/removal/replacement selection is authoritative. WAN and Seedance starting-frame routes remain single-image. Never describe unsupported extra images as face references in prose and assume that changes the API role.
+
+Local structural audit: 104 public and 12 private draft plans compile timed action directions. This is not a new visual re-review of every source, a claim that each gesture is complete, a provider output pass, or production activation. See docs/opening-policy-implementation-2026-10-28.md for verification limits.

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   applyBusinessContextListText,
+  businessContextValidationMessage,
   createBusinessContextListText,
   type BusinessContextListField,
   type BusinessContextListText,
@@ -101,6 +102,10 @@ export function BusinessContextSettings() {
 
   async function runAction(action: "apply" | "reanalyze") {
     if (!profile || !context || !listText) return;
+    if (action === "apply") {
+      const validationMessage = businessContextValidationMessage(editedContext);
+      if (validationMessage) { setMessage(null); setError(validationMessage); return; }
+    }
     setBusyAction(action);
     setError(null);
     setMessage(null);
@@ -223,6 +228,13 @@ function Textarea(props: ComponentProps<"textarea">) {
 function normalizeContext(context: WebsiteBusinessAnalysis): WebsiteBusinessAnalysis {
   return {
     ...context,
+    businessName: context.businessName?.trim() || null,
+    category: context.category?.trim() || null,
+    productSummary: context.productSummary?.trim() || null,
+    mainProblem: context.mainProblem?.trim() || null,
+    mainPromise: context.mainPromise?.trim() || null,
+    wallTextPrimaryReader: context.wallTextPrimaryReader?.trim() || null,
+    wallTextSecondaryReader: context.wallTextSecondaryReader?.trim() || null,
     businessModel: context.businessModel ?? null,
     campaignPurposes: context.campaignPurposes ?? [],
     categories: context.categories ?? (context.category ? [context.category] : []),

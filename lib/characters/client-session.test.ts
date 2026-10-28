@@ -9,6 +9,12 @@ test("uncertain uploaded-reference requests restore the exact attachment ID with
   assert.deepEqual(restored.pendingRequest, pendingRequest);
 });
 
+test("uncertain skill requests restore the original IDs and authored text without applying instructions twice", () => {
+  const pendingRequest = { mode: "custom", model: "gpt_image", imageCount: 1, prompt: "My portrait", skillIds: ["realistic-skin"], idempotencyKey: "same-skill-request" };
+  const restored = parseCharacterClientSession(JSON.stringify({ ...EMPTY_CHARACTER_SESSION, pendingRequest }));
+  assert.deepEqual(restored.pendingRequest, pendingRequest);
+});
+
 test("multiple references and uncertain generation retain their exact order across refresh", () => {
   const ids = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
   const session = { ...EMPTY_CHARACTER_SESSION, selectedCharacterId: ids[0], selectedCharacterIds: ids,

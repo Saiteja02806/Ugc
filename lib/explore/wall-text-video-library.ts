@@ -6,6 +6,8 @@ import {
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import { getPairedExploreVideos } from "./paired-reference-library";
+import reclassified from "../../worker/src/lib/explore-hook-wall-reclassification-release.json" with { type: "json" };
+import { getHookReferenceGalleryItems } from "@/worker/src/lib/explore-hook-reference-release";
 
 export type { ExploreWallTextVideo } from "@/lib/explore/hook-video-types";
 
@@ -83,7 +85,12 @@ const EXPLORE_WALL_TEXT_VIDEO_ASSETS: ReadonlyArray<ExploreWallTextVideoAsset> =
 ];
 
 export function getExploreWallTextVideos(): ExploreWallTextVideo[] {
-  return [...EXPLORE_WALL_TEXT_VIDEO_ASSETS.map((asset) => ({
+  // Retain the original asset in the server-owned source registry for older
+  // jobs while removing it from the selectable reference gallery.
+  const activeHooks = getHookReferenceGalleryItems();
+  const migrated = new Set(reclassified.items.filter(item => activeHooks.some(active => active.id === item.id && active.videoSha256 === item.videoSha256))
+    .map(item => `explore-wall-text-${item.sourceFolder.slice(-2)}`));
+  return [...EXPLORE_WALL_TEXT_VIDEO_ASSETS.filter((asset) => asset.id !== "explore-wall-text-21" && !migrated.has(asset.id)).map((asset) => ({
     id: asset.id,
     posterUrl: buildPublicStorageUrl(
       getExploreVideoPosterStorageKey(asset.storageKey),

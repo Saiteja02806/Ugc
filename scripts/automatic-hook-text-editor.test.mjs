@@ -10,15 +10,16 @@ import * as wall from "../lib/explore/wall-text-editor.ts";
 import * as source from "../lib/explore/hook-remix-source.ts";
 import * as previewTime from "../lib/explore/clip-preview-time.ts";
 import { automaticHookEdit } from "../worker/src/lib/automatic-hook-text.ts";
+import { wallTextProfile } from "../worker/src/lib/wall-initial-text-layout.ts";
 const assetId="11111111-1111-4111-8111-111111111111";
-const editing=automaticHookEdit({blocks:["Your next video is already drafted"],heading:"",body:""},{source:{blocks:[{text:"Your next video is already drafted",startMs:0,endMs:4000}]}},5,"9:16");
+const editing=automaticHookEdit({blocks:["Your next video is already drafted"],heading:"",body:""},{source:{format:"hook",blocks:[{text:"Your next video is already drafted",startMs:0,endMs:4000}]}},5,"9:16");
 const content={version:1,sourceAssetId:assetId,editing,backgroundAssetId:null,backgroundPlayback:"once"};
 const nodes=value=>!value?[]:Array.isArray(value)?value.flatMap(nodes):typeof value==="object"?[value,...nodes(value.props?.children)]:[];
 const text=value=>!value?"":Array.isArray(value)?value.map(text).join(""):typeof value==="object"?text(value.props?.children):String(value);
 
 // Executes the production editor and handlers, isolating portals and network hooks.
 // Browser font loading, drag geometry and hosted account acceptance remain separate.
-function fixture({storage=new Map(),status="ready",saved=content}={}) {
+function fixture({storage=new Map(),status="ready",saved=content,formatName="hook"}={}) {
   let cursor=0,tree,saveOptions,preview,clipState,finishOptions;
   const slots=[],effects=[];
   const react={useState(value){const i=cursor++;if(!(i in slots))slots[i]=typeof value==="function"?value():value;return[slots[i],next=>{slots[i]=typeof next==="function"?next(slots[i]):next;}];},
@@ -40,7 +41,7 @@ function fixture({storage=new Map(),status="ready",saved=content}={}) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-editor.tsx",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,
     {exports,require:name=>imports[name]??new Proxy({__esModule:true,default:new Proxy({},{get:(_,k)=>String(k)})},{get:(obj,key)=>key in obj?obj[key]:String(key)}),
       window:{},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)},console});
-  const props={format:"hook",video:{id:assetId,mediaAssetId:assetId,durationSeconds:5,ratio:"9:16",url:"https://fixture.test/video.mp4",title:"Generated hook"},active:true,controlsTarget:{},resultsTarget:{},actionsTarget:{},enabled:true,
+  const props={format:formatName,video:{id:assetId,mediaAssetId:assetId,durationSeconds:5,ratio:"9:16",url:"https://fixture.test/video.mp4",title:"Generated hook"},active:true,controlsTarget:{},resultsTarget:{},actionsTarget:{},enabled:true,
     fullDurationHookText:true,allowRemix:false,showSoundControls:false,onDirty(){},onSaved(){},onContinue(){},onPreviewChange:v=>{preview=v;},onClipStateChange:v=>{clipState=v;}};
   const h={storage,db,props,render(){cursor=0;tree=exports.FormatVideoEditor(props);effects.splice(0).forEach(fn=>fn());return tree;},
     restore(value=content,explicit=false){saveOptions.onRestore(value,explicit);h.render();},
@@ -89,6 +90,17 @@ test("the generated draft appears on the main video automatically and remains ed
   h.restore();assert.equal(h.find("FormatVideoTextOverlay").props.text.value,"My exact words","late server restore preserves the user's edit");
   const reopened=fixture({storage:h.storage});reopened.restore();assert.equal(reopened.find("FormatVideoTextOverlay").props.text.value,"My exact words");
 });
+
+test("initial source trim applies only to an untouched editor and a later suggestion cannot replace local edits", () => {
+  const h = fixture();
+  h.restore({ ...content, editing: { ...editing, trimStartMs: 0, trimEndMs: 2433 } });
+  assert.equal(h.preview().segment.editing.trimEndMs, 2433);
+  const overlay = h.find("FormatVideoTextOverlay"); overlay.props.onChange({ ...overlay.props.text, value: "My exact words", width: .76 }); h.render();
+  h.restore({ ...content, editing: { ...editing, trimEndMs: 3000 } });
+  assert.equal(h.preview().segment.editing.trimEndMs, 2433);
+  assert.equal(h.find("FormatVideoTextOverlay").props.text.value, "My exact words");
+  assert.equal(h.find("FormatVideoTextOverlay").props.text.width, .76);
+});
 test("text removed by the user stays removed after late restore and reopening",()=>{
   const h=fixture();h.restore();
   const fields=h.find("FormatVideoTextFields");fields.props.onChange({...fields.props.editing,text:null,textOverlays:[]});h.render();h.restore();
@@ -106,4 +118,32 @@ test("text failure requires review or explicit continuation and saves the user's
   h.button("Continue without text").props.onClick();await new Promise(setImmediate);h.render();
   assert.equal(h.state().draftError,null);assert.equal(h.db.saved.content.editing.text,null);
   const reopened=fixture({status:"needs_review",saved:h.db.saved.content});reopened.restore(h.db.saved.content);assert.equal(reopened.state().draftError,null);
+});
+
+test("Wall initial text stays editable; saved style, full duration and explicit empty drafts win on recovery",()=>{
+  const wallEdit={...editing,format:"wall_text",trimEndMs:12000,textOverlays:[{...editing.textOverlays[0],value:"One\nTwo\nThree\nFour",width:.65,y:.53,fontSize:58,lineHeight:1.12,endMs:12000}]};
+  const wallContent={...content,editing:wallEdit};
+  const h=fixture({formatName:"wall_text",saved:null});h.restore(wallContent);
+  assert.equal(h.preview().segment.editing.trimEndMs,12000);
+  const text=h.find("FormatVideoTextOverlay");assert.equal(text.props.text.lineHeight,1.12);
+  text.props.onChange({...text.props.text,value:"My exact words\nStay here",font:"inter",fontWeight:500,width:.71,y:.35});h.render();
+  h.restore(wallContent);
+  let actual=h.find("FormatVideoTextOverlay").props.text;
+  assert.equal(actual.value,"My exact words\nStay here");assert.equal(actual.width,.71);assert.equal(actual.font,"inter");assert.equal(actual.y,.35);
+  const reopen=fixture({formatName:"wall_text",storage:h.storage,saved:null});reopen.restore(wallContent);
+  assert.deepEqual(reopen.find("FormatVideoTextOverlay").props.text,actual);
+  const fields=reopen.find("FormatVideoTextFields");fields.props.onChange({...wallEdit,textOverlays:[]});reopen.render();reopen.restore(wallContent);
+  const blank=fixture({formatName:"wall_text",storage:reopen.storage,saved:null});blank.restore(wallContent);
+  assert.equal(blank.find("FormatVideoTextOverlay"),undefined);assert.equal(blank.preview().segment.editing.trimEndMs,12000);
+});
+
+test("structured Wall result keeps both user-edited layers after a late restore and reopening",()=>{
+ const profile=wallTextProfile('explore-wall-text-04');
+ const plan={source:{format:'wall_text',referenceId:profile.referenceId,sourceSha256:profile.sourceSha256,blocks:[{text:'Source reference '.repeat(35)}]},wallLayout:profile,promptVersion:2};
+ const structured=automaticHookEdit({blocks:[],heading:'Five video ideas',body:'Choose a topic.\n\nReview your video.'},plan,12,'9:16');
+ const initial={...content,editing:structured};const h=fixture({formatName:'wall_text',saved:null});h.restore(initial);
+ const fields=h.find('FormatVideoTextFields');fields.props.onChange({...structured,textOverlays:structured.textOverlays.map((t,i)=>({...t,value:i?'My edited body':'My edited heading'}))});h.render();h.restore(initial);
+ const reopened=fixture({formatName:'wall_text',storage:h.storage,saved:null});reopened.restore(initial);
+ assert.equal(JSON.stringify(reopened.preview().segment.editing.textOverlays.map(t=>t.value)),JSON.stringify(['My edited heading','My edited body']));
+ assert.equal(reopened.preview().segment.editing.trimEndMs,12000);
 });

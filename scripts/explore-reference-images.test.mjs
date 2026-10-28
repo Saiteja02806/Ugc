@@ -87,6 +87,7 @@ test("Explore origin filtering happens in the owner-scoped database query; other
     "@/lib/media/media-delivery": {},
     "@/lib/storage/storage": {},
     "@/worker/src/lib/explore-reference-soundtrack": {},
+    "@/worker/src/lib/creator-slide-delivery": { parseCreatorSlideUrl: () => null, resolveCreatorSlideDelivery: () => null },
   }, { process: { env: { SUPABASE_URL: "https://example.test", SUPABASE_SERVICE_ROLE_KEY: "test-only" } } });
   await storage.listMediaAssets({ userId: "owner-a", collection: "image", sourceTypes: ["upload"], projectId: "explore-reference" });
   assert.ok(calls.some(call => JSON.stringify(call) === '["eq","user_id","owner-a"]'));
@@ -142,13 +143,14 @@ test("the existing media API authenticates list and single-image requests and ig
   const list = load("app/api/media/route.ts", {
     "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) },
     "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) },
-    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
     "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: () => false },
+    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [], getBackgroundJobForUser: async () => null },
     "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media, "@/lib/media/types": types,
     "@/lib/media/media-library-visibility": load("lib/media/media-library-visibility.ts", {}),
   }, { Response, URL, console });
-  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: () => false }, "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) }, "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) }, "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
-    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
+  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) }, "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) }, "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
+    "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: () => false },
+    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [], getBackgroundJobForUser: async () => null },
     "@/lib/explore/remix-source": load("lib/explore/remix-source.ts", {}) }, { Response, URL, console });
   const url = "https://www.getugcpilot.com/api/media?collection=image&sourceTypes=upload&projectId=explore-reference&userId=owner-b";
   assert.equal((await list.GET(new Request(url))).status, 401); assert.equal(calls.length, 0);

@@ -7,21 +7,25 @@ import type { HookStartingFrameSelection } from "./hook-keyframe-client.ts";
 import { startingFrameWorkflowDirections } from "./starting-frame-workflow.ts";
 import { hookKeyframeReceiptImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 import { creatorAccountDirections, creatorAccountLegacySelectedDirections } from "./creator-accounts.ts";
+import { getWallMoneyMotion } from "./wall-money-motion.ts";
 
 /** Reusable frames retain the verified source and its reviewed motion plan. */
 export async function resolveRecentHookStartingFrame(ownerId: string, jobId: string, assetId: string): Promise<HookStartingFrameSelection> {
   const result = await resolveApprovedHookStartingFrame({ ownerId, imageJobId: jobId, assetId });
   const scope = { ownerId, draftId: result.receipt.draftId, referenceId: result.referenceId, sourceSha256: result.sourceSha256 };
   const preview = result.workflow === "wall_text" || result.workflow === "talking_head"
-    ? { requiresDecision: false, animationError: null, durationSeconds: 4, directions: startingFrameWorkflowDirections(result.workflow) }
-    : getHookKeyframePromptPreview({ ...createHookKeyframeDraft(scope), version: result.receipt.version === 4 ? 3 : result.receipt.version,
+    ? { requiresDecision: false, animationError: null, durationSeconds: 4, directions:
+      (result.workflow === "wall_text" ? getWallMoneyMotion(result.referenceId, result.sourceSha256, result.receipt.sourceFrame?.index ?? 0) : undefined)
+      ?? startingFrameWorkflowDirections(result.workflow) }
+    : getHookKeyframePromptPreview({ ...createHookKeyframeDraft(scope), version: result.receipt.version === 5 ? 4 : result.receipt.version === 4 ? 3 : result.receipt.version,
       imageModel: hookKeyframeReceiptImageModel(result.receipt), sourceFrame: result.receipt.sourceFrame,
       generatedImage: { assetId: result.assetId, inputKey: result.receipt.inputKey, promptVersion: result.receipt.promptVersion } }, "hook",
-      creatorAccountDirections(result.referenceId, result.sourceSha256, result.startingFrameIndex, result.receipt.sourceFrame.sha256),
-      creatorAccountLegacySelectedDirections(result.referenceId, result.sourceSha256, result.startingFrameIndex, result.receipt.sourceFrame.sha256));
+      creatorAccountDirections(result.referenceId, result.sourceSha256, result.startingFrameIndex, result.receipt.sourceFrame.sha256, result.receipt.version === 5),
+      creatorAccountLegacySelectedDirections(result.referenceId, result.sourceSha256, result.startingFrameIndex, result.receipt.sourceFrame.sha256), undefined, result.sourceDurationSeconds);
   if (preview.requiresDecision || preview.animationError || !preview.directions.trim()) throw new HookKeyframeGenerationError("This frame's motion instructions need review before use.", 409);
   return { ...scope, assetId: result.assetId, jobId, url: result.imageUrl, width: result.output.width, height: result.output.height,
-    durationSeconds: preview.durationSeconds === 8 ? 8 : 4, motionInstructions: preview.directions, generateAudio: false };
+    identityAssetIds: [...result.receipt.personImageAssetIds],
+    durationSeconds: preview.durationSeconds === 6 ? 6 : preview.durationSeconds === 8 ? 8 : 4, motionInstructions: preview.directions, generateAudio: false };
 }
 
 export async function listRecentHookStartingFrames(ownerId: string) {

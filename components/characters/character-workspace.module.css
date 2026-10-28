@@ -1,6 +1,7 @@
 .workspace {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 100dvh;
   max-width: 1560px;
   margin-inline: auto;
@@ -35,31 +36,59 @@
 .stage:has(.resultsPanel) { justify-content: flex-start; }
 .resultsPanel { width: 100%; max-width: 944px; margin-inline: auto; }
 .resultsHeading { margin-bottom: 16px; font-size: 14px; line-height: 20px; color: var(--muted); }
-.resultGroup { --candidate-width: clamp(180px, calc((100dvh - 330px) * .5625), 240px); }
-.results { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, var(--candidate-width))); justify-content: start; gap: 16px; width: 100%; }
-.candidate { position: relative; isolation: isolate; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
-.resultGroup + .resultGroup { margin-top: 24px; }
-.submittedPrompt { display: flex; align-items: flex-start; gap: 10px; min-width: 0; width: var(--candidate-width); max-width: 100%; margin-bottom: 12px; font-size: 13px; line-height: 21px; }
-.promptText { flex: 0 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.resultsRail { --candidate-width: 220px; display: flex; flex-direction: row; align-items: flex-start; gap: 16px; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; padding: 4px 4px 12px; }
+.resultsRail:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.resultGroup { flex: 0 0 auto; min-width: 0; }
+.results { display: flex; flex-direction: row; gap: 16px; width: max-content; }
+.candidate { position: relative; isolation: isolate; flex: 0 0 var(--candidate-width); width: var(--candidate-width); min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.resultPrompt { height: 82px; width: var(--candidate-width); }
+.submittedPrompt { display: flex; align-items: flex-start; gap: 10px; min-width: 0; width: var(--candidate-width); height: 42px; margin-bottom: 6px; font-size: 13px; line-height: 21px; }
+.skillsButton { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding-inline: 12px; border-radius: 999px; background: var(--card-muted); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--border); font-size: 12px; font-weight: 500; cursor: pointer; }
+.skillsButton:disabled, .skillChip:disabled, .skillOption:disabled { opacity: .5; cursor: not-allowed; }
+.skillsButton:focus-visible, .skillChip:focus-visible, .skillOption:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.skillsPopover { width: min(340px, calc(100vw - 32px)); max-height: min(360px, calc(100dvh - 32px)); overflow-y: auto; }
+.skillOption { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 6px; border-radius: 8px; text-align: left; cursor: pointer; }
+.skillOption:hover, .skillOption[aria-checked="true"] { background: var(--card-muted); }
+.skillCheck { display: grid; place-items: center; flex-shrink: 0; width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 4px; color: var(--primary); }
+.skillDescription { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.skillChips, .resultSkills { display: flex; align-items: center; gap: 6px; overflow-x: auto; overflow-y: hidden; }
+.skillChips { padding: 2px; }
+.skillChip, .skillBadge { display: inline-flex; align-items: center; flex-shrink: 0; gap: 4px; padding: 4px 8px; border-radius: 999px; background: var(--card-muted); font-size: 11px; line-height: 16px; color: var(--foreground); }
+.skillChip { cursor: pointer; }
+.promptText { flex: 1 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .copyPrompt { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; margin-top: -3px; border-radius: 6px; color: var(--muted); cursor: pointer; }
 .copyPrompt:hover { color: var(--foreground); background: var(--card-muted); }
 .copyPrompt:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.selectionHint { margin: -6px 0 16px; font-size: 12px; line-height: 20px; color: var(--muted); }
 .selectionMark, .removeImage { position: absolute; top: 10px; display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgb(255 255 255 / .55); border-radius: 50%; background: rgb(20 20 20 / .8); color: white; }
 .selectionMark { left: 10px; pointer-events: none; }
 .candidate[data-selected="true"] .selectionMark { background: var(--primary); border-color: var(--primary); }
 .removeImage { right: 10px; z-index: 1; cursor: pointer; }
 .removeImage:hover { background: rgb(55 55 55 / .95); }
 .removeImage:focus-visible, .downloadImage:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.candidateActions { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 10px 8px 12px; }
+.candidateActions { display: flex; justify-content: space-between; align-items: center; gap: 8px; height: 42px; padding: 0 10px 8px 12px; }
+.enlargeImage { position: absolute; z-index: 1; top: calc(var(--candidate-width) * 16 / 9 - 44px); right: 10px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(255 255 255 / .55); border-radius: 8px; background: rgb(20 20 20 / .8); color: white; cursor: pointer; opacity: 0; }
+.candidate:hover .enlargeImage, .candidate:focus-within .enlargeImage { opacity: 1; }
+.enlargeImage:hover { background: rgb(55 55 55 / .95); }
+.enlargeImage:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.imageDialog { width: min(1100px, calc(100vw - 32px)); max-width: min(1100px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 44px 12px 12px; gap: 12px; }
+.fullImage { display: block; width: 100%; min-height: 0; height: calc(100dvh - 160px); object-fit: contain; }
+.imageNavigation { display: flex; justify-content: center; align-items: center; gap: 16px; }
+@media (hover: none), (pointer: coarse) { .enlargeImage { opacity: 1; } }
 .downloadImage { display: grid; min-width: 34px; min-height: 34px; place-items: center; border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); cursor: pointer; }
 .downloadImage:hover { background: var(--card-muted); }
 .downloadImage:disabled { opacity: .5; cursor: wait; }
 .referenceSummary { display: flex; justify-content: space-between; align-items: center; max-width: 944px; margin: 0 auto 6px; font-size: 12px; color: var(--muted); }
 .referenceThumbnails { display: flex; flex-shrink: 0; gap: 8px; max-width: min(30vw, 280px); overflow-x: auto; overscroll-behavior-x: contain; padding: 4px; }
-.savedCharacterCard { min-width: 0; }
-.savedCharacterCard > div { display: flex; justify-content: flex-end; margin-top: 6px; }
-.librarySelectionMark { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 5px; flex-shrink: 0; }
+.savedCharacterCard { min-width: 0; align-self: start; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.savedCharacterCard[data-selected="true"], .savedCharacterCard:has(.savedCharacter:hover), .savedCharacterCard:focus-within { border-color: var(--primary); }
+.savedCardActions { display: flex; align-items: flex-start; gap: 4px; padding: 6px; border-top: 1px solid var(--border); }
+.savedCardActions > div { flex: 1; min-width: 0; }
+.savedCardAction { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; min-width: 0; min-height: 44px; padding: 5px 2px; border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); background: var(--card-muted); font-size: 10px; line-height: 14px; cursor: pointer; }
+.savedCardAction:hover { color: var(--foreground-strong); border-color: var(--primary); }
+.savedCardAction:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.savedCardAction:disabled { opacity: .5; cursor: wait; }
+.librarySelectionMark { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgb(255 255 255 / .55); border-radius: 5px; background: rgb(20 20 20 / .8); color: white; }
+.savedCharacter[aria-pressed="true"] .librarySelectionMark { border-color: var(--primary); background: var(--primary); }
 .libraryActions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .candidate[data-selected="true"] { border-color: var(--primary); }
 .portrait { aspect-ratio: 9 / 16; position: relative; display: grid; place-items: center; width: 100%; padding: 0; border: 0; background: var(--card-muted); overflow: hidden; text-align: inherit; }
@@ -68,8 +97,9 @@
 .portrait img { width: 100%; height: 100%; object-fit: contain; }
 /* Keep hover/click on our controls instead of the browser's image-search overlay. */
 .workspace img, .savedCharacter img { pointer-events: none; }
-.candidateFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 10px 12px; }
-.saveStatus { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--primary); }
+.candidateFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 52px; padding: 10px 12px; }
+.candidateFooter > span:first-child { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.saveStatus { display: flex; flex-shrink: 0; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--primary); }
 .composerArea { position: sticky; bottom: 0; z-index: 2; padding-top: 16px; background: linear-gradient(transparent, var(--background) 16px); }
 .composerArea > div:last-child { position: static; }
 .workspace:has(.empty) .composerArea { position: static; }
@@ -80,16 +110,15 @@
 .noticeClose:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .usage { min-width: 0; max-width: 230px; font-size: 11px; line-height: 16px; color: var(--muted); }
 .libraryDialog { max-width: min(720px, calc(100% - 32px)); }
-.library { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-height: 65dvh; overflow-y: auto; padding: 3px; }
-.savedCharacter { display: flex; flex-direction: column; width: 100%; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--card); text-align: left; }
-.savedCharacter:hover, .savedCharacter[aria-pressed="true"] { border-color: var(--primary); }
+.library { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; gap: 12px; max-height: 65dvh; overflow-y: auto; padding: 3px; }
+.savedCharacter { position: relative; display: flex; flex-direction: column; width: 100%; min-width: 0; overflow: hidden; border: 0; background: var(--card); text-align: left; }
 .savedCharacter img { width: 100%; aspect-ratio: 9 / 16; object-fit: contain; background: var(--card-muted); }
-.savedCharacterName { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; font-size: 12px; line-height: 18px; }
 .libraryNotice { grid-column: 1 / -1; font-size: 13px; line-height: 22px; color: var(--muted); }
 @media (min-width: 640px) {
   .workspace { padding: 28px 32px 0; }
 }
 @media (max-width: 639px) {
+  .resultsRail { --candidate-width: 180px; }
   .workspace { padding-inline: 16px; }
   .stage { min-height: 250px; }
   .header { gap: 8px; align-items: flex-start; }

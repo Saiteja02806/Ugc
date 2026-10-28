@@ -18,7 +18,7 @@ import { getEmailVerificationPath, PASSWORD_RESET_MESSAGE, type EmailPurchaseInt
 type EmailAuthMode = "sign-in" | "create-account";
 
 export function EmailAuthForm({
-  successPath = "/dashboard", intent = {}, onAuthFlowStart, onBusyChange,
+  successPath = "/explore", intent = {}, onAuthFlowStart, onBusyChange,
 }: {
   successPath?: string;
   intent?: EmailPurchaseIntent;

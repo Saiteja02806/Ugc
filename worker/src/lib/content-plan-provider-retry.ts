@@ -21,10 +21,11 @@ export function toContentPlanProviderRetry(error: unknown) {
   );
 }
 
-export function isRetryableContentPlanProviderError(error: unknown) {
+export function isRetryableContentPlanProviderError(error: unknown, depth = 0): boolean {
   if (!error || typeof error !== "object") return false;
 
   const record = error as Record<string, unknown>;
+  if (depth < 5 && record.cause && record.cause !== error && isRetryableContentPlanProviderError(record.cause, depth + 1)) return true;
   const status = getNumber(record.status) ?? getNumber(record.statusCode);
   if (status === 408 || status === 429 || (status !== null && status >= 500)) {
     return true;

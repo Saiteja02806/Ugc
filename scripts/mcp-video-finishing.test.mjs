@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as confirmToken from "../lib/mcp/confirm-token.ts";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -66,7 +67,7 @@ function harness(options = {}) {
   }, { process: { env } });
   const tools = new Map();
   const toolModule = load("lib/mcp/finishing-tools.ts", {
-    "server-only": {}, "zod": { z }, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
+    "server-only": {}, "zod": { z }, "./confirm-token": confirmToken, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
     "@/lib/billing/subscription-db": { getUserSubscription: async (owner, flags) => {
       calls.push("access"); assert.ok(owner); assert.equal(flags.refreshCredits, false); assert.equal(flags.initializeFreeCredits, false);
       if (options.entitlementError) throw new Error("private-plan-secret");
@@ -79,8 +80,13 @@ function harness(options = {}) {
   }, { process: { env } });
   toolModule.registerFinishingMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
   async function call(name, input = {}, owner = "owner-a", scopes = ["creative:write", "account:read", "jobs:read"]) {
-    const tool = tools.get(name), parsed = tool.config.inputSchema.parse(input);
-    const result = await tool.callback(parsed, { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });
+    const tool = tools.get(name);
+    const invoke = async (next) => tool.callback(tool.config.inputSchema.parse(next), { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });
+    let result = await invoke(input);
+    const preview = result.structuredContent;
+    if (!result.isError && preview?.confirmation_required === true && typeof preview.confirm_token === "string") {
+      result = await invoke({ ...input, confirm_token: preview.confirm_token });
+    }
     if (!result.isError) tool.config.outputSchema.parse(result.structuredContent);
     return plain(result);
   }

@@ -14,6 +14,7 @@ const json = file => JSON.parse(readFileSync(new URL(file, import.meta.url), "ut
 const slideshows = json("../lib/explore/slideshow-reference-oct23.json");
 const hookRelease = json("../worker/src/lib/explore-hook-reference-oct23-release.json");
 const hookRefresh = json("../worker/src/lib/explore-hook-reference-oct23-refresh-release.json");
+const wallMoney = json("../worker/src/lib/explore-wall-money-reference-release.json");
 const text = json("../lib/explore/reference-text-catalog.json");
 const base = json("../lib/explore/imported-catalog.json");
 const hook = hookRelease.items[0];
@@ -46,7 +47,7 @@ test("October import keeps four ordered image-only slideshows and all thirteen s
 test("the real catalog places the new batch first in each workflow and preserves earlier slideshow identities", () => {
   const references = getRecreateReferences();
   assert.equal(new Set(references.map(item => item.id)).size, references.length);
-  const expected = { hook: hookRefresh.items.map(item => item.id), slideshow: slideshows.items.map(item => item.id), wall_text: [] };
+  const expected = { hook: hookRefresh.items.map(item => item.id), slideshow: slideshows.items.map(item => item.id), wall_text: wallMoney.items.map(item => item.id) };
   assert.equal(references.find(item => item.id === hook.id).isNew, undefined, "The next Hook batch retires only the prior Hook badge.");
   for (const [format, ids] of Object.entries(expected)) {
     const matching = filterReferences(references, format, []);

@@ -1,0 +1,13 @@
+# Trending carousel visibility in Schedule
+
+UGC-SCH-012: user reports Trending scheduled slideshows missing in Schedule. Production read-only evidence showed the two scheduled Trending carousels ranked202 and203 in their owner's oldest-first list. The list in `lib/scheduling/db.ts` stops at200, so neither appeared in the Schedule API response. Each had a scheduled TikTok target and queued publish job. A subsequent read showed one published target with completed job and provider post ID, and one still scheduled/queued. These are observations at query time, not a guarantee of later delivery.
+
+Local fix: `listScheduledPostsForUser` reads 200-row pages to completion, uses an ID tiebreaker, preserves owner/status/date filters and attaches targets per page; later-page errors propagate. No schedule, target or queue is written by the list operation. Offset pagination can observe concurrent changes between requests; very large accounts may require a cursor/paginated UI in future. Production application has not been deployed.
+
+Files changed: `lib/scheduling/db.ts`, new `lib/scheduling/schedule-list-pagination.test.mjs`, append-only `docs/ai-context/clear.md`, this receipt. No UI, schema or worker changes.
+
+Verification: new focused tests exercise203 posts, owner isolation, target attachment, status filter and later-page errors. Combined scheduling/atomic SQL service suite20/20 PASS (`.tmp/trending-backend/schedule-visibility-focused.log`). TypeScript and scoped lint PASS. Broader scheduling contract suite66/69 PASS; three failures concern existing UI expectations for carousel modal, quick timing and video picker; they were already recorded in Carousel context and are not changed here (`.tmp/trending-backend/schedule-visibility-regression.log`). Scoped diff check PASS.
+
+Preflight actually consulted: `ugc-context-memory`, `ugc-immutable-contracts`, `ugc-scheduling`, `ugc-regression-gate`, Supabase skill sections, nonnegotiables, scheduling contract, Next route guide and relevant existing incident/context sections. `tools/preflight.py` reported readable prerequisites. Large context histories were consulted by relevant sections, not read in full in this turn. Existing unrelated work preserved.
+
+Protected contracts: owner isolation and target attachment VERIFIED in local fixtures; durable records/jobs and one provider receipt VERIFIED by hosted readback; timezone conversion, manual scheduling, cancellation and duplicate delivery covered by existing focused tests without changing those paths. Visual Schedule rendering, browser-independent execution of the still-queued item and deployed visibility NOT TESTED. No production write, activation, provider request or deployment. Full production acceptance remains open.

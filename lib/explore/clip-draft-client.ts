@@ -20,6 +20,13 @@ export async function loadClipDraft(deps: ClipDraftTransport, sourceAssetId: str
   const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`);
   return result.draft === null ? null : parseClipDraftReceipt(result.draft, sourceAssetId, scope);
 }
+export async function loadClipDraftWithInitial(deps: ClipDraftTransport, sourceAssetId: string, scope: string) {
+  const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`);
+  const draft = result.draft === null ? null : parseClipDraftReceipt(result.draft, sourceAssetId, scope);
+  const initialContent = !draft && result.initialContent ? parseClipDraftContent(result.initialContent) : null;
+  if (initialContent && (!["hook", "wall_text"].includes(scope) || initialContent.editing.format !== scope || initialContent.sourceAssetId !== sourceAssetId)) throw new ExploreClipDraftError("The initial clip belongs to a different source.");
+  return { draft, initialContent };
+}
 export async function saveClipDraft(deps: ClipDraftTransport, input: ExploreClipDraftSaveRequest) {
   const result = await request(deps, "/api/explore/clip-drafts", input);
   const draft = parseClipDraftReceipt(result.draft, input.content.sourceAssetId, input.scope);

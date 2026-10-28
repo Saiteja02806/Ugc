@@ -10,11 +10,13 @@ import * as imageBatch from "../lib/explore/reference-image-batch.ts";
 
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
-function harness(upload, { images = [], queryError = false, queryPending = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner", frames = [], fetchFrame = async frame => frame } = {}) {
+function harness(upload, { images = [], queryError = false, queryPending = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner", frames = [], fetchFrame = async frame => frame, influencerImages = [], resolveInfluencer = async id => ({...savedImage(id), sourceType:"generated_image"}) } = {}) {
   const states = [], refs = [], effects = [], changes = [], selectionChanges = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"]), images]]);
   let cursor = 0;
   const imports = {
+    "@/lib/characters/history": { mergeCharacterHistoryPages: pages => pages.flatMap(page=>page.images) },
+    "@/lib/characters/photo-library-client": { fetchInfluencerPhotoLibrary: async () => ({ok:true,images:influencerImages,nextCursor:null}), resolveInfluencerPhoto: async (owner,id) => { savedReads.push({owner,id}); return resolveInfluencer(id); } },
     "@/lib/media/image-picker": imagePicker,
     "@/lib/explore/hook-starting-frame-history-client": { fetchRecentStartingFrames: async () => frames, fetchRecentStartingFrame: fetchFrame },
     "@/lib/explore/person-reference": personReference,
@@ -28,6 +30,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "lucide-react": new Proxy({}, { get: (_, key) => String(key) }),
     "@base-ui/react/tabs": { Tabs: { Root: "TabsRoot", List: "TabsList", Tab: "TabsTab", Panel: "TabsPanel" } },
     "@tanstack/react-query": {
+      useInfiniteQuery: options => { queries.push(options); return { data:{pages:[{images:influencerImages,nextCursor:null}]},isPending:false,isFetching:false,error:null,hasNextPage:false,isFetchingNextPage:false,refetch:async()=>{calls.push("refresh-influencers");},fetchNextPage:async()=>{} }; },
       useQuery: options => { queries.push(options); const data = options.queryKey[0] === "hook-starting-frames" ? frames : imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: queryPending || data === undefined, isError: queryError, refetch: async () => {} }; },
       useQueryClient: () => ({ cancelQueries: async options => { cancellations.push(options); }, setQueryData: (key, update) => { const cacheKey = JSON.stringify(key); imageCache.set(cacheKey, update(imageCache.get(cacheKey))); } }),
     },
@@ -499,4 +502,47 @@ test("failed or late starting frame reads retain the selected image", async () =
     if (unmount) h.cleanup(); finish(); await flush(); assert.equal(chosen.length, 0); assert.equal(h.changes.length, 0);
     if (!unmount) assert.ok(h.errors.includes("Frame deleted"));
   }
+});
+
+
+test("saved influencer picker marks every selected photo and toggles independently at the cap", async () => {
+  const h = harness(async () => assert.fail("No uploads"));
+  let selected = []; const resolved = [];
+  const library = { images: ["one", "two", "three"].map(id => ({ jobId:id, mediaAssetId:id, url:`https://owned.test/${id}.png` })),
+    onSelect: async image => { resolved.push(image.mediaAssetId); selected = [...selected, {kind:"image",asset:savedImage(image.mediaAssetId)}]; return true; } };
+  const options = () => ({ selection:null, imageSelections:selected, onImagesChange:next=>{selected=next;}, imagePurpose:"person",maxImages:2,videoInputEnabled:false,influencerLibrary:library });
+  let tree = h.render(options()); h.all(tree,node=>node.type==="Dialog")[0].props.onOpenChange(true);
+  const button = number => h.all(h.render(options()),node=>node.props?.["aria-label"]===`Use saved influencer ${number}`)[0];
+  await button(1).props.onClick(); await flush();
+  await button(2).props.onClick(); await flush();
+  assert.equal(button(1).props["aria-pressed"],true);assert.equal(button(2).props["aria-pressed"],true);
+  assert.equal(button(3).props.disabled,true);assert.equal(button(1).props.disabled,false);
+  await button(1).props.onClick();await flush();
+  assert.deepEqual(Array.from(selected,item=>item.asset.id),["two"]);
+  assert.equal(button(1).props["aria-pressed"],false);assert.equal(button(2).props["aria-pressed"],true);
+  assert.equal(button(3).props.disabled,false);assert.deepEqual(resolved,["one","two"]);
+  h.cleanup();
+});
+
+
+test("Person photos and My Influencers sections replace Other images and use owned history", async () => {
+  const h = harness(async()=>assert.fail("No uploads"),{influencerImages:[{jobId:"character-job",mediaAssetId:"owned-character",url:"https://owned.test/character.png"}]});
+  let selected=[];const purposes=[];
+  const opts=()=>({selection:null,imageSelections:selected,onImagesChange:next=>{selected=next;},imagePurpose:"person",onImagePurposeChange:value=>purposes.push(value),videoInputEnabled:false});
+  let tree=h.render(opts());h.all(tree,node=>node.type==="Dialog")[0].props.onOpenChange(true);tree=h.render(opts());
+  const content=node=>{const children=[node?.props?.children].flat(Infinity);return children.filter(value=>typeof value==="string").join("");};
+  const section=(tree,name)=>h.all(tree,node=>node.type==="Button"&&content(node)===name)[0];
+  assert.ok(section(tree,"Person photos"));assert.ok(section(tree,"My Influencers"));
+  assert.equal(h.all(tree,node=>node.type==="Button"&&content(node)==="Other images").length,0);
+  section(tree,"My Influencers").props.onClick();tree=h.render(opts());
+  const query=h.queries.filter(query=>query.queryKey[0]==="hook-influencer-history").at(-1);
+  assert.equal(query.enabled,true);assert.equal(query.queryKey[1],"expected-owner");
+  h.all(tree,node=>node.props?.["aria-label"]==="Refresh my influencers")[0].props.onClick();await flush();
+  assert.ok(h.calls.includes("refresh-influencers"));
+  await h.all(tree,node=>node.props?.["aria-label"]==="Use saved influencer 1")[0].props.onClick();await flush();tree=h.render(opts());
+  assert.deepEqual(Array.from(selected,item=>item.asset.id),["owned-character"]);assert.ok(purposes.every(purpose=>purpose==="person"));
+  assert.ok(h.savedReads.some(read=>read.owner==="expected-owner"&&read.id==="owned-character"));
+  section(tree,"Person photos").props.onClick();tree=h.render(opts());
+  assert.equal(h.all(tree,node=>node.props?.["aria-label"]==="Use saved influencer 1")[0].props["aria-pressed"],true);
+  h.cleanup();
 });

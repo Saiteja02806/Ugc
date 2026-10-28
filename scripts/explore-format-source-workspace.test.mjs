@@ -56,6 +56,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
+  "@/components/explore/lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "HookStartingFrameWorkspace" },
   "@/components/explore/use-hook-composer-selection": { useHookComposerSelection() {
     const [frame, setFrame] = imports.react.useState(null);
     return { frame, setFrame, ready: true, error: null };
@@ -157,6 +158,23 @@ test("A recovered slideshow job opens generated results before the current seque
   assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
   nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
   assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+});
+
+test("Slideshow restores saved work once without replacing the sequence or leaving Edit/Schedule", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  const editor = () => nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  workflow().onGenerationRestore();
+  assert.equal(editor().props.previewActive, false);
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
+  assert.equal(editor().props.previewActive, true, "The retained sequence remains explicitly reachable");
+  editor().props.onEdit(); workflow().onGenerationRestore();
+  assert.equal(editor().props.active, true, "Restoration cannot leave an active editor");
+  const saved = harness("slideshow", "step=edit&slideshowId=00000000-0000-4000-8000-000000000001", { selected: null });
+  nodes(saved.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
+  nodes(saved.render()).find(n => n.type === "generation-panel").props.recreateView.workflow.onGenerationRestore();
+  assert.equal(nodes(saved.render()).find(n => n.type === "FormatSlideshowEditor").props.active, true);
 });
 
 test("Hook Create Your videos shows the same two-clip overview as Demo even before an opening is selected", () => {

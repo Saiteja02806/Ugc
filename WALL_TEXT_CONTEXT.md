@@ -1,5 +1,9 @@
 # Wall-of-text Context
 
+28 October local next batch: source-bound profiles 652f166f3a7a7a8d, e95ccc86a8f9ee96 and 2fe054f77b9d9549 added after source comparisons and actual initializer tests. 41 focused tests/types/lint and actual-catalogue browser save/reopen/full-duration/mobile checks pass. Earlier profiles and saved edits unchanged; flags stay disabled, no deploy or video generation. Receipt docs/prompt-reviews/wall-three-nonnumbered-admission-2026-10-28.md; remaining references unfinished.
+
+28 October 2026 local update: source-bound profiles added for 49, 52, 56, 58, 62, 63 and next batch 45/57. Existing profiles unchanged; automatic flags remain disabled. 38 focused tests, TypeScript, lint and eight-profile real-component fixture save/reopen/mobile/full-duration checks pass. No video generation or deployment. See docs/prompt-reviews/wall-eight-local-admission-2026-10-28.md. Remaining references and hosted acceptance are incomplete.
+
 Last updated: 2026-10-09
 
 ## 2026-10-09 Revisiting and scheduling Wall posts (local fix)
@@ -965,3 +969,27 @@ npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_re
 - New source/category/prompt/audio checks4/4 plus existing focused checks35/35 pass. TypeScript/lint and worker build pass. Production FilterMenu/cards/dialog exercised in a local fixture at1280x720 and390x844: six filtered cards,New badges,selection,preview open/close,clear and no horizontal overflow. Fixture shell/auth/private-preview isolation is disclosed; it is not production acceptance.
 - Website and worker NOT DEPLOYED. No paid generation or publishing. User-facing production category/Recreate acceptance NOT VERIFIED. Before runtime rollout review source-specific outputs with an approved caption-free original-opening image. Do not infer fidelity from storage or compiler results.
 - Evidence: `docs/prompt-reviews/wall-money-reference-review-2026-10-27.md`, source manifest and completion receipt; `.tmp/wall-money-review-2026-10-26/` retains frames,baselines,storage/pixel receipts and browser screenshots. UGC-VID-020 records preview-field propagation caught by integration testing.
+
+
+## 28 October 2026 — Wall workflow distinction and local storage/recovery fix
+
+User clarified: Wall may exceed five seconds and must not acquire Hook automatic cuts. Wall copy has its own multiline density (typically4–10lines), placement and font sizing; do not inherit Hook's short-copyfit. Sixreviewedmotionrecordsareacceptedcoverage; no request to auditallWallmotion.
+
+Inspected first64decodedthumbnailtiles for each ofsix Investing/Money sources from retained nativecontact sheets (384tiles). SourceMP4pathsfromoldmanifestunavailablelocally; this was existing extractedframeinspection,notfreshplayback/fullvideoreview. Textblocks vary across uppermiddle/center/lower face-chestarea and widths; noexactfont/pixelmeasurement or globalWalllayoutchangeperformed.
+
+Localimplementation: Wallframe0usespersistent content-addressedstore readthrough;missingframeextractsonce,persistsverifiedPNG/index,thenlatercoldservicecanreadwithoutMP4. PublicWallonly;privatecreatorbranchunchanged. Added--wall toexistingprepare-hook-source-frames.mjs soallcanonicalpublicWallframescanbeverified/preparedbeforetraffic. No hostedpreparationexecuted; firstuncachedrequestmaystillwait. Storageoutagesfailrecoverablyratherthanclaimingready. Do notpromiseinstantorzerolatency.
+
+WallhistorynowresolvesmatchinggetWallMoneyMotionbeforegenericfallback;all6reviewedrecordsretainmotiononreuse. TalkingHeadandunreviewedWallfallbackunchanged. NoWallautotrim/textfit/durationdefaultchange. Updatedtestexpectationforrequestedphysicaltextcleanup.
+
+29source/storage/Wall/recoverychecksPASS;tsc/lintPASS. Fixtureprovesnewserviceusesstoredframewithoutvideoread/decode;notrealcloudlatencyorproductionreadback. Nodecommandsuselocalrepositoryloader/transformtypes/modulemocks. Logs outputs/hooks-45-80-86-rewrite-20261028/wall-{fixes,types,lint}.log. No deploy/paidgeneration/remoteassetwrite.
+
+## 28 October 2026 — Six-reference automatic Wall text placement (local, disabled)
+New untouched 9:16 Wall generations can use source-ID/hash-bound layout v1 for the six reviewed Investing & Money references. Recovered native opening frames confirm 6/6/4/8/4/10 lines; thumbnail estimates 01/02 were corrected. Different placement/width/size/outline/spacing per reference; existing Proxima face is a candidate, not identified source font. Optional saved lineHeight preserves historical defaults when absent. Exact new words remain editable; saved/local/pending/explicit-empty drafts win. Full actual Wall duration retained, no Hook trim or Hook brevity rule. Existing automatic text checkbox reused only for eligible references behind separate EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED and NEXT_PUBLIC_EXPLORE_AUTOMATIC_WALL_TEXT_ENABLED flags, both left unset/off. No deployment or hosted changes. 73 focused +25 worker +87 integration checks PASS, types/build/lint PASS. Local browser actual controls/draft hook fixture save/reopen/blank/mobile PASS. Seven actual renderer neutral MP4 exports all12seconds, opening/ending text checked. Hosted authenticated/generated copy/footage contrast not verified. Receipt docs/prompt-reviews/wall-automatic-placement-2026-10-28.md.
+`n## 28 October 2026 — Wall layout batch 02/05 (local only)`nSource-bound editable placement profiles added for Wall 02 and 05. Existing saved edits and full Wall duration retain priority. Local tests and twelve-second neutral exports pass; generated footage and hosted acceptance unverified. No deploy. See docs/prompt-reviews/wall-layout-batch-02-05-2026-10-28.md.
+`n## 28 October 2026 — Structured Wall Remix handoff (local, disabled)`nWall 04 has a source-bound two-layer heading/body profile; Wall 03 has a condensed-list profile. Frozen text, business context, editable words, saved drafts and full duration are protected. Tests are local fixtures; no paid calls or deployment. See docs/prompt-reviews/wall-structured-remix-2026-10-28.md.
+`n## 28 October 2026 — Wall 04 heading fit and grounding (local)`nVersioned bounded heading fit and grounded structured Remix instructions; saved test heading fits without changing words, old plans unchanged. Real new-prompt quality and hosted behavior unverified; no deploy. See docs/prompt-reviews/wall04-heading-and-grounding-fix-2026-10-28.md.
+
+
+## 28 October 2026 — Wall to Hook reclassification (staged, not deployed)
+
+User directed Wall 21 be removed and Wall 06, 28 and 59 be moved to Hook with opening reaction clips. Wall 21 is removed from the local selectable Wall gallery, with historical source registry retained. Separate local Hook-only trims retain original files: 06 3.300s, 28 2.033s, 59 3.000s. Hook release, opening-only source text and source-specific phased motion are staged under an inactive release gate. On activation the three old Wall IDs retire from selection but remain resolvable for history. Nine storage objects have not been uploaded; source frames, hosted preview and generated-output quality remain unverified. Do not switch the release active until media/hash, prompt/source, frame and authenticated checks are complete. No deployment or hosted writes. See docs/prompt-reviews/wall-to-hook-reclassification-2026-10-28.md; UGC-VID-028 remains open.

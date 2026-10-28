@@ -38,8 +38,16 @@ export function creatorAccountLegacySelectedDirections(referenceId: string, sour
   return review && source.startingFrame.index === frameIndex && review.selectedFrameSha256 === frameSha256 ? review.selectedFrameDirections : review?.directions;
 }
 
-export function creatorAccountDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string) {
+export function creatorAccountDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string, originalOpening = false) {
   const entry = getCreatorMiddleFramePrompt(referenceId, sourceSha256);
+  const source = originalOpening ? getCreatorAccountSource(referenceId) : undefined;
+  if (entry && originalOpening && frameIndex === 0 && source?.sourceSha256 === sourceSha256 && frameSha256 === source.posterSha256) return buildSourceMotionDirections(entry);
+  if (originalOpening) {
+    if (frameIndex !== 0 || source?.sourceSha256 !== sourceSha256 || frameSha256 !== source.posterSha256) return undefined;
+    // New preparations must never silently use an older untimed package.
+    const directions = entry ? undefined : reviewFor(source)?.directions;
+    return directions?.includes("PHASE [") ? directions : undefined;
+  }
   return entry && entry.clarityFrame.index === frameIndex && entry.clarityFrame.sha256 === frameSha256
     ? buildSourceMotionDirections(entry) : creatorAccountLegacySelectedDirections(referenceId, sourceSha256, frameIndex, frameSha256);
 }
@@ -49,7 +57,7 @@ export function getCreatorAccounts(user: Parameters<typeof canAccessCreatorAccou
   return catalog.accounts.map(account => ({ id: account.id, label: account.label, items: account.items.map(item => ({
     id: item.id, format: "hook", title: "Hook", category: null, categoryLabel: null, slides: [],
     creatorAccountId: account.id, sourceSha256: item.sourceSha256, durationSeconds: item.durationSeconds,
-    generationPrompt: creatorAccountDirections(item.id, item.sourceSha256, item.startingFrame.index, item.startingFrame.sha256),
+    generationPrompt: creatorAccountDirections(item.id, item.sourceSha256, 0, item.posterSha256, true),
     startingImagePrompt: getCreatorMiddleFramePrompt(item.id, item.sourceSha256) ? buildHookFullRecreationOpeningImagePrompt({ personImageCount: 1, referenceId: item.id, sourceSha256: item.sourceSha256, assignedEntry: getCreatorMiddleFramePrompt(item.id, item.sourceSha256) }).prompt : undefined,
     legacySelectedGenerationPrompt: reviewFor(item)?.selectedFrameDirections,
     legacyGenerationPrompt: reviewFor(item)?.directions,

@@ -1,0 +1,7 @@
+# Wall automatic Remix and layout follow-up
+
+Local plan reads the selected source text, resolves the owned business profile, and freezes source, business context, prompt, and matching source-hash-bound layout into the job. The Wall prompt requests a business-adapted text that retains approximate paragraph structure and line density. The worker validates the result, then creates editable full-duration text layers using the frozen layout. Missing profiles, unsupported multi-block sources, unsuitable aspect ratios, or oversized copy require review; source likeness, factual grounding and visual fit are not guaranteed. Existing saved/empty edits retain precedence in local tests. Wall flags remain disabled; hosted execution is not verified.
+
+Additional source triage from existing three-frame sheets and the reviewed text catalogue (not full temporal review): Wall 17 has one block with three separated paragraphs; Wall 18 has one block combining a heading and a list. Their actual line spacing/heading style must be measured before assigning profiles. Wall 21 contains ten timed text blocks and multiple shots, so the current single-block Wall admission explicitly rejects it; it cannot be represented faithfully by a static full-duration overlay. A separate timed-multiblock design and recovery tests are needed. No layout was assigned for these three during this triage.
+
+No paid calls, video generation, deployment or production writes. The 103 matched local records are not a verified count of every active Wall reference.

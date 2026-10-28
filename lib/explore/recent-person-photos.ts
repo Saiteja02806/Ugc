@@ -1,6 +1,10 @@
 /** Account-scoped browser preference. Store IDs only; resolve ownership afresh
  * before showing a remembered selection. A saved draft always takes priority. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Only untouched, empty preparations may inherit a browser preference. */
+export function canRestoreRecentPersonPhotos(draft: { imageAssetIds: readonly string[]; generatedImage: unknown; approval: unknown } | null, hasSavedRequest: boolean, hasExplicitChoice: boolean) {
+  return !hasSavedRequest && !hasExplicitChoice && !draft?.imageAssetIds.length && !draft?.generatedImage && !draft?.approval;
+}
 export function recentPersonPhotosKey(ownerId: string) {
   return `explore:recent-person-photos:v1:${encodeURIComponent(ownerId)}`;
 }

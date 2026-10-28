@@ -1,3 +1,4 @@
+import { isRetryableContentPlanProviderError, toContentPlanProviderRetry } from "./content-plan-provider-retry.js";
 import type {
   CarouselGenerationRow,
   CarouselSlideInsert,
@@ -187,6 +188,9 @@ export async function generateCarouselBatch(params: {
       });
     } catch (error) {
       planningFailure = error instanceof Error ? error : new Error(String(error));
+      // A transient initial request has no accepted copy. Preserve its durable
+      // job/reservation and attempt budget instead of failing all five slots.
+      if (isRetryableContentPlanProviderError(error)) throw toContentPlanProviderRetry(error);
       if (error instanceof CarouselPartialBatchPlanningError) {
         // Persist each failed slot before the job-level aggregate can replace
         // its cause. Completed siblings remain eligible for rendering below.

@@ -40,6 +40,18 @@ of whether it is a small fix or a large feature.
 - After pushing, verify that the remote commit and each relevant deployment
   target contain the complete intended release.
 
+## Vercel build-cost guardrails
+
+For changes affecting package manifests, lockfiles, build scripts, Next.js or
+Vercel configuration, static generation, CI workflows, workspace topology, or
+deployment triggers, use `.agents/skills/vercel-cost-guardian/SKILL.md` in PR
+guard mode to review the actual changes, including uncommitted changes. For
+Vercel build-cost, deployment fanout, or build-cache investigations, use its
+full audit as appropriate. Treat static signals as hypotheses and report unknown
+costs honestly. Preserve required checks and a preview QA path. Do not change
+production Vercel settings, disconnect projects, or delete deployments without
+explicit authorization.
+
 ## Production verification
 
 When verifying user-facing flows that depend on authentication, production data,

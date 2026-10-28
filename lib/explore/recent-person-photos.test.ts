@@ -1,8 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readRecentPersonPhotos, recentPersonPhotosKey, serializeRecentPersonPhotos } from "./recent-person-photos.ts";
+import { canRestoreRecentPersonPhotos, readRecentPersonPhotos, recentPersonPhotosKey, serializeRecentPersonPhotos } from "./recent-person-photos.ts";
 const first = "00000000-0000-4000-8000-000000000001";
 const second = "00000000-0000-4000-8000-000000000002";
+test("only empty untouched preparations inherit recent photos", () => {
+  const empty = {imageAssetIds:[],generatedImage:null,approval:null};
+  assert.equal(canRestoreRecentPersonPhotos(empty,false,false),true);
+  assert.equal(canRestoreRecentPersonPhotos(null,false,false),true);
+  for(const [draft,request,choice] of [[empty,true,false],[empty,false,true],[{...empty,imageAssetIds:[first]},false,false],[{...empty,generatedImage:{}},false,false],[{...empty,approval:{}},false,false]] as const) {
+    assert.equal(canRestoreRecentPersonPhotos(draft,request,choice),false);
+  }
+});
 test("remembered photos preserve order and explicit clearing without storing URLs", () => {
   assert.deepEqual(readRecentPersonPhotos(serializeRecentPersonPhotos("owner", [second, first]), "owner"), [second, first]);
   assert.deepEqual(readRecentPersonPhotos(serializeRecentPersonPhotos("owner", []), "owner"), []);

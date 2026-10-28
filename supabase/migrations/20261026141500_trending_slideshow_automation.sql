@@ -87,3 +87,30 @@ create index trending_slideshow_automation_slots_user_scheduled_idx
 alter table public.trending_slideshow_automation_slots enable row level security;
 revoke all on public.trending_slideshow_automation_slots from public, anon, authenticated;
 grant select, insert, update, delete on public.trending_slideshow_automation_slots to service_role;
+
+-- This migration has not shipped previously. Import legacy fallback storage in
+-- the same transaction as table creation: no empty-table window loses a draft.
+do $$
+begin
+  if to_regclass('public.explore_slideshow_plans') is null then return; end if;
+  insert into public.trending_slideshow_automations
+    (user_id,status,config,rotation_cursor,revision,attention_reason,attention_message,activated_at,paused_at,updated_at)
+  select p.user_id,a.status,a.config,a.rotation_cursor,a.revision,a.attention_reason,a.attention_message,a.activated_at,a.paused_at,a.updated_at
+  from public.explore_slideshow_plans p
+  cross join lateral jsonb_populate_record(null::public.trending_slideshow_automations,p.output_json->'automation') a
+  where p.request_key='00000000-0000-4000-8000-00000000a070' and jsonb_typeof(p.output_json->'automation')='object'
+    and a.user_id=p.user_id
+  on conflict(user_id) do nothing;
+  insert into public.trending_carousel_visual_styles
+  select s.* from public.explore_slideshow_plans p
+  cross join lateral jsonb_populate_recordset(null::public.trending_carousel_visual_styles,coalesce(p.output_json->'savedStyles','[]'::jsonb)) s
+  where p.request_key='00000000-0000-4000-8000-00000000a070' and s.user_id=p.user_id
+  on conflict(id) do nothing;
+  insert into public.trending_slideshow_automation_slots
+  select s.* from public.explore_slideshow_plans p
+  cross join lateral jsonb_populate_recordset(null::public.trending_slideshow_automation_slots,coalesce(p.output_json->'slots','[]'::jsonb)) s
+  where p.request_key='00000000-0000-4000-8000-00000000a070' and s.user_id=p.user_id
+  on conflict(idempotency_key) do nothing;
+end $$;
+
+select pg_notify('pgrst','reload schema');

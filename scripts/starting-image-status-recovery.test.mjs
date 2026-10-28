@@ -56,14 +56,26 @@ test('repeated transient reads stay at the slower cadence and focus promptly ret
   }finally{h.close();}
 });
 
-test('auth, missing receipt and validation failures stop automatically; explicit checking retains the exact job',async()=>{
-  for(const failure of [401,403,404,'receipt']){
+test('auth and validation failures stop automatically; explicit checking retains the exact job',async()=>{
+  for(const failure of [401,403,'receipt']){
     const h=fixture(n=>n>1?response(job()):failure==='receipt'?response(job('processing',{receipt:{...job().receipt,ownerId:'another-owner'}})):Response.json({ok:false,message:'Cannot confirm saved job'},{status:failure}));
     try{await settle();assert.ok(h.observer.getCurrentResult().isError);assert.equal(intervals.size,0);
       focusManager.setFocused(false);focusManager.setFocused(true);onlineManager.setOnline(false);onlineManager.setOnline(true);await settle();assert.equal(h.reads.length,1);
       await h.observer.refetch();assert.equal(h.reads.length,2);assert.equal(h.reads[0].url,h.reads[1].url);assert.equal(h.observer.getCurrentResult().data.id,checkpoint.jobId);
     }finally{h.close();}
   }
+});
+
+test('a receipt missing during uncertain submission recovers the same completed request without another POST',async()=>{
+  const pending={...checkpoint,jobId:null};
+  const h=fixture(n=>n<3?Response.json({ok:false,message:'Not confirmed yet'},{status:404}):response(job('completed')),[pending]);
+  try{
+    await settle();assert.equal(h.reads.length,1);assert.deepEqual([...intervals.values()].map(t=>t.ms),[30000]);
+    await h.cycle(30000);assert.equal(h.reads.length,2);await h.cycle(30000);
+    assert.equal(h.observer.getCurrentResult().data.output.mediaAssetId,job('completed').output.mediaAssetId);
+    assert.equal(intervals.size,0);assert.equal(h.reads.length,3);
+    assert.ok(h.reads.every(r=>r.url.endsWith('?requestKey='+pending.requestKey)&&(r.init.method??'GET')==='GET'));
+  }finally{h.close();}
 });
 
 test('read timeout, collection delay and rate limit recover; malformed data never bypasses receipt verification',()=>{

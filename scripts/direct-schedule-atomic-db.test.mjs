@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 
 const read = name => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
@@ -62,6 +63,60 @@ async function counts(db) {
   return result;
 }
 const empty = { scheduled_posts: 0, scheduled_post_targets: 0, background_jobs: 0, free_trial_instagram_schedule_usage: 0 };
+
+test("automation migration imports a draft and guarded scheduling commits its checkpoint with jobs, fenced by pause/lease/cancellation", async () => {
+  const db = await fixture();
+  try {
+    await db.exec("reset role; create table explore_slideshow_plans(user_id text,request_key uuid,output_json jsonb);");
+    const fallback = { automation: { user_id: "owner-a", status: "draft", config: { saved: "keep" }, revision: 9, rotation_cursor: 3, updated_at: new Date().toISOString() }, savedStyles: [], slots: [] };
+    await db.query("insert into explore_slideshow_plans values('owner-a','00000000-0000-4000-8000-00000000a070',$1)", [JSON.stringify(fallback)]);
+    await db.exec(read("20261026141500_trending_slideshow_automation.sql"));
+    const imported = (await db.query("select * from trending_slideshow_automations")).rows[0];
+    assert.equal(imported.status, "draft"); assert.equal(imported.revision, 9); assert.deepEqual(imported.config, fallback.automation.config);
+    await db.exec(read("20261027185410_harden_trending_automation_checkpoints.sql"));
+    await db.exec("set role service_role");
+    const claim = async (token=id(20)) => (await db.query("select claim_slideshow_automation('owner-a',$1,9) claimed", [token])).rows[0].claimed;
+    assert.equal(await claim(), false, "draft cannot be claimed");
+    await db.exec("update trending_slideshow_automations set status='active'");
+    assert.equal(await claim(), true); assert.equal(await claim(id(21)), false, "one live preparation lease");
+    const key = "automation:" + "a".repeat(128) + ":2030-10-14:12:00";
+    const preparedRow = { id: id(22), user_id: "owner-a", local_date: "2030-10-14", slot_time: "12:00", slot_index: 1,
+      format: "product_stories", timezone: "UTC", scheduled_for: "2030-10-14T12:00Z", idempotency_key: key,
+      snapshot: { configRevision: 9 }, creative_id: "creative", library_item_id: id(5), schedule_id: null,
+      status: "preparing", user_modified: false, hold_message: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const checkpoint = async (row=preparedRow, token=id(20)) => (await db.query("select checkpoint_slideshow_automation_slot('owner-a',$1,9,$2) result", [token, JSON.stringify(row)])).rows[0].result;
+    await assert.rejects(checkpoint(preparedRow, id(21)), /automation_execution_stale/);
+    assert.equal((await checkpoint()).library_item_id, id(5));
+    const value = { ...post(), source_kind: "library_item", media_asset_id: null, library_item_id: id(5),
+      idempotency_key: "auto-slot:" + createHash("sha256").update(key).digest("hex"),
+      metadata: { carouselId: "creative", automationExecution: { token: id(20), slotId: id(22), revision: 9 } } };
+    const before = await counts(db);
+    await db.exec("update trending_slideshow_automations set status='paused'");
+    await assert.rejects(checkpoint(), /automation_execution_stale/);
+    assert.equal((await db.query("select finish_slideshow_automation('owner-a',$1,9,12,'collection_empty','empty') result", [id(20)])).rows[0].result, false, "stale progress never changes paused state");
+    await assert.rejects(create(db, value), /automation_execution_stale/); assert.deepEqual(await counts(db), before);
+    await db.exec("update trending_slideshow_automations set status='active',execution_expires_at=now()-interval '1 second'");
+    await assert.rejects(create(db, value), /automation_execution_stale/);
+    assert.equal(await claim(), true);
+    await db.exec("update trending_slideshow_automation_slots set cancel_requested_at=now()");
+    await assert.rejects(create(db, value), /automation_slot_stale/);
+    await db.exec("update trending_slideshow_automation_slots set cancel_requested_at=null");
+    const accepted = await create(db, value);
+    assert.ok(accepted.targets[0].publish_job_id);
+    assert.equal(accepted.post.metadata.automationExecution, undefined, "ephemeral token is not persisted in schedule metadata");
+    const savedSlot = (await db.query("select * from trending_slideshow_automation_slots")).rows[0];
+    assert.equal(savedSlot.schedule_id, accepted.post.id); assert.equal(savedSlot.status, "scheduled");
+    assert.equal((await checkpoint({ ...preparedRow, library_item_id: id(4) })).library_item_id, id(5), "stale checkpoints cannot overwrite accepted output");
+    await assert.rejects(create(db, { ...value, metadata: { carouselId: "creative" } }), /automation_execution_stale/);
+    const replay = await create(db, value); assert.equal(replay.post.id, accepted.post.id); assert.equal(replay.created, false);
+    assert.equal((await counts(db)).background_jobs, 1);
+    await db.query("select release_slideshow_automation('owner-a',$1)", [id(21)]);
+    assert.equal(await claim(id(21)), false, "a stale worker cannot release another lease");
+    await db.exec("reset role; set role authenticated");
+    await assert.rejects(claim(), /permission denied/);
+    await assert.rejects(create(db, value), /permission denied/);
+  } finally { await db.close(); }
+});
 
 test("quota failure on a later target rolls back parent, every target, queued jobs and trial usage", async () => {
   const db = await fixture(); try {

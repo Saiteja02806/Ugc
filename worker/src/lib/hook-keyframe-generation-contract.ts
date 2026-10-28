@@ -11,7 +11,7 @@ export function hookKeyframeSnapshotKey(receipt: Pick<HookKeyframeGenerationRece
   return `explore/hook-starting-frames/v1/${receipt.sourceSha256}/${receipt.sourceFrame.sha256}.png`;
 }
 export type HookKeyframeGenerationReceipt = {
-  version: 1 | 2 | 3 | 4; purpose: typeof HOOK_KEYFRAME_GENERATION_PURPOSE;
+  version: 1 | 2 | 3 | 4 | 5; purpose: typeof HOOK_KEYFRAME_GENERATION_PURPOSE;
   imageModel?: HookKeyframeImageModel;
   ownerId: string; draftId: string; referenceId: string; sourceSha256: string;
   sourceFrame: { index: number; timeSeconds: number; width: number; height: number; sha256: string };
@@ -19,22 +19,28 @@ export type HookKeyframeGenerationReceipt = {
    * identity_clarity_anchor so existing draft/checkpoint recovery stays stable. */
   animationOpeningFrame?: { index: number; timeSeconds: number; width: number; height: number; sha256: string };
   preparationInputKey?: string;
-  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5;
+  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7;
   inputKey: string; promptSha256: string;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const hash = /^[a-f0-9]{64}$/;
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const fields = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
-export function hookKeyframeGenerationInputKey(receipt: Omit<HookKeyframeGenerationReceipt, "inputKey" | "promptSha256" | "version" | "purpose" | "promptVersion"> & { version?: 1 | 2 | 3 | 4 }) {
+// JSONB preserves values, not object insertion order. Frozen string keys use
+// this exact frame field order both before persistence and during verification.
+const canonicalFrame = (frame: HookKeyframeGenerationReceipt["sourceFrame"]) => ({
+  index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256,
+});
+export function hookKeyframeGenerationInputKey(receipt: Omit<HookKeyframeGenerationReceipt, "inputKey" | "promptSha256" | "version" | "purpose" | "promptVersion"> & { version?: 1 | 2 | 3 | 4 | 5 }) {
   const { ownerId, draftId, referenceId, sourceSha256, sourceFrame, animationOpeningFrame, preparationInputKey, personImageAssetIds, instructions } = receipt;
-  return JSON.stringify({ version: receipt.version === 4 ? 4 : receipt.version === 3 ? 3 : receipt.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
-    sourceFrame: { index: sourceFrame.index, timeSeconds: sourceFrame.timeSeconds, width: sourceFrame.width, height: sourceFrame.height, sha256: sourceFrame.sha256 },
-    ...(receipt.version === 4 ? { animationOpeningFrame, preparationInputKey } : {}),
+  return JSON.stringify({ version: receipt.version === 5 ? 5 : receipt.version === 4 ? 4 : receipt.version === 3 ? 3 : receipt.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
+    sourceFrame: canonicalFrame(sourceFrame),
+    ...(receipt.version === 5 ? { preparationInputKey } : {}),
+    ...(receipt.version === 4 ? { animationOpeningFrame: animationOpeningFrame ? canonicalFrame(animationOpeningFrame) : undefined, preparationInputKey } : {}),
     imageAssetIds: personImageAssetIds, instructions, ...(receipt.version !== 1 && receipt.version !== undefined ? { imageModel: receipt.imageModel } : {}) });
 }
 export function hookKeyframePreparationInputKey(receipt: HookKeyframeGenerationReceipt) {
-  return receipt.version === 4 ? receipt.preparationInputKey! : receipt.inputKey;
+  return receipt.version === 4 || receipt.version === 5 ? receipt.preparationInputKey! : receipt.inputKey;
 }
 export function hookKeyframeReferenceImageCount(receipt: Pick<HookKeyframeGenerationReceipt, "version" | "personImageAssetIds">) {
   return receipt.personImageAssetIds.length + (receipt.version === 4 ? 2 : 1);
@@ -48,12 +54,14 @@ export function hookKeyframeSourceRatio(width: number, height: number): "9:16" |
 }
 export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframeGenerationReceipt | null {
   if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "promptVersion", "inputKey", "promptSha256"]) ||
-    value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 || value.version === 1 && value.imageModel !== undefined ||
-    (value.version === 2 || value.version === 3 || value.version === 4) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5].includes(value.promptVersion as number)) ||
+    value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 && value.version !== 5 || value.version === 1 && value.imageModel !== undefined ||
+    (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5, 7].includes(value.promptVersion as number)) ||
+    value.version === 2 && ![2, 3, 4, 5].includes(value.promptVersion as number) ||
     value.version === 3 && value.promptVersion !== 4 ||
     value.version === 4 && value.promptVersion !== 5 ||
+    value.version === 5 && value.promptVersion !== 7 ||
     value.version === 1 && ![1, 2].includes(value.promptVersion as number) ||
-    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2, 3, 4, 5].includes(value.promptVersion as number) ||
+    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2, 3, 4, 5, 7].includes(value.promptVersion as number) ||
     typeof value.ownerId !== "string" || !value.ownerId || value.ownerId.length > 128 || /[\u0000-\u001f]/u.test(value.ownerId) ||
     typeof value.draftId !== "string" || !uuid.test(value.draftId) ||
     typeof value.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value.referenceId) ||
@@ -68,9 +76,11 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
     value.version === 4 && (!record(value.animationOpeningFrame) || !fields(value.animationOpeningFrame, ["index", "timeSeconds", "width", "height", "sha256"]) ||
       !isHookFullRecreationPilotOpeningFrame(String(value.referenceId), String(value.sourceSha256), value.animationOpeningFrame as HookKeyframeGenerationReceipt["sourceFrame"]) ||
       typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 7000) ||
-    value.version !== 4 && (value.animationOpeningFrame !== undefined || value.preparationInputKey !== undefined) ||
+    value.version !== 4 && value.animationOpeningFrame !== undefined ||
+    value.version !== 4 && value.version !== 5 && value.preparationInputKey !== undefined ||
+    value.version === 5 && (typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 7000) ||
     !Array.isArray(value.personImageAssetIds) || value.personImageAssetIds.length < 1 || value.personImageAssetIds.length > 5 ||
-    (value.version === 2 || value.version === 3 || value.version === 4) && value.personImageAssetIds.length > hookKeyframeMaxPersonImages(value.imageModel as HookKeyframeImageModel) ||
+    (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && value.personImageAssetIds.length > hookKeyframeMaxPersonImages(value.imageModel as HookKeyframeImageModel) ||
     value.personImageAssetIds.some(id => typeof id !== "string" || !uuid.test(id)) ||
     new Set(value.personImageAssetIds.map(id => String(id).toLowerCase())).size !== value.personImageAssetIds.length ||
     typeof value.instructions !== "string" || value.instructions.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.instructions) ||
@@ -78,8 +88,8 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
     typeof value.promptSha256 !== "string" || !hash.test(value.promptSha256)) return null;
   const receipt = value as unknown as HookKeyframeGenerationReceipt;
   if (receipt.inputKey !== hookKeyframeGenerationInputKey(receipt)) return null;
-  if (receipt.version === 4 && receipt.preparationInputKey !== JSON.stringify({ version: 3, ownerId: receipt.ownerId, draftId: receipt.draftId,
-    referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: receipt.sourceFrame,
+  if ((receipt.version === 4 || receipt.version === 5) && receipt.preparationInputKey !== JSON.stringify({ version: receipt.version === 5 ? 4 : 3, ownerId: receipt.ownerId, draftId: receipt.draftId,
+    referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: canonicalFrame(receipt.sourceFrame),
     imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, imageModel: receipt.imageModel })) return null;
   return { ...receipt, sourceFrame: { ...receipt.sourceFrame },
     ...(receipt.animationOpeningFrame ? { animationOpeningFrame: { ...receipt.animationOpeningFrame } } : {}),
@@ -90,8 +100,13 @@ export function hookKeyframePromptSha256(prompt: string) { return createHash("sh
 /** Bind labels to the next image block using the accepted prompt version.
  * The default preserves V2 callers. These are prompt instructions, not structural
  * identity/mask roles offered by Gemini. */
-export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 = 2): string[] {
+export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 = 2): string[] {
   if (!Number.isInteger(personImageCount) || personImageCount < 1 || personImageCount > 5) throw new Error("Choose one main face photo and up to four supporting views.");
+  if (promptVersion === 7) return [
+    "IMAGE 1 — ORIGINAL_OPENING_SCENE. Source frame0 is the sole authority for lighting direction and color, exposure, shadows, outfit, camera, pose, hands, props and occlusion. Remove all captions, physical logos and readable text while restoring those surfaces; do not use the source person's identity.",
+    "IMAGE 2 — INFLUENCER_IDENTITY. Depict this person's facial proportions and natural identity in Image1's scene, outfit and lighting. Do not import this photo's room, clothing, light, pose or expression.",
+    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image2; facial identity only, never background, clothing, lighting or pose.`),
+  ];
   if (promptVersion === 5) return [
     "IMAGE 1 — ANIMATION_OPENING_FRAME_BLUEPRINT. Recreate this original source t=0 shot with the selected influencer. This image alone defines the output pose, camera, composition, hands, glasses, clothing, lighting and background; it does not define facial identity.",
     "IMAGE 2 — IDENTITY_CLARITY_ANCHOR. A later clear moment from the same source performance. Use only to understand stable scene, wardrobe, hair, earbuds and facial-area geometry obscured in Image 1. Do not use its later pose as the output pose and do not copy this source performer's identity.",
@@ -149,6 +164,7 @@ export function isHookKeyframeImageInput(input: {
     const scene = new URL(urls[0]);
     const opening = receipt.version === 4 ? { ...receipt, sourceFrame: receipt.animationOpeningFrame! } : receipt;
     sceneMatches = scene.pathname.endsWith(`/${hookKeyframeSnapshotKey(opening)}`) && !scene.search;
+    if (receipt.version === 5 && receipt.referenceId.startsWith("creator-account-")) sceneMatches = sceneMatches && isCreatorSceneCanonicalUrl(urls[0], receipt);
     if (receipt.version === 4) {
       const anchor = urls[1] ? new URL(urls[1]) : null;
       sceneMatches = sceneMatches && Boolean(anchor?.pathname.endsWith(`/${hookKeyframeSnapshotKey(receipt)}`) && !anchor.search);

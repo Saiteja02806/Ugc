@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {test,mock} from 'node:test';
+import { confirmToolResult } from './mcp-confirm-client.mjs';
 class FixtureAuthError extends Error {constructor(message,status=401){super(message);this.status=status;}}
 mock.module('../lib/firebase/server-auth.ts',{namedExports:{FirebaseAuthRequestError:FixtureAuthError,requireFirebaseUser:async request=>{
   const user=request.headers.get('authorization')?.replace('Bearer fixture-','');
@@ -62,8 +63,11 @@ function harness(){
   };
   const tools=new Map();registerEditDraftMcpTools({registerTool:(name,config,callback)=>tools.set(name,{config,callback})});h.tools=tools;
   h.call=async(name,args={},owner='owner-a',scopes=['assets:read','creative:write'])=>{
-    const tool=tools.get(name),result=await tool.callback(tool.config.inputSchema.parse(args),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
-    if(!result.isError)tool.config.outputSchema.parse(result.structuredContent);return result;
+    const tool=tools.get(name);
+    return confirmToolResult(async(next)=>{
+      const result=await tool.callback(tool.config.inputSchema.parse(next),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
+      if(!result.isError)tool.config.outputSchema.parse(result.structuredContent);return result;
+    },args);
   };return h;
 }
 const code=result=>JSON.parse(result.content[0].text).code;

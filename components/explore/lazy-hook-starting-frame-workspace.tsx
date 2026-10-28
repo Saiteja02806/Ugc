@@ -6,7 +6,15 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import type { HookStartingFrameWorkspace } from "./hook-starting-frame-workspace";
 import styles from "./hook-starting-frame-workspace.module.css";
 
-const Workspace = lazy(() => import("./hook-starting-frame-workspace").then(module => ({ default: module.HookStartingFrameWorkspace })));
+let workspaceImport: Promise<typeof import("./hook-starting-frame-workspace")> | null = null;
+/** Warm code only on user intent; this never reads photos or submits a job. */
+export function preloadHookStartingFrameWorkspace() {
+  return workspaceImport ??= import("./hook-starting-frame-workspace").catch(error => {
+    workspaceImport = null;
+    throw error;
+  });
+}
+const Workspace = lazy(() => preloadHookStartingFrameWorkspace().then(module => ({ default: module.HookStartingFrameWorkspace })));
 
 /** Show an immediate, dismissible response while the preparation bundle loads. */
 export function LazyHookStartingFrameWorkspace(props: ComponentProps<typeof HookStartingFrameWorkspace>) {

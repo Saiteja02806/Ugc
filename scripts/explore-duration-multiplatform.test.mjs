@@ -52,7 +52,7 @@ test("multi-platform receipts recover both targets and reject partial, duplicate
 
 test("landing Explore destination is allowlisted and does not override paid checkout intent", () => {
   assert.equal(getPostSignInDestination(new URLSearchParams("next=explore")), "/explore");
-  assert.equal(getPostSignInDestination(new URLSearchParams("next=https://example.com")), "/dashboard");
+  assert.equal(getPostSignInDestination(new URLSearchParams("next=https://example.com")), "/explore");
   assert.equal(getPostSignInDestination(new URLSearchParams("plan=starter&next=explore")), "/pricing?checkout=continue&plan=starter");
   const landing = readFileSync(new URL("../components/marketing/landing-auth-actions.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(landing, /\/dashboard/);

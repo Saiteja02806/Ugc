@@ -8,13 +8,15 @@ import { characterBatchProgress } from "../../lib/characters/batch-progress.ts";
 import { characterResultGroups } from "../../lib/characters/result-groups.ts";
 import { getCharacterImageModelLabel, MAX_CHARACTER_REFERENCES } from "../../lib/characters/image-models.ts";
 
+import * as promptSkills from "../../lib/characters/prompt-skills.ts";
+
 const assetId = "55555555-5555-4555-8555-555555555555";
 const image = { kind: "image", asset: { id: assetId, url: "https://owned.test/style.png" } };
 const all = (node, match) => !node || typeof node !== "object" ? [] : [
   ...(match(node) ? [node] : []), ...[node.props?.children].flat(Infinity).flatMap(child => all(child, match)),
 ];
 
-function runtime(file, imports) {
+function runtime(file, imports, globals = {}) {
   const values = [], effects = [];
   let cursor = 0;
   const exported = {};
@@ -36,13 +38,13 @@ function runtime(file, imports) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(file, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
-    exports: exported, crypto, URL, Array, Error,
+    exports: exported, crypto, URL, Array, Error, ...globals,
     require: name => { assert.ok(name in modules, `Unexpected import ${name}`); return modules[name]; },
   });
   return { exported, effects, render: fn => { cursor = 0; return fn(); } };
 }
 
-function characterHarness() {
+function characterHarness(skills = promptSkills.CHARACTER_PROMPT_SKILLS, clipboard = async () => {}) {
   const submitted = [];
   const builder = {
     access: { data: { access: { affordableImageCount: 3, imageCreditCost: 1, creditsRemaining: 10, isPaid: true } } },
@@ -64,11 +66,13 @@ function characterHarness() {
     "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], MAX_CHARACTER_REFERENCES, getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
     "@/lib/characters/batch-progress": { characterBatchProgress },
     "@/lib/characters/result-groups": { characterResultGroups },
+    "@/lib/characters/prompt-skills": { ...promptSkills, CHARACTER_PROMPT_SKILLS: skills, resolveCharacterPromptSkills: ids => promptSkills.resolveCharacterPromptSkills(ids, skills) },
+    "@/components/ui/popover": { Popover: "Popover", PopoverContent: "PopoverContent", PopoverTitle: "PopoverTitle", PopoverTrigger: "PopoverTrigger" },
     "./use-character-builder": { useCharacterBuilder: () => builder }, "./character-history": { CharacterHistory: "History" },
     "./image-download-button": { ImageDownloadButton: "Download" },
     "./character-workspace.module.css": { default: {} },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogDescription: "DialogDescription", DialogHeader: "DialogHeader", DialogTitle: "DialogTitle" },
-  });
+  }, { navigator: { clipboard: { writeText: clipboard } } });
   const render = () => h.render(() => {
     let root = h.exported.CharacterWorkspace({});
     while (typeof root.type === "function") root = root.type(root.props);
@@ -79,6 +83,47 @@ function characterHarness() {
   composer().onPromptChange("Generate an influencer in a similar style to this.");
   return { builder, submitted, composer, upload, render };
 }
+
+test("skills toggle without editing the draft, submit IDs, freeze during uncertainty and render only authored result text", () => {
+  const h = characterHarness();
+  const draft = h.composer().prompt;
+  const toggle = () => all(h.composer().settings, node => node.props?.role === "checkbox")[0];
+  toggle().props.onClick();
+  assert.equal(h.composer().prompt, draft);
+  assert.equal(toggle().props["aria-checked"], true);
+  assert.equal(all(h.composer().contextBanner, node => node.props?.["aria-label"] === "Remove Realistic Skin skill").length, 1);
+  h.composer().onSubmit();
+  assert.deepEqual(Array.from(h.submitted[0].skillIds), ["realistic-skin"]);
+  assert.equal(h.submitted[0].prompt, draft);
+  h.builder.session.pendingRequest = h.submitted[0];
+  assert.equal(toggle().props.disabled, true);
+  toggle().props.onClick();
+  assert.equal(toggle().props["aria-checked"], true);
+  h.builder.session.pendingRequest = null;
+  const skill = promptSkills.CHARACTER_PROMPT_SKILLS[0];
+  h.builder.visibleJobs = [{ jobId: "skill-job" }];
+  h.builder.visibleStatuses = [{ id: "skill-job", prompt: promptSkills.composeCharacterPrompt(draft, [skill]), displayPrompt: draft, skills: [{ id: skill.id, name: skill.name }] }];
+  const paragraphs = all(h.render(), node => node.type === "p");
+  assert.equal(paragraphs.some(node => node.props.children === draft), true);
+  assert.equal(paragraphs.some(node => typeof node.props.children === "string" && node.props.children.includes(skill.instruction)), false);
+  all(h.composer().contextBanner, node => node.type === "button")[0].props.onClick();
+  assert.equal(toggle().props["aria-checked"], false);
+  assert.equal(h.composer().prompt, draft);
+  h.composer().onSubmit();
+  assert.equal(h.submitted[1].skillIds, undefined);
+});
+
+test("adding a second config entry needs no UI change and allows independent multi-selection", () => {
+  const h = characterHarness([...promptSkills.CHARACTER_PROMPT_SKILLS, { id: "lighting-fixture", name: "Lighting", description: "Fixture", instruction: "Dim background" }]);
+  const options = () => all(h.composer().settings, node => node.props?.role === "checkbox");
+  options()[1].props.onClick(); options()[0].props.onClick();
+  h.composer().onSubmit();
+  assert.deepEqual(Array.from(h.submitted[0].skillIds), ["lighting-fixture", "realistic-skin"]);
+  options()[0].props.onClick();
+  h.composer().onSubmit();
+  assert.deepEqual(Array.from(h.submitted[1].skillIds), ["lighting-fixture"]);
+  assert.equal(options()[1].props["aria-checked"], true);
+});
 
 test("the character composer submits the attached asset ID with the prompt and never a browser or signed URL", () => {
   const h = characterHarness();
@@ -94,6 +139,50 @@ test("the character composer submits the attached asset ID with the prompt and n
   assert.equal(h.submitted[0].referenceCharacterId, undefined);
 });
 
+test("saved image copy uses its own full prompt, preserves selection and hides missing prompts", async () => {
+  const writes = [];
+  const h = characterHarness(undefined, async text => { writes.push(text); });
+  h.builder.characters.data.characters = [
+    { id: "one", name: "Same name", prompt: "Portrait one\nSkin instructions" },
+    { id: "two", name: "Same name", prompt: "Portrait two" },
+    { id: "legacy", name: "Legacy image" },
+    { id: "blank", name: "Blank", prompt: "  " },
+  ];
+  const copy = index => all(h.render(), node => node.props?.["aria-label"] === `Copy prompt for saved image ${index}`)[0];
+  assert.equal(copy(3), undefined); assert.equal(copy(4), undefined);
+  copy(2).props.onClick(); await flush();
+  assert.deepEqual(writes, ["Portrait two"]);
+  assert.equal(copy(2).props.title, "Copied");
+  copy(1).props.onClick(); await flush();
+  assert.deepEqual(writes, ["Portrait two", "Portrait one\nSkin instructions"]);
+  assert.equal(copy(1).props.title, "Copied");
+  assert.equal(copy(2).props.title, "Copy prompt");
+  assert.equal(h.builder.selectedCharacters.length, 0);
+  assert.equal(h.submitted.length, 0);
+});
+
+test("My influencers hides visible names and labels the Download and Copy Prompt footer actions", () => {
+  const h = characterHarness();
+  h.builder.characters.data.characters = [{ id: "one", name: "My AI influencer", prompt: "Specific stored prompt" }];
+  const tree = h.render();
+  assert.equal(all(tree, node => node.type === "span" && node.props.children === "My AI influencer").length, 0);
+  const select = all(tree, node => node.props?.["aria-label"] === "Select saved image 1: My AI influencer")[0];
+  assert.equal(select.props["aria-pressed"], false);
+  const download = all(tree, node => node.type === "Download" && node.props.name === "saved image 1")[0];
+  assert.equal(download.props.label, "Download");
+  const copy = all(tree, node => node.props?.["aria-label"] === "Copy prompt for saved image 1")[0];
+  assert.equal(all(copy, node => node.type === "span" && node.props.children === "Copy Prompt").length, 1);
+});
+
+test("clipboard rejection remains visible inside My influencers and never claims a successful copy", async () => {
+  const h = characterHarness(undefined, async () => { throw Error("Denied"); });
+  h.builder.characters.data.characters = [{ id: "one", name: "Saved", prompt: "My prompt" }];
+  const copy = () => all(h.render(), node => node.props?.["aria-label"] === "Copy prompt for saved image 1")[0];
+  copy().props.onClick(); await flush();
+  assert.equal(copy().props.title, "Copy prompt");
+  assert.equal(all(h.render(), node => node.props?.role === "alert" && /Allow clipboard access/.test(node.props.children)).length, 1);
+});
+
 test("submitted prompts stay beside their batch when the draft changes, including history results", () => {
   const h = characterHarness();
   h.builder.visibleJobs = [{ jobId: "one", generationId: "generation-one" }, { jobId: "two", generationId: "generation-two" }];
@@ -107,6 +196,39 @@ test("submitted prompts stay beside their batch when the draft changes, includin
   h.builder.visibleJobs = h.builder.visibleJobs.slice(0, 1);
   h.builder.visibleStatuses = [{ ...h.builder.visibleStatuses[0], prompt: "Prompt from history" }];
   assert.equal(all(h.render(), node => node.type === "p" && node.props.children === "Prompt from history").length, 1);
+});
+
+test("results remove summary copy and enlarge only completed images without selecting or generating", () => {
+  const h = characterHarness();
+  h.builder.visibleJobs = ["one", "pending", "failed", "two"].map(jobId => ({ jobId }));
+  h.builder.visibleStatuses = [
+    { id: "one", isTerminal: true, output: { mediaAssetId: "one", url: "https://owned.test/full-one.png" } },
+    { id: "pending", isTerminal: false }, { id: "failed", isTerminal: true, error: "Generation failed" },
+    { id: "two", isTerminal: true, output: { mediaAssetId: "two", url: "https://owned.test/full-two.png" } },
+  ];
+  const button = label => all(h.render(), node => node.type === "button" && node.props["aria-label"] === label)[0];
+  assert.equal(all(h.render(), node => node.type === "article").length, 4);
+  assert.equal(all(h.render(), node => node.type === "button" && node.props["aria-label"]?.startsWith("Enlarge influencer")).length, 2);
+  assert.equal(button("Enlarge influencer image 2"), undefined);
+  assert.equal(button("Enlarge influencer image 3"), undefined);
+  const text = JSON.stringify(h.render());
+  assert.doesNotMatch(text, /still processing|image created|Select images to use as references in your next prompt/);
+  button("Enlarge influencer image 1").props.onClick();
+  const lightbox = () => all(h.render(), node => node.type === "Dialog")[0];
+  const fullImage = () => all(lightbox(), node => node.type === "img")[0];
+  assert.equal(lightbox().props.open, true);
+  assert.equal(fullImage().props.src, "https://owned.test/full-one.png");
+  all(lightbox(), node => node.type === "Button" && node.props["aria-label"] === "Next image")[0].props.onClick();
+  assert.equal(fullImage().props.src, "https://owned.test/full-two.png");
+  all(lightbox(), node => node.type === "DialogContent")[0].props.onKeyDown({ key: "ArrowRight", preventDefault() {} });
+  assert.equal(fullImage().props.src, "https://owned.test/full-one.png");
+  assert.equal(h.builder.selectedCharacters.length, 0);
+  assert.equal(h.submitted.length, 0);
+  lightbox().props.onOpenChange(false);
+  assert.equal(lightbox().props.open, false);
+  button("Enlarge influencer image 4").props.onClick();
+  h.builder.visibleJobs = h.builder.visibleJobs.slice(0, 1);
+  assert.equal(lightbox().props.open, false, "removed images cannot remain open in a stale lightbox");
 });
 
 test("successive pasted references append in order and individual removal keeps the other image", () => {

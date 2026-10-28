@@ -81,7 +81,13 @@ test("Content saved-edit discovery is owner-bound, demo-only, batched, and refus
     } };
   } };
   class DraftError extends Error {}
-  const { ExploreClipDraftStore } = load("lib/explore/clip-draft-store.ts", { "server-only": {}, "@supabase/supabase-js": {}, "./clip-draft-contract": { ExploreClipDraftError: DraftError } });
+  const { ExploreClipDraftStore } = load("lib/explore/clip-draft-store.ts", {
+    "server-only": {},
+    "@supabase/supabase-js": {},
+    "./clip-draft-contract": { ExploreClipDraftError: DraftError },
+    "../../worker/src/lib/hook-source-timeline.ts": { parseHookSourceTimeline() {} },
+    "../../worker/src/lib/hook-keyframe-generation-contract.ts": { parseHookKeyframeGenerationReceipt() {} },
+  });
   const store = new ExploreClipDraftStore(db);
   assert.equal((await store.listContentDemoEdits("owner", ids)).size, 205);
   assert.deepEqual(batches.map(batch => batch.length), [100, 100, 5]);

@@ -1,3 +1,4 @@
+import { hookRemixBlockBudgets, assertSourceRelativeHookLength } from "../../worker/src/lib/hook-remix-source-relative.ts";
 import { z } from "zod";
 import { RemixOutputSchema, validateRemixOutput, type ReferenceText, type RemixOutput } from "./reference-text.ts";
 
@@ -29,10 +30,11 @@ Follow the user's language, no-emoji and no-brand preferences. Treat source, dra
 
 Return only the requested review JSON. checks apply to your FINAL output, not the original draft. Use keep only if output is byte-for-byte the draft. Use revise if you corrected it. For reject use empty blocks/heading/body and fail checks for unresolved issues. List a short concrete editorial reason, not hidden analysis. Do not claim a check passed if the final line still contains the issue. Keep one output string per source block in order, empty heading/body and the supplied character limits. Never truncate words.`;
 
-export function hookRemixReviewPayload(source: ReferenceText, businessContext: unknown, instructions: string, draft: RemixOutput) {
+export function hookRemixReviewPayload(source: ReferenceText, businessContext: unknown, instructions: string, draft: RemixOutput, reviewVersion = 2) {
   if (source.format !== "hook") throw new HookRemixQualityError("wrong_format");
   return JSON.stringify({ source: source.blocks.map(block => block.text), businessFacts: businessContext, userPreferences: instructions, draft,
-    maxTotalCharacters: Math.max(80, Math.ceil(source.blocks.reduce((sum, block) => sum + block.text.length, 0) * 1.3)), maxCharactersPerBlock: 600 });
+    ...(reviewVersion >= 3 ? { maxTotalCharacters: hookRemixBlockBudgets(source, businessContext).reduce((sum, value) => sum + value, 0), blockCharacterBudgets: hookRemixBlockBudgets(source, businessContext) }
+      : { maxTotalCharacters: Math.max(80, Math.ceil(source.blocks.reduce((sum, block) => sum + block.text.length, 0) * 1.3)) }), maxCharactersPerBlock: 600 });
 }
 
 const noBrandPreference = /(?:\bno\s+brands?(?:\s+names?)?\b|\bwithout\s+brand(?:\s+names?)?\b|\bomit\s+(?:all\s+)?brand|\bsin\s+marcas?\b|\bsans\s+(?:nom\s+de\s+)?marque)/iu;
@@ -48,7 +50,7 @@ export function explicitNamedToolSlots(source: ReferenceText): string[] {
 }
 
 /** Code-enforced checks complement, rather than replace, the semantic reviewer. */
-export function acceptHookRemixReview(value: unknown, source: ReferenceText, businessContext: unknown, instructions: string, draft: RemixOutput): { output: RemixOutput; review: HookRemixReview } {
+export function acceptHookRemixReview(value: unknown, source: ReferenceText, businessContext: unknown, instructions: string, draft: RemixOutput, reviewVersion = 2): { output: RemixOutput; review: HookRemixReview } {
   const review = HookRemixReviewSchema.parse(value);
   if (review.decision === "reject" || Object.values(review.checks).some(check => check === "fail")) throw new HookRemixQualityError("review_rejected");
   if ([review.checks.meaning, review.checks.sourceVoice, review.checks.grounding, review.checks.instructions].some(check => check !== "pass")) throw new HookRemixQualityError("missing_review_checks");
@@ -61,6 +63,12 @@ export function acceptHookRemixReview(value: unknown, source: ReferenceText, bus
   const knownNames = explicitNamedToolSlots(source);
   if (omitNames) {
     if (review.brandPolicy !== "omit_names" || name && text.includes(name) || knownNames.some(tool => text.includes(tool))) throw new HookRemixQualityError("brand_preference");
+  } else if (reviewVersion >= 3 && review.brandPolicy === "not_needed" && (knownNames.length || review.namedToolEdits.length)) {
+    if (review.checks.brand !== "pass") throw new HookRemixQualityError("missing_brand_review");
+    for (const tool of knownNames) if (!review.namedToolEdits.some(edit => edit.sourceName === tool && edit.replacementName === "")) throw new HookRemixQualityError("missing_tool_evidence");
+    for (const edit of review.namedToolEdits) {
+      if (edit.replacementName !== "" || !source.blocks.some(block => block.text.includes(edit.sourceName)) || text.includes(edit.sourceName)) throw new HookRemixQualityError("invalid_tool_evidence");
+    }
   } else if (knownNames.length || review.namedToolEdits.length) {
     if (review.checks.brand !== "pass" || review.brandPolicy !== "use_business_name" || !name || !text.includes(name)) throw new HookRemixQualityError("missing_brand");
     for (const tool of knownNames) if (!review.namedToolEdits.some(edit => edit.sourceName === tool)) throw new HookRemixQualityError("missing_tool_evidence");
@@ -89,5 +97,6 @@ export function acceptHookRemixReview(value: unknown, source: ReferenceText, bus
   }
   const personalHistory = text.match(/\b(?:all this|so much) time\b[^\n]{0,80}\bmy\b[^\n]*/iu)?.[0];
   if (personalHistory && !facts.includes(personalHistory.toLowerCase())) throw new HookRemixQualityError("unsupported_history");
+  if (reviewVersion >= 3) assertSourceRelativeHookLength(output.blocks, source, businessContext);
   return { output, review };
 }

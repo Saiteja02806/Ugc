@@ -45,7 +45,8 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
               <img src={image.url} alt="" loading="lazy" decoding="async" className="pointer-events-none size-full object-contain" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="line-clamp-2 block text-sm font-semibold leading-5">{image.prompt || "AI character"}</span>
+              <span className="line-clamp-2 block text-sm font-semibold leading-5">{image.displayPrompt ?? image.prompt ?? "AI character"}</span>
+              {image.skills?.length ? <span className="mt-1 block truncate text-xs text-muted">{image.skills.map(skill => skill.name).join(" · ")}</span> : null}
               <span className="mt-1.5 flex items-center gap-1 text-[11px] text-muted">9:16 portrait{image.saved ? <><span> · </span><Check className="size-3" aria-hidden="true" />Saved</> : null}</span>
             </span>
             <ArrowUpRight className="size-3.5 shrink-0 text-muted" aria-hidden="true" />

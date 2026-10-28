@@ -103,3 +103,20 @@ test("v4 receipt and provider order bind opening, anchor and identities and fail
     { promptVersion: 4 },
   ]) assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, ...changed }), null);
 });
+
+
+test("JSONB object-key reordering preserves v4 receipt bindings and rejects changed frame data", async () => {
+  const { receipt } = await fixture();
+  const reorder = (value: unknown): unknown => Array.isArray(value) ? value.map(reorder) : value && typeof value === "object"
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.length - b.length || a.localeCompare(b)).map(([key, item]) => [key, reorder(item)])) : value;
+  const stored = reorder(receipt) as HookKeyframeGenerationReceipt;
+  assert.notEqual(JSON.stringify(stored.animationOpeningFrame), JSON.stringify(receipt.animationOpeningFrame));
+  assert.ok(parseHookKeyframeGenerationReceipt(stored), "A database round trip must not invalidate an unchanged receipt");
+  assert.equal(hookKeyframeGenerationInputKey(stored), receipt.inputKey);
+  for (const changed of [
+    { sourceFrame: { ...stored.sourceFrame, timeSeconds: stored.sourceFrame.timeSeconds + 0.1 } },
+    { animationOpeningFrame: { ...stored.animationOpeningFrame!, sha256: "f".repeat(64) } },
+    { personImageAssetIds: ["00000000-0000-4000-8000-000000000009"] },
+    { ownerId: "another-owner" }, { preparationInputKey: stored.preparationInputKey + "changed" },
+  ]) assert.equal(parseHookKeyframeGenerationReceipt({ ...stored, ...changed }), null);
+});

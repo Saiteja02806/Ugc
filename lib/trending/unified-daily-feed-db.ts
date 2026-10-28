@@ -1,4 +1,5 @@
 import "server-only";
+import { resolveAutomationGenerationMix } from "./slideshow-automation-generation-mix";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -167,7 +168,15 @@ export async function getTrendingPlanEntitlement(
 
 export async function getTrendingContentMixPreference(
   userId: string,
+  options?: { forGeneration: boolean },
 ): Promise<TrendingContentMixPreference> {
+  if (options?.forGeneration) {
+    const preference = await getTrendingContentMixPreference(userId);
+    const { data, error } = await getClient().from("trending_slideshow_automations")
+      .select("status,config").eq("user_id", userId).maybeSingle();
+    if (error && !["42P01", "PGRST205"].includes(error.code)) throw new Error("Could not read automation generation settings.");
+    return resolveAutomationGenerationMix(preference, error ? null : data);
+  }
   const { data, error } = await getClient()
     .from(CONTENT_MIX_TABLE)
     .select("carousel_percent,helpful_tips_percent,hook_video_percent,preference_version,product_stories_cta_percent,reaction_percent,updated_at,wall_text_percent")

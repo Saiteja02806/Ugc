@@ -65,7 +65,7 @@ test("preparation remains silent and cannot animate before image generation and 
 
 test("new drafts default to Pro and model changes invalidate the generated image and approval without discarding photos", () => {
   assert.equal(createHookKeyframeDraft(scope).imageModel, "gemini_3_pro");
-  assert.equal(createHookKeyframeDraft(scope).version, 2);
+  assert.equal(createHookKeyframeDraft(scope).version, 4);
   const approved = approveHookKeyframeImage(generated());
   const changed = updateHookKeyframeDraft(approved, { imageModel: "nano_banana_2" });
   assert.notEqual(hookKeyframeInputKey(changed), hookKeyframeInputKey(approved));

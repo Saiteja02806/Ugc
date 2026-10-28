@@ -19,6 +19,12 @@ function harness({ resolveAsset = async id => photo(id).asset } = {}) {
     react: { useRef, useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => { slots[i] = value; }]; }, useEffect(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((value, n) => !Object.is(value, previous.deps[n]))) { slots[i] = { deps, cleanup: null }; effects.push(() => { previous?.cleanup?.(); slots[i].cleanup = fn(); }); } } },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     "@tanstack/react-query": { useInfiniteQuery: () => ({ data: { pages: [{ images: [], nextCursor: null }] }, isPending: false, error: null, hasNextPage: false, isFetchingNextPage: false, refetch() {}, fetchNextPage() {} }) },
+    "lucide-react": { Plus: "Plus" },
+    "@/components/ui/button": { Button: "button" },
+    "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map(name => [name, name])),
+    "./workflow-reference-preview": { WorkflowReferencePreview: "frame-preview" },
+    "./workflow-reference-preview.module.css": { default: {} },
+    "./workflow-creation.module.css": { default: {} },
     "./format-generation-references": { FormatGenerationReferences: "picker" },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: resolveAsset },
     "@/lib/characters/history": { mergeCharacterHistoryPages: pages => pages.flatMap(page => page.images) },
@@ -100,4 +106,25 @@ test("a stale influencer read cannot add photos after frame/model changes or lea
   assert.equal(h.changes.length, 0);
   assert.equal(h.pending.at(-1), false);
   h.unmount(); assert.equal(h.pending.at(-1), false);
+});
+
+test("compact approved frame is a single tile and keeps photo controls inside Change", () => {
+  const result = harness().render({ compact: true });
+  const all = nodes(result.tree);
+  assert.equal(all.filter(node => node.type === "frame-preview").length, 1);
+  const popup = all.find(node => node.type === "PopoverContent");
+  assert.ok(popup);
+  assert.equal(nodes(popup).filter(node => node.type === "picker").length, 2);
+  const source = readFileSync(new URL("../components/explore/starting-frame-animation-references.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /Choose Omni Flash 1.1 to add face references|Add clear photos of the same person for facial guidance/);
+});
+
+test("model-specific starting-frame defaults preserve the supported duration contract", () => {
+  for (const [model, expected] of [["google_omni", 3], ["wan_3_0", 3], ["seedance_2_5", 4]]) {
+    assert.equal(policy.hookStartingFrameDefaultDuration(model), expected);
+    assert.ok(policy.hookStartingFrameVideoDurations(model).includes(expected));
+  }
+  const workspace = readFileSync(new URL("../components/video/video-generation-workspace.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(workspace, /Animate this image with your selected model/);
+  assert.match(workspace, /compact frame=\{startingFrame\}/);
 });

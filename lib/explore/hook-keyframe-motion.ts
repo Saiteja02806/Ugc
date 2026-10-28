@@ -4,6 +4,8 @@ import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts
 import plansA from "./hook-keyframe-motion-plans-a.json" with { type: "json" };
 import plansB from "./hook-keyframe-motion-plans-b.json" with { type: "json" };
 import plansC from "./hook-keyframe-motion-plans-c.json" with { type: "json" };
+import reclassifiedPlans from "./hook-wall-reclassification-motion.json" with { type: "json" };
+import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 import { parseHookMotionRewrite, type HookMotionRewrite } from "./hook-motion-rewrite-contract.ts";
 import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
 
@@ -123,7 +125,7 @@ export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha2
     canSubmitPaidAnimation: false as const,
   };
   const entry = hookKeyframeMotionCatalog[referenceId];
-  if (!entry || entry.sourceSha256 !== sourceSha256) return undefined;
+  if (!entry || entry.sourceSha256 !== sourceSha256) return getReclassifiedHookMotionReview(referenceId, sourceSha256, startingFrameIndex, getHookReferenceGalleryItems());
   const rewrite = hookKeyframeMotionRewrites[referenceId];
   return {
     status: "review_draft" as const,
@@ -139,6 +141,19 @@ export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha2
     requiresDecision: rewrite?.review.status === "needs_decision",
     canSubmitPaidAnimation: false as const,
   };
+}
+
+/** Only a published and active matching gallery item may surface the reviewed
+ * reclassified plans. They remain preparation suggestions and never grant paid admission. */
+export function getReclassifiedHookMotionReview(referenceId: string, sourceSha256: string, startingFrameIndex: number, activeItems: readonly { id: string; videoSha256: string }[]) {
+  if (startingFrameIndex !== 0 || !activeItems.some(item => item.id === referenceId && item.videoSha256 === sourceSha256)) return undefined;
+  const entry = reclassifiedPlans.entries.find(item => item.referenceId === referenceId && item.sourceSha256 === sourceSha256);
+  if (!entry) return undefined;
+  return { status: "review_draft" as const, referenceId, sourceSha256, displayTitle: entry.displayTitle,
+    sourceDurationSeconds: entry.sourceDurationSeconds, previewDurationSeconds: 4,
+    sourceObservations: entry.reviewNotes,
+    riskFlags: [] as HookMotionRisk[], candidatePlan: entry.plan as HookMotionPlan, staticReview: null,
+    requiresDecision: false, canSubmitPaidAnimation: false as const };
 }
 
 // Defensive linting supplements explicit review. It never turns legacy prose
@@ -165,7 +180,7 @@ export function hookMotionPlanDirections(plan: HookMotionPlan): string {
 }
 
 /** Prompt construction only, never evidence of catalog review or paid admission. */
-export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean }) {
+export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean }) {
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) {
     throw new Error("Describe the animation within 6,000 characters.");
@@ -182,8 +197,8 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
   return [
     `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
-    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds),
-    "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
+    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds, input.actionDurationSeconds),
+    input.removePhysicalText ? "Keep the approved scene free of captions, physical logos, readable text, labels, signage and watermarks. Keep the underlying clothing, props and surfaces intact; do not regenerate removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     sound,
   ].join("\n\n");
 }

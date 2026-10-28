@@ -6,6 +6,10 @@ import { readRemixTextDraft } from "./remix-text-draft.ts";
 import { remixTextPrompt, remixTextSystemPrompt, remixTextPromptVersion, REMIX_TEXT_SYSTEM_PROMPT } from "./remix-text-prompt.ts";
 import { remixInputSource } from "./remix-text-input.ts";
 import { parseExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
+import { automaticHookEdit } from "../../worker/src/lib/automatic-hook-text.ts";
+import { formatTextLayout } from "../../worker/src/lib/explore-format-edit.ts";
+import { wallTextProfile } from "../../worker/src/lib/wall-initial-text-layout.ts";
+import referenceCatalog from "./reference-text-catalog.json" with { type: "json" };
 
 const source: ReferenceText = { referenceId: "hook-a", slideId: null, sourceSha256: "a".repeat(64), format: "hook", status: "ready", blocks: [{ text: "The first hook\nwith two lines", startMs: 0, endMs: 2000 }, { text: "The second hook", startMs: 3000, endMs: 4000 }], extractedAt: "2026-10-10T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
 const output = { blocks: ["Our first hook\nwith two lines", "Our second hook"], heading: "", body: "" };
@@ -18,6 +22,47 @@ test("applying a remix changes only copy on existing overlays and scales new tim
   assert.equal(result.textOverlays?.[1].startMs, 6000); assert.equal(result.textOverlays?.[1].endMs, 8000);
   assert.equal(result.trimStartMs, 1000); assert.equal(result.originalVolume, .2); assert.equal(result.musicVolume, .7);
   assert.throws(() => applyVideoTextRemix({ ...original, format: "wall_text" }, output, source));
+});
+
+test("new unstyled Hook remix shares automatic fitting while saved style and Wall defaults stay intact",()=>{
+  const value="You're telling me this is\nwhat the cool girls use for\ntheir Pinterest??";
+  const s={...source,blocks:[{text:value,startMs:0,endMs:3000}]};
+  const o={blocks:[value],heading:"",body:""};
+  const empty=parseExploreFormatEdit({version:1,format:"hook",trimStartMs:0,trimEndMs:3000,originalVolume:1,musicVolume:.2,text:null});
+  const manual=applyVideoTextRemix(empty,o,s);
+  const automatic=automaticHookEdit(o,{version:1,requestKey:"fixture",model:"fixture",systemPrompt:"",userPrompt:"",promptVersion:8,layoutVersion:1,source:s,businessProfileId:"fixture",businessProfileVersion:1,businessContext:{}},3,"9:16");
+  assert.deepEqual(manual,automatic);
+  const custom={...manual,textOverlays:manual.textOverlays!.map(t=>({...t,width:.5,x:.3,y:.4,fontSize:30,font:"poppins" as const,fontWeight:700 as const}))};
+  const saved=applyVideoTextRemix(custom,{...o,blocks:["Exact new words"]},s);
+  assert.deepEqual(saved.textOverlays![0],{...custom.textOverlays[0],value:"Exact new words"});
+  assert.equal(custom.textOverlays[0].value,value);
+  const wall=applyVideoTextRemix({...empty,format:"wall_text"},o,{...s,format:"wall_text"});
+  assert.equal(wall.textOverlays![0].width,.84);assert.equal(wall.textOverlays![0].fontSize,36);
+  const landscape=applyVideoTextRemix(empty,o,s,{width:1920,height:1080});
+  assert.equal(formatTextLayout(landscape.textOverlays![0],1920,1080).fits,true);
+  assert.ok(landscape.textOverlays![0].y*1080+formatTextLayout(landscape.textOverlays![0],1920,1080).lines.length*formatTextLayout(landscape.textOverlays![0],1920,1080).lineHeight<=1080*.72);
+});
+
+test("new manual Wall remix uses the reviewed source layout without changing saved styles or clip duration", () => {
+  const wall = ReferenceTextSchema.parse(referenceCatalog.items.find(item => item.referenceId === "explore-wall-text-02"));
+  const profile = wallTextProfile(wall.referenceId, wall.sourceSha256)!;
+  const words = wall.blocks.map(block => block.text);
+  const value = { blocks: words, heading: "", body: "" };
+  const edit = parseExploreFormatEdit({ version: 1, format: "wall_text", trimStartMs: 0, trimEndMs: 12000, originalVolume: .4, musicVolume: .2, text: null });
+  const result = applyVideoTextRemix(edit, value, wall);
+  assert.equal(result.textOverlays![0].width, profile.width);
+  assert.equal(result.textOverlays![0].y, profile.y);
+  assert.equal(result.textOverlays![0].color, profile.color);
+  assert.equal(result.textOverlays![0].value, words[0]);
+  assert.equal(result.textOverlays![0].endMs, 12000);
+  assert.equal(result.trimEndMs, 12000);
+  const delayed = { ...wall, blocks: wall.blocks.map(block => ({ ...block, startMs: 1000, endMs: 4000 })) };
+  assert.equal(applyVideoTextRemix(edit, value, delayed).textOverlays![0].startMs, 3000);
+  const custom = { ...result, textOverlays: result.textOverlays!.map(t => ({ ...t, width: .5, y: .3, fontSize: 35 })) };
+  assert.deepEqual(applyVideoTextRemix(custom, value, wall).textOverlays, custom.textOverlays);
+  const mismatch = { ...wall, sourceSha256: "f".repeat(64) };
+  assert.equal(applyVideoTextRemix(edit, value, mismatch).textOverlays![0].width, .84);
+  assert.equal(edit.text, null);
 });
 test("invalid, empty, overlong and cross-format output cannot enter the editor", () => {
   for (const value of [{ ...output, blocks: ["Only one"] }, { ...output, heading: "Unexpected" }, { ...output, blocks: ["", "second"] }, { ...output, blocks: ["x".repeat(100), "y".repeat(100)] }, { ...output, blocks: ["bad\u0001copy", "second"] }]) assert.throws(() => validateRemixOutput(value, source));

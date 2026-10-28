@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { ONE_TIME_FREE_GENERATION_CREDITS } from "../lib/billing/free-generation-credit-policy.ts";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://local-mcp-generation.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "local-test-secret";
@@ -130,15 +131,17 @@ const { mcpHandler } = await import("../lib/mcp/server.ts");
 const resource = new URL("https://mcp.getugcpilot.com/mcp");
 let callId = 0;
 async function call(name, args, owner = "owner-a", scopes = ["generation:write", "jobs:read"]) {
-  const response = await mcpHandler.fetch(new Request(resource, {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-06-18" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: ++callId, method: "tools/call", params: { name, arguments: args } }),
-  }), { authInfo: { token: "local", clientId: "local", scopes, resource, extra: { firebaseUid: owner } } });
-  const raw = await response.text();
-  const line = raw.split("\n").find((part) => part.startsWith("data: "));
-  const body = JSON.parse(line ? line.slice(6) : raw);
-  return body.result ?? body;
+  return confirmToolResult(async (next) => {
+    const response = await mcpHandler.fetch(new Request(resource, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-06-18" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: ++callId, method: "tools/call", params: { name, arguments: next } }),
+    }), { authInfo: { token: "local", clientId: "local", scopes, resource, extra: { firebaseUid: owner } } });
+    const raw = await response.text();
+    const line = raw.split("\n").find((part) => part.startsWith("data: "));
+    const body = JSON.parse(line ? line.slice(6) : raw);
+    return body.result ?? body;
+  }, args);
 }
 function errorCode(result) {
   return JSON.parse(result.content[0].text).code;

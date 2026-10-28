@@ -20,6 +20,7 @@ import {
   type CharacterGenerateRequest,
 } from "./schema";
 import type { CharacterGenerationResponse, CharacterImageCount } from "./types";
+import { composeCharacterPrompt, resolveCharacterPromptSkills } from "./prompt-skills";
 
 export class CharacterGenerationError extends Error {
   constructor(public code: string, message: string, public status = 400) {
@@ -71,6 +72,7 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     mode: request.mode,
     model: request.model,
     prompt: request.prompt ?? null,
+    ...(request.skillIds?.length ? { skillIds: request.skillIds } : {}),
     referenceCharacterId: request.referenceCharacterId ?? null,
     ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds } : {}),
     // Preserve fingerprints for requests admitted before uploaded references existed.
@@ -158,6 +160,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     jobs = existing.filter((job): job is BackgroundJobRecord => !!job);
     assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   } else {
+    const skills = resolveCharacterPromptSkills(request.skillIds);
     const access = await dependencies.requireAccess(userId, request);
     const referenceIds = request.referenceCharacterIds ?? (request.referenceCharacterId ? [request.referenceCharacterId] : []);
     const references = await Promise.all(referenceIds.map((id) => dependencies.getReference(id, userId)));
@@ -189,7 +192,11 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       mode: request.mode,
       model: request.model,
       ...(request.model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
-      prompt: request.prompt,
+      prompt: composeCharacterPrompt(request.prompt, skills),
+      ...(skills.length ? { characterPromptPresentation: {
+        userPrompt: request.prompt,
+        skills: skills.map(({ id, name, instruction }) => ({ id, name, instruction })),
+      } } : {}),
       promptSource: "user",
       referenceCharacterId: reference?.id ?? null,
       ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds, referenceImageUrls } : {}),

@@ -89,8 +89,10 @@ export async function replenishTrendingCarouselFeedPage(params: {
           timezone: profile.trendingTimezone,
           userId: profile.userId,
         });
-      } catch {
+      } catch (automationError) {
         // Isolate slideshow automation sweep so daily Trending replenishment never fails.
+        console.error("Slideshow automation sweep failed", { userId: profile.userId,
+          message: automationError instanceof Error ? automationError.message.slice(0, 200) : "Unknown preparation failure" });
       }
 
       return {

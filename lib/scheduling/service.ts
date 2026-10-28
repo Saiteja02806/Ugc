@@ -211,6 +211,8 @@ export async function getUserSchedule(params: {
 }
 
 export async function createUserSchedule(params: {
+  /** Internal automation lease; never accepted through client metadata. */
+  automationGuard?: { slotId: string; token: string; revision: number };
   allowTikTokTargets?: boolean;
   allowYouTubeTargets?: boolean;
   input: ScheduleCreateInput;
@@ -218,7 +220,7 @@ export async function createUserSchedule(params: {
 }) {
   // Only the dedicated Explore reservation API may bind a schedule to an
   // immutable finishing receipt. Generic schedule metadata cannot opt in.
-  if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish") || key.startsWith("scheduleCreate"))) {
+  if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish") || key.startsWith("scheduleCreate") || key.startsWith("automationExecution"))) {
     throw new SchedulingRequestError("Use the Explore workflow to save a video preparation schedule.", 409, "explore_schedule_contract_required");
   }
   // Recover accepted requests before applying a time-dependent lead check.
@@ -393,7 +395,7 @@ export async function createUserSchedule(params: {
       normalized.source.kind === "library_item" ? normalized.source.id : null,
     media_asset_id:
       normalized.source.kind === "media_asset" ? normalized.source.id : null,
-    metadata,
+    metadata: params.automationGuard ? { ...metadata, automationExecution: params.automationGuard } : metadata,
     project_id: source.projectId,
     scheduled_for: normalized.scheduledFor,
     source_kind: normalized.source.kind,

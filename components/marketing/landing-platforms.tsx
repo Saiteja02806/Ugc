@@ -2,6 +2,7 @@ import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
+import { LandingRotatingBadge } from "@/components/marketing/landing-rotating-badge";
 
 const allLandingPlatforms = [
   { platform: "instagram", label: "Instagram", destination: "Professional account" },
@@ -56,22 +57,15 @@ export function LandingPlatformMark({
   );
 }
 
-export function LandingPlatformBadge() {
+export function LandingPlatformBadge({ showMcp = false }: { showMcp?: boolean }) {
   return (
-    <a
-      href="#workflow"
-      className="mb-6 inline-flex max-w-full flex-col items-center gap-2 rounded-[20px] border border-border bg-card px-4 py-2.5 text-xs font-medium shadow-sm transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-row sm:gap-4 sm:rounded-full sm:py-2"
-    >
-      <span className="font-semibold text-primary">Post right away</span>
-      <span className="hidden h-4 w-px bg-border-strong sm:block" aria-hidden="true" />
-      <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4">
-        {landingPlatforms.map(({ platform, label }) => (
-          <span key={platform} className="inline-flex items-center gap-1.5 text-foreground-strong">
-            <LandingPlatformMark platform={platform} className="size-4" />
-            <span>{label}</span>
-          </span>
-        ))}
-      </span>
-    </a>
+    <LandingRotatingBadge showMcp={showMcp}>
+      {landingPlatforms.map(({ platform, label }) => (
+        <span key={platform} className="inline-flex items-center gap-1.5 text-foreground-strong">
+          <LandingPlatformMark platform={platform} className="size-4" />
+          <span>{label}</span>
+        </span>
+      ))}
+    </LandingRotatingBadge>
   );
 }

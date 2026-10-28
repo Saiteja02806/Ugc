@@ -1,15 +1,22 @@
 # MCP current capability audit
 
-Last reviewed: 2026-10-17
+Last reviewed: 2026-10-19
 
-This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. It describes the current server source at `lib/mcp/server.ts`, whose `registeredMcpTools` export contains **79** registrations. It does not claim that every tool is enabled or accepted in production: rollout gates and each account's capability reads remain authoritative.
+This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. Production currently exposes **79** tools. The local scheduling candidate at `89bd0e94` has **84** registrations: the production set plus five scheduling tools. Its unpushed analytics successor has **89** registrations: those 84 plus five read-only saved-analytics tools. Neither local candidate is deployed. Rollout gates and each account's capability reads remain authoritative.
 
 ## Evidence collected
 
-- The current `registeredMcpTools` export lists 79 tool names, across 15 registration modules.
-- The full `npm run test:mcp` suite passed on 2026-10-17. It covers OAuth/PKCE, permission isolation, generation, generic uploads/downloads, Demo records, finishing, operation recovery, Edit drafts/exports, audio, reference/remix, asset groups, Library and account settings.
-- A connected production account's safe reads reported short-video generation and video finishing available. No write or customer-media work occurred in that verification.
+- The deployed connected session discovers 79 UGC Pilot tools. It has no scheduling tools.
+- The local 84-tool candidate adds `get_scheduling_capabilities`, `list_social_connections`, `list_schedules`, `get_schedule` and the disabled-by-default `create_schedule`. The first four require fresh `publishing:read`; the write requires fresh `publishing:write`, a verified-email consent snapshot, configured scheduling and `MCP_SCHEDULING_WRITES_ENABLED=true`.
+- The full `npm run test:mcp` suite passed on 2026-10-18 for candidate commit `ab7d7631`, including OAuth/PKCE, permission isolation, generation, generic uploads/downloads, Demo records, finishing, operation recovery, Edit drafts/exports, audio, reference/remix, asset groups, Library, account settings and scheduling. The temporary test transfer server uses `127.0.0.1`; it did not use customer media.
+- Live OAuth health/discovery and a connected production account's safe reads passed on 2026-10-18. The account reported short-video generation, video finishing and Edit export available. No write or customer-media work occurred in that verification.
 - The local Claude Code client is signed out and is still using the older 0.1.8 plugin, so it does not yet prove clean Claude host acceptance. See `ugc-pilot-plugin-context.md`.
+- The local analytics successor adds `analytics:read` and a verified-identity requirement for saved report reads. Its focused contract and durable-snapshot tests passed locally, and the complete `npm run test:mcp` suite passed at source commit `24bc41f5` on 2026-10-18 when its temporary `127.0.0.1` transfer server was permitted. It deliberately exposes no provider refresh or analytics write.
+- The analytics successor is pushed as draft PR [#71](https://github.com/Saiteja02806/Ugc/pull/71) at `4f09f63f`. Git started a protected website preview for that commit, but it remained queued during this review; no matching MCP build was created, no candidate deployment was accepted, and no production target changed. The connected Supabase project has only its default branch and does not list migration `20261018043539`; create an isolated database branch before any staging migration.
+- On 2026-10-19, the candidate was brought forward through current `origin/main` commit `93df700e`, including the production-source changes merged by PRs #72–#75. The merged package remains version `0.2.5` with 89 tools, 16 skills and 43 packaged files.
+- The complete MCP suite passes on that merged source when the installed system FFmpeg is supplied to the local media-transfer fixture. The focused transfer suite passes 21/21; the current-main Trending history suite passes 22/22; the migration reconciliation guard passes; the release audit passes 16/16; and deterministic plugin validation plus all five archive tests pass. These are local source/package results, not deployment or installed-host acceptance.
+- Hosted isolation remains the release blocker. Supabase branching is unavailable on the current free plan, and the organization already uses both free active-project slots. No branch/project was created, no charge began and no production migration ran. The candidate has no exact-commit MCP staging deployment, so clean Codex/Claude OAuth and the bounded real media workflow have not started.
+- A separate READY production-target MCP deployment at source `1323837c` appeared during review. It was not created or changed by this candidate work and is not evidence for the later `93df700e` merge or the 89-tool package.
 
 ## Current MCP coverage
 
@@ -25,14 +32,14 @@ This audit supersedes the initial 15-tool/12-tool snapshot in the historical rem
 | Business and account settings | read business context; publishing defaults/timezone reads, updates and receipts | Partial. Onboarding, business/brand editing, logo and screenshot workflows still require the unreleased business candidates. |
 | Slideshows | Library snapshot/save operations | Partial. Backend rendering of finished slides with text is absent; browser canvas export remains the application dependency. |
 | Trending and Carousel | owned Carousel discovery and Library save only | Partial. Feed decisions, creative editing, rendering status and broader Trending actions are not registered MCP workflows. |
-| Social publishing | account defaults only | Missing. There are no MCP tools for account connection, schedule create/update/cancel, publish or retry. |
-| Analytics | no analytics-specific MCP registration | Missing. Platform-report retrieval and refresh are not available through MCP. |
+| Social publishing | Production: account defaults only. Candidate: social-connection/schedule reads plus a deliberately disabled schedule-create adapter. | Still incomplete. There are no MCP tools for provider account connection/OAuth handoff, schedule update/cancel, immediate publish, per-target retry or publishing analytics. Candidate schedule creation has not been deployed or enabled. |
+| Analytics | Local 0.2.5 successor: saved Instagram account/content, TikTok and YouTube report reads plus capability check | Partial and not deployed. It reads existing owner-scoped snapshots only; fresh consent and verified identity are required. Provider refresh, social OAuth and analytics writes remain unavailable. |
 
 ## Release order
 
 1. Complete the pending Claude Code sign-in, plugin/OAuth return and safe read-only acceptance.
 2. Deploy a reviewed plugin candidate to protected staging, confirm its version/source/tool discovery, then repeat the clean Codex and Claude Code install paths.
 3. With explicit selected-content authorization, run one bounded hook → Demo → finished-download workflow in each host and verify its immutable receipt and actual output bytes.
-4. Build the missing parity areas in dependency order: business/onboarding, advanced generation, server slideshow rendering, Trending/Carousel actions, social publishing, then analytics.
+4. Validate saved analytics in clean installed hosts, then build the remaining parity areas in dependency order: business/onboarding, advanced generation, server slideshow rendering, Trending/Carousel actions, social publishing and provider-backed analytics refresh.
 
 No deployed capability should be inferred from this source audit alone.

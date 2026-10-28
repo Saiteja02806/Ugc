@@ -33,7 +33,7 @@ async function main() {
       // Next can emit the containing workspace CSS after component CSS. The
       // screenshot's failure depends on that ordering, so exercise it here.
       await page.evaluate(()=>{for(const style of [...document.head.querySelectorAll('style')])if(style.textContent.includes('workflowContent')&&style.textContent.includes('data-workflow-tile'))document.head.append(style);});
-      const upload=page.getByRole('button',{name:'Upload slides',exact:true});await upload.waitFor();
+      const upload=page.locator('button').filter({hasText:/^Upload reference slides$/});await upload.waitFor();
       await page.getByRole('button',{name:'Choose Fitness reference',exact:true}).click();
       const preview=page.getByRole('button',{name:'Preview selected slideshow',exact:true});
       const card=await preview.boundingBox();assert.ok(card.width<=64.5&&Math.abs(card.width-card.height)<1,'The selected reference uses a compact square preview');

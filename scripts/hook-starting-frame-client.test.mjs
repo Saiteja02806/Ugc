@@ -48,13 +48,14 @@ test("stale source, poster/nonzero frame, malformed dimensions and partial downl
   }
   await assert.rejects(fixture({ body: Buffer.from("incomplete PNG") }).run(), /incomplete/);
 });
-test("curated response must carry the exact approved pixels and timestamp rather than frame zero", async () => {
+test("historical curated recovery requires an explicit exact retained-frame binding; new preparation rejects it", async () => {
   const selected = curatedFrames.frames[0], bytes = readFileSync(new URL(`../public${selected.publicPath}`, import.meta.url));
-  const scope = { referenceId: selected.referenceId, sourceSha256: selected.sourceSha256 };
+  const scope = { referenceId: selected.referenceId, sourceSha256: selected.sourceSha256, retainedFrame: {index:selected.index,timeSeconds:selected.timeSeconds,width:selected.width,height:selected.height,sha256:selected.sha256} };
   const headers = { "Content-Type": "image/png", "X-Hook-Reference-Id": selected.referenceId, "X-Hook-Source-Sha256": selected.sourceSha256,
     "X-Hook-Frame-Sha256": selected.sha256, "X-Hook-Frame-Index": String(selected.index), "X-Hook-Frame-Time": String(selected.timeSeconds),
     "X-Hook-Frame-Width": String(selected.width), "X-Hook-Frame-Height": String(selected.height) };
   const read = fixture().exports.readVerifiedHookStartingFrame;
+  await assert.rejects(read(new Response(bytes, { headers }), {referenceId:selected.referenceId,sourceSha256:selected.sourceSha256}), /does not match/);
   const result = await read(new Response(bytes, { headers }), scope); assert.equal(result.frame.index, selected.index);
   for (const patch of [{ "X-Hook-Frame-Index": "0" }, { "X-Hook-Frame-Time": "0" }, { "X-Hook-Frame-Sha256": pngSha }]) {
     await assert.rejects(read(new Response(bytes, { headers: { ...headers, ...patch } }), scope), /does not match/);

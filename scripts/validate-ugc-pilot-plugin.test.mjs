@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { validateOpenAiMetadata, validatePackage, validateResourceLinks } from "./validate-ugc-pilot-plugin.mjs";
+import { validateOpenAiMetadata, validatePackage, validatePortableMcpCompatibility, validateResourceLinks } from "./validate-ugc-pilot-plugin.mjs";
 
 const original = JSON.parse(fs.readFileSync(new URL("../plugins/ugc-pilot/plugin.json", import.meta.url), "utf8"));
 const tools = new Set(["get_profile", "get_entitlements", "get_capabilities", "list_assets", "get_asset", "generate_image", "generate_video", "get_job", "get_video_finishing_capabilities", "finish_video", "get_video_finish"]);
@@ -13,10 +13,24 @@ const altered = (mutate) => {
 
 test("the full bundle passes while reporting the missing review recording", () => {
   const result = validatePackage();
-  assert.equal(result.version, "0.2.0");
-  assert.equal(result.skillCount, 14);
-  assert.equal(result.toolCount, 79);
+  assert.equal(result.version, "0.2.10");
+  assert.equal(result.skillCount, 18);
+  assert.equal(result.toolCount, 106);
   assert.deepEqual(result.reviewReadiness, { submissionMaterialsComplete: false, pending: ["review.demo_recording_url"] });
+});
+
+test("portable transport rejects schema-valid extensions unsupported by the Codex loader", () => {
+  const config = JSON.parse(fs.readFileSync(new URL("../plugins/ugc-pilot/mcp.json", import.meta.url), "utf8"));
+  validatePortableMcpCompatibility(config);
+  for (const extra of [
+    { extensions: { "com.openai": { auth: { type: "oauth", client: { mode: "cimd" } } } } },
+    { headers: { Authorization: "Bearer should-never-be-packaged" } },
+    { bearer_token_env_var: "UGC_TOKEN" },
+  ]) {
+    const invalid = structuredClone(config);
+    Object.assign(invalid.mcpServers["ugc-pilot"], extra);
+    assert.throws(() => validatePortableMcpCompatibility(invalid), /Codex-compatible transport/);
+  }
 });
 
 test("references must exist inside the allowlisted package, including supporting Markdown", () => {

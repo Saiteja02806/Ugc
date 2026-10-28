@@ -43,6 +43,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
   const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction"];
   const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-surprised-story", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny"];
   const jsx = (type, props) => ({ type, props });
+  let warmed = 0, chosen = 0;
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
     react: { useState: () => [null, () => {}] },
     "react/jsx-runtime": { jsx, jsxs: jsx },
@@ -51,6 +52,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     "./recreate-workspace": { ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
     "@/lib/explore/talking-head-reference": { visibleTalkingHeadReferences },
     "./talking-head-references.module.css": { default: {} },
+    "./lazy-hook-starting-frame-workspace": { preloadHookStartingFrameWorkspace: async () => { warmed++; } },
   });
   function nodes(value) {
     if (!value || typeof value !== "object") return [];
@@ -58,8 +60,13 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     return [value, ...nodes(value.props?.children)];
   }
   for (const startingFrameEnabled of [false, true]) {
-    const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() {}, onRetry() {} });
+    const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() { chosen++; }, onRetry() {} });
     assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), expected);
+    const action = nodes(tree).find(node => node.type === "button" && node.props.onPointerEnter);
+    const before = warmed;
+    action.props.onPointerEnter(); action.props.onFocus();
+    assert.equal(warmed - before, startingFrameEnabled ? 2 : 0);
+    assert.equal(chosen, 0, "Pointer/focus preparation must never choose a reference or generate");
   }
   for (const id of retired) {
     const h = harness({ saved: { talkingReferenceId: id, referenceInstructions: "Keep saved direction" } });

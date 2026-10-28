@@ -214,7 +214,7 @@ test("Talking Head sends approved opening and optional face photos through real 
   const previous = process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;
   process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = "true";
   const frame = { assetId: "00000000-0000-4000-8000-000000000001", jobId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-car-story", url: "https://storage.example.com/opening.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural talking-head performance", generateAudio: true };
-  approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, output: { width: 720, height: 1280, ratio: "9:16" } };
+  approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, receipt: { version: 1 }, output: { width: 720, height: 1280, ratio: "9:16" } };
   try {
     const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
     await client().generate(draft({ instructions: 'Say "This is my own script."', referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) }));

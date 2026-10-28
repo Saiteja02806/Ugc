@@ -5,7 +5,7 @@ import { createHookKeyframeDraft, updateHookKeyframeDraft } from "./hook-keyfram
 const scope = { ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: "hook-fixture", sourceSha256: "a".repeat(64) };
 
 test("client admission binds the completed image to the selected image model as well as its saved input key", () => {
-  const draft = updateHookKeyframeDraft(createHookKeyframeDraft(scope), {
+  const draft = updateHookKeyframeDraft({ ...createHookKeyframeDraft(scope), version: 2 }, {
     sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) },
     imageAssetIds: ["22222222-2222-4222-8222-222222222222"],
   });

@@ -19,7 +19,7 @@ Read the discovered finishing schema for exact fields. The minimal composition i
 
 The application permits one active finishing job per account. Prepare the opening, wait for completion, then prepare the demo and wait before composition; do not submit all stages together. A concurrency `FINISH_CONFLICT` means wait for the existing active job to end, then submit the saved unchanged next-stage inputs/key. Polling never requeues it.
 
-Each stage uses a fresh random UUID `request_key`. Save the key, exact normalized inputs and receipt in the conversation and, when the host can persist workspace files, a local non-secret operation record for recovery. Reuse that same key and identical inputs after interruption. Changed edits require a new intentional stage; do not change the key to bypass a conflict or uncertain outcome.
+Each stage uses a fresh random UUID `request_key`. Save the key, exact normalized inputs and receipt in the conversation and, when the host can persist workspace files, a local non-secret operation record for recovery. `finish_video` first returns a preview and does not queue work. Show it, including that subtitles may spend credits, and pass `confirm_token` only after an explicit yes. Reuse that same key and identical inputs after a lost confirmed response. Changed edits require a new intentional stage; do not change the key to bypass a conflict or uncertain outcome.
 
 ## Recover and retrieve
 

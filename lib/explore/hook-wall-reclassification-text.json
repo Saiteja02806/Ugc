@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "referenceId": "explore-paired-hook-d426f4a2248708f61298bf7f",
+      "slideId": null,
+      "sourceSha256": "d426f4a2248708f61298bf7fc9a57500c3201811b2680509013680d177d40a1f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“bro rate my startup idea 💀🥀”",
+          "startMs": 0,
+          "endMs": 3300
+        }
+      ],
+      "extractedAt": "2026-10-28T00:00:00Z",
+      "model": "source-review-opening-v1",
+      "notes": "Opening caption verified across all 99 decoded frames in ordered contact sheets, with targeted native-resolution checks. Reaction-only clip trimmed before product demo. Source claims are not verified business facts."
+    },
+    {
+      "referenceId": "explore-paired-hook-0dd34d729ad756dbd87888cc",
+      "slideId": null,
+      "sourceSha256": "0dd34d729ad756dbd87888cc7d16220bf9fbb6acd3a7b8919ae58700cc948727",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How to make ChatGPT\nPay your rent in 2026\nin 15 seconds",
+          "startMs": 0,
+          "endMs": 2033
+        }
+      ],
+      "extractedAt": "2026-10-28T00:00:00Z",
+      "model": "source-review-opening-v1",
+      "notes": "Opening caption verified across all 61 decoded frames in ordered contact sheets, with targeted native-resolution checks. Reaction-only clip trimmed before product demo. Source claims are not verified business facts."
+    },
+    {
+      "referenceId": "explore-paired-hook-6030a6af486760af6b5d64b1",
+      "slideId": null,
+      "sourceSha256": "6030a6af486760af6b5d64b1d2b1ec1dce7f3df2ca2f8876b13891b4938891d5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "is this LEGAL\nfor PC gamers!? 🎮😭",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "extractedAt": "2026-10-28T00:00:00Z",
+      "model": "source-review-opening-v1",
+      "notes": "Opening caption verified across all 90 decoded frames in ordered contact sheets, with targeted native-resolution checks. Reaction-only clip trimmed before product demo. Source claims are not verified business facts."
+    }
+  ]
+}

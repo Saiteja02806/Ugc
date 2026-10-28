@@ -49,7 +49,7 @@ test("Recreate gallery uses two or three columns based on its available width", 
 test("gallery covers fill the card without changing the uncropped preview or source", () => {
   const media = gallery.slice(gallery.indexOf("function ReferenceMedia"), gallery.indexOf("function ReferencePreviewDialog"));
   assert.match(media, /src=\{reference\.posterUrl\}/);
-  assert.match(media, /useCreatorVideoPreview\(reference\.videoUrl/);
+  assert.match(media, /useCreatorVideoPreview\(reference\.videoUrl \? useOriginal \? reference\.videoUrl : reference\.previewVideoUrl \?\? reference\.videoUrl : undefined, interested, 250\)/);
   assert.match(media, /useCoverPlayback\(preview\.url \?\? null, "button"\)/);
   assert.equal((media.match(/size-full object-cover/g) ?? []).length, 2);
   assert.doesNotMatch(media, /object-contain|object-fill/);

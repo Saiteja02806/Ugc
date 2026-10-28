@@ -7,6 +7,8 @@ import additions from "../worker/src/lib/explore-hook-reference-addition-release
 import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
 import octoberBatch from "../worker/src/lib/explore-hook-reference-oct23-release.json" with { type: "json" };
 import octoberRefresh from "../worker/src/lib/explore-hook-reference-oct23-refresh-release.json" with { type: "json" };
+import reclassified from "../worker/src/lib/explore-hook-wall-reclassification-release.json" with { type: "json" };
+import reclassifiedText from "../lib/explore/hook-wall-reclassification-text.json" with { type: "json" };
 import legacy from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 import textCatalog from "../lib/explore/reference-text-catalog.json" with { type: "json" };
 import { validateHookRelease } from "./hook-reference-release-readiness.mjs";
@@ -34,16 +36,16 @@ test("the active Hook gallery retains reviewed source links and respects silent 
   const batchReady = validateHookAdditionRelease(newBatch, textCatalog);
   const octoberReady = validateHookAdditionRelease(octoberBatch, textCatalog);
   const refreshReady = validateHookAdditionRelease(octoberRefresh, textCatalog);
-  const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible];
+  const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible, ...reclassified.items];
   assert.equal(ready.eligible.length, 44); assert.equal(release.items.length, 46);
   assert.equal(additionReady.eligible.length, 31); assert.equal(additions.items.length, 31);
   assert.equal(batchReady.eligible.length, 20);
   assert.equal(octoberReady.eligible.length, 1);
   assert.equal(refreshReady.eligible.length, 8);
-  assert.equal(hooks.length, 104); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
-  assert.deepEqual(hooks.map(item => item.title), Array(104).fill("Hook"));
+  assert.equal(hooks.length, 107); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
+  assert.deepEqual(hooks.map(item => item.title), Array(107).fill("Hook"));
   for (const hook of hooks) {
-    const registered = [...release.items, ...additions.items, ...newBatch.items, ...octoberBatch.items, ...octoberRefresh.items].find(item => item.id === hook.id);
+    const registered = [...release.items, ...additions.items, ...newBatch.items, ...octoberBatch.items, ...octoberRefresh.items, ...reclassified.items].find(item => item.id === hook.id);
     assert.equal(hook.instagramUrl, registered.instagramUrl);
     assert.equal(hook.sourceUrl, registered.sourceUrl ?? registered.instagramUrl);
     assert.equal(hook.sourcePlatform, registered.sourcePlatform ?? (registered.instagramUrl ? "instagram" : undefined));
@@ -58,7 +60,7 @@ test("the active Hook gallery retains reviewed source links and respects silent 
       assert.ok(hook.pairedAudio.url.endsWith(`${registered.audioSha256}.mp3`));
     }
     assert.ok(hook.videoUrl.endsWith(`${registered.videoSha256}.mp4`));
-    assert.equal(getReferenceText(hook.id, null, "hook").status, textCatalog.items.find(item => item.referenceId === hook.id && item.slideId === null).status);
+    assert.equal(getReferenceText(hook.id, null, "hook").status, [...textCatalog.items, ...reclassifiedText.items].find(item => item.referenceId === hook.id && item.slideId === null).status);
     assert.equal(getExplorePairedReference(hook.id).audioSha256, registered.audioSha256);
   }
   assert.equal(hooks.some(item => release.excludedReferenceIds.includes(item.id)), false);
@@ -78,7 +80,7 @@ test("retired references still resolve saved remix/video/audio identities withou
   assert.equal(getAssetReferenceSoundtrack({ render: { referenceSoundtrack: { version: 1, referenceId: old.id, audioSha256: old.audioSha256, volume: .35 } } }).volume, .35);
   assert.deepEqual(getRecreateReferences().filter(item => item.format !== "hook"), getRecreateReferences(true).filter(item => item.format !== "hook"));
   const previous = process.env.NODE_ENV; process.env.NODE_ENV = "development";
-  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 104); }
+  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 107); }
   finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }
 });
 

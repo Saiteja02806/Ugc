@@ -27,6 +27,7 @@ import { FormatInstructionImageReference } from "@/components/explore/format-ins
 import { useSlideshowPromptImprover } from "@/components/explore/slideshow-prompt-improver";
 import { useSlideshowComposerDraft } from "@/components/explore/use-slideshow-composer-draft";
 import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
+import { readSlideshowClarification, slideshowClarificationKey, type SlideshowClarification } from "@/lib/explore/slideshow-generation-recovery";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
@@ -286,7 +287,7 @@ export function ImageGenerationStudioPanel({
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [planningQuestions, setPlanningQuestions] = useState<{ owner: string; scope: string; items: string[] } | null>(null);
+  const [planningQuestions, setPlanningQuestions] = useState<SlideshowClarification | null>(null);
   const storedJobIds = useStoredBackgroundJobIds(user ? `${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
@@ -305,6 +306,7 @@ export function ImageGenerationStudioPanel({
   const autoAssembledSlideshowVersionsRef = useRef(new Set<string>());
   const blockedAutoSlideshowVersionsRef = useRef(new Set<string>());
   const pendingOwnerId = user?.uid;
+  const restoredPresentationRef = useRef(false);
   useEffect(() => {
     let stopped = false;
     void Promise.resolve().then(() => {
@@ -312,6 +314,8 @@ export function ImageGenerationStudioPanel({
       try {
         const saved = pendingOwnerId && !recreateView?.preview ? readPendingGeneration(localStorage.getItem(pendingGenerationKey(pendingOwnerId, "image", workflowFormat ?? "studio")), pendingOwnerId, "image", workflowFormat ?? "studio") : null;
         setPendingSubmission(saved);
+        setPlanningQuestions(pendingOwnerId && workflowFormat === "slideshow" && !recreateView?.preview
+          ? readSlideshowClarification(localStorage.getItem(slideshowClarificationKey(pendingOwnerId)), pendingOwnerId) : null);
         if (saved) { setPrompt(String(saved.input.prompt)); setActionNotice("A previous image submission needs confirmation. Recover saved request checks its original instructions and settings."); }
       } catch { setActionError("The saved image request could not be verified. Keep its recovery record."); }
     });
@@ -373,6 +377,8 @@ export function ImageGenerationStudioPanel({
   const improvingPrompt = promptImprover.busy;
   const onWorkflowBusyChange = workflow?.onBusyChange;
   const onGeneratedSlideshow = workflow?.onGeneratedSlideshow;
+  const onGenerationRestore = workflow?.onGenerationRestore;
+  const hasSavedSlideshowWork = workflowFormat === "slideshow" && !recreateView?.preview && Boolean(pendingSubmission || planningQuestions && planningQuestions.owner === user?.uid || activeJobIds.length || durableJobs.length);
   useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage || improvingPrompt); }, [isGenerating, referenceUploadPending, selectingImage, improvingPrompt, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
@@ -385,11 +391,18 @@ export function ImageGenerationStudioPanel({
     billingSyncedJobIdsRef.current.clear();
     autoAssembledSlideshowVersionsRef.current.clear();
     blockedAutoSlideshowVersionsRef.current.clear();
+    restoredPresentationRef.current = false;
 
     return () => {
       activeUserIdRef.current = null;
     };
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (!active || !user || !hasSavedSlideshowWork || restoredPresentationRef.current) return;
+    restoredPresentationRef.current = true;
+    onGenerationRestore?.();
+  }, [active, user, hasSavedSlideshowWork, onGenerationRestore]);
 
   useEffect(() => {
     if (!active || authLoading) {
@@ -548,12 +561,12 @@ export function ImageGenerationStudioPanel({
       completedJob: (typeof completedJobs)[number],
     ) {
       const completionEpoch = foregroundEpochRef.current;
-      const isForeground = () => !discoveredJobIdsRef.current.has(completedJob.id) && isImageCompletionForeground(
+      const isForeground = () => !discoveredJobIdsRef.current.has(completedJob.id) && (isImageCompletionForeground(
         completedJob.id,
         completionEpoch,
         foregroundEpochRef.current,
         foregroundJobIdsRef.current,
-      );
+      ) || workflowFormat === "slideshow" && foregroundAutoResumeRef.current && completionEpoch === foregroundEpochRef.current && storedJobIds.includes(completedJob.id));
       const output = getImageJobOutput(completedJob.output);
 
       if (!output?.url) {
@@ -651,7 +664,7 @@ export function ImageGenerationStudioPanel({
     }
 
     void Promise.all(completedJobs.map(reconcileCompletedImage));
-  }, [durableJobs, user, workflowFormat]);
+  }, [durableJobs, user, workflowFormat, storedJobIds]);
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
@@ -704,6 +717,9 @@ export function ImageGenerationStudioPanel({
       const data = admitted.result as Extract<GenerateResponse, { ok: true }>;
       const submittedPrompt = String(admitted.input.prompt);
       setPendingSubmission(null); setActivePrompt(submittedPrompt); setPlanningQuestions(null);
+      if (workflowFormat === "slideshow") {
+        try { localStorage.removeItem(slideshowClarificationKey(user.uid)); } catch { /* Accepted jobs remain the recovery authority. */ }
+      }
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
@@ -730,7 +746,11 @@ export function ImageGenerationStudioPanel({
       setPrompt("");
     } catch (error) {
       console.error("Image generation failed:", error);
-      if (error instanceof GenerationClarificationError) setPlanningQuestions({ owner: user?.uid ?? "", scope: legacyComposerScope, items: error.clarifications });
+      if (error instanceof GenerationClarificationError && user && activeUserIdRef.current === user.uid) {
+        const feedback: SlideshowClarification = { version: 1, owner: user.uid, scope: legacyComposerScope, prompt: trimmedPrompt, items: error.clarifications };
+        setPlanningQuestions(feedback);
+        try { localStorage.setItem(slideshowClarificationKey(user.uid), JSON.stringify(feedback)); } catch { /* Keep the explanation in this mounted tab. */ }
+      }
       setActionError(
         getErrorMessage(error, "Image generation failed. Try again."),
       );
@@ -938,10 +958,10 @@ export function ImageGenerationStudioPanel({
     submissionKeyRef.current = null;
     if (user) {
       try {
-        window.localStorage.removeItem(`${IMAGE_JOB_STORAGE_PREFIX}${user.uid}`);
+        window.localStorage.removeItem(`${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}`);
       } catch { /* Saved images remain available in History when local storage is blocked. */ }
     }
-    persistJobIdInUrl(null, IMAGE_JOB_URL_PARAMETER);
+    persistJobIdInUrl(null, workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
 
@@ -969,7 +989,9 @@ export function ImageGenerationStudioPanel({
     const completedVersion = slideshowResults.versions.find((group) =>
       group.slot.slideCount > 1 && group.slot.versionCount === 1 &&
       group.rows.length === group.slot.slideCount &&
-      group.rows.every((row) => row.asset && foregroundJobIdsRef.current.has(row.key)),
+      // Only this mounted visit's explicit submission may replace the editor.
+      // Cached processing receipts can still be present after a route return.
+      group.rows.every((row) => row.asset && submittedJobIds.includes(row.key) && foregroundJobIdsRef.current.has(row.key)),
     );
     if (!completedVersion || autoAssembledSlideshowVersionsRef.current.has(completedVersion.key) || blockedAutoSlideshowVersionsRef.current.has(completedVersion.key)) return;
 
@@ -1000,7 +1022,7 @@ export function ImageGenerationStudioPanel({
         if (activeUserIdRef.current === ownerId) setSelectingImage(false);
       }
     })();
-  }, [isGenerating, onGeneratedSlideshow, slideshowResults.versions, user, workflowFormat]);
+  }, [isGenerating, onGeneratedSlideshow, slideshowResults.versions, submittedJobIds, user, workflowFormat]);
 
   return (
     <div
@@ -1170,7 +1192,7 @@ export function ImageGenerationStudioPanel({
         }
         name="imagePrompt"
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{planningQuestions?.scope === legacyComposerScope && planningQuestions.owner === user?.uid ? <div role="status" className="text-xs leading-5 text-muted"><p>Clarify in the instructions above, then generate again:</p>{planningQuestions.items.map(question => <p key={question}>{question}</p>)}</div> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <div role="status" className="text-xs leading-5 text-muted"><p>No images were started. Your previous slideshow request needs clarification.</p>{planningQuestions.scope !== legacyComposerScope ? <p className="break-words">Previous instructions: {planningQuestions.prompt}</p> : <p>Clarify in the instructions above, then generate again:</p>}{planningQuestions.items.map(question => <p key={question}>{question}</p>)}</div> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {

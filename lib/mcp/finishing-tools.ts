@@ -6,6 +6,7 @@ import { getUserSubscription } from "@/lib/billing/subscription-db";
 import { getWorkflowFinishingForOwner, startWorkflowFinishingForOwner, videoFinishingRuntime, type WorkflowFinishingResult } from "@/lib/explore/workflow-finishing-service";
 import { ExploreFinishError, EXPLORE_FINISH_STYLES, MAX_DEMO_FRAMING_POINTS, parseExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
 import { MAX_FORMAT_TEXT_OVERLAYS } from "@/worker/src/lib/explore-format-edit";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 const uuid = z.uuid();
@@ -42,6 +43,11 @@ const finishOutput = z.strictObject({
   status: z.string().nullable(), progress: z.number().min(0).max(100).nullable(),
   output_asset_ids: z.array(uuid).max(1), message: z.string(),
 });
+const confirmedFinishOutput = confirmableOutputSchema(finishOutput);
+const finishInput = withConfirmToken(z.strictObject({
+  request_key: uuid.describe("Caller-created stable UUID. Reuse only for the identical draft; save it to recover after interruption."),
+  draft: videoFinishDraftSchema,
+}));
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 export const registeredFinishingMcpTools = ["get_video_finishing_capabilities", "finish_video", "get_video_finish"] as const;
 
@@ -91,24 +97,29 @@ export function registerFinishingMcpTools(server: McpServer) {
   }));
 
   server.registerTool("finish_video", {
-    description: "Save and queue owned video edits or opening-plus-demo composition. Prepare edits/framing in separate stages before demo/subtitle composition. Reuse the exact request key and draft after interruption; returns a durable receipt, not an instant video.",
-    inputSchema: z.strictObject({
-      request_key: uuid.describe("Caller-created stable UUID. Reuse only for the identical draft; save it to recover after interruption."),
-      draft: videoFinishDraftSchema,
-    }),
-    outputSchema: finishOutput,
+    description: confirmedToolDescription("Save and queue owned video edits or opening-plus-demo composition. Prepare edits/framing in separate stages before demo/subtitle composition. Reuse the exact request key and draft after interruption; returns a durable receipt, not an instant video."),
+    inputSchema: finishInput,
+    outputSchema: confirmedFinishOutput,
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
   }, async (args, ctx) => executeTool(async () => {
     const owner = principal(ctx, "creative:write");
-    if (process.env.MCP_VIDEO_FINISHING_ENABLED !== "true") throw new ToolFailure("FINISHING_UNAVAILABLE", "IDE video finishing is not enabled yet.", true);
-    if (!await finishingAccess(owner)) throw new ToolFailure("ACCESS_REQUIRED", "Your account does not currently have video finishing access.");
-    // The worker's canonical parser validates combinations, timing and crop paths.
-    let draft;
-    try { draft = parseExploreFinishDraft(args.draft); }
-    catch (error) { throw new ToolFailure("INVALID_INPUT", error instanceof Error ? error.message : "Choose a valid video finishing draft."); }
-    try { return toOutput((await startWorkflowFinishingForOwner(owner, args.request_key, draft, { modernSubtitles: true })).result); }
-    catch (error) { return finishingFailure(error); }
+    return requireConfirmation({
+      tool: "finish_video", accountId: owner, args, effect: "spend_credits",
+      summary: "Queue the selected video edit. Subtitles can spend credits when that stage is included.",
+      creditCost: null, creditCostIsEstimate: true,
+      affected: [{ type: "finish_request", id: args.request_key, label: "Video finishing job" }],
+      run: async () => {
+        if (process.env.MCP_VIDEO_FINISHING_ENABLED !== "true") throw new ToolFailure("FINISHING_UNAVAILABLE", "IDE video finishing is not enabled yet.", true);
+        if (!await finishingAccess(owner)) throw new ToolFailure("ACCESS_REQUIRED", "Your account does not currently have video finishing access.");
+        // The worker's canonical parser validates combinations, timing and crop paths.
+        let draft;
+        try { draft = parseExploreFinishDraft(args.draft); }
+        catch (error) { throw new ToolFailure("INVALID_INPUT", error instanceof Error ? error.message : "Choose a valid video finishing draft."); }
+        try { return toOutput((await startWorkflowFinishingForOwner(owner, args.request_key, draft, { modernSubtitles: true })).result); }
+        catch (error) { return finishingFailure(error); }
+      },
+    });
   }));
 
   server.registerTool("get_video_finish", {

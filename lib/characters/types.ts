@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { BackgroundJobStatus } from "@/lib/jobs/background-jobs";
 import type { CharacterGenderSchema, CharacterImageCountSchema, CharacterImageModelSchema } from "./schema";
+import type { CharacterPromptPresentation } from "./prompt-skills";
 
 export type { CharacterGenerateRequest, CharacterSpec } from "./schema";
 export type CharacterGender = z.infer<typeof CharacterGenderSchema>;
@@ -8,7 +9,7 @@ export type CharacterImageModel = z.infer<typeof CharacterImageModelSchema>;
 export type CharacterImageCount = z.infer<typeof CharacterImageCountSchema>;
 
 export type CharacterJobReceipt = { jobId: string; generationId: string };
-export type CharacterHistoryImage = CharacterJobReceipt & {
+export type CharacterHistoryImage = CharacterJobReceipt & CharacterPromptPresentation & {
   mediaAssetId: string;
   url: string;
   prompt: string | null;
@@ -39,7 +40,7 @@ export type CharacterGenerationAccess = {
 
 export type CharacterJobStatusResponse = {
   ok: true;
-  job: {
+  job: CharacterPromptPresentation & {
     id: string;
     model?: CharacterImageModel;
     prompt?: string | null;

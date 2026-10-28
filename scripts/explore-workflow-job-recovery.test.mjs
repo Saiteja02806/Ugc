@@ -11,6 +11,7 @@ import * as slideshowGroups from "../lib/explore/slideshow-generation-groups.ts"
 import * as referencePrompts from "../lib/explore/reference-video-prompts.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import * as pollingPolicy from "../lib/jobs/background-job-polling-policy.ts";
+import * as wallInitialTextLayout from "../worker/src/lib/wall-initial-text-layout.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -19,6 +20,8 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
+    if (name === "../../worker/src/lib/wall-initial-text-layout.ts") return wallInitialTextLayout;
+    if (name === "@/lib/explore/slideshow-generation-recovery") return load("lib/explore/slideshow-generation-recovery.ts", imports, globals);
     if (name in imports) return imports[name];
     if (name === "./person-reference.ts") return load("lib/explore/person-reference.ts");
     if (name === "./generation-input-instructions.ts") return load("lib/explore/generation-input-instructions.ts");
@@ -106,6 +109,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams() },
     "@/contexts/auth-context": auth,
+    "@/components/explore/use-starting-frame-photos": { useStartingFramePhotos: () => ({ pending: false, error: null, remember() {} }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts"),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {

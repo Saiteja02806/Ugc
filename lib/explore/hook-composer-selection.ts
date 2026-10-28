@@ -13,7 +13,7 @@ export function readHookComposerSelection(raw: string | null, ownerId: string): 
   const value = JSON.parse(raw);
   if (value?.version !== 1 || value.ownerId !== ownerId || !uuid.test(value.assetId) || !uuid.test(value.jobId) || !uuid.test(value.draftId) ||
     typeof value.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value.referenceId) || !/^[a-f0-9]{64}$/.test(value.sourceSha256) ||
-    ![4, 8].includes(value.durationSeconds) || typeof value.generateAudio !== "boolean" || typeof value.motionInstructions !== "string" ||
+    ![4, 6, 8].includes(value.durationSeconds) || typeof value.generateAudio !== "boolean" || typeof value.motionInstructions !== "string" ||
     !value.motionInstructions.trim() || value.motionInstructions.length > 24000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.motionInstructions)) {
     throw new Error("The saved starting frame could not be verified. Choose it again from Starting frames.");
   }

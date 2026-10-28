@@ -1,0 +1,7 @@
+# Wall 41 layout review
+
+Local only; automatic Wall text remains disabled. Source-hash-matched video inspected through 25 quarter-second samples and native opening. Six-line white centered caption source-bound profile added. Neutral comparison: `outputs/wall-layout-batch-20261028/wall41-comparison.png`; typography and positioning approximate.
+
+Files: worker/src/lib/wall-initial-text-layout.ts and test, scripts/wall-automatic-text.browser.cjs, this receipt and local artifacts. 40 focused tests PASS; worker build, TypeScript, scoped lint and local browser fixture PASS for editable text, save/reopen, blank removal, full 12-second export JSON and mobile bounds. Fixture uses neutral background and mocked persistence. Actual model output, footage and production remain NOT VERIFIED. UGC-UI-046 remains open. No model calls, video generation or app deployment.
+
+Wall 37 has an incomplete source caption and remains unassigned for user review; Wall 42 is over 60 seconds and needs separate duration eligibility review. Hook asset uploads remain incomplete: auto-review rejected the attempted upload of 15 files to the cloud bucket, saying specific payload/destination authorization and prior no-hosted-write constraint were unresolved. Do not bypass. Preflight: provided AGENTS.md, context-memory/immutable-contracts/frame-analysis/regression-gate skills, nonnegotiables and preflight tool; full Explore and incident ledger were not reread in full this turn.

@@ -3315,7 +3315,7 @@ export class SupabaseJobStore {
     slidePlan: readonly CarouselSlideImagePlan[];
     useProductAsset?: boolean;
   }) {
-    const { data, error } = await this.client.rpc(
+    const reserve = () => this.client.rpc(
       "reserve_carousel_role_assets_v2",
       {
         p_business_profile_id: params.businessProfileId,
@@ -3332,6 +3332,14 @@ export class SupabaseJobStore {
         p_use_product_asset: Boolean(params.useProductAsset),
       },
     );
+
+    let { data, error } = await reserve();
+    // SQL cancellation rolls the transaction back. Repeat this idempotent
+    // reservation once; never repeat planning or an ambiguous network request.
+    if (error?.code === "57014" || error?.code === "55P03") {
+      await new Promise(resolve => setTimeout(resolve, 250));
+      ({ data, error } = await reserve());
+    }
 
     if (error) {
       throw new Error(`Could not reserve Carousel role images: ${error.message}`);

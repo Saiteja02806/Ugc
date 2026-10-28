@@ -14,6 +14,11 @@ export function hookStartingFrameVideoDurations(model: unknown): number[] {
     ? Array.from({ length: (model === "google_omni" ? 10 : 15) - minimum + 1 }, (_, index) => index + minimum) : [];
 }
 
+/** Initial choice only; explicit duration selections remain editable. */
+export function hookStartingFrameDefaultDuration(model: unknown): 3 | 4 {
+  return model === "seedance_2_5" ? 4 : 3;
+}
+
 /** Only Omni's connected route documents literal first-frame + appearance roles.
  * Five optional photos keeps the total under its ten-image family limit. */
 export function hookStartingFrameFaceReferenceLimit(model: unknown): number {

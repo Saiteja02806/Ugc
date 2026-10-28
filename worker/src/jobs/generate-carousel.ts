@@ -1,4 +1,5 @@
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import {
   generateCarousel,
   generateCarouselBatch,
@@ -93,6 +94,7 @@ export async function runGenerateCarouselJob(
       });
       return output;
     } catch (error) {
+      if (error instanceof RetryableJobError) throw error;
       const message =
         error instanceof Error ? error.message : "Carousel batch generation failed.";
       const generations = await Promise.all(

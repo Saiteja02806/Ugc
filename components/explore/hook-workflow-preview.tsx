@@ -5,11 +5,12 @@ import { TalkingHeadReferences } from "./talking-head-references";
 import { StartingFrameAnimationReferences } from "./starting-frame-animation-references";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { LazyHookStartingFrameWorkspace as HookStartingFrameWorkspace } from "./lazy-hook-starting-frame-workspace";
-import Image from "next/image";
+import { useStartingFramePhotos } from "./use-starting-frame-photos";
+import { startingFramePhotoKey } from "@/lib/explore/starting-frame-photo-selection";
 import { useHookComposerSelection } from "./use-hook-composer-selection";
 import type { TalkingHeadReference } from "@/lib/explore/talking-head-reference";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
-import { hookStartingFrameVideoDurations, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
+import { hookStartingFrameDefaultDuration, hookStartingFrameFaceReferenceLimit, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
 import referenceStyles from "./talking-head-references.module.css";
 import { Tabs } from "@base-ui/react/tabs";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,13 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
   const frameSelection = useHookComposerSelection(ownerId, generationEnabled && startingFrameEnabled, `talking_head:${draftId ?? "legacy"}`);
   const startingFrame = startingFrameEnabled ? frameSelection.frame : null;
   const [preparation, setPreparation] = useState<{ reference: TalkingHeadReference; draftId: string } | null>(null);
-  const [facePhotos, setFacePhotos] = useState<AIStudioReferenceMedia[]>([]);
+  const [facePhotoSelection, setFacePhotoSelection] = useState<{ key: string | null; photos: AIStudioReferenceMedia[] }>({ key: null, photos: [] });
+  const photoKey = startingFrame ? startingFramePhotoKey(startingFrame) : null;
+  const facePhotos = photoKey && facePhotoSelection.key === photoKey ? facePhotoSelection.photos : [];
+  const framePhotos = useStartingFramePhotos(startingFrame ?? undefined, generation.settings.model, Boolean(generationEnabled && ownerId), photos => {
+    setFacePhotoSelection({ key: photoKey, photos });
+  });
+  const activeFacePhotos = hookStartingFrameFaceReferenceLimit(generation.settings.model) ? facePhotos : [];
   const [facePending, setFacePending] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -117,10 +124,12 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
   function approveStartingFrame(frame: HookStartingFrameSelection) {
     if (!preparation || frame.ownerId !== ownerId || frame.referenceId !== preparation.reference.id || frame.draftId !== preparation.draftId) return;
     if (!frameSelection.setFrame(frame)) return;
+    setFaceError(null);
     videoReference.remove(); creator.remove();
     setReferenceReview(false);
     videoSelection.setMode("generate");
-    generation.changeSettings({ model: isHookStartingFrameVideoModel(generation.settings.model) ? generation.settings.model : "google_omni", duration: frame.durationSeconds, aspectRatio: frame.width > frame.height ? "16:9" : "9:16" });
+    const model = isHookStartingFrameVideoModel(generation.settings.model) ? generation.settings.model : "google_omni";
+    generation.changeSettings({ model, duration: hookStartingFrameDefaultDuration(model), aspectRatio: frame.width > frame.height ? "16:9" : "9:16" });
     setPreparation(null);
   }
   const [referenceReview, setReferenceReview] = useState(recovery.session.localReferences);
@@ -289,7 +298,7 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draftId={draftId} restoredSelection={selection.mode === "generate" ? { assetId: recovery.session.generatedAssetId, asset: recovery.assets.source, ready: recovery.loaded && !recovery.session.pendingSource, allowAutomaticSelection: !recovery.session.generatedSelectionCleared } : undefined} onSelectionChange={rememberGenerated} draft={{ kind: "hook", instructions, referenceInstructions: startingFrame?.motionInstructions ?? references.instructions, settings: generation.settings, startingFrame, startingFramePhotos: facePhotos.map(photo => ({ name: photo.asset.title, url: photo.asset.url, assetId: photo.asset.id })), creator: creator.asset, referenceImages: creator.assets, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: facePending || Boolean(preparation) || !frameSelection.ready || creator.loading || videoReference.loading || hookAudio.loading, referencesError: faceError || frameSelection.error || creator.error || videoReference.error || hookAudio.error || (referenceReview ? "Review your generation references. Browser files must be chosen again after returning to this workflow." : null) }}>{(run) => {
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draftId={draftId} restoredSelection={selection.mode === "generate" ? { assetId: recovery.session.generatedAssetId, asset: recovery.assets.source, ready: recovery.loaded && !recovery.session.pendingSource, allowAutomaticSelection: !recovery.session.generatedSelectionCleared } : undefined} onSelectionChange={rememberGenerated} draft={{ kind: "hook", instructions, referenceInstructions: startingFrame?.motionInstructions ?? references.instructions, settings: generation.settings, startingFrame, startingFramePhotos: activeFacePhotos.map(photo => ({ name: photo.asset.title, url: photo.asset.url, assetId: photo.asset.id })), creator: creator.asset, referenceImages: creator.assets, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: framePhotos.pending || facePending || Boolean(preparation) || !frameSelection.ready || creator.loading || videoReference.loading || hookAudio.loading, referencesError: framePhotos.error || faceError || frameSelection.error || creator.error || videoReference.error || hookAudio.error || (referenceReview ? "Review your generation references. Browser files must be chosen again after returning to this workflow." : null) }}>{(run) => {
     const source = selection.mode === "generate" ? run?.selected ?? null : videoSelection.source;
     const sourcePreview = selection.mode === "generate" ? previewAsset(source) : videoSelection.preview;
     const generationView = run ? { ...run, onGenerate: () => { setCreateView("videos"); setShowGenerationResults(true); run.onGenerate(); } } : null;
@@ -326,15 +335,13 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="hook" label="Talking head video" hideHeading selection={videoSelection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
-            <HookWorkflowComposer ownerId={ownerId} startingFrameMode={Boolean(startingFrame)} startingFrameControl={<>
+            <HookWorkflowComposer ownerId={ownerId} startingFrameMode={Boolean(startingFrame)} startingFrameControl={startingFrame || !frameSelection.ready || frameSelection.error ? <>
               {!frameSelection.ready || frameSelection.error ? <div className="space-y-2" role={frameSelection.error ? "alert" : "status"}><p>{frameSelection.error ?? "Restoring your starting frame…"}</p>{frameSelection.error ? <><Button type="button" variant="outline" onClick={frameSelection.retry}>Retry</Button><Button type="button" variant="ghost" onClick={() => frameSelection.setFrame(null)}>Clear saved starting frame</Button></> : null}</div> : null}
-              {startingFrame ? <StartingFrameAnimationReferences frame={startingFrame} model={generation.settings.model} photos={facePhotos} onPhotosChange={photos => { setFacePhotos(photos); setFaceError(null); }} ownerId={ownerId ?? undefined} preview={!generationEnabled} active={section === "create"} disabled={Boolean(run?.busy || !frameSelection.ready)} onPendingChange={setFacePending} onErrorChange={setFaceError} frameControl={<section className="space-y-3 rounded-xl border border-border p-3" aria-label="Approved starting frame">
-                <div className="flex items-start gap-3"><Image unoptimized src={startingFrame.url} width={80} height={110} alt="Approved starting frame" className="max-h-28 w-20 rounded-lg object-contain" /><div><h3 className="text-sm font-medium">Your starting frame</h3><p className="mt-1 text-xs leading-5 text-muted">Describe what the person says and how they deliver it in Your instructions. Sound generates speech and scene audio; it does not copy reference audio.</p><Button type="button" size="sm" variant="ghost" disabled={run?.busy} onClick={() => { frameSelection.setFrame(null); setFacePhotos([]); setFaceError(null); }}>Remove starting frame</Button></div></div>
-                <Button type="button" variant="outline" size="sm" disabled={run?.busy} onClick={() => { const reference = references.query.data?.find(item => item.id === startingFrame.referenceId); if (reference) setPreparation({ reference, draftId: startingFrame.draftId }); }}>Change</Button><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={run?.busy} checked={startingFrame.generateAudio} onChange={event => frameSelection.setFrame({ ...startingFrame, generateAudio: event.target.checked })} />Sound</label>
-                {hookAudio.asset ? <div role="alert" className="space-y-2"><p className="text-xs">Your selected audio reference is kept, but cannot guide starting-frame animation. Remove it to generate, or remove the starting frame to use audio guidance.</p><Button type="button" size="sm" variant="outline" onClick={hookAudio.remove}>Remove audio reference</Button></div> : null}
-              </section>} /> : null}
-            </>} referenceInstructions={startingFrame ? { value: startingFrame.motionInstructions, onChange: value => frameSelection.setFrame({ ...startingFrame, motionInstructions: value }) } : references.selectedId ? { value: references.instructions, onChange: references.changeInstructions } : undefined} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={patch => {
-              if (startingFrame && patch.model) { const durations = hookStartingFrameVideoDurations(patch.model); generation.changeSettings({ ...patch, duration: durations.includes(generation.settings.duration) ? generation.settings.duration : 4 }); }
+              {startingFrame ? <StartingFrameAnimationReferences compact frame={startingFrame} model={generation.settings.model} photos={facePhotos} onPhotosChange={photos => { framePhotos.remember(photos); setFacePhotoSelection({ key: photoKey, photos }); setFaceError(null); }} ownerId={ownerId ?? undefined} preview={!generationEnabled} active={section === "create"} disabled={Boolean(run?.busy || !frameSelection.ready)} onPendingChange={setFacePending} onErrorChange={setFaceError}
+                onSelectFrame={frame => { if (frameSelection.setFrame(frame)) setFaceError(null); }} onClearFrame={() => { frameSelection.setFrame(null); setFacePhotoSelection({ key: null, photos: [] }); setFaceError(null); }}
+                onPrepareFrame={() => { const reference = references.query.data?.find(item => item.id === startingFrame.referenceId); if (reference) setPreparation({ reference, draftId: startingFrame.draftId }); }} /> : null}
+            </> : undefined} startingFrameSoundControl={startingFrame ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={run?.busy} checked={startingFrame.generateAudio} onChange={event => frameSelection.setFrame({ ...startingFrame, generateAudio: event.target.checked })} />Sound</label> : undefined} referenceInstructions={startingFrame ? { value: startingFrame.motionInstructions, onChange: value => frameSelection.setFrame({ ...startingFrame, motionInstructions: value }) } : references.selectedId ? { value: references.instructions, onChange: references.changeInstructions } : undefined} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={patch => {
+              if (startingFrame && patch.model) { generation.changeSettings({ ...patch, duration: hookStartingFrameDefaultDuration(patch.model) }); }
               else generation.changeSettings(patch);
             }} audioLabel="Talking head audio" audio={hookAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
             {references.selectedId ? <p role="status" className="mt-2 text-xs leading-5 text-muted">Reference: {references.query.data?.find(item => item.id === references.selectedId)?.durationSeconds.toFixed(1) ?? "…"}s · Generation: {generation.settings.duration}s. The selected model’s supported durations apply.</p> : null}

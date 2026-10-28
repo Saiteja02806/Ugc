@@ -1,5 +1,4 @@
 import { getCurrentUserIdToken } from "../firebase/auth";
-import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { withReadDeadline } from "../http/read-deadline";
 
 export type HookStartingFrame = {
@@ -51,7 +50,7 @@ export async function readVerifiedHookStartingFrame(response: Response, input: {
     const width = Number(response.headers.get("X-Hook-Frame-Width"));
     const height = Number(response.headers.get("X-Hook-Frame-Height"));
     const frameSha256 = response.headers.get("X-Hook-Frame-Sha256") ?? "";
-    const selected = input.retainedFrame ?? getCuratedHookFrame(input.referenceId, input.sourceSha256);
+    const selected = input.retainedFrame;
     const index = selected?.index ?? 0, timeSeconds = selected?.timeSeconds ?? 0;
     if (response.headers.get("Content-Type")?.split(";")[0] !== "image/png" ||
       response.headers.get("X-Hook-Reference-Id") !== input.referenceId ||

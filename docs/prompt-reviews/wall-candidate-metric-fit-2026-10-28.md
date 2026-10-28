@@ -1,0 +1,11 @@
+# Wall candidate metric fitting — local analysis, 28 October 2026
+
+Artifact: `outputs/wall-layout-batch-20261028/candidate-metric-fit.json`.
+
+This is a numerical experiment, not assigned runtime profiles or approved render acceptance. Source geometry comes from native opening visual estimates in the three opening-geometry review notes. The production `formatTextLayout` function was evaluated at 1080×1920 with existing Proxima Nova Semibold metrics, actual source copy, centered text, line height 1.2, and candidate font sizes 24–84. Each candidate minimizes error between the observed text block dimensions and the computed source-copy layout. The source words and source hash were preserved. There was no provider call, generated video, deployment or application-code change.
+
+22 numbered sources evaluated: 10, 11, 13, 42, 44, 45, 47–58, 60–63. This does not prove visual typography likeness, contrast across footage, representative business Remix fit, editor save/reopen, or runtime admission. Some source rows have structured headings/lists that must be preserved rather than flattened. Wall 27 is excluded because distinct heading and list regions require a suitable schema. Wall 37 is excluded because source caption is incomplete. Wall 42 duration eligibility remains unverified.
+
+A concrete implementation limitation surfaced: Wall 50's tiny two-line source text numerically matches at about 29px (1080 width). Current `initialWallText` minimum `max(36, profile.fontSize * .85)` would reject any profile below 36 before even evaluating it, even though the editor parser accepts fonts from 24. This needs a deliberate reference-specific decision; simply adding the new profile would not make it usable. Wall 55 approaches the current 84px maximum and still misses source block width/height; further visual calibration required.
+
+Preflight: read mandatory skill files (context-memory, immutable-contracts, frame-analysis, ui-clarity, regression-gate), AGENTS relevant preflight block and nonnegotiables in full. Full EXPLORE_CONTEXT, clear ledger and Wall context were not read; no application-code edits were made. This report records a read-only numerical analysis rather than completion of the requested implementation.

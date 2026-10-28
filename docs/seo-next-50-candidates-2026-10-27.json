@@ -1,0 +1,502 @@
+[
+  {
+    "number": 51,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-video-with-real-app-demo",
+    "title": "Combine an AI reaction hook with a real SaaS demo",
+    "unique_deliverable": "Complete hook-to-proof sequence, worked copy, timed cut plan and product route",
+    "nearest_existing": "/guides/product-demo-to-short-video",
+    "gate": "Original illustrative creative example and current product-source review completed. Fresh authenticated walkthrough unavailable because browser access is disabled. Local page checks recorded separately.",
+    "status": "Implemented locally in format wave 1; production acceptance and release pending"
+  },
+  {
+    "number": 52,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-message-match",
+    "title": "Match a reaction hook to the feature your SaaS demo proves",
+    "unique_deliverable": "Several owned matched/mismatched pairs with a correction decision tree",
+    "nearest_existing": "/guides/hook-video-with-real-app-demo",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 2; illustrative examples only; production review and release pending"
+  },
+  {
+    "number": 53,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-reveal-transition",
+    "title": "Make the transition from reaction footage to app proof understandable",
+    "unique_deliverable": "Actual hard-cut, bridge-label and held-result variants of one owned sequence",
+    "nearest_existing": "/guides/product-demo-to-short-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 54,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-problem-awareness",
+    "title": "Write different hook-plus-demo edits for problem-aware and product-aware viewers",
+    "unique_deliverable": "Distinct complete briefs and reviewed cuts for the two viewer states",
+    "nearest_existing": "/guides/saas-video-cta-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 55,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-visual-continuity",
+    "title": "Keep visual continuity between a creator reaction and the product demo",
+    "unique_deliverable": "Annotated eyeline, motion and orientation examples from owned clips",
+    "nearest_existing": "/guides/hook-video-with-real-app-demo",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 56,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-on-screen-words",
+    "title": "Choose what the opening text says before the demo begins",
+    "unique_deliverable": "Original text-to-proof examples with product-specific wording and exact overlays",
+    "nearest_existing": "/blog/ugc-hooks",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 5; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 57,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-single-feature-series",
+    "title": "Build a hook-plus-demo series around separate real product actions",
+    "unique_deliverable": "Three complete owned episodes with different tasks and evidence",
+    "nearest_existing": "/guides/saas-feature-announcement-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 58,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-framing-pair",
+    "title": "Frame a portrait reaction and a widescreen app demo as one social edit",
+    "unique_deliverable": "Actual source and final-frame comparisons with editor-specific decisions",
+    "nearest_existing": "/guides/vertical-saas-demo",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 59,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-result-first",
+    "title": "When should the result appear before the reaction in a SaaS video?",
+    "unique_deliverable": "Owned result-first versus reaction-first edits, tradeoffs and comprehension notes",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 60,
+    "cluster": "Hook + real product demo",
+    "proposed_path": "/guides/hook-demo-example-breakdowns",
+    "title": "Hook-plus-demo examples for software: annotated complete sequences",
+    "unique_deliverable": "Permissioned full videos with shot-specific explanations, not a hook list",
+    "nearest_existing": "/blog/ugc-video-generator-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an analysis guide with fictional planning example; real assets unverified; production review pending"
+  },
+  {
+    "number": 61,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-with-saas-demo",
+    "title": "Create a talking-head video that explains and demonstrates your SaaS",
+    "unique_deliverable": "One complete script, actual product sequence and reviewed combined export",
+    "nearest_existing": "/guides/product-demo-to-short-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 62,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-problem-to-action",
+    "title": "Turn a founder problem statement into a talking-head-and-demo script",
+    "unique_deliverable": "Original paired weak/revised scripts tied to real actions",
+    "nearest_existing": "/guides/saas-demo-video-script",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 4; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 63,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-speech-demo-handoff",
+    "title": "Hand off from spoken explanation to a visible software action",
+    "unique_deliverable": "Timestamped narration/control/result examples and corrected transitions",
+    "nearest_existing": "/guides/talking-head-with-saas-demo",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 64,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-reaction-vs-explainer",
+    "title": "Choose a spoken explanation or a silent reaction for an app feature",
+    "unique_deliverable": "Same-task owned versions and evidence/effort decision matrix",
+    "nearest_existing": "/guides/product-demo-vs-explainer-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as a fictional-example planning guide; original recorded examples remain unverified; production review pending"
+  },
+  {
+    "number": 65,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-objection-demo",
+    "title": "Answer a SaaS objection with a talking-head explanation and real proof",
+    "unique_deliverable": "Permissioned objection or labeled hypothetical plus complete evidence-led edit",
+    "nearest_existing": "/guides/customer-question-to-demo-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 66,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-caption-conflicts",
+    "title": "Keep speech captions and app labels from competing in a combined video",
+    "unique_deliverable": "Actual overlapping and corrected exports with exact text review",
+    "nearest_existing": "/guides/readable-video-text",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 67,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-brand-voice",
+    "title": "Give a presenter the voice of your SaaS without inventing a testimonial",
+    "unique_deliverable": "Original voice brief and several reviewed spoken examples with claim boundaries",
+    "nearest_existing": "/guides/review-ai-ugc-for-software",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as a fictional-example planning guide; original recorded examples remain unverified; production review pending"
+  },
+  {
+    "number": 68,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-multiple-audiences",
+    "title": "Adapt one presenter-led product explanation for different SaaS users",
+    "unique_deliverable": "Two genuinely different audience tasks and full scripts, not swapped nouns",
+    "nearest_existing": "/guides/talking-head-with-saas-demo",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 5; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 69,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-first-scene",
+    "title": "Choose the first visible scene for a presenter-led SaaS video",
+    "unique_deliverable": "Owned opening variants with clear task orientation and review notes",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 70,
+    "cluster": "Talking-head + demo",
+    "proposed_path": "/guides/talking-head-demo-breakdowns",
+    "title": "Talking-head-plus-demo examples: what each scene contributes",
+    "unique_deliverable": "Permissioned full sequences, transcripts, app evidence and annotations",
+    "nearest_existing": "/blog/ugc-video-generator-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an analysis guide with fictional planning example; real assets unverified; production review pending"
+  },
+  {
+    "number": 71,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-of-text-video-for-saas",
+    "title": "Make a wall-of-text video from your SaaS business context",
+    "unique_deliverable": "Original brief-to-overlay transformation, full sample text and matching footage plan",
+    "nearest_existing": "/guides/readable-video-text",
+    "gate": "Original illustrative creative example and current product-source review completed. Fresh authenticated walkthrough unavailable because browser access is disabled. Local page checks recorded separately.",
+    "status": "Implemented locally in format wave 1; production acceptance and release pending"
+  },
+  {
+    "number": 72,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-relatable-frustration",
+    "title": "Write a relatable SaaS frustration without exaggerating the problem",
+    "unique_deliverable": "Several complete business-specific overlays with claim checks and corrections",
+    "nearest_existing": "/guides/wall-of-text-video-for-saas",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 2; illustrative examples only; production review and release pending"
+  },
+  {
+    "number": 73,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-pov-story",
+    "title": "Write a POV wall-of-text video that leads naturally to your app",
+    "unique_deliverable": "Original complete POV stories with fictional/real attribution made explicit",
+    "nearest_existing": "/guides/wall-of-text-video-for-saas",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 74,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-discovery-story",
+    "title": "Turn a useful software discovery into a natural text-led video",
+    "unique_deliverable": "Full discovery overlays linked to demonstrable feature facts",
+    "nearest_existing": "/free-hook-lines",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 4; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 75,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-background-match",
+    "title": "Choose background footage that supports a dense written message",
+    "unique_deliverable": "Owned matched/mismatched footage examples with annotated exports",
+    "nearest_existing": "/guides/silent-app-demo-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 76,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-paragraph-vs-list",
+    "title": "Choose a paragraph, stacked list or short story for a SaaS wall video",
+    "unique_deliverable": "Same verified business facts transformed into three complete export examples",
+    "nearest_existing": "/guides/wall-of-text-video-for-saas",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 2; illustrative examples only; production review and release pending"
+  },
+  {
+    "number": 77,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-product-mention",
+    "title": "Mention your SaaS naturally inside a text-led story",
+    "unique_deliverable": "Original heavy-handed versus specific rewrites with accurate product context",
+    "nearest_existing": "/guides/saas-video-cta-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 78,
+    "cluster": "Wall-of-text social videos",
+    "proposed_path": "/guides/wall-text-video-breakdowns",
+    "title": "Wall-of-text video examples for software founders",
+    "unique_deliverable": "Permissioned complete overlays and clips with reading/motion annotations",
+    "nearest_existing": "/blog/ugc-video-generator-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an analysis guide with fictional planning example; real assets unverified; production review pending"
+  },
+  {
+    "number": 79,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-problem-solution-slideshow",
+    "title": "Build a problem-to-solution slideshow for your SaaS",
+    "unique_deliverable": "Complete original slide sequence with source facts and visual brief",
+    "nearest_existing": "/guides/saas-tutorial-carousel",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 80,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-slideshow-business-context",
+    "title": "Turn business context into a native-looking product slideshow",
+    "unique_deliverable": "Actual brief-to-copy-to-reviewed-slides example",
+    "nearest_existing": "/instagram-carousel-maker",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 81,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-slideshow-opening-slide",
+    "title": "Write a first slide that gives the rest of the carousel a clear job",
+    "unique_deliverable": "Several full carousel openings paired with the body they promise",
+    "nearest_existing": "/guides/saas-tutorial-carousel",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 5; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 82,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-carousel-feature-story",
+    "title": "Explain one SaaS feature through a slide story",
+    "unique_deliverable": "Complete feature-focused slides distinct from step-by-step tutorial",
+    "nearest_existing": "/guides/saas-feature-announcement-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 5; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 83,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-slideshow-story-vs-tutorial",
+    "title": "Choose a story slideshow or an instructional carousel for a software message",
+    "unique_deliverable": "Same facts in two complete sequences with reader-task differences",
+    "nearest_existing": "/guides/saas-tutorial-carousel",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 84,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-carousel-visual-brief",
+    "title": "Brief screenshots and supporting images for a SaaS carousel",
+    "unique_deliverable": "Original slide-by-slide visual intent sheet and actual approved assets",
+    "nearest_existing": "/instagram-carousel-maker",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 85,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-slideshow-ending",
+    "title": "End a SaaS slideshow with a useful next action",
+    "unique_deliverable": "Complete ending-to-destination examples connected to full slide sequences",
+    "nearest_existing": "/guides/saas-video-cta-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 5; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 86,
+    "cluster": "Slideshows and carousels",
+    "proposed_path": "/guides/saas-slideshow-breakdowns",
+    "title": "Software slideshow examples: why each slide belongs",
+    "unique_deliverable": "Owned full carousels with exact copy, visual explanations and limitations",
+    "nearest_existing": "/guides/saas-tutorial-carousel",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an analysis guide with fictional planning example; real assets unverified; production review pending"
+  },
+  {
+    "number": 87,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/adapt-reference-video-to-saas",
+    "title": "Adapt a reference video's structure to your SaaS business",
+    "unique_deliverable": "Permissioned reference analysis, new fact-bound copy and distinct final asset",
+    "nearest_existing": "/guides/review-ai-ugc-for-software",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 88,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-structure-vs-claim",
+    "title": "Reuse a creative structure without copying a creator's claim",
+    "unique_deliverable": "Original annotated structure/fact separation and rewritten business examples",
+    "nearest_existing": "/guides/adapt-reference-video-to-saas",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 89,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-emotion-to-message",
+    "title": "Choose a reference emotion that fits the product message",
+    "unique_deliverable": "Several supported emotion/message pairings and owned outputs",
+    "nearest_existing": "/guides/hook-demo-message-match",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 90,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-remix-business-facts",
+    "title": "Turn business facts into a reference-inspired text remix",
+    "unique_deliverable": "Actual input facts, source wording, approved new text and limitations",
+    "nearest_existing": "/guides/customer-question-to-demo-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 91,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-format-selection",
+    "title": "Choose hook, talking-head, wall text or slideshow from a reference idea",
+    "unique_deliverable": "Same business brief expressed in distinct full formats with choice rationale",
+    "nearest_existing": "/guides/product-demo-vs-explainer-video",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as a fictional-example planning guide; original recorded examples remain unverified; production review pending"
+  },
+  {
+    "number": 92,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-provenance-review",
+    "title": "Keep track of source inspiration, permissions and your final creative",
+    "unique_deliverable": "Practical provenance record with owned worked example; no rights guarantee",
+    "nearest_existing": "/guides/review-ai-ugc-for-software",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 93,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-adaptation-before-after",
+    "title": "Reference-to-SaaS adaptation: original brief and final creative breakdown",
+    "unique_deliverable": "Permissioned reference plus demonstrably original business-specific output",
+    "nearest_existing": "/blog/ugc-video-generator-examples",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an analysis guide with fictional planning example; real assets unverified; production review pending"
+  },
+  {
+    "number": 94,
+    "cluster": "Reference-inspired adaptation",
+    "proposed_path": "/guides/reference-without-product-fit",
+    "title": "When a popular reference does not fit your app: adapt or skip?",
+    "unique_deliverable": "Original rejected concepts and truthful alternatives with decision evidence",
+    "nearest_existing": "/guides/adapt-reference-video-to-saas",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 95,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/one-saas-feature-three-social-formats",
+    "title": "Turn one SaaS feature into hook-demo, talking-head and wall-text videos",
+    "unique_deliverable": "Three complete original assets using the same verified feature facts",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 96,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/saas-creative-angle-matrix",
+    "title": "Plan different creative angles for one software feature",
+    "unique_deliverable": "Original pain/discovery/use-case matrix with full executions and claim bounds",
+    "nearest_existing": "/guides/saas-content-marketing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 3; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 97,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/saas-format-test-plan",
+    "title": "Compare social-video formats without confusing audience and creative effects",
+    "unique_deliverable": "Actual assets, controlled brief and observational limits; no invented winner",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally in format wave 4; fictional planning examples; production review and release pending"
+  },
+  {
+    "number": 98,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/reaction-emotion-variations",
+    "title": "Test reaction emotions while keeping the app demo unchanged",
+    "unique_deliverable": "Owned emotion variants with fixed wording/body and review log",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  },
+  {
+    "number": 99,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/saas-social-creative-review",
+    "title": "Review the hook, words, product proof and final social asset together",
+    "unique_deliverable": "Format-specific review cards and real corrected examples",
+    "nearest_existing": "/guides/review-ai-ugc-for-software",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as a fictional-example planning guide; original recorded examples remain unverified; production review pending"
+  },
+  {
+    "number": 100,
+    "cluster": "Creative variation and testing",
+    "proposed_path": "/guides/saas-creative-iteration-log",
+    "title": "Turn feedback into the next social creative revision",
+    "unique_deliverable": "Actual sanitized review notes linked to revised assets and next-test decisions",
+    "nearest_existing": "/guides/product-demo-hook-testing",
+    "gate": "Original format-specific example and exact-intent review required; merge if the existing page already answers the task.",
+    "status": "Implemented locally as an illustrative planning guide; original assets remain unverified; production review pending"
+  }
+]

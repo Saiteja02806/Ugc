@@ -17,6 +17,19 @@ for (const relative of packageFiles) {
 }
 const endpoint = "https://mcp.getugcpilot.com/mcp";
 
+function validateLocalMarketplace() {
+  const marketplacePath = path.join(root, ".agents/plugins/marketplace.json");
+  const marketplace = JSON.parse(fs.readFileSync(marketplacePath, "utf8"));
+  assert.equal(marketplace.name, "ugc-pilot-local");
+  assert.equal(marketplace.interface?.displayName, "UGC Pilot local development");
+  assert.deepEqual(marketplace.plugins, [{
+    name: "ugc-pilot",
+    source: { source: "local", path: "./plugins/ugc-pilot" },
+    policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+    category: "Productivity",
+  }], "The local Codex marketplace must expose the reviewed UGC Pilot package and request OAuth on install");
+}
+
 export function validateOpenAiMetadata(plugin, knownTools, { submission = false } = {}) {
   const extension = plugin.extensions?.["com.openai"];
   const ui = extension?.interface;
@@ -93,7 +106,18 @@ export function validateResourceLinks(text, relative) {
   }
 }
 
+export function validatePortableMcpCompatibility(mcp) {
+  // The Agent Plugins schema accepts extensions that installed Codex clients
+  // can reject before discovering OAuth. Keep the bundled transport portable;
+  // authorization is discovered from the protected resource, never embedded.
+  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": {
+    type: "streamable-http",
+    url: endpoint,
+  } }, "Bundled MCP must use the Codex-compatible transport without extensions or credentials");
+}
+
 export function validatePackage({ submission = false } = {}) {
+  validateLocalMarketplace();
   assert.deepEqual(walk(pluginDir).sort(), [...packageFiles].sort(), "Unexpected or missing package file");
   const plugin = json("plugin.json");
   const mcp = json("mcp.json");
@@ -114,7 +138,7 @@ export function validatePackage({ submission = false } = {}) {
   for (const field of ["logo", "composerIcon"]) {
     assert.equal(ui[field], "./assets/logo.png");
   }
-  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": { type: "streamable-http", url: endpoint } });
+  validatePortableMcpCompatibility(mcp);
   assert.deepEqual(json(".mcp.json"), { mcpServers: { "ugc-pilot": { type: "http", url: endpoint } } });
   for (const overlay of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]) {
     const metadata = json(overlay);
@@ -134,8 +158,17 @@ export function validatePackage({ submission = false } = {}) {
   assert(portableInterface);
   assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
-  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings"].flatMap((kind) => {
+  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings", "business-context", "business-onboarding", "business-logo", "scheduling", "analytics"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
+    if (kind === "business-context") {
+      const inventory=code.match(/registeredBusinessContextMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
+      assert(inventory, "Missing Business Context inventory");
+      const declared=JSON.parse(inventory[1]);
+      const staticNames=[...code.matchAll(/registerTool\("([a-z_]+)"/g)].map(match=>match[1]);
+      const dynamicNames=[...code.matchAll(/tool:"([a-z_]+)"/g)].map(match=>match[1]);
+      assert.deepEqual([...new Set([...staticNames,...dynamicNames])].sort(),[...declared].sort(),"Business Context registrations differ from declared inventory");
+      return declared;
+    }
     if (kind === "creative-group") {
       const inventory = code.match(/registeredCreativeGroupMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
       assert(inventory, "Missing creative-group registered inventory");
@@ -147,7 +180,7 @@ export function validatePackage({ submission = false } = {}) {
     }
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 79, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 106, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {

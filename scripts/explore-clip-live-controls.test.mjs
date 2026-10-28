@@ -296,7 +296,7 @@ test("Wall manual text hides timing and style until advanced mode while keeping 
   assert.equal(labelled(tree, "Text start time"), undefined, "Advanced Wall also keeps text for the whole clip");
 });
 
-test("font controls preserve saved styles and default new text to white Poppins Bold with outline 8", () => {
+test("font controls preserve saved styles and default new text to white Proxima Nova A Semibold with outline 8", () => {
   const h = harness("format-text-overlays-editor"), updates = [];
   const text = { value: "Existing message", width: .7, y: .4, fontSize: 42, color: "#ff00ff", startMs: 1000, endMs: 3000 };
   const props = { overlays: [text], durationMs: 5000, timeMs: 1500, onChange: next => updates.push(next), onSeek() {} };
@@ -304,15 +304,19 @@ test("font controls preserve saved styles and default new text to white Poppins 
   assert.equal(labelled(tree, "Text font").props.value, ""); assert.equal(labelled(tree, "Text weight").props.value, 700);
   for (const { id } of formatEdit.EXPLORE_TEXT_FONTS) {
     labelled(tree, "Text font").props.onChange({ target: { value: id } });
-    assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: id });
+    assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), {
+      ...text,
+      font: id,
+      fontWeight: formatEdit.resolveExploreTextWeight(id, 700),
+    });
   }
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [{ ...text, font: "dmsans", fontWeight: 700 }] }));
   labelled(tree, "Text weight").props.onChange({ target: { value: "500" } });
   assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: "dmsans", fontWeight: 500 });
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [] }));
-  assert.equal(labelled(tree, "Text font").props.value, "poppins"); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  assert.equal(labelled(tree, "Text font").props.value, "proximanovaa"); assert.equal(labelled(tree, "Text weight").props.value, 600);
   assert.equal(labelled(tree, "Text outline thickness").props.value, 8);
   labelled(tree, "Overlay text").props.onChange({ target: { value: "New hook" } });
-  assert.equal(updates.at(-1)[0].font, "poppins"); assert.equal(updates.at(-1)[0].fontWeight, 700);
+  assert.equal(updates.at(-1)[0].font, "proximanovaa"); assert.equal(updates.at(-1)[0].fontWeight, 600);
   assert.equal(updates.at(-1)[0].outlineWidth, 8); assert.equal(updates.at(-1)[0].color, "#ffffff");
 });

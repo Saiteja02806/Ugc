@@ -13,7 +13,7 @@ export function startingFrameWorkflowDirections(format: StartingFrameWorkflow) {
 /** Script/overlay workflows do not use Hook's action-only grammar.
  * The server chooses the workflow from the owned image's canonical source. */
 export function buildStartingFrameAnimationPrompt(input: {
-  workflow: StartingFrameWorkflow; directions: string; durationSeconds: number; generateAudio: boolean;
+  workflow: StartingFrameWorkflow; directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean;
 }) {
   if (input.workflow === "hook") return buildHookAnimationPrompt(input);
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
@@ -24,7 +24,7 @@ export function buildStartingFrameAnimationPrompt(input: {
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
     input.workflow === "talking_head" ? "Create a natural talking-head performance. Use only the user's own script below. Do not invent product claims or add a demo segment." : "Create clean moving background footage. Overlay text is added separately in the editor; do not render the requested overlay words into the video.",
     input.workflow === "wall_text" ? retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds) : input.directions.trim(),
-    "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
+    input.removePhysicalText ? "Keep the scene free of captions, physical logos, readable text, labels, signage and watermarks. Preserve the underlying surfaces, clothing and props without recreating removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     input.generateAudio
       ? input.workflow === "talking_head" ? "SOUND SETTING: ON. Generate the user's requested speech with natural delivery and lip-sync. Do not invent extra spoken words." : "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add speech, narration, singing or music."
       : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",

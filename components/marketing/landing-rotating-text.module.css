@@ -1,0 +1,68 @@
+@font-face {
+  font-family: "UGCPilot Instrument Serif";
+  src: url("/marketing/fonts/InstrumentSerif-Italic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "UGCPilot Serif Fallback";
+  src: local("Georgia Italic"), local("Georgia");
+  font-style: italic;
+  font-weight: 400;
+  size-adjust: 82%;
+}
+
+.wrapper {
+  display: block;
+  margin-top: 0;
+}
+
+.stage {
+  display: grid;
+  align-items: center;
+  height: 2.3em;
+  font-family: "UGCPilot Instrument Serif", "UGCPilot Serif Fallback", Georgia, serif;
+  font-size: 1em;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: #665543;
+  overflow: clip;
+  --headline-spring: linear(0, 0.0971, 0.3265, 0.6029, 0.8604, 1.0584, 1.1805, 1.2295, 1.2206, 1.1745, 1.1118, 1.0494, 0.9986, 0.9648, 0.9486, 0.947, 0.9556, 0.9695, 0.9843, 0.9971, 1.0062, 1.0112, 1.0125, 1.0111, 1);
+}
+
+:global(.dark) .stage { color: #c7c2b9; }
+
+.phrase {
+  grid-area: 1 / 1;
+  width: 100%;
+  opacity: 0;
+  filter: blur(4px);
+  transform: translateY(20px) rotateX(90deg);
+  transition: opacity 1200ms var(--headline-spring), filter 1200ms var(--headline-spring), transform 1200ms var(--headline-spring);
+}
+
+.phrase[data-outgoing="true"] { transform: translateY(-20px) rotateX(-90deg); }
+.phrase[data-active="true"] { opacity: 1; filter: blur(0); transform: translateY(0) rotateX(0); }
+
+.emoji {
+  display: inline-block;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 0.65em;
+  font-style: normal;
+  letter-spacing: 0;
+  vertical-align: 0.04em;
+  white-space: nowrap;
+}
+
+@media (min-width: 380px) {
+  .stage { height: 1.2em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phrase, .phrase[data-active], .phrase[data-outgoing] { transition: none; opacity: 0; filter: none; transform: none; }
+  .phrase:first-child { opacity: 1; }
+}

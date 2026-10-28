@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.2.0",
-  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
+  "version": "0.2.10",
+  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account. Shared Business Context, saved onboarding, verified logo upload, saved social analytics, and schedule discovery are included where their gates permit.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -19,7 +19,7 @@
       "interface": {
         "displayName": "UGC Pilot",
         "shortDescription": "Create UGC content",
-        "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing is not available through this plugin.",
+        "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review creative, saved social analytics, connected social accounts, schedule state, shared Business Context, saved business onboarding, and a verified business logo through your UGC Pilot account where those separate gates and consents permit. UGC Pilot checks availability and cost before paid generation. Schedule creation depends on a live gate. Slideshow text rendering, voice cloning, provider analytics refresh, and social publishing remain unavailable through this plugin. Installing the package does not activate server features.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
@@ -31,7 +31,12 @@
           "Business-context creative workflows",
           "Image and short-video generation",
           "Media library and video finishing",
-          "Saved Edit drafts and export"
+          "Saved Edit drafts and export",
+          "Shared Business Context drafts and reviewed promotion with separate consent where enabled",
+          "Saved website/manual/mobile business onboarding with durable receipts where enabled",
+          "Dedicated local business-logo reservations, transfer and verification where enabled",
+          "Read saved social analytics",
+          "Read schedules and create enabled future schedules"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
@@ -93,7 +98,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. UGC Pilot checks each connected account's live capabilities before paid generation."
+        "release_notes": "Adds shared Business Context read/draft/apply/recovery, saved business onboarding, and verified local logo upload. Adds read-only saved Instagram, TikTok and YouTube analytics with fresh consent and verified identity. Writes require deployed schema, enabled gates, fresh consent, current revisions and durable request UUIDs. Provider refresh, social-account OAuth, schedule editing, cancellation, retry and publishing remain unavailable. Package installation does not activate server features."
       }
     }
   }

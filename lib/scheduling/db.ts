@@ -253,33 +253,26 @@ export async function listScheduledPostsForUser(params: {
   to?: string | null;
   userId: string;
 }) {
-  let query = getSchedulingSupabaseClient()
-    .from(SCHEDULED_POSTS_TABLE)
-    .select("*")
-    .eq("user_id", params.userId)
-    .order("scheduled_for", { ascending: true, nullsFirst: false })
-    .order("updated_at", { ascending: false })
-    .limit(200);
-
-  if (params.status) {
-    query = query.eq("status", params.status);
+  const pageSize = 200;
+  const schedules: ScheduledPost[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    let query = getSchedulingSupabaseClient()
+      .from(SCHEDULED_POSTS_TABLE)
+      .select("*")
+      .eq("user_id", params.userId)
+      .order("scheduled_for", { ascending: true, nullsFirst: false })
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (params.status) query = query.eq("status", params.status);
+    if (params.from) query = query.gte("scheduled_for", params.from);
+    if (params.to) query = query.lte("scheduled_for", params.to);
+    const { data, error } = await query;
+    if (error) throw new Error(`Could not load schedules: ${error.message}`);
+    const rows = data ?? [];
+    schedules.push(...await attachTargets(rows));
+    if (rows.length < pageSize) return schedules;
   }
-
-  if (params.from) {
-    query = query.gte("scheduled_for", params.from);
-  }
-
-  if (params.to) {
-    query = query.lte("scheduled_for", params.to);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Could not load schedules: ${error.message}`);
-  }
-
-  return attachTargets(data ?? []);
 }
 
 export async function listPublishedInstagramPostReferencesForUser(params: {

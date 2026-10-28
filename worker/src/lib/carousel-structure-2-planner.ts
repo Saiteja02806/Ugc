@@ -25,13 +25,13 @@ import {
 } from "./carousel-structure-2-story-plan.js";
 import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
-import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
+import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS, isRetryableContentPlanProviderError, toContentPlanProviderRetry } from "./content-plan-provider-retry.js";
 import { isStructure2ReaderScenario, type CarouselStructure2CopyPolicy } from "./carousel-structure-2-copy-policy.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v26-flexible-body-copy";
+  "llm-carousel-structure-2-writer-v27-scoped-heading-repair";
 export const CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v26-reader-scenario-flexible-body";
+  "llm-carousel-structure-2-writer-v27-reader-scenario-heading-repair";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -169,6 +169,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
     providerEnvelopeRepaired = parsedBatch.envelopeClosingBraces > 0;
   } catch (error) {
     // Provider outages and empty responses contain no candidate copy to repair.
+    if (!initialBatchResponse && isRetryableContentPlanProviderError(error)) throw toContentPlanProviderRetry(error);
     // Do not amplify one failed request into five more provider requests.
     if (!initialBatchResponse) throw error;
     batchFailure = createCarouselStructure2InvalidPlanIssue(error);
@@ -301,6 +302,7 @@ async function attemptIsolatedRepair(params: {
     attempt += 1
   ) {
     try {
+      const headingNumbers = currentPlan ? headingOnlyIssueNumbers(currentIssues) : null;
       const targetedIssues = getTargetedCopyRepairIssues(
         currentPlan,
         currentIssues,
@@ -311,7 +313,10 @@ async function attemptIsolatedRepair(params: {
         : [];
       const completion = await getOpenAIClient().chat.completions.create({
         max_completion_tokens: 1_800,
-        messages: usesTargetedCopyRepair
+        messages: headingNumbers ? [
+          { role: "system", content: "Repair only the requested optional headings. Return headlinesBySlide with exactly the requested keys. Use null if no short useful heading fits, always null for slide1. Otherwise at most 10 short words fitting two lines. Preserve factual meaning; no claims, new facts or promotion. Body copy, CTA, slide roles and order are frozen and must not be returned." },
+          { role: "user", content: JSON.stringify({ issues: currentIssues, requestedSlides: headingNumbers, frozenPlan: currentPlan }) },
+        ] : usesTargetedCopyRepair
           ? buildCarouselStructure2StoryTextRepairMessages({
               copyPolicy: params.copyPolicy,
               assignment: params.assignment,
@@ -336,10 +341,16 @@ async function attemptIsolatedRepair(params: {
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: usesTargetedCopyRepair
+            name: headingNumbers ? `carousel_structure_2_heading_repair_${params.assignment.slotIndex}_${attempt}` : usesTargetedCopyRepair
               ? `carousel_structure_2_story_text_repair_${params.assignment.slotIndex}_${attempt}`
               : `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
-            schema: usesTargetedCopyRepair
+            schema: headingNumbers ? {
+              type: "object", additionalProperties: false, required: ["headlinesBySlide"], properties: {
+                headlinesBySlide: { type: "object", additionalProperties: false,
+                  required: headingNumbers.map(n => `slide${n}`),
+                  properties: Object.fromEntries(headingNumbers.map(n => [`slide${n}`, n === 1 ? { type: "null" } : { anyOf: [{ type: "string", minLength: 1, maxLength: 100 }, { type: "null" }] }])) },
+              },
+            } : usesTargetedCopyRepair
               ? buildCarouselStructure2StoryTextRepairSchema(targetedSlideNumbers, params.copyPolicy)
               : buildCarouselStructure2StoryPlanSchema(params.copyPolicy),
             strict: true,
@@ -359,7 +370,7 @@ async function attemptIsolatedRepair(params: {
       );
 
       const rawRepair = JSON.parse(repairResponse);
-      const repairedPlan = usesTargetedCopyRepair
+      const repairedPlan = headingNumbers ? replaceOnlyHeadings(currentPlan!, rawRepair, headingNumbers) : usesTargetedCopyRepair
         ? replaceStoryTexts(
             currentPlan!,
             parseCarouselStructure2StoryTextRepair(
@@ -399,7 +410,7 @@ async function attemptIsolatedRepair(params: {
 
       const canUseTargetedSecondRepair =
         attempt < MAX_TARGETED_REPAIR_ATTEMPTS &&
-        hasOnlyTargetedSecondRepairIssues(finalIssues);
+        (hasOnlyTargetedSecondRepairIssues(finalIssues) || headingOnlyIssueNumbers(finalIssues) !== null);
 
       if (!canUseTargetedSecondRepair) {
         // One cover-only escape hatch after normal repairs, never a bypass for
@@ -474,6 +485,25 @@ function hasOnlyTargetedSecondRepairIssues(
     issues.length > 0 &&
     issues.every((issue) => TARGETED_COPY_REPAIR_ISSUE_CODES.has(issue.code))
   );
+}
+
+function headingOnlyIssueNumbers(issues: readonly CarouselStructure2StoryValidationIssue[]) {
+  if (!issues.length || issues.some(issue => issue.code !== "story_structure" || issue.slideNumber === null ||
+      !issue.message.startsWith("Use an optional heading"))) return null;
+  return [...new Set(issues.map(issue => issue.slideNumber!))];
+}
+
+function replaceOnlyHeadings(plan: CarouselStructure2StoryPlan, value: unknown, numbers: number[]): CarouselStructure2StoryPlan {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 1 || !("headlinesBySlide" in value)) throw new Error("Heading repair returned unexpected fields.");
+  const headings = value.headlinesBySlide;
+  if (!headings || typeof headings !== "object" || Array.isArray(headings) || Object.keys(headings).length !== numbers.length) throw new Error("Heading repair returned invalid slide keys.");
+  const replacements = headings as Record<string, unknown>;
+  for (const n of numbers) {
+    const heading = replacements[`slide${n}`];
+    if (heading !== null && (typeof heading !== "string" || !heading.trim() || heading.length > 100 || n === 1)) throw new Error("Heading repair returned invalid copy.");
+  }
+  return { ...plan, slides: plan.slides.map(slide => numbers.includes(slide.slideNumber)
+    ? { ...slide, headline: replacements[`slide${slide.slideNumber}`] as string | null } : slide) };
 }
 
 function getTargetedCopyRepairIssues(

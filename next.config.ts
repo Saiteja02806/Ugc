@@ -3,6 +3,16 @@ import landingPreviews from "./lib/marketing/landing-preview-assets.json";
 import { nativeMediaTracing } from "./lib/build/native-media-tracing.ts";
 
 const nativeMedia = nativeMediaTracing();
+// sharp's native optional packages can live in either install tree. Include
+// only this build's platform packages in every route that renders automation.
+const sharpPlatform = `${process.platform}-${process.arch}`;
+const automationRenderFiles = [
+  "./worker/src/assets/fonts/explore-text/*.ttf",
+  ...["./node_modules", "./worker/node_modules"].flatMap((root) => [
+    `${root}/@img/sharp-${sharpPlatform}/**/*`,
+    `${root}/@img/sharp-libvips-${sharpPlatform}/**/*`,
+  ]),
+];
 const landingPreviewPaths = [
   ...Object.values(landingPreviews.videos).flatMap((asset) => [asset.src, asset.poster]),
   ...Object.values(landingPreviews.slideshows).flatMap((asset) => asset.slides.map((slide) => slide.src)),
@@ -22,11 +32,11 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingIncludes: {
     // Automation uses the shared glyph renderer on the server as well as workers.
-    "/api/trending/slideshow-automation": ["./worker/src/assets/fonts/explore-text/*.ttf"],
-    "/api/trending/slideshow-automation/**": ["./worker/src/assets/fonts/explore-text/*.ttf"],
-    "/api/internal/carousels/replenish": ["./worker/src/assets/fonts/explore-text/*.ttf"],
-    "/api/internal/trending/reconcile": ["./worker/src/assets/fonts/explore-text/*.ttf"],
-    "/api/internal/jobs/recover": ["./worker/src/assets/fonts/explore-text/*.ttf"],
+    "/api/trending/slideshow-automation": automationRenderFiles,
+    "/api/trending/slideshow-automation/**": automationRenderFiles,
+    "/api/internal/carousels/replenish": automationRenderFiles,
+    "/api/internal/trending/reconcile": automationRenderFiles,
+    "/api/internal/jobs/recover": automationRenderFiles,
     "/api/explore/**": ["./lib/explore/creator-*.json.enc"],
     "/api/ai-studio/**": ["./lib/explore/creator-*.json.enc"],
     "/api/media/**": ["./lib/explore/creator-*.json.enc"],

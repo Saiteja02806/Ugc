@@ -19,7 +19,6 @@ import {
   PlayCircle,
   Plus,
   RefreshCw,
-  SlidersHorizontal,
   Sparkles,
   Trash2,
   Upload,
@@ -199,6 +198,7 @@ export function TrendingSlideshowAutomationWorkspace({
   const [pausing, setPausing] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showAllSlots, setShowAllSlots] = useState(false);
 
   const [automation, setAutomation] =
     useState<TrendingSlideshowAutomationRecord | null>(null);
@@ -233,6 +233,7 @@ export function TrendingSlideshowAutomationWorkspace({
   const [savingStylePreset, setSavingStylePreset] = useState(false);
   const [collectionPickerOpen, setCollectionPickerOpen] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [mediaLibraryBusy, setMediaLibraryBusy] = useState(false);
 
   // Pause dialog state
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
@@ -520,7 +521,9 @@ export function TrendingSlideshowAutomationWorkspace({
 
   function handleToggleSubsetAsset(assetId: string) {
     if (config.backgrounds.mode !== "collection_only") return;
-    const current = config.backgrounds.selectedAssetIds;
+    const current = config.backgrounds.selectionMode === "all"
+      ? (activeCollection?.assets.map((asset) => asset.id) ?? [])
+      : config.backgrounds.selectedAssetIds;
     const exists = current.includes(assetId);
     const nextIds = exists
       ? current.filter((id) => id !== assetId)
@@ -674,7 +677,7 @@ export function TrendingSlideshowAutomationWorkspace({
       setSlots(result.slots);
       setWorkspaceMode("overview");
       setActionNotice(
-        "Slideshow automation is now active. Upcoming daily slots have been prepared.",
+        "Automation is active. Check the status of each upcoming slideshow below.",
       );
     } catch (error) {
       setActionError(
@@ -752,6 +755,8 @@ export function TrendingSlideshowAutomationWorkspace({
     [config, dailyAllowance, effectivePreviewAssets.length],
   );
 
+  const attentionSlotCount = slots.filter((slot) => Boolean(slot.holdMessage) ||
+    ["action_required_account", "held_collection_empty", "missed_posting_time", "partially_published"].includes(slot.status)).length;
   if (!open) return null;
 
   return (
@@ -975,7 +980,7 @@ export function TrendingSlideshowAutomationWorkspace({
 
                     {automation.attentionMessage ? (
                       <p className="text-sm text-foreground/90">
-                        {automation.attentionMessage}
+                        {friendlyAutomationMessage(automation.attentionMessage)}
                       </p>
                     ) : (
                       <p className="text-sm text-muted">
@@ -1031,22 +1036,6 @@ export function TrendingSlideshowAutomationWorkspace({
                       </>
                     ) : null}
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setWorkspaceMode("setup");
-                        setStep("content");
-                      }}
-                    >
-                      <SlidersHorizontal
-                        className="size-4"
-                        aria-hidden="true"
-                      />
-                      <span>Edit settings</span>
-                    </Button>
-
                     {automation.status === "paused" ? (
                       <Button
                         type="button"
@@ -1075,10 +1064,12 @@ export function TrendingSlideshowAutomationWorkspace({
               </section>
 
               {/* Current Configuration Summary Cards */}
-              <section
+              <details
                 aria-label="Current configuration summary"
-                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                className="rounded-xl border border-border/80 bg-card p-4"
               >
+                <summary className="cursor-pointer text-sm font-semibold">View automation settings</summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-border/80 bg-card p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted">
                     Daily Content Mix
@@ -1147,7 +1138,8 @@ export function TrendingSlideshowAutomationWorkspace({
                       "No accounts selected"}
                   </p>
                 </div>
-              </section>
+                </div>
+              </details>
 
               {/* Upcoming & Recent Automated Posts */}
               <section
@@ -1157,12 +1149,10 @@ export function TrendingSlideshowAutomationWorkspace({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="text-base font-semibold">
-                      Upcoming & Recent Automated Slideshows
+                      Slideshow activity
                     </h3>
                     <p className="text-xs text-muted">
-                      Each slot freezes its copy, backgrounds, visual style, and
-                      targets when prepared. Scheduled posts also appear in your
-                      Schedule tab.
+                      Scheduled posts also appear in your Schedule tab.
                     </p>
                   </div>
                   <Button
@@ -1177,15 +1167,17 @@ export function TrendingSlideshowAutomationWorkspace({
                 </div>
 
                 <div className="mt-4 divide-y divide-border/70">
-                  {slots.some((slot) => slot.status === "preparing") ? (
+                  {attentionSlotCount > 0 ? (
+                    <p role="alert" className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+                      {attentionSlotCount} {attentionSlotCount === 1 ? "slideshow needs" : "slideshows need"} attention. Review their status below{slots.length > 3 && !showAllSlots ? " or show all slideshows" : ""}.
+                    </p>
+                  ) : null}
+                  {slots.some((slot) => slot.status === "preparing") && attentionSlotCount === 0 ? (
                     <p
                       data-automation-preparing-reason
                       className="rounded-lg border border-primary/25 bg-primary/[0.06] px-3 py-2 text-xs text-foreground"
                     >
-                      Some slots are waiting for a ready slideshow. They are
-                      filled automatically as soon as one of your Trending
-                      slideshows is ready; the reason is shown on each slot
-                      below.
+                      Some slideshows are still preparing. Check their status below.
                     </p>
                   ) : null}
                   {slots.length === 0 ? (
@@ -1193,7 +1185,7 @@ export function TrendingSlideshowAutomationWorkspace({
                       No automated slots have been prepared yet.
                     </p>
                   ) : (
-                    slots.map((slot) => {
+                    (showAllSlots ? slots : slots.slice(0, 3)).map((slot) => {
                       const meta =
                         TRENDING_SLIDESHOW_AUTOMATION_FORMAT_META[slot.format];
                       return (
@@ -1224,7 +1216,7 @@ export function TrendingSlideshowAutomationWorkspace({
                             </p>
                             {slot.holdMessage ? (
                               <p className="text-xs font-medium text-warning">
-                                {slot.holdMessage}
+                                {friendlyAutomationMessage(slot.holdMessage)}
                               </p>
                             ) : null}
                           </div>
@@ -1275,6 +1267,11 @@ export function TrendingSlideshowAutomationWorkspace({
                     })
                   )}
                 </div>
+                {slots.length > 3 ? (
+                  <Button type="button" variant="ghost" size="sm" className="mt-3" aria-expanded={showAllSlots} onClick={() => setShowAllSlots((value) => !value)}>
+                    {showAllSlots ? "Show fewer slideshows" : `Show all ${slots.length} slideshows`}
+                  </Button>
+                ) : null}
               </section>
             </div>
           ) : (
@@ -1775,6 +1772,9 @@ export function TrendingSlideshowAutomationWorkspace({
                                               "collection_only"
                                                 ? {
                                                     ...config.backgrounds,
+                                                    selectedAssetIds: config.backgrounds.selectionMode === "all"
+                                                      ? activeCollection.assets.map((asset) => asset.id)
+                                                      : config.backgrounds.selectedAssetIds,
                                                     selectionMode: "subset",
                                                   }
                                                 : config.backgrounds,
@@ -1793,7 +1793,7 @@ export function TrendingSlideshowAutomationWorkspace({
                                   </div>
 
                                   {activeCollection.assets.length > 0 ? (
-                                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                                    <div aria-label="Collection images" role="region" tabIndex={0} className="grid max-h-[32rem] grid-cols-4 gap-2 overflow-y-auto p-1 sm:grid-cols-6">
                                       {activeCollection.assets.map((asset) => {
                                         const checked =
                                           config.backgrounds.mode ===
@@ -2747,20 +2747,23 @@ export function TrendingSlideshowAutomationWorkspace({
         <Dialog
           open
           onOpenChange={(nextOpen: boolean) => {
+            if (mediaLibraryBusy) return;
             setMediaLibraryOpen(nextOpen);
             if (!nextOpen) {
-              void loadWorkspace();
+              void fetchSlideshowAutomationState(detectedTimezone)
+                .then((state) => setCollections(state.collections))
+                .catch(() => setActionError("Could not refresh your image collections. Close and reopen automation to retry."));
             }
           }}
         >
-          <DialogContent className="max-h-[90dvh] max-w-4xl overflow-y-auto">
+          <DialogContent showCloseButton={!mediaLibraryBusy} className="max-h-[90dvh] max-w-4xl overflow-y-auto sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Media library</DialogTitle>
               <DialogDescription>
                 Manage images and background collections for reuse.
               </DialogDescription>
             </DialogHeader>
-            <MediaLibraryPanel key={userId} initialTab="images" />
+            <MediaLibraryPanel key={userId} initialTab="images" onBusyChange={setMediaLibraryBusy} />
           </DialogContent>
         </Dialog>
       ) : null}
@@ -2848,6 +2851,13 @@ export function TrendingSlideshowAutomationWorkspace({
       ) : null}
     </div>
   );
+}
+
+function friendlyAutomationMessage(message: string) {
+  if (/could not load the ["']sharp["'] module/i.test(message)) {
+    return "Image processing is unavailable. Check this slideshow's status and try again later.";
+  }
+  return message;
 }
 
 function SlotStatusBadge({

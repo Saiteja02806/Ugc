@@ -118,7 +118,9 @@ export function FormatGenerationReferences({ startingFrame, startingFramesOnly =
     staleTime: REFERENCE_IMAGE_STALE_MS,
     refetchOnWindowFocus: true,
   });
-  const activeImageTab = startingFramesOnly ? "starting" : imageTab ?? (suppliedInfluencerLibrary && !onImagePurposeChange ? "influencers" : "user");
+  const activeImageTab = startingFramesOnly ? "starting" : imageTab ?? (suppliedInfluencerLibrary && !onImagePurposeChange
+    ? selectedImages[0] && selectedImages[0].asset.sourceType !== "generated_image" ? "user" : "influencers"
+    : "user");
   const ownedInfluencers = useInfiniteQuery({
     queryKey: ["hook-influencer-history", ownerId ?? "signed-out"],
     enabled: active && openKind === "image" && activeImageTab === "influencers" && !startingFramesOnly && !suppliedInfluencerLibrary && Boolean(ownerId) && !preview,

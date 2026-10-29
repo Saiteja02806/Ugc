@@ -811,6 +811,27 @@ export function TrendingWorkspace() {
     useState<HTMLDivElement | null>(null);
   const [contentMixOpen, setContentMixOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(false);
+  const [automationStatus, setAutomationStatus] = useState<{ owner: string; status: string | null } | null>(null);
+  useEffect(() => {
+    const owner = user?.uid;
+    if (!owner || automationOpen) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getCurrentUserIdToken(owner);
+        if (!token) throw new Error("Authentication unavailable");
+        const response = await fetch("/api/trending/slideshow-automation?statusOnly=1", {
+          cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Automation status unavailable");
+        const data = await response.json();
+        if (!cancelled) setAutomationStatus({ owner, status: data.ok === true ? data.status : null });
+      } catch {
+        if (!cancelled) setAutomationStatus({ owner, status: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid, automationOpen]);
   const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(
     null,
   );
@@ -1211,8 +1232,8 @@ export function TrendingWorkspace() {
               type="button"
               variant="creative-edit"
               size="creative-edit"
-              aria-label="Configure daily slideshow automation"
-              title="Slideshow automation"
+              aria-label={automationStatus?.owner === user?.uid && automationStatus?.status === "active" ? "Configure daily slideshow automation, active" : "Configure daily slideshow automation"}
+              title={automationStatus?.owner === user?.uid && automationStatus?.status === "active" ? "Slideshow automation is active" : "Slideshow automation"}
               disabled={authLoading || !user}
               onClick={() => setAutomationOpen(true)}
               className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
@@ -1222,6 +1243,7 @@ export function TrendingWorkspace() {
                 aria-hidden="true"
               />
               <span>Automation</span>
+              {automationStatus?.owner === user?.uid && automationStatus?.status === "active" ? <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success" /> : null}
             </Button>
           </div>
         </header>
@@ -1273,7 +1295,7 @@ export function TrendingWorkspace() {
           <TrendingSlideshowAutomationWorkspace
             open
             userId={user.uid}
-            onClose={() => setAutomationOpen(false)}
+            onClose={() => { setAutomationStatus(null); setAutomationOpen(false); }}
           />
         ) : null}
       </div>

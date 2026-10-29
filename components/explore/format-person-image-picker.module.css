@@ -69,6 +69,8 @@
 @container person-picker (max-width: 380px) { .libraryHeading h3 { flex-basis: 100%; } .catalogControl { margin-right: auto; } }
 .tabs { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; }
 .sourceTabs { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
+.purpose > button, .sourceTabs > button, .footer > button,
+.libraryHeading button:not(.catalogControl), .headerActions > button { border-radius: 999px; }
 .libraryPanel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px 3px 24px; }
 .libraryPanel > p { margin-bottom: 12px; }
 .libraryPanel[hidden] { display: none; }

@@ -5,6 +5,7 @@ import { hookKeyframeMotionCatalog, getHookKeyframeMotionPrompt } from "./hook-k
 import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
 import publicMiddle from "./hook-middle-frame-public.json" with { type: "json" };
 import { buildSourceMotionDirections, type MiddleFrameMotionEntry } from "./hook-middle-frame-motion.ts";
+import { formatGeneratedMotionPhases } from "./motion-phase-display.ts";
 
 const id = "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", entry = hookKeyframeMotionCatalog[id];
 const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId: id, sourceSha256: entry.sourceSha256 });
@@ -70,7 +71,7 @@ test("every former public middle-frame case uses its full reviewed timeline at t
     const source = createHookKeyframeDraft({ ...draft.scope, referenceId: entry.referenceId, sourceSha256: entry.sourceSha256 });
     const opening = updateHookKeyframeDraft(source, { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
     const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, entry.sourceDurationSeconds);
-    assert.equal(preview.suggestedDirections, buildSourceMotionDirections(entry as MiddleFrameMotionEntry));
+    assert.equal(preview.suggestedDirections, formatGeneratedMotionPhases(buildSourceMotionDirections(entry as MiddleFrameMotionEntry)));
     assert.match(preview.directions, /PHASE \[0–/); assert.match(preview.directions, /ENDING STATE:/);
     assert.ok(preview.animationPrompt, `${entry.referenceId}: ${preview.animationError}`);
     const edited = getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." }));

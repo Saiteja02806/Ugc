@@ -98,7 +98,7 @@ export function retimeSourceMotionDirections(directions: string, durationSeconds
   }
   if (Math.abs(cursor - 1) > epsilon) throw new Error("The motion timeline must include the complete ending.");
   const actionDuration = actionDurationSeconds ?? durationSeconds;
-  const seconds = (value: number) => Number((value * actionDuration).toFixed(actionDurationSeconds === undefined ? 2 : 3)).toString();
+  const seconds = (value: number) => Number((value * actionDuration).toFixed(2)).toString();
   const timed = directions.replace(pattern, (_match, start: string, end: string) => `${seconds(Number(start))}–${seconds(Number(end))}s`);
   return actionDuration < durationSeconds ? `${timed}\n\nFINAL HOLD ${seconds(1)}–${durationSeconds}s: Keep the completed ending pose, expression, hand and prop contact, lighting and camera composition continuous. Introduce no new gesture or scene change.` : timed;
 }

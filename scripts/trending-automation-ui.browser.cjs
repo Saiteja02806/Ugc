@@ -17,13 +17,15 @@ file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescrip
 file("css.cjs", `module.exports=s=>'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default {};';`);
 file("module-css.cjs", String.raw`module.exports=function(s){const prefix='automationFixture_',names={};s=s.replace(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>{names[name]=prefix+name;return '.'+prefix+name;});return 'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
 file("accounts.ts", `export const loadAccountSocialConnections=async()=>[];`);
-file("media.tsx", `import {useState} from 'react'; import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog'; export function MediaLibraryPanel(){const [open,setOpen]=useState(false);return <div>Media library fixture<button type="button" onClick={()=>setOpen(true)}>New image collection</button>{open?<Dialog open onOpenChange={setOpen}><DialogContent><DialogTitle>New image collection</DialogTitle><DialogDescription>Fixture collection</DialogDescription><button type="button" onClick={()=>setOpen(false)}>Cancel collection</button></DialogContent></Dialog>:null}</div>}`);
+file("media.tsx", `import {useState} from 'react'; import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog'; export function MediaLibraryPanel(){const [open,setOpen]=useState(false);return <div>Media library fixture<button type="button" onClick={()=>window.fixtureAddImage?.()}>Simulate upload</button><button type="button" onClick={()=>setOpen(true)}>New image collection</button>{open?<Dialog open onOpenChange={setOpen}><DialogContent><DialogTitle>New image collection</DialogTitle><DialogDescription>Fixture collection</DialogDescription><button type="button" onClick={()=>setOpen(false)}>Cancel collection</button></DialogContent></Dialog>:null}</div>}`);
 file("client.ts", `import {createDefaultAutomationConfig} from '@/lib/trending/slideshow-automation-contract';
 let config=createDefaultAutomationConfig({timezone:'Asia/Kolkata',dailyAllowance:4});
 config.startDate=new Date(Date.now()+86400000).toISOString().slice(0,10);
-const automation=()=>({userId:'fixture',config,status:'draft',revision:1,rotationCursor:0,activatedAt:null,pausedAt:null,attentionMessage:null,attentionReason:null,updatedAt:new Date().toISOString()});
+const automation=()=>({userId:'fixture',config,status:location.search.includes('paused')?'paused':location.search.includes('active')?'active':'draft',revision:1,rotationCursor:0,activatedAt:null,pausedAt:null,attentionMessage:null,attentionReason:null,updatedAt:new Date().toISOString()});
 window.fixtureMutations=[];
-export async function fetchSlideshowAutomationState(){if(location.search.includes('error'))throw Error('Fixture load failure');return {automation:automation(),collections:[],savedStyles:[],savedCaptions:[],slots:[],dailyAllowance:4,planDisplayName:'Growth'}}
+let count=30;window.fixtureAddImage=()=>{count++};
+const collection=()=>({id:'collection-1',name:'Scenery',usableCount:count,assets:Array.from({length:count},(_,i)=>({id:'image-'+i,title:'Image '+i,thumbnailUrl:'/fixture-image.png',url:'/fixture-image.png'}))});
+export async function fetchSlideshowAutomationState(){if(location.search.includes('error'))throw Error('Fixture load failure');const slots=location.search.includes('active')?Array.from({length:5},(_,i)=>({id:'slot-'+i,format:'product_stories',localDate:'2026-10-30',slotTime:'18:00',timezone:'Asia/Kolkata',status:i===0?'preparing':'scheduled',holdMessage:i===0?'Could not load the "sharp" module using the linux-x64 runtime':null,snapshot:{headlinePreview:'Slideshow '+i,backgroundMode:'default',backgroundAssetIds:[],visualStyleName:'Default'}})):[];return {automation:automation(),collections:location.search.includes('many')?[collection()]:[],savedStyles:[],savedCaptions:[],slots,dailyAllowance:4,planDisplayName:'Growth'}}
 export async function saveSlideshowAutomationConfig(value){window.fixtureMutations.push('save');config=value;return automation()}
 export async function activateSlideshowAutomationRequest(){window.fixtureMutations.push('activate');throw Error('Fixture must not activate')}
 export async function pauseSlideshowAutomationRequest(){throw Error('Unexpected pause')}
@@ -43,9 +45,13 @@ async function main() {
       } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.module\.css$/, use: path.join(out, "module-css.cjs") }, { test: /\.css$/, exclude: /\.module\.css$/, use: path.join(out, "css.cjs") }] } });
     compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || Error(stats.toString({ all: false, errors: true }))) : resolve()));
   });
-  const css = require("./compiled-browser-css.cjs")(root);
+  const css = (await require("postcss")([require("@tailwindcss/postcss")({base:root})]).process(
+    fs.readFileSync(path.join(root,"app/globals.css"),"utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/ui";'),
+    {from:path.join(root,"app/globals.css")},
+  )).css;
   const server = http.createServer((req, res) => {
     if (req.url === "/bundle.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(fs.readFileSync(path.join(out, "bundle.js"))); }
+    if (req.url === "/fixture-image.png") { res.setHeader("Content-Type", "image/webp"); return res.end(fs.readFileSync(path.join(root,"public/explore/characters/creator-office-v2.webp"))); }
     res.setHeader("Content-Type", "text/html");
     res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style><body class="bg-background text-foreground"><div id="root"></div><script src="/bundle.js"></script></body>`);
   });
@@ -75,6 +81,9 @@ async function main() {
         assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, "collection recovery action fits mobile viewport");
         await primary.click();
         const library = page.getByRole("dialog", { name: "Media library" });
+        const dialogBounds = await library.boundingBox();
+        assert.ok(dialogBounds && (width < 640 || dialogBounds.width > 700), "automation library must use its intended desktop width");
+        assert.ok(dialogBounds && dialogBounds.x >= 0 && dialogBounds.x + dialogBounds.width <= width, "automation library must fit the viewport");
         await page.screenshot({ path: path.join(out, `library-${width}.png`) });
         await library.getByRole("button", { name: "New image collection" }).click();
         const nested = page.getByRole("dialog", { name: "New image collection" });
@@ -91,6 +100,67 @@ async function main() {
       await page.goto(`http://127.0.0.1:${server.address().port}/?error`);
       await page.getByText("Fixture load failure", { exact: true }).waitFor();
       assert.deepEqual(await page.evaluate(() => window.fixtureMutations), []);
+      await page.close();
+    }
+    if (!baseline) {
+      for (const width of [1440,390]) {
+        const overview = await browser.newPage({viewport:{width,height:900}});
+        await overview.goto(`http://127.0.0.1:${server.address().port}/?active`);
+        await overview.getByText('Automation active',{exact:true}).waitFor();
+        assert.equal(await overview.getByRole('button',{name:'Edit settings',exact:true}).count(),1);
+        assert.equal(await overview.locator('[data-automation-slot-row]').count(),3);
+        assert.equal(await overview.getByText(/Image processing is unavailable/).count(),1);
+        assert.equal(await overview.getByText(/Could not load the "sharp" module/).count(),0);
+        await overview.screenshot({path:path.join(out,`overview-default-${width}.png`)});
+        await overview.getByRole('button',{name:'Show all 5 slideshows'}).click();
+        assert.equal(await overview.locator('[data-automation-slot-row]').count(),5);
+        await overview.getByText('View automation settings').click();
+        await overview.getByText('Daily Content Mix').waitFor();
+        await overview.screenshot({path:path.join(out,`overview-${width}.png`)});
+        await overview.getByRole('button',{name:'Pause automation'}).click();
+        await overview.getByRole('dialog',{name:'Pause slideshow automation?'}).getByRole('button',{name:'Keep active'}).click();
+        await overview.getByRole('button',{name:'Edit settings',exact:true}).click();
+        await overview.getByText('Step 1 of 4 · Content & Daily Count',{exact:true}).waitFor();
+        assert.equal(await overview.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+        await overview.close();
+      }
+      const paused = await browser.newPage({viewport:{width:390,height:900}});
+      await paused.goto(`http://127.0.0.1:${server.address().port}/?paused`);
+      await paused.getByText('Automation paused',{exact:true}).waitFor();
+      assert.equal(await paused.getByRole('button',{name:'Resume automation'}).count(),1);
+      assert.equal(await paused.getByRole('button',{name:'Pause automation'}).count(),0);
+      await paused.close();
+      const page = await browser.newPage({viewport:{width:1440,height:900}});
+      await page.goto(`http://127.0.0.1:${server.address().port}/?many`);
+      await page.getByRole('button',{name:'Continue to Appearance'}).click();
+      await page.getByRole('radio',{name:/Use my collection only/}).check();
+      const grid=page.getByRole('region',{name:'Collection images'});
+      assert.equal(await grid.locator('button').count(),30);
+      assert.ok(await grid.evaluate(el=>el.scrollHeight>el.clientHeight),'Large collection must scroll');
+      await grid.getByRole('button').last().scrollIntoViewIfNeeded();
+      await grid.getByRole('button').last().click();
+      assert.equal(await page.getByRole('radio',{name:/Selected subset only/}).isChecked(),true);
+      assert.equal(await grid.locator('button[aria-pressed="true"]').count(),29,'All-to-subset keeps every other image, including later ones');
+      await page.getByRole('button',{name:'Manage library',exact:true}).click();
+      const library=page.getByRole('dialog',{name:'Media library'});
+      await library.getByRole('button',{name:'Simulate upload'}).click();
+      await library.getByRole('button',{name:'Close'}).click();
+      await grid.getByRole('button').last().waitFor();
+      assert.equal(await grid.locator('button').count(),31,'Refresh includes newly uploaded image');
+      assert.equal(await grid.locator('button[aria-pressed="true"]').count(),29,'Upload preserves explicit subset');
+      assert.equal(await grid.locator('button').last().getAttribute('aria-pressed'),'false');
+      await page.getByRole('radio',{name:/Use all images in collection/}).check();
+      assert.equal(await grid.locator('button[aria-pressed="true"]').count(),31,'Use all includes new image');
+      await page.getByRole('button',{name:'Manage library',exact:true}).click();
+      await library.getByRole('button',{name:'Simulate upload'}).click();
+      await library.getByRole('button',{name:'Close'}).click();
+      await grid.locator('button').nth(31).waitFor();
+      assert.equal(await grid.locator('button[aria-pressed="true"]').count(),32,'New uploads join all-images selection');
+      await page.screenshot({path:path.join(out,'collection-scroll-desktop.png')});
+      await page.setViewportSize({width:390,height:844});
+      assert.ok(await grid.evaluate(el=>el.scrollHeight>el.clientHeight),'Large collection scrolls on mobile');
+      await grid.locator('button').last().scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(out,'collection-scroll-mobile.png')});
       await page.close();
     }
     console.log(`PASS: actual Automation ${baseline ? "baseline" : "updated"} UI desktop/mobile, empty collection, load failure, no implicit activation${baseline ? "" : ", pill radii"}.`);

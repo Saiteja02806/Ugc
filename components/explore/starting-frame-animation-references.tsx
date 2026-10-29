@@ -2,7 +2,6 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { WorkflowReferencePreview } from "./workflow-reference-preview";
@@ -100,10 +99,10 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
     </div>
   </div>;
   if (!compact) return controls;
-  return <div className={previewStyles.picker}>
+  return <div className={`${previewStyles.picker} ${previewStyles.startingFrameCard}`} data-starting-frame>
     <WorkflowReferencePreview url={frame.url} name="Starting frame" disabled={disabled} onRemove={onClearFrame} />
     <Popover>
-      <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Change starting frame" data-state="selected" disabled={disabled} className={`${creation.referenceButton} ${previewStyles.action}`} />}><Plus aria-hidden="true" /></PopoverTrigger>
+      <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Change starting frame" data-state="selected" disabled={disabled} className={`${creation.referenceButton} ${previewStyles.action} ${previewStyles.startingFrameChange}`} />}>Change</PopoverTrigger>
       <PopoverContent side="bottom" align="center" className="max-h-[70dvh] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-border bg-card p-4 text-foreground shadow-xl">
         <PopoverTitle>Choose image</PopoverTitle>
         {controls}

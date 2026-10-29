@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { nativeRoutePackages, verifyNativeRoute, verifyNoNativeMedia } from "./native-route-bundle-verification.mjs";
+import { checkAutomationSharpTraces } from "./check-automation-sharp-traces.mjs";
 
 // A working executable in the build checkout is not proof that a deployed
 // function contains the native package that resolves its executable path.
@@ -23,3 +24,4 @@ for (const route of ['mcp/health', '.well-known/oauth-protected-resource/mcp']) 
   await verifyNoNativeMedia(join(process.cwd(), '.next/server/app', route, 'route.js.nft.json'));
 }
 console.log('Lightweight MCP health/discovery routes contain no native media package files.');
+await checkAutomationSharpTraces();

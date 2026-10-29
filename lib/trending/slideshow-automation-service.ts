@@ -1641,7 +1641,7 @@ async function loadUserImageCollectionSummaries(
           .filter((asset) => isAvailableLibraryImage(asset));
 
         return {
-          assets: usableAssets.slice(0, 24).map((asset) => ({
+          assets: usableAssets.map((asset) => ({
             id: asset.id,
             thumbnailUrl: asset.thumbnailUrl ?? asset.url,
             title: asset.title,

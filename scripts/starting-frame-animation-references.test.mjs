@@ -112,10 +112,13 @@ test("compact approved frame is a single tile and keeps photo controls inside Ch
   const result = harness().render({ compact: true });
   const all = nodes(result.tree);
   assert.equal(all.filter(node => node.type === "frame-preview").length, 1);
+  assert.equal(result.tree.props["data-starting-frame"], true);
   const popup = all.find(node => node.type === "PopoverContent");
   assert.ok(popup);
   assert.equal(nodes(popup).filter(node => node.type === "picker").length, 2);
   const source = readFileSync(new URL("../components/explore/starting-frame-animation-references.tsx", import.meta.url), "utf8");
+  assert.match(source, /previewStyles\.startingFrameCard/);
+  assert.match(source, /previewStyles\.startingFrameChange/);
   assert.doesNotMatch(source, /Choose Omni Flash 1.1 to add face references|Add clear photos of the same person for facial guidance/);
 });
 

@@ -10,7 +10,7 @@
 .mobileCollections { display:none; }
 .collections button { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 .collectionHeading { padding:.75rem; background:var(--card-muted); border:1px solid var(--border); border-radius:.65rem; }
-.collectionHeading>div:first-child { min-width:0; flex:1; overflow-wrap:anywhere; }
+.collectionHeading>div:first-child { min-width:0; flex:1 1 12rem; overflow-wrap:anywhere; }
 .collectionNote { flex-basis:100%; }
 .usageHint { padding:.75rem; border:1px solid var(--border); border-radius:.65rem; font-size:.8rem; line-height:1.6; color:var(--muted-foreground); }
 .organize summary { cursor:pointer; font-size:.8rem; padding:.75rem 0; }

@@ -106,8 +106,8 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
       }
       if (!alive.current) return;
       const failedFiles = files.filter((_, index) => results[index]?.error);
-      setProgress(results.flatMap((result, index) => result?.error ? [result.error] : result?.value
-        ? [`${files[index].name}: ${membershipFailed ? "uploaded to All images; could not add to the collection. Select it there and add it again." : "uploaded"}`] : []));
+      setProgress(results.flatMap(result => result?.error ? [result.error] : []));
+      if (membershipFailed) setProgress(current => [...current, "Images uploaded to All images but could not be added to this collection. Select them there and add them again."]);
       setRetryFiles(failedFiles); setMessage(failedFiles.length ? `${uploaded.length} uploaded · ${failedFiles.length} need attention` : `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} saved to library`);
     });
   }

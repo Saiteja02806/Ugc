@@ -5,6 +5,7 @@ import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, m
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { combineReferenceVideoPrompt } from "../../lib/explore/reference-video-prompts.ts";
+import { formatMotionPromptTimes } from "../../lib/explore/motion-phase-display.ts";
 
 import {
   Clock3,
@@ -423,7 +424,7 @@ export function VideoGenerationStudioPanel({
     setPreviousStartingFrameKey(startingFrameKey);
     if (startingFrame) {
       // Keep a supported model choice when changing the approved scene.
-      setPrompt(startingFrame.motionInstructions);
+      setPrompt(formatMotionPromptTimes(startingFrame.motionInstructions));
       if (!isHookStartingFrameVideoModel(model) || !isAIStudioVideoModelAvailable(model)) setModel("google_omni");
       setDurationSeconds(startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(model)); setQuantity(1);
       setAspectRatio(startingFrame.width > startingFrame.height ? "16:9" : "9:16");
@@ -1393,6 +1394,7 @@ export function VideoGenerationStudioPanel({
       >
         {visibleVideos.map((video) => (
           <VideoResultCard
+            formatMotionTimes={workflowFormat === "hook" || workflowFormat === "wall_text"}
             key={video.id}
             video={video}
             compact={Boolean(workflow)}
@@ -1776,12 +1778,14 @@ function OptimisticVideoCard({
 
 function VideoResultCard({
   video,
+  formatMotionTimes = false,
   compact = false,
   isNew = false,
   onSelect,
   selectLabel = "Edit video",
 }: {
   video: GeneratedVideo;
+  formatMotionTimes?: boolean;
   compact?: boolean;
   isNew?: boolean;
   onSelect?: () => void;
@@ -1959,7 +1963,7 @@ function VideoResultCard({
           />
         </div>
         <div className={resultLayout.prompt}>
-          <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
+          <VideoPromptBubble createdAt={video.createdAt} prompt={formatMotionTimes ? formatMotionPromptTimes(video.prompt) : video.prompt} />
         </div>
       </div>
     </article>

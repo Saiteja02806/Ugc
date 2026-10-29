@@ -7,6 +7,7 @@ import {
 import type { TrendingSlideshowAutomationConfig } from "@/lib/trending/slideshow-automation-contract";
 import {
   loadSlideshowAutomationWorkspaceState,
+  getExistingAutomationRecord,
   saveAutomationDraftOrSettings,
   SlideshowAutomationError,
 } from "@/lib/trending/slideshow-automation-service";
@@ -24,6 +25,10 @@ function json(body: unknown, status = 200) {
 export async function GET(request: Request) {
   try {
     const user = await requireFirebaseUser(request);
+    if (new URL(request.url).searchParams.get("statusOnly") === "1") {
+      const automation = await getExistingAutomationRecord({ userId: user.uid, dailyAllowance: 5 });
+      return json({ ok: true, status: automation?.status ?? null });
+    }
     const timezone = new URL(request.url).searchParams.get("timezone");
     const state = await loadSlideshowAutomationWorkspaceState({
       timezone,

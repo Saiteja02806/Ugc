@@ -3,6 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import * as selection from '../lib/explore/starting-frame-photo-selection.ts';
+import { startingFrameAnimationInput } from '../lib/explore/starting-frame-animation-input.ts';
 const photo='11111111-1111-4111-8111-111111111111',second='22222222-2222-4222-8222-222222222222';
 const frame={ownerId:'owner',jobId:'33333333-3333-4333-8333-333333333333',assetId:'44444444-4444-4444-8444-444444444444',identityAssetIds:[photo,second]};
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
@@ -41,4 +42,15 @@ test('unsupported routes and disabled preview do not load photos; stale frame re
 test('missing/deleted photo and malformed saved choice fail closed without submitting or reinserting',async()=>{
  const h=harness(async id=>({id,status:'failed',collection:'image',mimeType:'image/png'}));h.render();await settle();assert.match(h.render().error,/unavailable/);assert.equal(h.applied.length,0);
  h.render().remember([]);assert.equal(h.render().error,null);await settle();assert.equal(h.applied.length,0);
+});
+
+test('original uploaded influencer photos restore into separate video appearance inputs', async () => {
+ const h=harness(async id=>({id,status:'ready',collection:'image',sourceType:'upload',mimeType:'image/png',url:`https://owned.test/${id}`}));
+ h.render();await settle();
+ const input=startingFrameAnimationInput({...frame,referenceId:'source',url:'https://owned.test/generated-frame.png'},h.applied.at(-1));
+ assert.equal(input.startingFrameAssetId,frame.assetId);
+ assert.deepEqual(input.referenceImageUrls,[`https://owned.test/${photo}`,`https://owned.test/${second}`]);
+ assert.equal(input.imageReferencePurpose,'person');
+ h.render().remember([]);h.render({model:'seedance_2_5'});h.render({model:'google_omni'});await settle();
+ assert.equal(startingFrameAnimationInput({...frame,referenceId:'source',url:'https://owned.test/generated-frame.png'},h.applied.at(-1)).referenceImageUrls,undefined);
 });

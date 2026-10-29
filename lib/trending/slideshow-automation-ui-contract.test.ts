@@ -16,7 +16,7 @@ const automationUi = readFileSync(
 
 test("places Automation pill beside Edit in Trending header while keeping Edit intact", () => {
   assert.match(workspace, /data-trending-automation-control/);
-  assert.match(workspace, /aria-label="Configure daily slideshow automation"/);
+  assert.match(workspace, /Configure daily slideshow automation, active/);
   assert.match(workspace, />\s*Automation\s*</);
   assert.match(
     workspace,

@@ -59,6 +59,12 @@ async function main(){
     const picture=fs.readFileSync(path.join(root,'public/explore/characters/creator-office-v2.webp'));await page.route('https://owned.test/**',route=>{const audio=[...inventory.values()].some(asset=>asset.url===route.request().url()&&asset.collection==='audio');return route.fulfill({contentType:audio?'audio/wav':'image/webp',body:audio?wav:picture});});await page.goto('http://127.0.0.1:'+server.address().port);
     const state=async()=>JSON.parse(await page.getByTestId('trending-state').textContent()),dlg=()=>page.getByRole('dialog').last();
     await page.getByRole('button',{name:'Library',exact:true}).click();await dlg().getByRole('button',{name:'Lifestyle',exact:true}).click();await dlg().getByRole('button',{name:'Select image Photo 2',exact:true}).waitFor();assert.deepEqual(await dlg().locator('button[aria-label^="Select image"] img').evaluateAll(nodes=>nodes.map(n=>n.src)),[2,1].map(n=>'https://owned.test/'+n+'.png'));
+    // Reproduce a narrow management panel with its actual collection actions.
+    await dlg().evaluate(el => { el.style.setProperty('max-width','360px','important'); });
+    const collectionTitle = dlg().locator('strong').filter({hasText:'Lifestyle'});
+    assert.ok(await collectionTitle.evaluate(el => { const r=el.getBoundingClientRect(); return r.width > 35 && r.height < 35; }), 'Collection title remains readable beside or above actions');
+    await page.screenshot({path:path.join(out,'collection-management-narrow.png')});
+    await dlg().evaluate(el => { el.style.removeProperty('max-width'); });
     await dlg().getByRole('button',{name:'New collection',exact:true}).click();await dlg().getByRole('textbox',{name:'Library name'}).fill('Product photos');await dlg().getByRole('button',{name:'Save name',exact:true}).click();await page.getByText('This collection is empty.',{exact:false}).waitFor();
     await page.getByRole('dialog').getByRole('button',{name:'All images',exact:true}).click();await dlg().getByRole('button',{name:'Select image Photo 3',exact:true}).click();await dlg().getByText('Organize selected images',{exact:true}).click();await dlg().getByRole('combobox',{name:'Destination collection'}).selectOption(groups.find(g=>g.name==='Product photos').id);await dlg().getByRole('button',{name:'Add to collection',exact:true}).click();await dlg().getByRole('button',{name:'Product photos',exact:true}).click();await dlg().getByRole('button',{name:'Select image Photo 3',exact:true}).waitFor();
     await dlg().getByLabel('Upload library images').setInputFiles({name:'nature-collection.png',mimeType:'image/png',buffer:Buffer.from('fixture')});
@@ -70,6 +76,7 @@ async function main(){
     await waitForParallel(2);assert.equal(parallelUploads.has('parallel-third.png'),false,'Only two files can transfer together');
     parallelUploads.get('parallel-second.png')();await waitForParallel(3);parallelUploads.get('parallel-third.png')();parallelUploads.get('parallel-first.png')();
     await dlg().getByRole('status').filter({hasText:'3 images saved'}).waitFor();
+    assert.equal(await dlg().getByLabel('Image upload results').count(),0,'Successful uploads use the summary without a filename list');
     const memberships=calls.filter(c=>c.path.endsWith('/items')&&c.method==='POST');assert.equal(memberships.length,beforeMembership+1);
     assert.deepEqual(memberships.at(-1).body.mediaAssetIds.map(id=>inventory.get(id).title),['parallel-first.png','parallel-second.png','parallel-third.png']);
     console.log('PASS actual manager uses two concurrent transfers and one ordered collection write');
@@ -78,6 +85,8 @@ async function main(){
     await page.getByRole('button',{name:'Library',exact:true}).click();
     await dlg().getByLabel('Upload library images').setInputFiles([{name:'ready.png',mimeType:'image/png',buffer:Buffer.from('fixture')},{name:'retry-image.png',mimeType:'image/png',buffer:Buffer.from('fixture')}]);
     await dlg().getByRole('button',{name:'Retry failed images',exact:true}).waitFor();
+    assert.match(await dlg().getByLabel('Image upload results').innerText(),/retry-image\.png/i,'Failed upload remains identifiable');
+    assert.doesNotMatch(await dlg().getByLabel('Image upload results').innerText(),/ready\.png/i,'Successful uploads are not repeated in the failure list');
     const readyCount=calls.filter(call=>call.path==='/fixture-upload'&&call.body.name==='ready.png').length;
     await dlg().getByRole('button',{name:'Retry failed images',exact:true}).click();await dlg().getByRole('status').filter({hasText:'1 image saved'}).waitFor();
     assert.equal(calls.filter(call=>call.path==='/fixture-upload'&&call.body.name==='ready.png').length,readyCount);

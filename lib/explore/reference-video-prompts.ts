@@ -3,6 +3,7 @@ import wallMoney from "./wall-money-reference-prompts.json" with { type: "json" 
 import reclassifiedHookMotion from "./hook-wall-reclassification-motion.json" with { type: "json" };
 import { getHookKeyframeMotionReviewDraft, hookKeyframeMotionCatalog, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
+import { formatMotionPromptTimes } from "./motion-phase-display.ts";
 
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
 export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
@@ -31,7 +32,7 @@ const wallMoneyVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Ob
     version: 2 as const, sourceSha256: entry.sourceSha256, reviewMethod: "all_decoded_frames" as const,
     reviewedFrameCount: entry.reviewedFrameCount,
     reviewNotes: `${entry.timingConfidence} Generated output not tested.`,
-    performance: [`Preserve the complete ${entry.sourceDurationSeconds.toFixed(3)}-second source performance. ${entry.scene}`,
+    performance: [`Preserve the complete ${Number(entry.sourceDurationSeconds.toFixed(2))}-second source performance. ${entry.scene}`,
       ...entry.beats.map(beat => `${beat.startSeconds.toFixed(2)}–${beat.endSeconds.toFixed(2)}s: ${beat.action}`)].join("\n"),
   }]));
 
@@ -43,13 +44,13 @@ const wallMoneyVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Ob
  */
 function reviewedReclassifiedPerformance(entry: typeof reclassifiedHookMotion.entries[number]) {
   const toSourceSeconds = (fraction: string) =>
-    Number((Number(fraction) * entry.sourceDurationSeconds).toFixed(3));
+    Number((Number(fraction) * entry.sourceDurationSeconds).toFixed(2));
   const beats = entry.plan.beats.map(beat => beat.action.replace(
     /PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/,
     (_phase, start: string, end: string) => `${toSourceSeconds(start)}–${toSourceSeconds(end)}s:`,
   ));
   return [
-    `Follow the original ${entry.sourceDurationSeconds.toFixed(3)}-second opening reaction only. Do not introduce the removed product demo.`,
+    `Follow the original ${Number(entry.sourceDurationSeconds.toFixed(2))}-second opening reaction only. Do not introduce the removed product demo.`,
     `OPENING STATE: ${entry.plan.openingState}`,
     ...beats,
     `CAMERA: ${entry.plan.camera}`,
@@ -640,10 +641,10 @@ export function getReferenceVideoPrompt(id: string, videoUrl: string | undefined
   const reviewed = source && getHookKeyframeMotionReviewDraft(id, sourceSha256, frame?.index ?? 0);
   const performance = reviewed?.candidatePlan
     ? hookMotionPlanDirections(reviewed.candidatePlan).replace(/PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/g,
-      (_phase, start: string, end: string) => `${Number((Number(start) * source.sourceDurationSeconds).toFixed(3))}–${Number((Number(end) * source.sourceDurationSeconds).toFixed(3))}s:`)
+      (_phase, start: string, end: string) => `${Number((Number(start) * source.sourceDurationSeconds).toFixed(2))}–${Number((Number(end) * source.sourceDurationSeconds).toFixed(2))}s:`)
     : entry?.performance;
   if (!performance) return undefined;
-  return `If an influencer image is attached, replace the performer's facial identity with the person in that image. Keep the source hairstyle, clothing and accessories unless requested otherwise. Use the image for appearance and the video for performance.\n\n${performance}\n\n${REFERENCE_TEXT_REMOVAL}`;
+  return formatMotionPromptTimes(`If an influencer image is attached, replace the performer's facial identity with the person in that image. Keep the source hairstyle, clothing and accessories unless requested otherwise. Use the image for appearance and the video for performance.\n\n${performance}\n\n${REFERENCE_TEXT_REMOVAL}`);
 }
 
 export function combineReferenceVideoPrompt(referencePrompt: string, userPrompt: string): string {

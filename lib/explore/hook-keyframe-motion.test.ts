@@ -200,7 +200,7 @@ test("malformed or temporally reversed review data fails closed", () => {
 test("source-speed candidate keeps source event times, complete ending and remaining final hold", () => {
   const directions="OPENING: sip\nPHASE [0–0.5]: lower the mug\nPHASE [0.5–1]: widen eyes and hold";
   const prompt=buildHookAnimationPrompt({directions,durationSeconds:3,actionDurationSeconds:73/30,generateAudio:false,removePhysicalText:true});
-  assert.match(prompt,/0–1\.217s/);assert.match(prompt,/1\.217–2\.433s/);assert.match(prompt,/FINAL HOLD 2\.433–3s/);
+  assert.match(prompt,/0–1\.22s/);assert.match(prompt,/1\.22–2\.43s/);assert.match(prompt,/FINAL HOLD 2\.43–3s/);
   assert.match(prompt,/physical logos, readable text/);assert.doesNotMatch(prompt,/Preserve text physically/);
   const old=buildHookAnimationPrompt({directions,durationSeconds:3,generateAudio:false});assert.match(old,/1\.5–3s/);assert.doesNotMatch(old,/FINAL HOLD/);
 });

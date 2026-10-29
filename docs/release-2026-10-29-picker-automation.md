@@ -1,0 +1,11 @@
+# Combined release - 29 October 2026
+
+User authorized checking and deploying all current changes. Scope includes compact starting-frame previews, rounded person-photo picker buttons, selected-photo library section, image-library selection/count/layout, slideshow-automation workspace/status/collection fixes, concise motion phase display and native sharp route packaging checks. The identity-generation quality audit is documentation only; it does not claim a corrected model output or introduce paid retries.
+
+Inventory: all intentional tracked/untracked source, configuration, scripts, tests and documentation in the audited worktree are included. No intentional source path is deferred. Exclusions are ignored local environments/secrets, dependencies, `.git`, `.next`, `.vercel`, `.tmp`, `outputs`, `worker/dist`, and other ignored cache/test-media evidence; these are not release sources. Complete audit evidence is retained locally under `.tmp/release-20261029`.
+
+Database prerequisite: no migration/schema change in this release. Existing worker and website were both at8af4f2d1 before rollout. Order: validate -> freeze commit -> build pinned worker image -> verify worker identity/rollout -> push main for website/MCP -> verify hosted commit and smoke checks. No deployment configuration, scale setting or feature flag is changed as a side effect.
+
+Preflight: AGENTS.md, applicable Explore/protected contracts and existing incident evidence; context-memory, immutable-contracts, regression-gate, UI-clarity and vercel-cost-guardian PR guard; Vercel deployment skill. Next config tracing is narrowly extended to automation routes for platform-specific sharp/libvips packages and existing fonts. No dependencies, static-page expansion, new CI trigger or intentional build fanout. Actual billable build CPU/cost is unknown; preserve caching and avoid duplicate deployments.
+
+Initial checks:84targeted tests, TypeScript/scoped ESLint, worker compilation and three actual-component browser suites (picker, media library, automation) pass. First local production build failed with Windows EPERM creating generated `.next` output; elevated retry is recorded separately. Deployment acceptance will be recorded after rollout. Local fixtures do not prove authenticated production or generated-image likeness.

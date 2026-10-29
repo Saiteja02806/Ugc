@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { formatGeneratedMotionPhases } from "./motion-phase-display.ts";
 import test from "node:test";
 import nextEnv from "@next/env";
 import { readFileSync } from "node:fs";
@@ -66,7 +67,7 @@ test("preview uses the matching Wall suggestion and preserves explicit user edit
   const row = reviews.entries[0];
   const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: row.referenceId, sourceSha256: row.sourceSha256 });
   const preview = getHookKeyframePromptPreview(draft, "wall_text");
-  assert.equal(preview.suggestedDirections, getWallMoneyMotion(row.referenceId, row.sourceSha256));
+  assert.equal(preview.suggestedDirections, formatGeneratedMotionPhases(getWallMoneyMotion(row.referenceId, row.sourceSha256)!));
   assert.ok(preview.animationPrompt?.includes("–4s"));
   assert.equal(preview.canSubmitPaidAnimation, false);
   assert.equal(preview.reviewedWallMotion, true);

@@ -23,6 +23,7 @@ function fixture({storage=new Map(),status="ready",saved=content,formatName="hoo
   let cursor=0,tree,saveOptions,preview,clipState,finishOptions;
   const slots=[],effects=[];
   const react={useState(value){const i=cursor++;if(!(i in slots))slots[i]=typeof value==="function"?value():value;return[slots[i],next=>{slots[i]=typeof next==="function"?next(slots[i]):next;}];},
+    useId(){const i=cursor++;return slots[i]??=`fixture-id-${i}`;},
     useRef(value){const i=cursor++;return slots[i]??={current:value};},useCallback(fn){cursor++;return fn;},
     useEffect(fn,deps){const i=cursor++;if(!slots[i]||deps.some((v,n)=>!Object.is(v,slots[i][n]))){slots[i]=deps;effects.push(fn);}}};
   const db={saved:saved?{revision:1,content:saved}:null,loaded:true,busy:false,dirty:false,error:null,reload(){},async save(){db.saved={revision:(db.saved?.revision??0)+1,content:structuredClone(saveOptions.content)};return db.saved;}};
@@ -120,6 +121,22 @@ test("text failure requires review or explicit continuation and saves the user's
   const reopened=fixture({status:"needs_review",saved:h.db.saved.content});reopened.restore(h.db.saved.content);assert.equal(reopened.state().draftError,null);
 });
 
+test("Wall automatic-text failure explains recovery and keeps text mandatory", async () => {
+  const h = fixture({ status: "needs_review", saved: null, formatName: "wall_text" });
+  assert.match(h.state().draftError, /automatic text needs review/);
+  assert.equal(h.button("Save edits").props.disabled, true);
+  assert.equal(h.button("Continue without text"), undefined);
+  const fields = h.find("FormatVideoTextFields");
+  fields.props.onChange({ ...fields.props.editing, text: null, textOverlays: [{ ...editing.textOverlays[0], value: "My reviewed Wall text", endMs: 5000 }] });
+  h.render();
+  assert.equal(h.state().draftError, null);
+  h.button("Save edits").props.onClick(); await new Promise(setImmediate); h.render();
+  assert.equal(h.db.saved.content.editing.format, "wall_text");
+  const reopened = fixture({ status: "needs_review", saved: h.db.saved.content, formatName: "wall_text" });
+  reopened.restore(h.db.saved.content);
+  assert.equal(reopened.state().draftError, null);
+});
+
 test("Wall initial text stays editable; saved style, full duration and explicit empty drafts win on recovery",()=>{
   const wallEdit={...editing,format:"wall_text",trimEndMs:12000,textOverlays:[{...editing.textOverlays[0],value:"One\nTwo\nThree\nFour",width:.65,y:.53,fontSize:58,lineHeight:1.12,endMs:12000}]};
   const wallContent={...content,editing:wallEdit};
@@ -146,4 +163,28 @@ test("structured Wall result keeps both user-edited layers after a late restore 
  const reopened=fixture({formatName:'wall_text',storage:h.storage,saved:null});reopened.restore(initial);
  assert.equal(JSON.stringify(reopened.preview().segment.editing.textOverlays.map(t=>t.value)),JSON.stringify(['My edited heading','My edited body']));
  assert.equal(reopened.preview().segment.editing.trimEndMs,12000);
+});
+
+
+test("text-fit warning leaves preview and draft save usable while final export remains blocked", async () => {
+  const h = fixture(); h.restore(); h.db.dirty = true;
+  const overlay = h.find("FormatVideoTextOverlay");
+  overlay.props.onChange({ ...overlay.props.text, y: .9, fontSize: 84, value: "Keep these exact words\nwith these exact lines\neven while the text needs more room." }); h.render();
+  assert.equal(h.preview().disabledReason, null);
+  assert.match(h.preview().warning, /Your text does not fit/);
+  assert.match(h.finish().demoFramingError, /Your text does not fit/);
+  const save = h.button("Save edits"); assert.equal(save.props.disabled, false);
+  save.props.onClick(); await new Promise(setImmediate);
+  assert.equal(h.db.saved.content.editing.textOverlays[0].value, "Keep these exact words\nwith these exact lines\neven while the text needs more room.");
+});
+test("shared editor exposes draft loading and errors beside both blocked save controls", () => {
+  const h = fixture({ saved: null }); h.db.loaded = false; let tree = h.render();
+  for (const label of ["Save edits", "Save & return"]) {
+    const button = h.button(label); assert.equal(button.props.disabled, true);
+    assert.ok(nodes(tree).some(n => n.props?.id === button.props["aria-describedby"] && /Loading your saved clip edits/.test(text(n))));
+  }
+  h.db.error = "Loading your saved edits took too long. Check your connection and retry loading."; tree = h.render();
+  assert.ok(nodes(tree).some(n => n.props?.role === "status" && text(n) === h.db.error));
+  assert.ok(h.button("Reload saved draft"));
+  h.db.loaded = true; h.db.error = null; h.render(); assert.equal(h.button("Save edits").props.disabled, false);
 });

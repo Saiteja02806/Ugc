@@ -24,6 +24,7 @@ const id = n => `00000000-0000-4000-8000-00000000000${n}`;
 let holdInstagram = true, holdActivity = true, views = 7, needsRefresh = false, complete = false, postFails = false, ownerB = false;
 let authorizationRevision="consent-1";
 let snapshotFails=false;
+let postWithoutJob=false;
 const held = [];
 const timestamp = () => new Date().toISOString();
 function accounts(platform) {
@@ -48,7 +49,10 @@ async function main(){
     if(!url.pathname.startsWith("/api/")){res.writeHead(200,{"Content-Type":"text/html; charset=utf-8"});return res.end('<meta charset="utf-8"><style>body{font:14px Arial}svg{width:18px;height:18px}button{padding:8px;margin:4px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}</style><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>');}
     if(url.pathname==="/api/social/connections")return json(res,{ok:true,connections:ownerB?[]:["instagram","tiktok","youtube"].map((platform,i)=>({id:id(i+1),platform,platformAccountId:platform+"-account",authorizationRevision,connectedAt:"2026-10-19T00:00:00Z",updatedAt:"2026-10-19T00:00:00Z",platformAccountName:platform==="instagram"?"Instagram Demo":platform==="tiktok"?"TikTok Demo":"YouTube Demo",platformAccountUsername:platform+"demo",status:"connected",scopes:[],profilePictureUrl:null}))});
     if(url.pathname.startsWith("/api/jobs/"))return json(res,{ok:true,job:job()});
-    if(req.method==="POST")return postFails?json(res,{ok:false,message:"Queue unavailable"},502):json(res,{ok:true,data:data(url.pathname),job:job(),jobId:"job-1"});
+    if(req.method==="POST"){
+      if(postWithoutJob){views=23;needsRefresh=false;return respond(res,url.pathname);}
+      return postFails?json(res,{ok:false,message:"Queue unavailable"},502):json(res,{ok:true,data:data(url.pathname),job:job(),jobId:"job-1"});
+    }
     if(snapshotFails&&url.pathname.startsWith("/api/analytics/")&&!url.pathname.includes("/activity"))return json(res,{ok:false,message:"Analytics storage unavailable"},502);
     if((holdInstagram&&url.pathname.includes("/instagram/"))||(holdActivity&&url.pathname.includes("/activity")))return held.push({res,url:url.pathname});
     respond(res,url.pathname);
@@ -75,9 +79,17 @@ async function main(){
     await page.getByRole("button",{name:/@tiktokdemo/}).waitFor();await page.keyboard.press("Escape");
     await page.getByText("Your public-video performance",{exact:true}).waitFor();
     assert.ok(await page.evaluate(()=>window.aborts)>0,"switching platform aborts pending Instagram reads");
+    const tiktokOpenCalls=await page.evaluate(()=>({...window.calls}));
+    await advance(61_000);
+    await page.waitForFunction(before=>window.calls['/api/analytics/tiktok/videos']>before,tiktokOpenCalls['/api/analytics/tiktok/videos']);
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),tiktokOpenCalls['/api/analytics/instagram/content'],"Instagram stays inactive while TikTok is open");
     await page.getByRole("button",{name:"YouTube: choose analytics account"}).click();await page.keyboard.press("Escape");
     await page.getByText("Your channel at a glance",{exact:true}).waitFor();
     assert.ok(await page.evaluate(()=>window.calls['/api/analytics/youtube/channel'])>0);
+    const youtubeOpenCalls=await page.evaluate(()=>({...window.calls}));
+    await advance(61_000);
+    await page.waitForFunction(before=>window.calls['/api/analytics/youtube/channel']>before,youtubeOpenCalls['/api/analytics/youtube/channel']);
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/tiktok/videos']),youtubeOpenCalls['/api/analytics/tiktok/videos'],"TikTok stays inactive while YouTube is open");
     release();
     await page.getByRole("button",{name:"Instagram: choose analytics account"}).click();await page.keyboard.press("Escape");
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
@@ -128,9 +140,36 @@ async function main(){
     await page.waitForFunction(before=>window.calls['/api/analytics/activity']>before,activityBeforeWake);
     assert.equal(await page.evaluate(()=>window.postCount),postsBeforeWake,"Reading fresh saved data never starts provider synchronization");
     assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle+1,"Wake event burst issues one read per resource");
-    const quietCalls=await page.evaluate(()=>({...window.calls}));
-    await advance(2*60_000);
-    assert.deepEqual(await page.evaluate(()=>({...window.calls})),quietCalls,"A visible idle page does not periodically fetch analytics");
+    // New saved values must arrive while the screen remains visible, without
+    // reload, navigation, visibility or focus events. Provider sync stays gated.
+    const openCalls=await page.evaluate(()=>({...window.calls}));
+    views=17;
+    await advance(61_000);
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===17));
+    assert.ok(await page.evaluate(before=>window.calls['/api/analytics/activity']>before,openCalls['/api/analytics/activity']));
+    assert.ok(await page.evaluate(before=>window.calls['/api/social/connections']>before,openCalls['/api/social/connections']));
+    assert.equal(await page.evaluate(()=>window.postCount),postsBeforeWake,"Fresh snapshots never dispatch a provider sync");
+    // Stale checks are silent while hidden or disconnected, including accounts
+    // and publishing activity. Returning online catches up without a reload.
+    await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});
+    await advance(100);
+    const hiddenCalls=await page.evaluate(()=>({...window.calls}));
+    await advance(121_000);
+    assert.deepEqual(await page.evaluate(()=>({...window.calls})),hiddenCalls,"Hidden analytics sends no periodic requests");
+    await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.visibleFixture=true;window.dispatchEvent(new Event('offline'))});
+    await advance(61_000);
+    assert.deepEqual(await page.evaluate(()=>({...window.calls})),hiddenCalls,"Offline analytics sends no periodic requests");
+    await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange',{bubbles:true}));window.dispatchEvent(new Event('online'))});
+    await advance(200);
+    await page.waitForFunction(()=>window.client.getQueryCache().getAll().every(q=>q.state.fetchStatus==='idle'));
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/tiktok/videos']||0),openCalls['/api/analytics/tiktok/videos']||0,"Inactive platforms do not check periodically");
+    // A successful POST with no job must reconcile authoritative data and leave
+    // manual mode. This covers cooldowns and concurrent server sync completion.
+    postWithoutJob=true;
+    await page.getByRole('button',{name:'Refresh',exact:true}).click();
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===23));
+    await page.waitForFunction(()=>window.client.getQueryCache().getAll().filter(q=>q.getObserversCount()>0).every(q=>!q.queryKey.some(part=>typeof part==='string'&&part.startsWith('manual:'))));
+    postWithoutJob=false;
     // A different range must never borrow the previous range's snapshot.
     holdInstagram=true;
     await page.getByRole("group",{name:"Analytics date range"}).getByRole("button",{name:"7 days",exact:true}).click();
@@ -151,9 +190,14 @@ async function main(){
     await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});
     const before=await page.evaluate(()=>window.calls['/api/jobs/job-1']);await advance(20_000);
     assert.equal(await page.evaluate(()=>window.calls['/api/jobs/job-1']),before,"hidden tabs do not poll");
-    views=19;complete=true;needsRefresh=false;
+    views=19;complete=true;needsRefresh=false;snapshotFails=true;
     await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}));window.dispatchEvent(new Event('focus'))});
-    await advance(2500);await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===19));
+    await advance(2500);
+    await page.getByText('Analytics storage unavailable',{exact:false}).first().waitFor();
+    assert.ok(await page.getByText('A saved analytics post',{exact:true}).first().isVisible(),"A failed completion read retains saved content");
+    snapshotFails=false;
+    await advance(61_000);
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===19));
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     const jobsAfterCompletion=await page.evaluate(()=>window.calls['/api/jobs/job-1']);
     await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
@@ -182,20 +226,17 @@ async function main(){
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     await page.evaluate(()=>window.scrollTo(0,0));
     await page.screenshot({path:path.join(out,"analytics-ready.png")});
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(out,"analytics-mobile.png")});
+    await page.setViewportSize({width:1400,height:1000});
     // A completed manual refresh must not block the next automatic cycle.
     complete=true;needsRefresh=false;
     await page.getByRole('button',{name:'Refresh',exact:true}).click();
     await page.waitForFunction(()=>window.client.getQueryCache().getAll().filter(q=>q.queryKey[2]==='analytics'&&q.queryKey[3]==='instagram'&&q.getObserversCount()>0).every(q=>q.state.fetchStatus==='idle'));
     await advance(2000);
     const afterManual=await page.evaluate(()=>window.postCount);
-    await advance(61_000);
     needsRefresh=true;complete=false;
-    await page.evaluate(()=>{
-      for(const q of window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}))if(q.queryKey.length===7)
-        window.client.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-16*60_000});
-    });
-    await advance(100);
-    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    await advance(61_000);
     await page.waitForFunction(before=>window.postCount>before,afterManual);
     // Local job-1 is reused by the fixture. Existing completed cache values
     // remain terminal and cannot become an endless status polling loop.
@@ -210,7 +251,7 @@ async function main(){
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,noPeriodicSnapshotRequests:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,openScreenUpdatesMetricsActivityAndAccounts:true,hiddenAndOfflineReadsPaused:true,noJobRefreshReconciled:true,noJobManualEventConsumed:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,failedCompletionReadRecoversAutomatically:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

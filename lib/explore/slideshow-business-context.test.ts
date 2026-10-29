@@ -50,8 +50,10 @@ test("a context storage failure is explicit and never becomes uncontextualized g
   await assert.rejects(loadSlideshowBusinessContext("owner-1", async () => { throw new Error("private database detail"); }), error => error instanceof SlideshowBusinessContextUnavailableError && error.status === 503 && !error.message.includes("private database detail"));
 });
 
-test("saved snapshots reject malformed and unbounded fields before building provider prompts", async () => {
+test("saved snapshots accept long owner content while rejecting malformed fields", async () => {
   const snapshot = await loadSlideshowBusinessContext("owner-1", async () => profile);
   assert.deepEqual(parseSlideshowBusinessContext(snapshot), snapshot);
-  for (const candidate of [null, { ...snapshot, businessProfileVersion: 0 }, { ...snapshot, businessContext: { ...context, targetAudience: "anyone" } }, { ...snapshot, businessContext: { ...context, productSummary: "x".repeat(501) } }]) assert.equal(parseSlideshowBusinessContext(candidate), null);
+  for (const candidate of [null, { ...snapshot, businessProfileVersion: 0 }, { ...snapshot, businessContext: { ...context, targetAudience: "anyone" } }]) assert.equal(parseSlideshowBusinessContext(candidate), null);
+  const long = { ...snapshot, businessContext: { ...context, productSummary: "x".repeat(5000), targetAudience: Array.from({length: 12}, () => "a".repeat(300)) } };
+  assert.deepEqual(parseSlideshowBusinessContext(long), long);
 });

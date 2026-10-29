@@ -123,3 +123,16 @@ test("failed selected music is not silently omitted, and a third Demo audio laye
     demoPreview: { segment: { ...segment("demo", "blob:demo"), addedAudio: { url: "blob:clip-music", volume: .3, playback: "once" } }, referenceAudio: { url: "blob:reference", volume: .2, playback: "repeat" } }, demoAudio: { url: "blob:voice" } });
   assert.match(extra.preview().props.playbackDisabledReason, /Save the demo's clip audio edits/);
 });
+
+
+test("export and unsaved-draft warnings stay separate from required preview blockers", () => {
+  const warning = "Your text does not fit. Reduce its size or move it higher.";
+  const h = harness({ openingPreview: { segment: segment("opening", "blob:opening"), warning }, options: { backgroundMusic: false } });
+  assert.equal(h.preview().props.playbackDisabledReason, null);
+  assert.equal(h.preview().props.playbackWarning, warning);
+  h.set({ previewWarning: "Save your clip edits before preparing the final video." });
+  assert.equal(h.preview().props.playbackDisabledReason, null);
+  assert.match(h.preview().props.playbackWarning, /Save your clip edits/);
+  h.set({ previewDisabledReason: "Your selected audio could not load." });
+  assert.equal(h.preview().props.playbackDisabledReason, "Your selected audio could not load.");
+});

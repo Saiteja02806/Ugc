@@ -55,11 +55,20 @@ test("Hook image stage sends scene/main/support in exact order with only its com
 
 test("private creator scene links are freshly signed for both Gemini paths while durable jobs retain canonical provenance", async () => {
   process.env.CREATOR_REFERENCE_SIGNING_SECRET = "a-private-test-secret-with-at-least-32-characters";
-  for (const model of ["nano_banana_2", "gemini_3_pro"]) {
+  for (const version of [2, 3, 5]) for (const model of ["nano_banana_2", "gemini_3_pro"]) {
     calls.length = 0;
     const input = job(), body = input.input_json;
-    body.model = model; body.hookKeyframe.version = 2; body.hookKeyframe.imageModel = model;
-    body.hookKeyframe.promptVersion = 4; body.hookKeyframe.referenceId = "creator-account-1-01";
+    body.model = model; body.hookKeyframe.version = version; body.hookKeyframe.imageModel = model;
+    body.hookKeyframe.promptVersion = version === 5 ? 7 : 4; body.hookKeyframe.referenceId = "creator-account-1-01";
+    if (version === 3) {
+      const frame = creatorFrames.frames.find(row => row.referenceId === body.hookKeyframe.referenceId);
+      body.hookKeyframe.sourceSha256 = frame.sourceSha256;
+      body.hookKeyframe.sourceFrame = { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 };
+    }
+    if (version === 5) {
+      const receipt = body.hookKeyframe;
+      receipt.preparationInputKey = JSON.stringify({ version: 4, ownerId: receipt.ownerId, draftId: receipt.draftId, referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: receipt.sourceFrame, imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, imageModel: model });
+    }
     body.hookKeyframe.inputKey = hookKeyframeGenerationInputKey(body.hookKeyframe);
     body.referenceImageUrl = body.referenceImageUrls[0] = creatorSceneCanonicalUrl(body.hookKeyframe);
     const canonical = body.referenceImageUrl;
@@ -149,7 +158,7 @@ test("v4 private full recreation signs both opening and clarity before provider 
       body.model = model;
       const receipt = body.hookKeyframe;
       Object.assign(receipt, { version: 4, imageModel: model, promptVersion: 5, referenceId: frame.referenceId, sourceSha256: frame.sourceSha256,
-        sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height },
+        sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 },
         animationOpeningFrame: { index: 0, timeSeconds: 0, sha256: "c".repeat(64), width: frame.width, height: frame.height } });
       receipt.preparationInputKey = JSON.stringify({version:3,ownerId:receipt.ownerId,draftId:receipt.draftId,referenceId:receipt.referenceId,sourceSha256:receipt.sourceSha256,sourceFrame:receipt.sourceFrame,imageAssetIds:receipt.personImageAssetIds,instructions:receipt.instructions,imageModel:model});
       receipt.inputKey = hookKeyframeGenerationInputKey(receipt);

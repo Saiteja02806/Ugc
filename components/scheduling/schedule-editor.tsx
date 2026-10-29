@@ -2034,7 +2034,7 @@ function ConnectedAccountSelector({
                   {tileContent}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <a
-                      href="/settings#instagram-publishing"
+                      href={getSettingsPublishingHref(connection.platform)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
@@ -2084,7 +2084,7 @@ function ConnectedAccountSelector({
                 </div>
               </div>
               <a
-                href="/settings#instagram-publishing"
+                href={getSettingsPublishingHref(platform)}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
@@ -2589,6 +2589,18 @@ function getInitialClipSelection(params: {
     useHook: false,
     useSecondary: true,
   };
+}
+
+function getSettingsPublishingHref(platform?: SchedulePlatform) {
+  if (platform === "tiktok") {
+    return "/settings#tiktok-publishing";
+  }
+
+  if (platform === "youtube") {
+    return "/settings#youtube-publishing";
+  }
+
+  return "/settings#instagram-publishing";
 }
 
 function getApiResponseMessage(responseData: unknown, fallback: string) {

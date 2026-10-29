@@ -203,6 +203,21 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
   return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations };
 }
 
+test("an interrupted save restores Resume and exact slides even when a different Library slideshow is requested", async () => {
+  const first = await editor({ failFirst: true });
+  first.heading("Words that must survive");
+  await first.clickSave("Save slideshow");
+  const frozen = first.requests[0];
+  const restored = await editor({ generated: false, storageState: first.storage, libraryItemId: id(99), locationHref: `https://app.test/explore/slideshows?slideshowId=${id(99)}` });
+  const resume = restored.control("Button", "Resume save");
+  assert.ok(resume, "Recovery must be actionable before opening another slideshow");
+  assert.equal(resume.props.disabled, false);
+  assert.equal(restored.libraryReads.length, 0, "Do not overwrite an interrupted request with the other Library item");
+  await restored.clickSave("Resume save");
+  assert.deepEqual(restored.requests[0], frozen);
+  assert.equal(restored.saved.length, 1);
+});
+
 test("bulk appearance applies to all or selected slides, preserves words and undoes without losing later typing", async () => {
   const h = await editor();
   const tools = () => nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props;

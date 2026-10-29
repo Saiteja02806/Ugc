@@ -1,5 +1,12 @@
 import { getConnectionPublishingBlockMessage } from "../scheduling/social-connection-policy";
 import { isSocialPlatform, type SocialConnection } from "../social/types";
+import { withReadDeadline } from "../http/read-deadline.ts";
+
+export type WorkflowAccountSelection = Record<string, string | string[]>;
+export function isWorkflowAccountSelected(selectedIds: WorkflowAccountSelection, platform: string, id: string) {
+  const selected = selectedIds[platform];
+  return Array.isArray(selected) ? selected.includes(id) : selected === id;
+}
 
 export type WorkflowConnectedAccount = Pick<SocialConnection,
   "id" | "platform" | "platformAccountName" | "platformAccountUsername" | "status" | "scopes" | "supportsBackgroundRefresh"
@@ -48,11 +55,11 @@ export function workflowAccountBlock(account: WorkflowConnectedAccount) {
 export function findWorkflowSingleAccountSelection(
   accounts: WorkflowConnectedAccount[],
   platforms: string[],
-  selectedIds: Record<string, string>,
+  selectedIds: WorkflowAccountSelection,
   handledPlatforms: ReadonlySet<string>,
 ): { platform: string; id: string } | null {
   for (const platform of platforms) {
-    if (selectedIds[platform] || handledPlatforms.has(platform)) continue;
+    if (Object.hasOwn(selectedIds, platform) || handledPlatforms.has(platform)) continue;
     const eligible = accounts.filter(account => account.platform === platform && !workflowAccountBlock(account));
     if (eligible.length === 1) return { platform, id: eligible[0].id };
   }
@@ -64,16 +71,19 @@ export async function loadWorkflowConnectedAccounts(dependencies: {
   fetch: typeof fetch;
   assertActive: () => void;
 }, signal?: AbortSignal) {
+  return withReadDeadline(async bounded => {
   dependencies.assertActive();
   const token = await dependencies.getOwnerToken();
+  bounded.throwIfAborted();
   dependencies.assertActive();
   if (!token) throw new Error("Sign in to view your connected accounts.");
   const { fetch: sendRequest } = dependencies;
   const response = await sendRequest("/api/social/connections", {
-    method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal,
+    method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal: bounded,
   });
   const value: unknown = await response.json().catch(() => null);
   dependencies.assertActive();
   if (!response.ok) throw new Error("Could not load connected accounts. Refresh and try again.");
   return parseWorkflowConnectedAccounts(value);
+  }, signal);
 }

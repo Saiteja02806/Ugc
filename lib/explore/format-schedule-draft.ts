@@ -1,4 +1,4 @@
-import { workflowSelectedAccounts, workflowSelectedPlatforms, type WorkflowScheduleDraft } from "./workflow-scheduling-draft.ts";
+import { workflowSelectedAccountIds, workflowSelectedAccounts, workflowSelectedPlatforms, type WorkflowScheduleDraft } from "./workflow-scheduling-draft.ts";
 
 export type FormatScheduleDraftScope = {
   environment: "live" | "preview";
@@ -31,12 +31,15 @@ export function readFormatScheduleDraft(raw: string | null, key: string): Workfl
       draft.connectionIds !== undefined && (!draft.connectionIds || typeof draft.connectionIds !== "object" || Array.isArray(draft.connectionIds))) return null;
     const platforms = workflowSelectedPlatforms(draft);
     if (platforms.length > 3 || platforms.some(platform => !["instagram", "tiktok", "youtube"].includes(platform))) return null;
+    if (draft.accountIds !== undefined && (!draft.accountIds || typeof draft.accountIds !== "object" || Array.isArray(draft.accountIds) ||
+      Object.entries(draft.accountIds).some(([platform, ids]) => !platforms.includes(platform) || !Array.isArray(ids) || ids.length > 100 ||
+        ids.some(id => typeof id !== "string" || !id.trim() || id.length > 128) || new Set(ids).size !== ids.length))) return null;
     const accounts = workflowSelectedAccounts(draft);
     if (Object.entries(accounts).some(([platform, id]) => !platforms.includes(platform) || typeof id !== "string" || id.length > 128)) return null;
-    const connectionIds = Object.fromEntries(platforms.filter(platform => accounts[platform]).map(platform => [platform, accounts[platform]]));
+    const connectionIds = Object.fromEntries(platforms.filter(platform => Object.hasOwn(accounts, platform)).map(platform => [platform, accounts[platform]]));
     if (draft.timezone !== undefined) new Intl.DateTimeFormat("en", { timeZone: draft.timezone });
     return { caption: draft.caption, ...(draft.publishMode !== undefined ? { publishMode: draft.publishMode } : {}), ...(draft.fiveMinutesFromSubmit ? { fiveMinutesFromSubmit: true } : {}), ...(draft.captionInitialized !== undefined ? { captionInitialized: draft.captionInitialized } : {}), date: draft.date, time: draft.time, platforms, connectionIds,
-      platform: platforms[0] ?? "", connectionId: connectionIds[platforms[0]] ?? "", ...(draft.timezone !== undefined ? { timezone: draft.timezone } : {}) };
+      platform: platforms[0] ?? "", connectionId: connectionIds[platforms[0]] ?? "", ...(draft.accountIds !== undefined ? { accountIds: workflowSelectedAccountIds(draft) } : {}), ...(draft.timezone !== undefined ? { timezone: draft.timezone } : {}) };
   } catch { return null; }
 }
 

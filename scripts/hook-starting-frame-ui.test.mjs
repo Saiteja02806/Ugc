@@ -669,6 +669,19 @@ test("unresolved motion is disclosed beside image generation before any credits 
   assert.equal(h.submissions.length, 0); assert.equal(h.selections.length, 0);
 });
 
+test("unresolved Hook motion blocks paid image buttons and direct handler invocation in both presentations", async () => {
+  for (const presentation of ["dialog", "recreation"]) {
+    const h = harness({ presentation, motionBlocked: true }); h.render(); await h.settle();
+    find(h.render(), "FormatGenerationReferences").props.onImagesChange([photo(photoId)]);
+    const tree = h.render(), generate = button(tree, "Generate starting image");
+    assert.ok(generate);
+    assert.equal(generate.props.disabled, true);
+    await generate.props.onClick(); await h.settle();
+    assert.equal(h.submissions.length, 0);
+    assert.equal(h.selections.length, 0);
+  }
+});
+
 test("Recreate result actions block stale approval after changing generation inputs", async () => {
   const h = harness({ presentation: "recreation" }); h.render(); await h.settle();
   assert.equal(button(h.render(), "Use selected frame"), undefined);

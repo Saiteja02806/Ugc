@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib/explore/format-demo.ts";
-import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import { formatTextEmojiError, formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
 import { canReuseUnchangedHookSource } from "../lib/explore/unchanged-hook-source.ts";
 import { getReferenceAudioPreview } from "../lib/explore/reference-audio-preview.ts";
@@ -56,6 +56,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     }
   }
   const react = {
+    useId: () => "demo-save-status",
     useState(initial) {
       const i = cursor++;
       if (!(i in slots)) slots[i] = { value: typeof initial === "function" ? initial() : initial };
@@ -118,7 +119,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/lib/explore/reference-audio-preview": { getReferenceAudioPreview },
     "@/lib/explore/workflow-default-music-client": { loadWorkflowDefaultMusic: async () => { throw new Error("Test attempted default music download."); } },
     "@/lib/explore/sequence-preview": { mapSequencePreviewDemoReference },
-    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
+    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays, formatTextEmojiError },
     "@/worker/src/lib/explore-finishing-contract": finishingContract,
     "@/lib/explore/format-edit-draft": editDraft,
     "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInputs.push(input); return { loaded: true, busy: false, dirty: true, saved: null, error: null, reload() {},

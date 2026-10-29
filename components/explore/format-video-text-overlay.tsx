@@ -4,6 +4,7 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTextLayout, formatTextLineRuns, formatInlineSymbolPaths, positionFormatText, type ExploreFormatText } from "@/worker/src/lib/explore-format-edit";
 import { exploreEmojiUrl } from "@/worker/src/lib/explore-emoji";
+import { referenceCaptionPaths } from "@/worker/src/lib/reference-caption-paths";
 
 import "./explore-text-fonts.css";
 
@@ -26,17 +27,23 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
   const hitPadding = width * .025;
+  const renderLetters = (value: string, x: number, y: number, anchor: "start" | "middle" = "start", pathX = x) => {
+    const paths = referenceCaptionPaths(value, text.font, layout.fontWeight, text.preset, layout.fontSize, pathX, y);
+    return paths ? paths.map((d, index) => <path key={index} d={d} />) : <text x={x} y={y} textAnchor={anchor}>{value}</text>;
+  };
   return <svg aria-label={label} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full">
-    {background ? <rect x={0} y={background.y} width={width} height={background.height} fill="#000000" fillOpacity={background.opacity} /> : null}
-    <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : layout.outlineWidth} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
+    {background ? <rect x={background.x} y={background.y} width={background.width} height={background.height} fill={"color" in background ? background.color : "#000000"} fillOpacity={background.opacity} /> : null}
+    <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : layout.outlineWidth} strokeLinejoin={background ? undefined : layout.outlineJoin} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
       {layout.lines.map((line, index) => {
         const y = layout.y + index * layout.lineHeight + layout.fontSize;
         const runs = formatTextLineRuns(line, text, layout);
+        const referenceLinePaths = referenceCaptionPaths(line, text.font, layout.fontWeight, text.preset, layout.fontSize, layout.x - (text.align === "left" ? layout.textWidth : runs.reduce((sum, run) => sum + run.width, 0)) / 2, y);
         return runs.some(run => run.symbol || run.artwork) ? <g key={index}>{runs.map((run, i) => run.symbol
           ? <svg key={i} data-format-inline-symbol={run.symbol} x={run.x} y={y - layout.fontSize} width={layout.fontSize} height={layout.fontSize} viewBox="0 0 24 24" stroke="none">{formatInlineSymbolPaths(run.symbol).map((path, j) => <path key={j} {...path} />)}</svg>
           : run.artwork ? <image key={i} data-format-emoji={run.artwork} aria-label={run.value} href={exploreEmojiUrl(run.artwork)} x={run.x} y={y - layout.fontSize} width={layout.fontSize} height={layout.fontSize} />
-          : <text key={i} x={run.x} y={y} textAnchor="start">{run.value}</text>)}</g>
-          : <text key={index} x={layout.x} y={y}>{line}</text>;
+          : <g key={i}>{renderLetters(run.value, run.x, y)}</g>)}</g>
+          : referenceLinePaths ? <g key={index}>{referenceLinePaths.map((d, i) => <path key={i} d={d} />)}</g>
+          : <text key={index} x={text.align === "left" ? layout.x - layout.textWidth / 2 : layout.x} y={y} textAnchor={text.align === "left" ? "start" : undefined}>{line}</text>;
       })}
 
     </g>

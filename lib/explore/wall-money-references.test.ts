@@ -4,7 +4,8 @@ import nextEnv from "@next/env";
 import { readFileSync } from "node:fs";
 import release from "../../worker/src/lib/explore-wall-money-reference-release.json" with { type: "json" };
 import reviews from "./wall-money-reference-prompts.json" with { type: "json" };
-import { getWallMoneyMotion } from "./wall-money-motion.ts";
+import catalog from "./wall-reference-motion-catalog.json" with { type: "json" };
+import { getWallMoneyMotion, getWallReferenceMotion } from "./wall-money-motion.ts";
 import { buildStartingFrameAnimationPrompt } from "./starting-frame-workflow.ts";
 import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
 import { createHookKeyframeDraft } from "./hook-keyframe-draft.ts";
@@ -112,5 +113,18 @@ test("published batch appears in both galleries' existing category filter and ca
     assert.equal(getExplorePairedReference(row.id)?.audioSha256, row.audioSha256);
     assert.equal(getGenerationReferenceSoundtrack({ referenceId: row.id, referenceType: "hook" }), null);
     assert.equal(getGenerationReferenceSoundtrack({ referenceId: row.id, referenceType: "wall_text", exploreFormat: "wall_text" })?.id, row.id);
+  }
+});
+
+test("all 100 active Wall of Text references resolve compiled decimal motion directions", () => {
+  assert.equal(catalog.entries.length, 100);
+  assert.equal(new Set(catalog.entries.map(row => row.referenceId)).size, 100);
+  for (const row of catalog.entries) {
+    const directions = getWallReferenceMotion(row.referenceId, row.sourceSha256);
+    assert.ok(directions, `Failed to compile directions for ${row.referenceId}`);
+    assert.match(directions, /^OPENING COMPOSITION:/);
+    assert.match(directions, /PHASE \[0–/);
+    assert.match(directions, /–1\]:/);
+    assert.ok(directions.includes(row.beats.at(-1)!.action));
   }
 });

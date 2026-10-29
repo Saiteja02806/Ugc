@@ -71,19 +71,19 @@ test('real website save/apply and MCP share draft revisions, facts and content h
  const changed={...next,businessName:'MCP applied'};const accepted=(await call('apply_business_context',args(current,changed,'apply'))).structuredContent.receipt;assert.equal((await getBusinessProfileForUser('owner-a')).context.businessName,'MCP applied');assert.equal(accepted.state.profile.active_profile_version,website.profileVersion+1);assert.equal(accepted.state.profile.draft,null);
  const after=await getBusinessProfileForUser('owner-a');await applyBusinessContext({context:{...after.context,businessName:'Website applied later'},expectedDraftUpdatedAt:null,expectedProfileVersion:after.profileVersion,profile:after});assert.equal((await call('get_business_context')).structuredContent.profile.active_context.businessName,'Website applied later');assert.deepEqual((await call('get_business_context_request',{request_id:id(1)})).structuredContent.receipt,accepted);
 });
-test('Settings API reports the invalid field and applies corrected context atomically, surviving reload',async()=>{
+test('Settings API saves long context and extra categories atomically, surviving reload',async()=>{
  await h.seed();
  const headers={authorization:'Bearer fixture','content-type':'application/json'};
  const read=async()=>{const response=await settingsRoute.GET(new Request('https://fixture.test/api/business-context',{headers}));assert.equal(response.status,200);return (await response.json()).profile;};
- const initial=await read();const next={...initial.activeContext,productSummary:'Updated product summary for the next content generation.'};
+ const initial=await read();const next={...initial.activeContext,businessName:'Business '.repeat(50).trim(),productSummary:'Updated product '.repeat(100),mainProblem:'x'.repeat(700),categories:['One','Two','Three','Four','Five'],targetAudience:Array.from({length:12},(_,i)=>`Audience ${i} ${'a'.repeat(300)}`)};
  const submit=body=>settingsRoute.POST(new Request('https://fixture.test/api/business-context',{method:'POST',headers,body:JSON.stringify(body)}));
  const input={action:'apply',context:next,expectedDraftUpdatedAt:null,expectedProfileVersion:initial.activeProfileVersion};
- const rejected=await submit({...input,context:{...next,mainProblem:'x'.repeat(241)}});
- assert.equal(rejected.status,400);assert.match((await rejected.json()).message,/Main customer problem.*240 characters/);
+ const rejected=await submit({...input,context:{...next,categories:[42]}});
+ assert.equal(rejected.status,400);assert.match((await rejected.json()).message,/Category tags/);
  assert.deepEqual((await read()).activeContext,initial.activeContext);
  const saved=await submit(input);assert.equal(saved.status,200);const body=await saved.json();
  assert.equal(body.profile.activeProfileVersion,initial.activeProfileVersion+1);
- const restored=await read();assert.equal(restored.activeContext.productSummary,next.productSummary);assert.equal(restored.activeProfileVersion,body.profile.activeProfileVersion);
+ const restored=await read();assert.equal(restored.activeContext.businessName,next.businessName);assert.equal(restored.activeContext.productSummary,next.productSummary.trim());assert.deepEqual(restored.activeContext.categories,next.categories);assert.deepEqual(restored.activeContext.targetAudience,next.targetAudience);assert.equal(restored.activeProfileVersion,body.profile.activeProfileVersion);
  const stale=await submit(input);assert.equal(stale.status,409);assert.equal((await read()).activeProfileVersion,restored.activeProfileVersion);
 });
 test('apply needs real facts and preserves goals instead of granting onboarding or overwriting them',async()=>{

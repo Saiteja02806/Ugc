@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fragment } from "react";
 import guides from "@/lib/marketing/founder-workflow-guides.json";
+import { articleJsonLd } from "@/lib/marketing/brand-videos";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { ArticleBody, ArticleH2, ArticleCommand, ArticleLink, ArticleExternalLink } from "@/components/marketing/seo-article";
 
@@ -26,9 +27,9 @@ export function workflowGuideMetadata(guide: Guide): Metadata {
 
 export function FounderWorkflowGuide({ guide }: { guide: Guide }) {
   return <VideoMarketingPage eyebrow="Practical founder guide" h1={guide.title} lede={guide.lede} jsonLd={{
-    "@context": "https://schema.org", "@type": "TechArticle", headline: guide.title,
-    description: guide.description, mainEntityOfPage: `https://getugcpilot.com/guides/${guide.slug}`,
-    author: { "@type": "Organization", name: "UGC Pilot" },
+    "@context": "https://schema.org",
+    ...articleJsonLd({ path: `/guides/${guide.slug}`, headline: guide.title, description: guide.description, imagePath: "/guides/opengraph-image" }),
+    "@type": "TechArticle",
   }}>
     <ArticleBody>
       {guide.sections.map((section, index) => <Fragment key={section.heading}>

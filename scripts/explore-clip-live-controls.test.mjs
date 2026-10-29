@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as formatEdit from "../worker/src/lib/explore-format-edit.ts";
 import * as emoji from "../worker/src/lib/explore-emoji.ts";
+import * as captionPaths from "../worker/src/lib/reference-caption-paths.ts";
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
@@ -31,6 +32,7 @@ function harness(file, dependencies = {}) {
     if (name === "react-dom") return { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) };
     if (name === "@/worker/src/lib/explore-format-edit") return formatEdit;
     if (name === "@/worker/src/lib/explore-emoji") return emoji;
+    if (name === "@/worker/src/lib/reference-caption-paths") return captionPaths;
     if (name === "@/components/ui/button") return { Button: "button" };
     if (name === "lucide-react") return new Proxy({}, { get: (_, name) => name });
     throw Error(`Unexpected import ${name}`);
@@ -296,7 +298,7 @@ test("Wall manual text hides timing and style until advanced mode while keeping 
   assert.equal(labelled(tree, "Text start time"), undefined, "Advanced Wall also keeps text for the whole clip");
 });
 
-test("font controls preserve saved styles and default new text to white Proxima Nova A Semibold with outline 8", () => {
+test("font controls preserve saved styles and default new text to the reference social caption style", () => {
   const h = harness("format-text-overlays-editor"), updates = [];
   const text = { value: "Existing message", width: .7, y: .4, fontSize: 42, color: "#ff00ff", startMs: 1000, endMs: 3000 };
   const props = { overlays: [text], durationMs: 5000, timeMs: 1500, onChange: next => updates.push(next), onSeek() {} };
@@ -314,9 +316,9 @@ test("font controls preserve saved styles and default new text to white Proxima 
   labelled(tree, "Text weight").props.onChange({ target: { value: "500" } });
   assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: "dmsans", fontWeight: 500 });
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [] }));
-  assert.equal(labelled(tree, "Text font").props.value, "proximanovaa"); assert.equal(labelled(tree, "Text weight").props.value, 600);
-  assert.equal(labelled(tree, "Text outline thickness").props.value, 8);
+  assert.equal(labelled(tree, "Text font").props.value, "tiktoksans"); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  assert.equal(labelled(tree, "Text outline thickness").props.value, 6);
   labelled(tree, "Overlay text").props.onChange({ target: { value: "New hook" } });
-  assert.equal(updates.at(-1)[0].font, "proximanovaa"); assert.equal(updates.at(-1)[0].fontWeight, 600);
-  assert.equal(updates.at(-1)[0].outlineWidth, 8); assert.equal(updates.at(-1)[0].color, "#ffffff");
+  assert.equal(updates.at(-1)[0].font, "tiktoksans"); assert.equal(updates.at(-1)[0].fontWeight, 700);
+  assert.equal(updates.at(-1)[0].outlineWidth, 6); assert.equal(updates.at(-1)[0].color, "#ffffff");
 });

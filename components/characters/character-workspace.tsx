@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, History, ImageIcon, Images, Loader2, Maximize2, RectangleVertical, Sparkles, UserRound, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, History, ImageIcon, Images, Loader2, Maximize2, RectangleVertical, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
@@ -322,7 +322,7 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
               disabled={busy || Boolean(pending)} />
             <Popover>
               <PopoverTrigger disabled={referencesLocked} render={<button type="button" className={styles.skillsButton} aria-label={skillIds.length ? `Skills (${skillIds.length})` : "Skills"} />}>
-                <Sparkles className="size-3.5" aria-hidden="true" /><span>Skills{skillIds.length ? ` (${skillIds.length})` : ""}</span><ChevronDown className="size-3" aria-hidden="true" />
+                <span>Skills{skillIds.length ? ` (${skillIds.length})` : ""}</span><ChevronDown className="size-3" aria-hidden="true" />
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className={styles.skillsPopover}>
                 <PopoverTitle>Skills</PopoverTitle>

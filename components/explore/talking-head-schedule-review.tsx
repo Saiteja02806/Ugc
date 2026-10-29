@@ -5,15 +5,15 @@ import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-for
 import { displayScheduleTime } from "@/lib/scheduling/time-display";
 import { Button } from "@/components/ui/button";
 import type { WorkflowAction } from "@/components/explore/use-workflow-finishing";
-import { workflowSelectedAccounts, workflowSelectedPlatforms, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
+import { workflowSelectedAccountIds, workflowSelectedPlatforms, workflowAccountSelectionError, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 
 /** Review copy describes the current draft; the finishing boundary still validates submission. */
 export function TalkingHeadScheduleSummary({ draft, timezone }: { draft: WorkflowScheduleDraft; timezone?: string }) {
   const deviceHour12 = useDeviceTimeFormat();
   const platforms = workflowSelectedPlatforms(draft);
-  const accounts = workflowSelectedAccounts(draft);
-  const selectedAccountCount = new Set(platforms.map(platform => accounts[platform]).filter(Boolean)).size;
+  const accounts = workflowSelectedAccountIds(draft);
+  const selectedAccountCount = new Set(Object.values(accounts).flat()).size;
   const destinations = platforms.map(platform => platform === "instagram" ? "Instagram Reels" : platform === "tiktok" ? "TikTok" : "YouTube").join(" + ");
   const date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? new Date(`${draft.date}T12:00:00Z`) : null;
   const timing = (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Earliest available" : date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
@@ -22,7 +22,7 @@ export function TalkingHeadScheduleSummary({ draft, timezone }: { draft: Workflo
   return <section aria-label="Schedule summary" className={reviewStyles.summary}>
     <h3 className="sr-only">Schedule summary</h3>
     <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>
-    <p>{selectedAccountCount === platforms.length && selectedAccountCount > 0 ? `${selectedAccountCount} ${selectedAccountCount === 1 ? "account" : "accounts"} selected` : "Choose an account for each platform"}<span aria-hidden="true"> · </span>{timing}<span aria-hidden="true"> · </span>{timezone || "Your device’s time zone"}</p>
+    <p>{!workflowAccountSelectionError(draft) ? `${selectedAccountCount} ${selectedAccountCount === 1 ? "account" : "accounts"} selected` : "Choose an account for each platform"}<span aria-hidden="true"> · </span>{timing}<span aria-hidden="true"> · </span>{timezone || "Your device’s time zone"}</p>
   </section>;
 }
 

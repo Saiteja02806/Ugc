@@ -7,7 +7,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import creation from "@/components/explore/workflow-creation.module.css";
-import { findWorkflowSingleAccountSelection, loadWorkflowConnectedAccounts, workflowAccountBlock, workflowAccountLabel } from "@/lib/explore/workflow-connected-accounts";
+import { findWorkflowSingleAccountSelection, isWorkflowAccountSelected, loadWorkflowConnectedAccounts, workflowAccountBlock, workflowAccountLabel, type WorkflowAccountSelection } from "@/lib/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 /** Preview and inactive tabs never mount the authenticated lookup. */
@@ -16,7 +16,7 @@ export function WorkflowConnectedAccounts({ enabled, active, ownerId, platforms,
   active: boolean;
   ownerId: string | null;
   platforms: string[];
-  selectedIds: Record<string, string>;
+  selectedIds: WorkflowAccountSelection;
   onSelect: (platform: string, id: string) => void;
 }) {
   if (!enabled || !active) return null;
@@ -28,7 +28,7 @@ export function WorkflowConnectedAccounts({ enabled, active, ownerId, platforms,
 function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
   ownerId: string;
   platforms: string[];
-  selectedIds: Record<string, string>;
+  selectedIds: WorkflowAccountSelection;
   onSelect: (platform: string, id: string) => void;
 }) {
   const handledPlatforms = useRef(new Set<string>());
@@ -60,23 +60,24 @@ function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
     <span className="text-sm font-medium">Connected accounts</span>
     {accounts.isPending ? <p role="status" className="text-xs leading-5 text-muted">Loading connected accounts…</p>
       : accounts.isError ? <div role="alert" className="text-xs leading-5 text-muted">
-        <p>Could not load your connected accounts.</p>
+        <p>{accounts.error instanceof Error ? accounts.error.message : "Could not load your connected accounts."}</p>
         <Button type="button" variant="ghost" disabled={accounts.isFetching} onClick={() => { void accounts.refetch(); }}>Refresh accounts</Button>
       </div>
       : visible.length === 0 ? <p className="text-xs leading-5 text-muted">No accounts connected for this platform.</p>
       : <div role="group" aria-label="Connected posting accounts" className={creation.connectedAccounts}>
         {visible.map((account) => {
           const blocked = workflowAccountBlock(account);
+          const selected = isWorkflowAccountSelected(selectedIds, account.platform, account.id);
           const platformLabel = account.platform === "youtube" ? "YouTube" : account.platform === "instagram" ? "Instagram" : "TikTok";
-          return <Button key={account.id} type="button" variant="ghost" disabled={Boolean(blocked) || accounts.isFetching}
-            aria-pressed={!blocked && selectedIds[account.platform] === account.id} aria-label={`Post to ${workflowAccountLabel(account)} on ${platformLabel}`}
+          return <Button key={account.id} type="button" variant="ghost" disabled={Boolean(blocked) && !selected}
+            aria-pressed={selected} aria-label={`Post to ${workflowAccountLabel(account)} on ${platformLabel}`}
             title={blocked ?? workflowAccountLabel(account)} className={creation.connectedAccount}
             onClick={() => { handledPlatforms.current.add(account.platform); onSelect(account.platform, account.id); }}>
             <span className={creation.connectedAccountLabel}>{workflowAccountLabel(account)}
               <span className="block text-xs font-normal text-muted">{platformLabel}</span>
-              {blocked && <span className="block text-xs font-normal text-muted">Reconnect to schedule</span>}
+              {blocked && <span className="block text-xs font-normal text-muted">{blocked}</span>}
             </span>
-            {!blocked && selectedIds[account.platform] === account.id && <Check className="size-4 shrink-0" aria-hidden="true" />}
+            {selected && <Check className="size-4 shrink-0" aria-hidden="true" />}
           </Button>;
         })}
       </div>}

@@ -216,7 +216,7 @@ export async function runGenerateImageJob(
       const referenceImages = input.referenceImageUrls
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(async (url, index) => {
           const resolved = await resolveOwnedPrivateMediaUrl(url, job.user_id ?? "");
-          return index === 0 && input.hookKeyframe ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
+          return index === 0 && input.hookKeyframe?.version === 4 ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
         }))]
         : referenceImageUrl;
       const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;

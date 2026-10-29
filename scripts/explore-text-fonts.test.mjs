@@ -40,14 +40,15 @@ test("dragged positions reach real video exports for legacy, bundled-font and Sn
   assert.equal(digest(await readFile(sourcePath)), before);
 });
 
-test("new Remix text defaults to white Proxima Nova A Semibold with outline 8 in Hook and Wall workflows", () => {
+test("new Remix text defaults to the reference social treatment in Hook and Wall workflows", () => {
   for (const format of ["hook", "wall_text"]) {
     const source = { version: 1, referenceId: "ref", slideId: null, format, language: "en", sourceSha256: "a".repeat(64), blocks: [{ text: "Reference", startMs: 0, endMs: 2000 }] };
     const remixed = applyVideoTextRemix({ ...edit(null), format }, { blocks: ["New business message"], heading: "", body: "" }, source);
-    assert.equal(remixed.textOverlays[0].font, "proximanovaa");
-    assert.equal(remixed.textOverlays[0].fontWeight, 600);
+    assert.equal(remixed.textOverlays[0].font, "tiktoksans");
+    assert.equal(remixed.textOverlays[0].fontWeight, 700);
     assert.equal(remixed.textOverlays[0].color, "#ffffff");
-    assert.equal(remixed.textOverlays[0].outlineWidth, 8);
+    assert.equal(remixed.textOverlays[0].outlineWidth, 6);
+    assert.equal(remixed.textOverlays[0].preset, "reference-social");
   }
 });
 

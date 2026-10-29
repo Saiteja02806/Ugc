@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Maximize, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-overlay";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,11 @@ import { createSequencePreviewTimeline, sequencePreviewAudioPosition, sequencePr
 
 export type { SequencePreviewAudio, SequencePreviewSegment } from "@/lib/explore/sequence-preview";
 type Props = { segments: readonly SequencePreviewSegment[]; backgroundAudio?: SequencePreviewAudio | null; active?: boolean;
-  outputWidth?: number; outputHeight?: number; className?: string; onPlaybackStart?: () => void; playbackDisabledReason?: string | null; showDescription?: boolean; captions?: SequenceCaptions | null };
+  outputWidth?: number; outputHeight?: number; className?: string; onPlaybackStart?: () => void; playbackDisabledReason?: string | null; playbackWarning?: string | null; showDescription?: boolean; captions?: SequenceCaptions | null };
 const stamp = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 /** Local playback never submits a render or changes publication readiness. */
-export function WorkflowSequencePreview({ segments, backgroundAudio, active = true, outputWidth, outputHeight, className, onPlaybackStart, playbackDisabledReason, showDescription = true, captions }: Props) {
+export function WorkflowSequencePreview({ segments, backgroundAudio, active = true, outputWidth, outputHeight, className, onPlaybackStart, playbackDisabledReason, playbackWarning, showDescription = true, captions }: Props) {
   let timeline: SequencePreviewTimeline;
   try { timeline = createSequencePreviewTimeline(segments); if (backgroundAudio) validateSequencePreviewAudio(backgroundAudio); }
   catch (error) { return <p role="alert" className="text-sm leading-6 text-destructive">{error instanceof Error ? error.message : "Choose your video again to preview it."}</p>; }
@@ -25,15 +25,17 @@ export function WorkflowSequencePreview({ segments, backgroundAudio, active = tr
   // A changed draft gets a fresh paused session rather than continuing old media or timing.
   return <SequencePreviewSession key={JSON.stringify([segments, backgroundAudio, width, height, active])} timeline={timeline}
     backgroundAudio={backgroundAudio} active={active} width={width} height={height} className={className}
-    onPlaybackStart={onPlaybackStart} playbackDisabledReason={playbackDisabledReason} showDescription={showDescription} captions={captions} />;
+    onPlaybackStart={onPlaybackStart} playbackDisabledReason={playbackDisabledReason} playbackWarning={playbackWarning} showDescription={showDescription} captions={captions} />;
 }
 
-function SequencePreviewSession({ timeline, backgroundAudio, active, width, height, className, onPlaybackStart, playbackDisabledReason, showDescription, captions }: {
+function SequencePreviewSession({ timeline, backgroundAudio, active, width, height, className, onPlaybackStart, playbackDisabledReason, playbackWarning, showDescription, captions }: {
   timeline: SequencePreviewTimeline; backgroundAudio?: SequencePreviewAudio | null; active: boolean; width: number; height: number; className?: string;
-  onPlaybackStart?: () => void; playbackDisabledReason?: string | null;
+  onPlaybackStart?: () => void; playbackDisabledReason?: string | null; playbackWarning?: string | null;
   showDescription?: boolean;
   captions?: SequenceCaptions | null;
 }) {
+  const playbackStatusId = useId();
+  const blockedReason = playbackDisabledReason ?? (!active ? "Open this preview to play it." : null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]), layers = useRef<(HTMLDivElement | null)[]>([]);
   const addedAudio = useRef<(HTMLAudioElement | null)[]>([]), background = useRef<HTMLAudioElement | null>(null), surface = useRef<HTMLElement | null>(null);
   const referenceAudio = useRef<(HTMLAudioElement | null)[]>([]);
@@ -184,7 +186,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
       </div>
     </div>
     <div className={styles.controls}>
-      <Button type="button" variant="ghost" size="icon-sm" aria-label={playing && active ? "Pause combined preview" : "Play combined preview"} disabled={!active || !!playbackDisabledReason} onClick={toggle}>{playing && active ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}</Button>
+      <Button type="button" variant="ghost" size="icon-sm" aria-label={playing && active ? "Pause combined preview" : "Play combined preview"} aria-describedby={blockedReason || playbackWarning ? playbackStatusId : undefined} disabled={Boolean(blockedReason)} onClick={toggle}>{playing && active ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}</Button>
       <input type="range" min={0} max={timeline.durationMs} step={50} value={timeMs} disabled={!active} aria-label="Combined preview position"
         aria-valuetext={`${stamp(timeMs)} of ${stamp(timeline.durationMs)}, ${timeline.entries[visible].label}`} className="min-w-0 flex-1 accent-primary" onChange={event => seek(Number(event.target.value))} />
       <span className="whitespace-nowrap text-xs tabular-nums text-muted">{stamp(timeMs)} / {stamp(timeline.durationMs)}</span>
@@ -197,7 +199,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
       }}><Maximize className="size-4" aria-hidden="true" /></Button>
     </div>
     {showDescription ? <p className="text-center text-xs leading-5 text-muted">Preview · {timeline.entries.map(entry => entry.label).join(" → ")}. Your publishing file prepares separately.</p> : null}
-    {playbackDisabledReason ? <p role="status" className="text-center text-xs leading-5 text-muted">{playbackDisabledReason}</p> : null}
+    {blockedReason || playbackWarning ? <p id={playbackStatusId} role="status" className="text-center text-xs leading-5 text-muted">{blockedReason ?? playbackWarning}</p> : null}
     {error ? <div role="alert" className="text-sm leading-6 text-destructive">{error} <Button type="button" variant="ghost" size="sm" onClick={() => {
       for (const player of videos.current) player?.load(); for (const sound of addedAudio.current) sound?.load(); for (const sound of referenceAudio.current) sound?.load(); background.current?.load();
       setError(null); seek(0);

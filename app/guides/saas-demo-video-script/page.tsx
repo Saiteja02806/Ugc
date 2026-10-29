@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { articleJsonLd } from "@/lib/marketing/brand-videos";
+import { faqJsonLd } from "@/lib/marketing/mcp-public";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { ArticleBody, ArticleH2, ArticleH3, ArticleLink, ArticleCommand, FaqList } from "@/components/marketing/seo-article";
 
@@ -30,8 +32,14 @@ const beats = [
   { time: "26–30 seconds", words: "Try this with a sample project.", screen: "Show the real sample-project destination, if available. Otherwise choose a next step the product genuinely offers." },
 ] as const;
 
+const faqs = [
+        { question: "Is this different from a UGC ad script?", answer: "Yes. A general UGC ad script organizes a persuasive message. This template binds a specific software task to actual screens and a visible result. You can use both, but the product recording remains the evidence." },
+        { question: "Do I need a face or voiceover?", answer: "No. A clear screen sequence with readable labels can explain the task. If you use a voiceover, rehearse it against the actions and check the captions. Provide an accessible explanation of important visual information where needed." },
+        { question: "Can I copy the example exactly?", answer: "Use the structure, but only retain words and actions that are true of your product. The fictional example is not a claim that your app or UGC Pilot supports those note-management features." },
+      ];
+
 export default function SaasDemoVideoScriptPage() {
-  return <VideoMarketingPage eyebrow="SaaS demo script" h1="Write a SaaS demo script the screen can prove." lede="Choose one viewer question, one real software action and one next step. Write the words beside the exact screens you will record, then rehearse before editing." jsonLd={{ "@context": "https://schema.org", "@type": "TechArticle", headline: title, description, mainEntityOfPage: `https://getugcpilot.com${path}`, author: { "@type": "Organization", name: "UGC Pilot" } }}>
+  return <VideoMarketingPage eyebrow="SaaS demo script" h1="Write a SaaS demo script the screen can prove." lede="Choose one viewer question, one real software action and one next step. Write the words beside the exact screens you will record, then rehearse before editing." jsonLd={{ "@context": "https://schema.org", "@graph": [articleJsonLd({ path, headline: "Write a SaaS demo script the screen can prove.", description, imagePath: "/guides/opengraph-image" }), { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Guides", item: "https://getugcpilot.com/guides" }, { "@type": "ListItem", position: 2, name: title, item: `https://getugcpilot.com${path}` }] }, faqJsonLd(faqs)] }}>
     <ArticleBody>
       <p>A short SaaS demo script should help someone follow a task, not list everything your product does. Start with a question such as “Where do I find the decisions from a client call?” Then show the answer. If a sentence has no visible action or supported fact behind it, rewrite it before you record.</p>
       <p>This worksheet is for a short social demonstration. It is not a sales-call script or a customer testimonial. The example and timings below are original editorial illustrations, not measured engagement results or UGC Pilot generation settings.</p>
@@ -65,11 +73,7 @@ export default function SaasDemoVideoScriptPage() {
       <ArticleH2>Before recording</ArticleH2>
       <ul className="list-disc space-y-2 pl-5"><li>Write the single question the video answers.</li><li>Confirm each named feature and control exists.</li><li>Prepare safe sample data and the result you will show.</li><li>Pair every script line with an observable screen state.</li><li>Rehearse words and actions together, allowing time to read.</li><li>Check that the closing link or action is available to the intended viewer.</li></ul>
       <p>Next, <ArticleLink href="/guides/screen-recording-for-app-demo">record readable source footage</ArticleLink>. Once that is ready, follow the <ArticleLink href="/guides/product-demo-to-short-video">product-demo editing guide</ArticleLink> to assemble the opening, demonstration and review.</p>
-      <FaqList items={[
-        { question: "Is this different from a UGC ad script?", answer: "Yes. A general UGC ad script organizes a persuasive message. This template binds a specific software task to actual screens and a visible result. You can use both, but the product recording remains the evidence." },
-        { question: "Do I need a face or voiceover?", answer: "No. A clear screen sequence with readable labels can explain the task. If you use a voiceover, rehearse it against the actions and check the captions. Provide an accessible explanation of important visual information where needed." },
-        { question: "Can I copy the example exactly?", answer: "Use the structure, but only retain words and actions that are true of your product. The fictional example is not a claim that your app or UGC Pilot supports those note-management features." },
-      ]} />
+      <FaqList items={faqs} />
     </ArticleBody>
     <VideoRelatedLinks links={[{ href: "/guides/screen-recording-for-app-demo", title: "Record the proof", description: "Prepare and capture readable app footage." }, { href: "/guides/product-demo-to-short-video", title: "Build the finished demo", description: "Edit one recording into a short social sequence." }, { href: "/blog/ugc-ad-script-templates", title: "Explore other script formats", description: "Choose a broader UGC message structure when a demonstration is not the whole story." }]} />
   </VideoMarketingPage>;

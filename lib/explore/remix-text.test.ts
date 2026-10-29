@@ -30,7 +30,7 @@ test("new unstyled Hook remix shares automatic fitting while saved style and Wal
   const o={blocks:[value],heading:"",body:""};
   const empty=parseExploreFormatEdit({version:1,format:"hook",trimStartMs:0,trimEndMs:3000,originalVolume:1,musicVolume:.2,text:null});
   const manual=applyVideoTextRemix(empty,o,s);
-  const automatic=automaticHookEdit(o,{version:1,requestKey:"fixture",model:"fixture",systemPrompt:"",userPrompt:"",promptVersion:8,layoutVersion:1,source:s,businessProfileId:"fixture",businessProfileVersion:1,businessContext:{}},3,"9:16");
+  const automatic=automaticHookEdit(o,{version:1,requestKey:"fixture",model:"fixture",systemPrompt:"",userPrompt:"",promptVersion:8,layoutVersion:1,textStyleVersion:1,source:s,businessProfileId:"fixture",businessProfileVersion:1,businessContext:{}},3,"9:16");
   assert.deepEqual(manual,automatic);
   const custom={...manual,textOverlays:manual.textOverlays!.map(t=>({...t,width:.5,x:.3,y:.4,fontSize:30,font:"poppins" as const,fontWeight:700 as const}))};
   const saved=applyVideoTextRemix(custom,{...o,blocks:["Exact new words"]},s);
@@ -101,6 +101,7 @@ test("editable prose keeps reference timing, while a custom idea is scoped to on
   assert.deepEqual(edited.blocks, [{ text: request.referenceBlocks[0], startMs: 0, endMs: 4000 }]);
   assert.equal(edited.referenceId, source.referenceId); assert.notEqual(edited.sourceSha256, source.sourceSha256);
   const unchanged = remixInputSource({ ...request, referenceBlocks: source.blocks.map(block => block.text) }, source);
+  assert.equal(unchanged.sourceSha256, source.sourceSha256);
   assert.deepEqual(unchanged.blocks.map(({ startMs, endMs }) => ({ startMs, endMs })), source.blocks.map(({ startMs, endMs }) => ({ startMs, endMs })));
   const custom = remixInputSource({ ...request, referenceId: null }, null);
   assert.equal(custom.referenceId, "manual:hook"); assert.equal(custom.blocks.length, 1);
@@ -117,6 +118,20 @@ test("a reviewed draft survives reloads, including unfinished edits, without cha
   assert.equal(readRemixTextDraft(JSON.stringify({ ...saved, reviewedDraft: { ...output, blocks: ["Wrong block count"] } })), null);
   assert.equal(readRemixTextDraft(JSON.stringify({ ...saved, source: undefined })), null);
 });
+
+test("Wall reviewed drafts restore 6000 characters while Hook and Slideshow limits remain unchanged", () => {
+  const wallSource = { ...source, referenceId: "manual:wall_text", format: "wall_text", blocks: [{ text: "Reference text", startMs: 0, endMs: 12000 }] };
+  const saved = { version: 1, requestKey: "00000000-0000-4000-8000-000000000001", referenceId: null, slideId: null, format: "wall_text", instructions: "", referenceBlocks: ["Reference text"], outcome: "completed", source: wallSource, reviewedDraft: { blocks: ["x".repeat(6000)], heading: "", body: "" } };
+  assert.deepEqual(readRemixTextDraft(JSON.stringify(saved)), saved);
+  assert.equal(readRemixTextDraft(JSON.stringify({ ...saved, reviewedDraft: { ...saved.reviewedDraft, blocks: ["x".repeat(6001)] } })), null);
+  const hook = { ...saved, format: "hook", source: { ...wallSource, referenceId: "manual:hook", format: "hook" } };
+  assert.equal(readRemixTextDraft(JSON.stringify({ ...hook, reviewedDraft: { ...hook.reviewedDraft, blocks: ["x".repeat(601)] } })), null);
+  assert.ok(readRemixTextDraft(JSON.stringify({ ...hook, reviewedDraft: { ...hook.reviewedDraft, blocks: ["x".repeat(600)] } })));
+  const slideshow = { ...saved, format: "slideshow", source: { ...wallSource, referenceId: "manual:slideshow", slideId: "manual-slide", format: "slideshow", blocks: [{ text: "Reference text", startMs: null, endMs: null }] }, reviewedDraft: { blocks: [], heading: "Heading", body: "x".repeat(601) } };
+  assert.equal(readRemixTextDraft(JSON.stringify(slideshow)), null);
+  assert.ok(readRemixTextDraft(JSON.stringify({ ...slideshow, reviewedDraft: { ...slideshow.reviewedDraft, body: "x".repeat(600) } })));
+  assert.ok(readRemixTextDraft(JSON.stringify({ ...saved, reviewedDraft: { blocks: [""], heading: "", body: "" } })));
+});
 test("provider payload includes verbatim source blocks and server business facts", () => {
   const context = { businessName: "Acme", productSummary: "Helpful product" };
   assert.deepEqual(JSON.parse(remixTextPrompt(source, context, "Keep the structure")), { format: "hook", referenceText: source.blocks.map(b => b.text), businessContext: context, additionalInstructions: "Keep the structure" });
@@ -128,8 +143,8 @@ test("the retained experimental Hook prompt has source budgets; it is not the ap
   assert.match(remixTextSystemPrompt("hook", short), /^Hard output budget for this request: at most 80 total characters/);
   assert.match(remixTextSystemPrompt("hook", longer), /^Hard output budget for this request: at most 130 total characters/);
   for (const format of ["wall_text", "slideshow"] as const) {
-    assert.equal(remixTextSystemPrompt(format, source), REMIX_TEXT_SYSTEM_PROMPT);
-    assert.equal(remixTextPromptVersion(format), 2);
+    assert.equal(remixTextSystemPrompt(format, source), format === "wall_text" ? REMIX_TEXT_SYSTEM_PROMPT.replace("each at most 600 characters", "each at most 6000 characters") : REMIX_TEXT_SYSTEM_PROMPT);
+    assert.equal(remixTextPromptVersion(format), format === "wall_text" ? 5 : 2);
   }
   assert.equal(remixTextPromptVersion("hook"), 4);
 });

@@ -98,7 +98,10 @@ export default function UgcVideoExamplesPage() {
       </section>
       <VideoRelatedLinks
         links={[
-          { href: "/blog/ai-content-creation-tools-small-teams", title: "Best marketing tools for SaaS founders", description: "AI content creation, UGC video generators, and MCP workflows for small teams." },
+          { href: "/blog/ai-content-creation-tools-small-teams", title: "AI UGC content creator for SaaS", description: "AI content creation, UGC video generators, and MCP workflows for small teams." },
+          { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS startups", description: "The early-stage founder acquisition playbook." },
+          { href: "/blog/ai-video-generator-for-saas", title: "AI video generator for SaaS", description: "Turn product briefs into short videos with creator avatars." },
+          { href: "/blog/saas-product-demo-video-generator", title: "SaaS product demo video generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "The two YouTube videos featured for the AI UGC video generator query." },
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "Steps from a brief to a downloaded file, with one example embed." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
 import { useCoverPlayback } from "@/components/explore/use-cover-playback";
 
 import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
@@ -8,7 +8,7 @@ import styles from "@/components/explore/explore-workspace.module.css";
 import type { ExploreWorkflow } from "@/lib/explore/workflows";
 
 export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: ExploreWorkflow; localPreview: boolean }) {
-  const videoRef = useCoverPlayback(workflow.coverVideo);
+  const videoRef = useCoverPlayback(workflow.coverVideo, "a", true);
 
   return (
     <article className={styles.workflowCard}>

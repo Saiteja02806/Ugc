@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import {readFileSync,existsSync,mkdtempSync,writeFileSync,mkdirSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {getHookReferenceGalleryItems} from '../worker/src/lib/explore-hook-reference-release.ts';
 const options={encoding:'utf8',windowsHide:true,stdio:['ignore','pipe','pipe'],timeout:30000};
 const cli=['--import','./scripts/next-server-only-test-loader.mjs','--experimental-transform-types','--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','scripts/prepare-reviewed-hook-t0-frames.mjs'];
 function rejects(args,pattern){try{execFileSync(process.execPath,[...cli,...args],options);assert.fail('Unexpected acceptance');}catch(error){assert.match(String(error.stderr??error.message),pattern);}}
@@ -12,8 +13,7 @@ test('preparation command rejects implicit action, unknown flags and incomplete/
  mkdirSync('.tmp',{recursive:true});const folder=mkdtempSync(resolve('.tmp/t0-preparation-negative-'));
  const input=join(folder,'sources.json');writeFileSync(input,JSON.stringify({items:[{referenceId:'creator-account-1-01',sourceSha256:'a'.repeat(64),sourceFile:'private.mp4'}]}));
  rejects(['--prepare-local','--sources',input,'--out',join(folder,'output')],/Source inventory must cover exactly/);
- const prepared=JSON.parse(readFileSync('docs/prompt-reviews/frame-and-private-package-preparation-2026-10-26.json','utf8')).publicFrames;
- const sourceRows=prepared.map(r=>({...r,sourceFile:'unread-video.mp4'}));
+ const sourceRows=getHookReferenceGalleryItems().map(r=>({referenceId:r.id,sourceSha256:r.videoSha256,sourceFile:'unread-video.mp4'}));
  sourceRows[0].referenceId='creator-account-1-01';writeFileSync(input,JSON.stringify({items:sourceRows}));
  rejects(['--prepare-local','--sources',input,'--out',join(folder,'output')],/Unknown, private, missing or changed source/);
 

@@ -16,6 +16,7 @@ import {
   BUSINESS_PROFILE_GATE_GC_TIME_MS,
   BUSINESS_PROFILE_GATE_STALE_TIME_MS,
   fetchBusinessProfileGate,
+  canRetainBusinessProfileGate,
   getBusinessProfileGateQueryKey,
 } from "@/lib/business-profiles/profile-gate-query";
 
@@ -46,7 +47,7 @@ export function AuthGuard({
   const profileGateQuery = useQuery({
     enabled: profileGateEnabled,
     gcTime: BUSINESS_PROFILE_GATE_GC_TIME_MS,
-    queryFn: ({ signal }) => fetchBusinessProfileGate(signal),
+    queryFn: ({ signal }) => fetchBusinessProfileGate(user?.uid ?? "signed-out", signal),
     queryKey: getBusinessProfileGateQueryKey(user?.uid ?? "signed-out"),
     refetchOnWindowFocus: false,
     staleTime: BUSINESS_PROFILE_GATE_STALE_TIME_MS,
@@ -100,7 +101,7 @@ export function AuthGuard({
       return <GuardLoadingState label="Finishing your business setup..." />;
     }
 
-    if (profileGateEnabled && profileGateQuery.isError) {
+    if (profileGateEnabled && profileGateQuery.isError && !canRetainBusinessProfileGate(profileGateQuery.data, profileGateQuery.error)) {
       return (
         <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
           <Alert

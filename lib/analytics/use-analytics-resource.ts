@@ -56,7 +56,7 @@ export function useAnalyticsResource<T>(params: {
     retry: false, refetchOnWindowFocus: true, refetchOnReconnect: true,
     queryFn: ({ signal }) => analyticsRequest<Snapshot<T>>(`${url}${days ? `?days=${days}` : ""}`, owner, signal),
   });
-  useAnalyticsWake(snapshot, active, params.staleTime);
+  useAnalyticsWake(snapshot, active, params.staleTime, true);
   const refreshKey = useMemo(() => [...key, "refresh", force ? `manual:${consumerId}:${refreshRequest}` : snapshot.data?.refreshKey ?? "initial"], [key, force, refreshRequest, consumerId, snapshot.data?.refreshKey]);
   const refresh = useQuery({
     queryKey: refreshKey,
@@ -103,11 +103,14 @@ export function useAnalyticsResource<T>(params: {
       }
     });
   }, [client, force, refreshSettledAt, refresh.isError, refresh.errorUpdatedAt, currentJob, scope]);
-  // A completed job has already persisted its account snapshots. Reading the
-  // authoritative snapshot avoids replaying an old completed job over newer data.
+  // A refresh can finish without a job (another sync already saved fresh data,
+  // or a manual request hit the cooldown). Reconcile that result as well as job
+  // completion; otherwise the old GET remains displayed and manual mode sticks.
   useEffect(() => {
-    if (jobStatus === "completed") void client.invalidateQueries({ queryKey: key, exact: true });
-  }, [client, key, jobId, jobStatus, refresh.dataUpdatedAt]);
+    if (jobStatus === "completed" || (refresh.isSuccess && !jobId)) {
+      void client.invalidateQueries({ queryKey: key, exact: true });
+    }
+  }, [client, key, jobId, jobStatus, refresh.dataUpdatedAt, refresh.isSuccess]);
   useEffect(() => {
     if (active) return;
     void client.cancelQueries({ queryKey: key, exact: true });

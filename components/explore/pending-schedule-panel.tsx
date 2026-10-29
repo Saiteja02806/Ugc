@@ -9,13 +9,13 @@ import { WorkflowSchedulingPanel } from "@/components/explore/workflow-schedulin
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
-import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
+import { workflowAccountSelectionError, workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { isScheduleTimeout, requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "@/lib/explore/pending-schedule-contract";
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
-import { isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
+import { isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
 import styles from "@/components/explore/workflow-schedule-review.module.css";
 import { pollInForeground } from "@/lib/http/foreground-polling";
 
@@ -119,10 +119,15 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       // A lost response is reconciled silently. Only a verified server receipt
       // can show success; this read never creates a second post.
       setProgress("Checking whether your post was saved…");
+      let rejected = false;
       try {
         const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(entry.input.requestKey)}`), entry);
         if (checked.preparation.state !== "unconfirmed") { accept(entry, checked); return; }
+        if (isScheduleSubmissionRejected(error) && !entry.confirmed && alive.current && currentIdentity.current.storageKey === storageKey && readSavedExploreSchedule(localStorage.getItem(storageKey), owner)?.input.requestKey === entry.input.requestKey) {
+          localStorage.removeItem(storageKey); setSaved(null); setResult(null); setProgress("Review your updated choices, then click Schedule post."); rejected = true;
+        }
       } catch { /* Keep the exact durable request for the single Try again action. */ }
+      if (rejected) throw error;
       throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
@@ -174,7 +179,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     : preparationState === "failed" ? "Video preparation failed. You can try scheduling again."
     : preparationState === "cancelled" ? "This post was cancelled. You can schedule another post."
     : confirmed ? preparationState === "preparing" ? "Post scheduled. Your video is preparing in the background." : "Post scheduled"
-    : composition.error ?? (unresolved ? "Scheduling was interrupted. Try again to finish scheduling your post." : "Choose your accounts, caption, date and time, then schedule your post.");
+    : composition.error ?? (!confirmed && !unresolved ? workflowAccountSelectionError(draft) : null) ?? (unresolved ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : "Choose your accounts, caption, date and time, then schedule your post.");
   const actions = <div className={styles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
@@ -182,5 +187,5 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
     {confirmed ? <Link href="/scheduling" className={styles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
-  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
+  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
 }

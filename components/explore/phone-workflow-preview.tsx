@@ -12,7 +12,7 @@ import { WorkflowCreationPanel, type WorkflowSection } from "@/components/explor
 import { WorkflowScheduleWorkspace } from "@/components/explore/workflow-edit-workspace";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
-import { selectWorkflowAccount, workflowSelectedAccounts, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
+import { selectWorkflowAccount, workflowSelectedAccountIds, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { WorkflowPreviewCanvas } from "@/components/explore/workflow-preview-canvas";
 import { WorkflowSectionHeading, WorkflowSectionNavigation, useWorkflowSectionOrientation } from "@/components/explore/workflow-section-navigation";
 import { useLocalAppScreen } from "@/components/explore/use-local-app-screen";
@@ -131,7 +131,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule" keepMounted className={creation.sectionPanel}>
-            <WorkflowSchedulingPanel ownerId={ownerId} captionEnabled={generationEnabled && section === "schedule"} draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccounts(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
+            <WorkflowSchedulingPanel ownerId={ownerId} captionEnabled={generationEnabled && section === "schedule"} draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccountIds(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
           </Tabs.Panel>
         </WorkflowCreationPanel>
         <section id="phone-workflow-preview" aria-label="Phone video creation workspace" className={cn(creation.main, sections.preview)} hidden={!previewVisible}>

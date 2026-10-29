@@ -15,9 +15,13 @@ export function sourceInventory({ includeStagedHookRelease = false } = {}) {
   const refs = catalog.mediaStatus === "published" ? importedItems.map(item => ({ referenceId: item.id, format: item.format,
     units: item.format === "slideshow" ? item.slides.map(s => ({ slideId: s.id, key: `explore/recreate/v1/${s.file}`, hash: s.file.split(".")[0] }))
       : [{ slideId: null, key: `explore/recreate/v1/${item.videoFile}`, hash: item.videoFile.split(".")[0] }] })) : [];
+  const reclassified = JSON.parse(readFileSync(path.join(root, "worker/src/lib/explore-hook-wall-reclassification-release.json"), "utf8"));
+  const migratedWallIds = new Set(reclassified.mediaStatus === "published" && reclassified.activation === "active"
+    ? reclassified.items.map(item => `explore-wall-text-${item.sourceFolder.slice(-2)}`) : []);
   for (const [file, format] of [["hook-video-library.ts", "hook"], ["wall-text-video-library.ts", "wall_text"]]) {
     const source = readFileSync(path.join(root, "lib/explore", file), "utf8");
     for (const match of source.matchAll(/id:\s*"(explore-(?:hook|wall-text)-\d+)"[\s\S]*?sourceFileSha256:\s*"([a-f0-9]{64})"/g)) {
+      if (format === "wall_text" && (match[1] === "explore-wall-text-21" || migratedWallIds.has(match[1]))) continue;
       refs.push({ referenceId: match[1], format, units: [{ slideId: null, hash: match[2], key: `${format === "hook" ? "explore/hook-videos/2026-08-29" : "explore/wall-text-videos/2026-09-03"}/${match[2]}.mp4` }] });
     }
   }
@@ -31,7 +35,7 @@ export function sourceInventory({ includeStagedHookRelease = false } = {}) {
       }
     }
   }
-  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json", "explore-hook-reference-new-batch-release.json", "explore-hook-reference-oct23-release.json", "explore-hook-reference-oct23-refresh-release.json"]) {
+  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json", "explore-hook-reference-new-batch-release.json", "explore-hook-reference-oct23-release.json", "explore-hook-reference-oct23-refresh-release.json", "explore-hook-wall-reclassification-release.json"]) {
     const release = JSON.parse(readFileSync(path.join(root, "worker/src/lib", file), "utf8"));
     if (includeStagedHookRelease || release.mediaStatus === "published") for (const item of release.items) {
       const existing = refs.find(ref => ref.referenceId === item.id);

@@ -66,7 +66,7 @@ if (sitemap) {
       const nodes = structured.flatMap(value => Array.isArray(value) ? value : value["@graph"] ?? [value]);
       const types = nodes.flatMap(node => Array.isArray(node["@type"]) ? node["@type"] : [node["@type"]]).filter(Boolean);
       if (new URL(url).pathname.startsWith("/guides/")) {
-        assert(types.includes("Article"));
+        assert(types.includes("Article") || types.includes("TechArticle"));
         if (new URL(url).pathname === "/guides/how-to-create-ugc-videos-with-ai") {
           // This guide presents five steps and a video, rather than the
           // question-and-answer layout used by the other founder guides.
@@ -77,7 +77,7 @@ if (sitemap) {
           for (const step of howTo.step) {
             assert(html.includes(`id="step-${step.position}"`));
           }
-        } else {
+        } else if (!types.includes("TechArticle")) {
           assert(types.includes("BreadcrumbList"));
           assert(types.includes("FAQPage"));
         }

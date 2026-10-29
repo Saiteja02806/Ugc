@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { wallTextProfile } from "../../worker/src/lib/wall-initial-text-layout.ts";
 
 export const ReferenceTextBlockSchema = z.object({
   text: z.string().trim().min(1).max(6000),
@@ -33,17 +34,32 @@ export function remixSourceMatches(source: ReferenceText, request: Pick<RemixReq
     && source.slideId === (format === "slideshow" && !request.referenceId ? request.slideId ?? "manual-slide" : request.slideId);
 }
 export const RemixOutputSchema = z.object({
-  blocks: z.array(z.string().trim().min(1).max(600).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u)).max(20),
+  blocks: z.array(z.string().trim().min(1).max(6000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u)).max(20),
   heading: z.string().trim().max(180).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u),
   body: z.string().trim().max(600).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u),
 }).strict();
 export type RemixOutput = z.infer<typeof RemixOutputSchema>;
+/** Source/hash authority, never an asserted layout supplied by the browser. */
+export function isWallHeadingBodySource(source: ReferenceText) {
+  return source.format === "wall_text" && wallTextProfile(source.referenceId, source.sourceSha256)?.structure === "heading-body-v1";
+}
+/** New provider requests use explicit fields; the general reader retains legacy blocks. */
+export const WallHeadingBodyRemixOutputSchema = RemixOutputSchema.extend({
+  blocks: z.array(z.string()).length(0),
+  heading: RemixOutputSchema.shape.heading.min(1),
+  body: z.string().trim().min(1).max(6000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u),
+});
 export type ReferenceTextResponse = { source: ReferenceText | null; message?: string };
 
 /** User-reviewed copy keeps editor bounds; users may expand the AI's draft. */
 export function validateRemixDraft(value: unknown, source: ReferenceText): RemixOutput {
-  const output = RemixOutputSchema.parse(value);
-  if (source.format === "slideshow") {
+  const structured = isWallHeadingBodySource(source) && value !== null && typeof value === "object" && "blocks" in value && Array.isArray(value.blocks) && value.blocks.length === 0;
+  const output = structured ? WallHeadingBodyRemixOutputSchema.parse(value) : RemixOutputSchema.parse(value);
+  if (source.format !== "wall_text" && output.blocks.some(block => block.length > 600)) throw new Error("The text exceeds this workflow's limit.");
+  if (isWallHeadingBodySource(source) && output.blocks.length === 0) {
+    if (!output.heading.trim() || !output.body.trim()) throw new Error("Add both the Wall heading and body before applying it.");
+  } else if (source.format === "slideshow") {
+    if (output.body.length > 600) throw new Error("The slide body exceeds its character limit.");
     if (output.blocks.length || !output.heading.trim() && !output.body.trim()) throw new Error("The remixed slide is empty.");
   } else if (output.blocks.length !== source.blocks.length || output.heading || output.body) {
     throw new Error("The remixed text does not match this reference's text blocks.");
@@ -54,7 +70,7 @@ export function validateRemixDraft(value: unknown, source: ReferenceText): Remix
 export function validateRemixOutput(value: unknown, source: ReferenceText): RemixOutput {
   const output = validateRemixDraft(value, source);
   const originalLength = source.blocks.reduce((sum, b) => sum + b.text.length, 0);
-  const generatedLength = source.format === "slideshow" ? output.heading.length + output.body.length : output.blocks.join("").length;
+  const generatedLength = source.format === "slideshow" || isWallHeadingBodySource(source) && output.blocks.length === 0 ? output.heading.length + output.body.length : output.blocks.join("").length;
   if (generatedLength > Math.max(80, Math.ceil(originalLength * 1.3))) throw new Error("The remix is too long for this reference. Try a shorter instruction.");
   return output;
 }

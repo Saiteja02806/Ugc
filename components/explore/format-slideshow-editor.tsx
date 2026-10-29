@@ -336,9 +336,10 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
         const draft = readSlideshowDraft(localStorage.getItem(draftKey), owner);
         const previousHistory = readDraftHistory(localStorage.getItem(`${draftKey}:history`), owner);
         setDraftHistory(previousHistory);
-        if (libraryItemId && openedLibraryItem.current !== `${owner}:${libraryItemId}`) {
+        // An interrupted save takes precedence over a newly opened Library link.
+        // Restore its exact sequence and Resume action before opening other work.
+        if (libraryItemId && openedLibraryItem.current !== `${owner}:${libraryItemId}` && (!saved || saved.output)) {
           if (!isExploreUuid(libraryItemId)) throw new Error("Choose a valid saved slideshow.");
-          if (saved && !saved.output) throw new Error("Resume your interrupted save before opening another slideshow.");
           const token = await getCurrentUserIdToken(owner); if (!token) throw new Error("Sign in to reopen this slideshow.");
           const response = await fetch(`/api/library/carousels/${libraryItemId}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
           const data = await response.json() as { ok?: boolean; item?: LibraryCarouselItemRecord };

@@ -19,7 +19,7 @@ export const CampaignPurposeSchema = z.enum([
   "app_install",
 ]);
 
-export const WebsiteBusinessAnalysisSchema = z
+export const WebsiteBusinessAnalysisGenerationSchema = z
   .object({
     businessName: nullableCompactString,
     businessModel: BusinessModelSchema.nullable(),
@@ -52,6 +52,22 @@ export const WebsiteBusinessAnalysisSchema = z
     confidenceReason: z.string().trim().min(1).max(360).nullable(),
   })
   .strict();
+
+// Owner-edited context is not subject to the concise AI output limits.
+const ownerText = z.string().trim().min(1);
+const ownerList = z.array(ownerText);
+export const WebsiteBusinessAnalysisSchema = WebsiteBusinessAnalysisGenerationSchema.extend({
+  businessName: ownerText.nullable(), category: ownerText.nullable(),
+  categories: ownerList, productSummary: ownerText.nullable(),
+  targetAudience: ownerList, wallTextPrimaryReader: ownerText.nullable().optional(),
+  wallTextSecondaryReader: ownerText.nullable().optional(), mainProblem: ownerText.nullable(),
+  mainPromise: ownerText.nullable(), valueProps: ownerList, painPoints: ownerList,
+  differentiators: ownerList, brandTone: ownerText.nullable(),
+  campaignPurposes: z.array(CampaignPurposeSchema), carouselAngles: ownerList,
+  pexelsImageQueries: ownerList, visualKeywords: ownerList,
+  recommendedCarouselStructure: ownerList, ctaIdeas: ownerList, claimsToAvoid: ownerList,
+  missingInfo: ownerList, confidenceReason: ownerText.nullable(),
+});
 
 type CurrentWebsiteBusinessAnalysis = z.infer<
   typeof WebsiteBusinessAnalysisSchema

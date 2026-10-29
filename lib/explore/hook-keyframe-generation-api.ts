@@ -17,6 +17,7 @@ import { privateMediaHead } from "../media/private-media-storage";
 import { getMissingStorageEnvVars, headStorageObject, uploadBufferToStorage } from "../storage/storage";
 import { getHookOpeningSourceFrame, HookSourceFrameError } from "./hook-source-frame.ts";
 import { buildOriginalOpeningImagePrompt } from "./hook-keyframe-image-prompt.ts";
+import { getHookKeyframeMotionReviewDraft } from "./hook-keyframe-motion.ts";
 import { HOOK_KEYFRAME_MAX_CONTEXT_BYTES, HOOK_KEYFRAME_MAX_PERSON_IMAGE_BYTES, hookKeyframeGenerationInputKey, hookKeyframePreparationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey, hookKeyframeSourceRatio, isHookKeyframeImageInput, type HookKeyframeGenerationReceipt } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 import { HookKeyframeGenerationError, hookKeyframeReceiptFromJob, resolveOwnedHookKeyframeResult } from "./hook-keyframe-result.ts";
 import { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, hookKeyframeMaxPersonImages, hookKeyframeReceiptImageModel, isHookKeyframeImageModel, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
@@ -110,6 +111,10 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     if (new Set(photos.map(photo => photo.url)).size !== photos.length) throw new HookKeyframeGenerationError("Choose distinct face photos rather than duplicate copies.", 400);
     const frame = await getHookOpeningSourceFrame(input.referenceId);
     if (frame.sourceSha256 !== input.sourceSha256 || frame.frameIndex !== 0 || frame.frameTimeSeconds !== 0) throw new HookKeyframeGenerationError("The original opening changed. Refresh this preparation before generating.", 409);
+    // Accepted requests recover above this gate without another reservation.
+    if ((!frame.workflow || frame.workflow === "hook") && getHookKeyframeMotionReviewDraft(input.referenceId, frame.sourceSha256, 0)?.requiresDecision) {
+      throw new HookKeyframeGenerationError("This reference's motion still needs review. Choose another reference before generating a starting image.", 409);
+    }
     const openingFrame = frame;
     if (photos.reduce((total, photo) => total + photo.bytes, openingFrame.png.byteLength) > HOOK_KEYFRAME_MAX_CONTEXT_BYTES) throw new HookKeyframeGenerationError("The scene and face photos exceed 50 MiB combined. Choose fewer or smaller face photos.", 400);
     const aspectRatio = hookKeyframeSourceRatio(openingFrame.width, openingFrame.height);

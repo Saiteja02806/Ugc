@@ -38,7 +38,7 @@ async function fetchPage(path) {
   const graphs = [...html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map(match => JSON.parse(match[1]));
   const nodes = graphs.flatMap(graph => graph["@graph"] ?? [graph]);
   if (path.startsWith("/guides/")) {
-    const article = nodes.find(node => node["@type"] === "Article");
+    const article = nodes.find(node => ["Article", "TechArticle"].includes(node["@type"]));
     assert(article, `Article schema missing: ${path}`);
     assert.equal(article.mainEntityOfPage, new URL(path, canonicalOrigin).href);
     assert(article.image && article.publisher?.logo && article.author?.url, `Article identity/image missing: ${path}`);

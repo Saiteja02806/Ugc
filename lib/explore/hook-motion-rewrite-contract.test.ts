@@ -28,17 +28,18 @@ test("all 107 rewrites bind to the exact canonical video and reviewed first-to-l
     if (rewrite.review.status === "static_reviewed") { reviewed++; assert.deepEqual(rewrite.review.supportedDurationsSeconds, [durationSeconds]); }
     else { decisions++; assert.equal(draft.requiresDecision, true); assert.ok(rewrite.review.issues.length); assert.deepEqual(rewrite.review.supportedDurationsSeconds, []); }
   }
-  assert.equal(reviewed, 97); assert.equal(decisions, 10);
+  assert.equal(reviewed, 104); assert.equal(decisions, 3);
 });
 
-test("ten remaining ambiguous sequences retain explicit source-bound decisions rather than silently changing the scene or timing", () => {
+test("unresolved historical sequences retain their source-bound decisions", () => {
   const actual = Object.values(hookKeyframeMotionRewrites).filter(item => item.review.status === "needs_decision")
     .map(item => hookKeyframeMotionCatalog[item.referenceId].displayTitle).sort();
-  assert.deepEqual(actual, ["Hook 19", "Hook 22", "Hook 28", "Hook 39", "Hook 51", "Hook 57", "Hook 64", "Hook 72", "Hook 83", "Hook 84"]);
+  assert.deepEqual(actual, ["Hook 19", "Hook 28", "Hook 84"]);
   const window = hookKeyframeMotionRewrites["explore-paired-hook-e683292d4cd22b2a8b5a9cd8"];
   assert.match(window.review.issues.join(" "), /no performer|no face/);
   const repeat = hookKeyframeMotionRewrites["explore-paired-hook-b7c86d6729a69666ddf46ed5"];
-  assert.match(repeat.review.issues.join(" "), /timing|shorter|repeated/);
+  assert.equal(repeat.review.status, "static_reviewed");
+  assert.match(repeat.review.reviewNote, /User decision.*purple handled bottle/);
 });
 
 test("Hook 15 preserves the two-take sequence in its accepted eight-second prompt without qualifying paid generation", () => {
@@ -81,9 +82,18 @@ test("the two Hook46 entries retain different source bindings and independently 
 test("opening actions continue the already-started stretch and hand raise instead of resetting to an incompatible pose", () => {
   const stretch = hookKeyframeMotionRewrites["explore-paired-hook-d1d14b08f6dd4711ad166ded"].plan;
   assert.match(stretch.openingState, /already interlaced/);
-  assert.match(stretch.beats[0].action, /already-joined palms/);
-  assert.match(stretch.beats[1].action, /Release the joined hands/);
-  assert.match(stretch.beats[1].action, /opposite hand/);
+  // Catalog Hook08: the expanded plan separates first-side stretch, hand switch,
+  // opposite-side stretch and return to work. Do not expect the switch in beat2.
+  assert.deepEqual(stretch.beats.map(beat => beat.phase), ["opening", "middle", "middle", "middle", "middle", "middle", "ending"]);
+  const [forward, firstSide, firstHold, switchHands, oppositeHold, release, returnToWork] = stretch.beats;
+  assert.match(forward.action, /already-interlaced grip/);
+  assert.match(forward.action, /joined palms outward and extending both arms forward/);
+  assert.match(firstSide.action, /Release the joined hands and raise the screen-left hand over the crown/);
+  assert.match(firstHold.action, /screen-left neck stretch/);
+  assert.match(switchHands.action, /head back through upright.*opposite hand over the crown/);
+  assert.match(oppositeHold.action, /head toward screen-right with the opposite hand/);
+  assert.match(release.action, /return the head upright, lowering both hands/);
+  assert.match(returnToWork.action, /both hands back near the keyboard.*gaze down/);
   const cover = hookKeyframeMotionRewrites["explore-paired-hook-4463cc3d85f44ad6829ceb12"].plan;
   assert.match(cover.openingState, /already beginning to rise/);
   assert.match(cover.endingState, /hand covering the lips/);

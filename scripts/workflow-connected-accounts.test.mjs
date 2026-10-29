@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, suffix = "") => {
@@ -14,7 +15,7 @@ const load = (file, imports = {}, suffix = "") => {
 };
 const types = load("lib/social/types.ts");
 const policy = load("lib/scheduling/social-connection-policy.ts");
-const client = load("lib/explore/workflow-connected-accounts.ts", { "../social/types": types, "../scheduling/social-connection-policy": policy });
+const client = load("lib/explore/workflow-connected-accounts.ts", { "../social/types": types, "../scheduling/social-connection-policy": policy, "../http/read-deadline.ts": { withReadDeadline } });
 const account = (overrides = {}) => ({ id: "connection-a", platform: "instagram", platformAccountName: "Example App", platformAccountUsername: "example_app", status: "connected", scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: false, ...overrides });
 const payload = (connections = [account()]) => ({ ok: true, connections });
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -85,7 +86,7 @@ test("account lookup uses only authenticated no-store GET and forwards cancellat
   assert.equal(calls[0][1].method, "GET");
   assert.equal(calls[0][1].cache, "no-store");
   assert.equal(calls[0][1].headers.Authorization, "Bearer fake-token-a");
-  assert.equal(calls[0][1].signal, signal);
+  assert.equal(calls[0][1].signal.aborted, false);
   assert.equal(calls[0][1].body, undefined);
 });
 
@@ -200,9 +201,11 @@ test("expired or insufficient-permission accounts are visible but not selectable
   const actual = ui({ data: [account({ status: "expired" }), account({ id: "connection-b", scopes: [] })] });
   const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram"], selectedIds: { instagram: "connection-a" }, onSelect() {} });
   const buttons = nodes(tree).filter((node) => node.type === "button");
-  assert.ok(buttons.every((button) => button.props.disabled && !button.props["aria-pressed"]));
-  assert.match(text(tree), /Reconnect to schedule/);
-  assert.equal(nodes(tree).filter((node) => node.type === "check").length, 0);
+  assert.equal(buttons[0].props.disabled, false, "Selected blocked accounts can be removed");
+  assert.equal(buttons[0].props["aria-pressed"], true);
+  assert.equal(buttons[1].props.disabled, true);
+  assert.match(text(tree), /Reconnect/);
+  assert.equal(nodes(tree).filter((node) => node.type === "check").length, 1);
 });
 
 test("both platform accounts are labelled and independently selected", () => {
@@ -238,4 +241,16 @@ test("both workflows share the guarded account control and reset destination on 
   assert.match(source, /getCurrentUserIdToken\(ownerId\)/);
   assert.match(source, /if \(signal.aborted\)/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|POST|\.trigger\(|accessToken|refreshToken/);
+});
+
+
+test("cached publishable accounts remain toggleable throughout a background refresh", () => {
+  const actual=ui({isFetching:true,data:[account(),account({id:'second'})]});const selected=[];
+  const tree=actual.testConnectedAccounts({ownerId:'owner',platforms:['instagram'],selectedIds:{instagram:['connection-a','second']},onSelect:(platform,id)=>selected.push([platform,id])});
+  const buttons=nodes(tree).filter(node=>node.type==='button');assert.equal(buttons.length,2);assert.ok(buttons.every(button=>!button.props.disabled&&button.props['aria-pressed']));
+  buttons[0].props.onClick();assert.deepEqual(selected,[['instagram','connection-a']]);
+});
+test("explicit empty selection survives a fresh account-picker mount without auto-selection", () => {
+  const actual=ui(),selected=[];
+  actual.testConnectedAccounts({ownerId:'owner',platforms:['instagram'],selectedIds:{instagram:[]},onSelect:(...args)=>selected.push(args)});actual.flushEffects();assert.deepEqual(selected,[]);
 });

@@ -9,8 +9,8 @@ import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import { getReferenceText } from "./reference-text-store";
-import { ReferenceTextSchema, RemixRequestSchema, RemixOutputSchema, validateRemixOutput } from "./reference-text";
-import { REMIX_TEXT_PROMPT_VERSION, REMIX_TEXT_SYSTEM_PROMPT, remixTextPrompt } from "./remix-text-prompt";
+import { ReferenceTextSchema, RemixRequestSchema, RemixOutputSchema, WallHeadingBodyRemixOutputSchema, isWallHeadingBodySource, validateRemixOutput } from "./reference-text";
+import { REMIX_TEXT_PROMPT_VERSION, WALL_REMIX_TEXT_PROMPT_VERSION, remixTextSystemPrompt, remixTextPrompt } from "./remix-text-prompt";
 import { HOOK_BRAND_REMIX_PROMPT_VERSION, hookBrandRemixSystemPrompt } from "./hook-remix-brand-prompt";
 import { remixInputSource } from "./remix-text-input";
 import { hookRemixSource } from "./hook-remix-source";
@@ -100,10 +100,12 @@ export async function remixTextForOwner(userId: string, value: unknown, actor?: 
     if (!profile?.context.businessName || !profile.context.productSummary) return json({ ok: false, message: "Add your business context in Settings before remixing." }, 409);
     if (!process.env.OPENAI_API_KEY?.trim()) return json({ ok: false, message: "Text generation is unavailable." }, 503);
     const model = process.env.OPENAI_TEXT_REMIX_MODEL?.trim() || "gpt-5.6-luna";
-    const promptVersion = source.format === "hook" ? HOOK_BRAND_REMIX_PROMPT_VERSION : REMIX_TEXT_PROMPT_VERSION;
+    const promptVersion = source.format === "hook" ? HOOK_BRAND_REMIX_PROMPT_VERSION : source.format === "wall_text" ? WALL_REMIX_TEXT_PROMPT_VERSION : REMIX_TEXT_PROMPT_VERSION;
     // Opt-in until the broader paid comparison and release review are accepted.
     const reviewEnabled = source.format === "hook" && process.env.EXPLORE_HOOK_REMIX_REVIEW_ENABLED === "true";
+    const structuredWall = isWallHeadingBodySource(source);
     const input = { source, businessProfileId: profile.id, businessProfileVersion: profile.profileVersion, businessContext: profile.context, instructions: body.instructions, model, promptVersion,
+      ...(structuredWall ? { outputStructure: "heading-body-v1" } : {}),
       ...(reviewEnabled ? { qualityReviewVersion: HOOK_REMIX_REVIEW_VERSION } : {}) };
     const { data: claim, error: claimError } = await db.rpc("explore_claim_text_remix", { p_user_id: userId, p_request_key: body.requestKey, p_payload_hash: payloadHash, p_input: input });
     if (claimError) return json({ ok: false, message: claimError.message.includes("remix_daily_limit") ? "You've reached today's 20 text remixes. Try again tomorrow." : "Could not reserve this remix. No AI request was made." }, claimError.message.includes("remix_daily_limit") ? 429 : 409);
@@ -113,8 +115,8 @@ export async function remixTextForOwner(userId: string, value: unknown, actor?: 
       const providerDeadline = Date.now() + 70000;
       const completion = await ai.chat.completions.parse({
         model, ...(/^gpt-5/.test(model) ? { reasoning_effort: "medium" as const } : { temperature: 0.2 }), max_completion_tokens: 4000,
-        messages: [{ role: "system", content: source.format === "hook" ? hookBrandRemixSystemPrompt(source, profile.context) : REMIX_TEXT_SYSTEM_PROMPT }, { role: "user", content: remixTextPrompt(source, profile.context, body.instructions) }],
-        response_format: zodResponseFormat(RemixOutputSchema, "reference_text_remix"),
+        messages: [{ role: "system", content: source.format === "hook" ? hookBrandRemixSystemPrompt(source, profile.context) : remixTextSystemPrompt(source.format, source) }, { role: "user", content: remixTextPrompt(source, profile.context, body.instructions) }],
+        response_format: zodResponseFormat(structuredWall ? WallHeadingBodyRemixOutputSchema : RemixOutputSchema, "reference_text_remix"),
       });
       let output;
       if (reviewEnabled) {
@@ -130,7 +132,7 @@ export async function remixTextForOwner(userId: string, value: unknown, actor?: 
         output = accepted.output;
         // Operational counts without customer source text or business facts in logs.
         console.info("Hook remix quality review", { requestKey: body.requestKey, version: HOOK_REMIX_REVIEW_VERSION, decision: accepted.review.decision, providerMs: 70000 - (providerDeadline - Date.now()) });
-      } else output = validateRemixOutput(completion.choices[0]?.message.parsed, source);
+      } else output = validateRemixOutput(structuredWall ? WallHeadingBodyRemixOutputSchema.parse(completion.choices[0]?.message.parsed) : completion.choices[0]?.message.parsed, source);
       if (source.format === "hook") assertSourceRelativeHookLength(output.blocks, source, profile.context);
       const saved = await db.from("explore_text_remixes").update({ status: "completed", output_json: output, updated_at: new Date().toISOString() }).eq("user_id", userId).eq("request_key", body.requestKey).eq("status", "pending").select("request_key").single();
       if (saved.error) return json({ ok: false, outcome: "uncertain", message: "The AI answered, but saving its result could not be confirmed. This request will not run again automatically." }, 503);

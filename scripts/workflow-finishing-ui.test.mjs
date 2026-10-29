@@ -569,6 +569,16 @@ test("a lost upload completion response is recovered through GET and never delet
   }
 });
 
+test("selection rejection releases the Talking Head request while Creator Phone keeps its existing recovery behavior", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const h = schedulingHarness({ kind, transport: async (url, init) => url === "/api/schedules" && init.method === "POST"
+      ? Response.json({ ok: false, code: "schedule_selection_unavailable", message: "Choose your current account." }, { status: 409 }) : null });
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick(); h.render();
+    assert.equal(h.store.has(h.storageKey), kind === "phone");
+    h.unmount();
+  }
+});
+
 function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport, draftId, onScheduled } = {}) {
   const cache = createScheduleCacheFixture("owner");
   let cursor = 0, pendingFailure = lost;
@@ -699,7 +709,7 @@ test("a corrected request with an uncertain server failure clears old time help 
     h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     let screen = h.render();
     assert.match(screen.view.schedule.error, /Could not schedule your post/);
-    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
+    assert.match(screen.view.schedule.message, /earlier post with its original accounts/);
     assert.doesNotMatch(screen.view.schedule.message, /time was rejected|Choose a future time/);
     const pendingReceipt = h.store.get(h.storageKey), firstPost = h.calls.find(call => call.method === "POST");
     assert.equal(JSON.parse(pendingReceipt).timeRejected, undefined, "A 500 cannot permit changing the durable request");
@@ -707,7 +717,7 @@ test("a corrected request with an uncertain server failure clears old time help 
     complete(Response.json({ ok: false, message: "Earlier status lookup failed" }, { status: 500 })); await tick();
     screen = h.render();
     assert.match(screen.view.schedule.error, /Could not schedule your post/);
-    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
+    assert.match(screen.view.schedule.message, /earlier post with its original accounts/);
     assert.equal(h.store.get(h.storageKey), pendingReceipt);
     h.props.scheduleDraft = { ...h.props.scheduleDraft, caption: "New visible caption", time: "18:45" };
     h.render().view.schedule.onAction(); await tick();

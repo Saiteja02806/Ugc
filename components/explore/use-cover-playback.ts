@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/** Route prefetch has priority; decorative video loads only on sustained interest. */
-export function useCoverPlayback(source: string | null, target: "a" | "button" = "a") {
+/** Landing covers warm metadata; gallery previews load only on sustained interest. */
+export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", warmCover = false) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;
@@ -21,7 +21,13 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
       if (video.hasAttribute("src")) { video.removeAttribute("src"); video.load(); }
     };
     const sync = () => {
-      if (!interested || !visible || preference.matches || document.visibilityState === "hidden") { stop(); return; }
+      if (!visible || preference.matches || document.visibilityState === "hidden") { stop(); return; }
+      if (warmCover) {
+        if (!video.hasAttribute("src")) { video.preload = "metadata"; video.src = source; }
+        if (interested) void video.play().catch(() => {});
+        return;
+      }
+      if (!interested) { stop(); return; }
       if (video.hasAttribute("src") || startTimer !== null) return;
       startTimer = setTimeout(() => {
         startTimer = null;
@@ -48,6 +54,6 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
       link.removeEventListener("pointerdown", leave); link.removeEventListener("click", leave);
       preference.removeEventListener("change", sync); document.removeEventListener("visibilitychange", sync); video.removeEventListener("canplay", ready);
     };
-  }, [source, target]);
+  }, [source, target, warmCover]);
   return ref;
 }

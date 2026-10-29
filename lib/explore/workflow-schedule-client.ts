@@ -16,6 +16,13 @@ export class ScheduleRequestError extends Error {
 export function isScheduleTimeRejected(error: unknown) {
   return error instanceof ScheduleRequestError && error.status === 409 && error.code === "schedule_time_too_soon";
 }
+/** Only consider definitive client rejections; reconcile absence before releasing an intent. */
+export function isScheduleSubmissionRejected(error: unknown) {
+  return error instanceof ScheduleRequestError && (
+    [400, 401, 402, 403, 404, 413, 422].includes(error.status) ||
+    error.status === 409 && error.code === "schedule_selection_unavailable"
+  );
+}
 export const SCHEDULE_TIME_REJECTED_MESSAGE = "Choose a future date and time, then click Schedule post.";
 
 export type ScheduleReceipt = { version: 1; owner: string; kind: "hook" | "phone"; input: ScheduleCreateInput; scheduleId?: string; timeRejected?: true };
@@ -27,8 +34,8 @@ export function readScheduleReceipt(raw: string | null, owner: string, kind: "ho
   if (v?.version !== 1 || v.owner !== owner || v.kind !== kind || !input ||
       !/^explore:[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? "") || !isExploreUuid(input.idempotencyKey?.slice(8)) ||
       input.source?.kind !== sourceKind || !isExploreUuid(input.source.id) ||
-      !Array.isArray(input.targets) || input.targets.length < 1 || input.targets.length > 3 || input.targets.some(target => !isExploreUuid(target?.connectionId) || !["instagram", "tiktok", "youtube"].includes(target?.platform ?? "")) ||
-      new Set(input.targets.map(target => target.connectionId)).size !== input.targets.length || new Set(input.targets.map(target => target.platform)).size !== input.targets.length ||
+      !Array.isArray(input.targets) || input.targets.length < 1 || input.targets.length > 5 || input.targets.some(target => !isExploreUuid(target?.connectionId) || !["instagram", "tiktok", "youtube"].includes(target?.platform ?? "")) ||
+      new Set(input.targets.map(target => target.connectionId)).size !== input.targets.length ||
       (input.useDefaultScheduleTime !== undefined && typeof input.useDefaultScheduleTime !== "boolean") ||
       typeof input.scheduledFor !== "string" || !Number.isFinite(Date.parse(input.scheduledFor)) ||
       typeof input.timezone !== "string" || input.timezone.length > 100 ||

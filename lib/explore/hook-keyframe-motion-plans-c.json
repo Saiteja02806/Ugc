@@ -340,9 +340,11 @@
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -538,10 +540,8 @@
           190
         ],
         "frameCount": 191,
-        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. Also inspected every existing all-decoded-frame sheet page with matching source hash to verify hand/prop transitions. This remains a review draft; no duration variant is approved because an explicit product decision is outstanding.",
-        "issues": [
-          "The long held tongue/finger/bottle sequence is clear, but choosing how much of its repeated motion to retain in a shorter adaptation requires an explicit timing decision. No drinking action is present."
-        ],
+        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. Also inspected every existing all-decoded-frame sheet page with matching source hash to verify hand/prop transitions. This remains a review draft; no duration variant is approved because an explicit product decision is outstanding. User decision, 29 October 2026: Preserve the purple handled bottle, repeated mouth/hand action and final camera tilt; retain the complete action order rather than omit the repeated period. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
         "visualQualification": "not_tested"
       }
@@ -1618,9 +1618,11 @@
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -1637,10 +1639,8 @@
           131
         ],
         "frameCount": 132,
-        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. This remains a review draft; no duration variant is approved because an explicit product decision is outstanding.",
-        "issues": [
-          "The opening is an intentional partial-face crop. A full facial proportion inspection is impossible from this scene; approve retaining that crop or choose another opening explicitly."
-        ],
+        "reviewNote": "Viewed a fresh 12-frame canonical contact sheet including frame zero and final frame after verifying the MP4 SHA-256; compared the ordered action with the prior all-decoded-frame notes. The wording is self-contained and preserves opening-to-ending action order. This remains a review draft; no duration variant is approved because an explicit product decision is outstanding. User decision, 29 October 2026: Retain the intentional bottom-edge partial-face crop and low camera angle; do not reveal a full face or recenter the portrait. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba",
         "visualQualification": "not_tested"
       }

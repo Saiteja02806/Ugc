@@ -9,6 +9,7 @@ const settled = () => new Promise(resolve => setImmediate(resolve));
 function harness(extra = {}) {
   let cursor = 0, nextFrame = 0; const slots = [], cleanups = [], frames = new Map(), listeners = new Map();
   const react = {
+    useId() { return `preview-status-${cursor++}`; },
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
@@ -135,4 +136,27 @@ test("Demo reference and user-added audio use independent local clocks, then pau
   assert.equal(h.players.get("blob:demo-custom").volume, .6);
   assert.equal(h.players.get("blob:demo-reference").volume, .2);
   h.hide(); assert.equal([...h.players.values()].every(player => player.paused), true); h.cleanup();
+});
+
+
+test("export-only text warning keeps Play enabled and visible, without changing the clip", async () => {
+  const warning = "Your text does not fit. Reduce its size or move it higher.";
+  const h = harness({ playbackWarning: warning }); h.metadata();
+  assert.equal(h.button("Play combined preview").props.disabled, false);
+  assert.ok(h.button("Play combined preview").props["aria-describedby"]);
+  assert.equal(h.nodes().some(node => node.props?.role === "status" && node.props.children === warning), true);
+  h.button("Play combined preview").props.onClick(); await settled(); h.render();
+  assert.equal(h.players.get("blob:hook").paused, false);
+  assert.equal(h.players.get("blob:hook").currentTime, 2);
+  h.cleanup();
+});
+test("required audio and inactive previews still block playback with an accessible reason", () => {
+  for (const props of [{ playbackDisabledReason: "Loading your selected audio…", playbackWarning: "Text needs review." }, { active: false }]) {
+    const h = harness(props); h.metadata();
+    const button = h.button("Play combined preview");
+    assert.equal(button.props.disabled, true);
+    assert.ok(h.nodes().some(node => node.props?.id === button.props["aria-describedby"] && node.props.role === "status"));
+    button.props.onClick(); assert.equal([...h.players.values()].every(player => player.plays === 0), true);
+    h.cleanup();
+  }
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
 import { useCoverPlayback } from "@/components/explore/use-cover-playback";
 
 import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
@@ -12,7 +12,7 @@ const CHARACTER_COVER = "/explore/characters/ai-character-create-yours-v5.mp4";
 const CHARACTER_POSTER = "/explore/characters/ai-character-create-yours-v5.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {
-  const videoRef = useCoverPlayback(CHARACTER_COVER);
+  const videoRef = useCoverPlayback(CHARACTER_COVER, "a", true);
 
   return (
     <article aria-labelledby="explore-character-title" className={styles.workflowCard}>

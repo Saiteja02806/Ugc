@@ -9,6 +9,7 @@ import { getBusinessContextModelRequest } from "@/lib/business-profiles/model";
 import { BUSINESS_FACT_WRITING_PROMPT } from "@/lib/business-profiles/fact-writing-prompt";
 import type { ScrapedWebsitePage } from "@/lib/website-analysis/firecrawl";
 import {
+  WebsiteBusinessAnalysisGenerationSchema,
   WebsiteBusinessAnalysisSchema,
   type WebsiteBusinessAnalysis,
 } from "@/lib/website-analysis/schema";
@@ -138,7 +139,7 @@ export async function analyzeWebsiteBusiness({
       },
     ],
     response_format: zodResponseFormat(
-      WebsiteBusinessAnalysisSchema,
+      WebsiteBusinessAnalysisGenerationSchema,
       "website_business_analysis",
     ),
   });
@@ -238,7 +239,7 @@ export async function analyzeBusinessDescription(
       },
     ],
     response_format: zodResponseFormat(
-      WebsiteBusinessAnalysisSchema,
+      WebsiteBusinessAnalysisGenerationSchema,
       "business_description_analysis",
     ),
   });

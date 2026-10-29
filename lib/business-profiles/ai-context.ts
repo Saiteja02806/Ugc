@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 
 import {
+  WebsiteBusinessAnalysisGenerationSchema,
   WebsiteBusinessAnalysisSchema,
   type WebsiteBusinessAnalysis,
 } from "@/lib/website-analysis/schema";
@@ -56,7 +57,7 @@ export async function parseAiIdeBusinessContext(rawContext: string) {
       },
     ],
     response_format: zodResponseFormat(
-      WebsiteBusinessAnalysisSchema,
+      WebsiteBusinessAnalysisGenerationSchema,
       "app_business_analysis",
     ),
   });

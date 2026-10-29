@@ -31,7 +31,9 @@ import { withReadDeadline } from "@/lib/http/read-deadline";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { useAuth } from "@/contexts/auth-context";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-format";
 import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
+import { displayScheduleTime } from "@/lib/scheduling/time-display";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import { isScheduledVideoMediaAsset } from "@/lib/scheduling/secondary-clip-media";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
@@ -294,14 +296,18 @@ export function SchedulingWorkspace() {
   const [viewMode, setViewMode] = useState<ScheduleViewMode>(
     getInitialScheduleViewMode,
   );
+  const accountTodayDateKey = useMemo(
+    () => getAccountTodayDateKey(accountTimezone),
+    [accountTimezone],
+  );
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
-    toDateKey(new Date()),
+    getAccountTodayDateKey(accountTimezone),
   );
   const [visibleCalendarMonth, setVisibleCalendarMonth] = useState(() =>
-    toMonthKey(new Date()),
+    getAccountTodayDateKey(accountTimezone).slice(0, 7),
   );
   const [newScheduleInitialDate, setNewScheduleInitialDate] = useState(() =>
-    toDateKey(new Date()),
+    getAccountTodayDateKey(accountTimezone),
   );
   const [pendingInitialDemoMediaId, setPendingInitialDemoMediaId] = useState<
     string | null
@@ -624,6 +630,25 @@ export function SchedulingWorkspace() {
     setVisibleCalendarMonth(toMonthKey(parseDateKey(dateKey)));
   }
 
+  function handleChangeTab(nextTab: ScheduleTab) {
+    setActiveTab(nextTab);
+    if (viewMode === "list" && nextTab !== "drafts") {
+      const tabDrafts = filterDraftsByTab(drafts, nextTab);
+      const hasDraftsOnSelectedDate = tabDrafts.some(
+        (draft) => draft.scheduledDate === selectedCalendarDate,
+      );
+      if (!hasDraftsOnSelectedDate) {
+        const nearestDateWithDrafts = getNearestScheduleDateForDrafts(
+          tabDrafts,
+          selectedCalendarDate,
+        );
+        if (nearestDateWithDrafts) {
+          handleSelectCalendarDate(nearestDateWithDrafts);
+        }
+      }
+    }
+  }
+
   function handleChangeViewMode(mode: ScheduleViewMode) {
     if (mode === "list" && viewMode !== "list") {
       handleSelectCalendarDate(toDateKey(new Date()));
@@ -745,7 +770,7 @@ export function SchedulingWorkspace() {
       }
 
       initialAssetQueryState.current = "opening";
-      void handleNewSchedulePost(toDateKey(new Date()), {
+      void handleNewSchedulePost(accountTodayDateKey, {
         initialClipSelection: "secondary_only",
         initialDemoMediaId: assetId,
       }).finally(() => {
@@ -754,7 +779,7 @@ export function SchedulingWorkspace() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [demoMediaOptions, handleNewSchedulePost, scheduleMediaLoaded]);
+  }, [accountTodayDateKey, demoMediaOptions, handleNewSchedulePost, scheduleMediaLoaded]);
 
   async function handleEditSchedule(draft: ScheduleDraft) {
     const schedule = serverSchedules.find((candidate) => candidate.id === draft.id);
@@ -1389,7 +1414,7 @@ export function SchedulingWorkspace() {
                 <ScheduleTabs
                   activeTab={activeTab}
                   counts={counts}
-                  onChange={setActiveTab}
+                  onChange={handleChangeTab}
                 />
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
@@ -1441,13 +1466,21 @@ export function SchedulingWorkspace() {
                 calendarMonth={visibleCalendarMonth}
                 calendarDrafts={calendarDrafts}
                 drafts={visibleDrafts}
+                renderingScheduleId={renderingScheduleId}
+                retryingPublishTargetId={retryingPublishTargetId}
+                schedulingFinalDraftId={schedulingFinalDraftId}
                 selectedDate={selectedCalendarDate}
                 viewMode={viewMode}
+                onCancelDraft={setSchedulePendingCancellation}
                 onCreateDraftForDate={(dateKey) =>
                   void handleNewSchedulePost(dateKey)
                 }
+                onEditDraft={(draft) => void handleEditSchedule(draft)}
                 onMonthChange={setVisibleCalendarMonth}
                 onOpenDate={handleOpenDayPlanner}
+                onRenderDraft={handleStartCombinationRender}
+                onRetryPublishing={handleRetryPublishing}
+                onScheduleDraft={handleScheduleFinalPost}
                 onSelectDate={handleSelectCalendarDate}
               />
             )}
@@ -1489,6 +1522,10 @@ export function SchedulingWorkspace() {
           initialPlannedTargets={getSavedPlannedTargets(editingSchedule)}
           initialScheduledDate={defaultNewScheduleSlot.date}
           initialScheduledTime={defaultNewScheduleSlot.time}
+          initialUseDefaultScheduleTime={
+            editingSchedule === null &&
+            newScheduleInitialDate === accountTodayDateKey
+          }
           minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
           onClose={handleCloseScheduleDrawer}
           onRefreshMedia={() => loadScheduleMedia({ force: true })}
@@ -1781,10 +1818,18 @@ function ScheduleContent({
   calendarMonth,
   calendarDrafts,
   drafts,
+  onCancelDraft,
   onCreateDraftForDate,
+  onEditDraft,
   onMonthChange,
   onOpenDate,
+  onRenderDraft,
+  onRetryPublishing,
+  onScheduleDraft,
   onSelectDate,
+  renderingScheduleId,
+  retryingPublishTargetId,
+  schedulingFinalDraftId,
   selectedDate,
   viewMode,
 }: {
@@ -1792,10 +1837,21 @@ function ScheduleContent({
   calendarMonth: string;
   calendarDrafts: ScheduleDraft[];
   drafts: ScheduleDraft[];
+  onCancelDraft: (draft: ScheduleDraft) => void;
   onCreateDraftForDate: (dateKey: string) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
+  onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
   onSelectDate: (dateKey: string) => void;
+  renderingScheduleId: string | null;
+  retryingPublishTargetId: string | null;
+  schedulingFinalDraftId: string | null;
   selectedDate: string;
   viewMode: ScheduleViewMode;
 }) {
@@ -1818,7 +1874,16 @@ function ScheduleContent({
       <ScheduleDayList
         activeTab={activeTab}
         drafts={drafts}
+        renderingScheduleId={renderingScheduleId}
+        retryingPublishTargetId={retryingPublishTargetId}
+        schedulingFinalDraftId={schedulingFinalDraftId}
         selectedDate={selectedDate}
+        onCancelDraft={onCancelDraft}
+        onEditDraft={onEditDraft}
+        onRenderDraft={onRenderDraft}
+        onRetryPublishing={onRetryPublishing}
+        onScheduleDraft={onScheduleDraft}
+        onSelectDate={onSelectDate}
       />
     );
   }
@@ -1844,6 +1909,7 @@ function ScheduleListDatePicker({
   selectedDate: string;
 }) {
   const [open, setOpen] = useState(false);
+  const accountTimezone = useAccountTimeZone();
   const inputId = "schedule-list-date";
 
   function handleDateChange(dateKey: string) {
@@ -1856,7 +1922,7 @@ function ScheduleListDatePicker({
   }
 
   function handleSelectToday() {
-    handleDateChange(toDateKey(new Date()));
+    handleDateChange(getAccountTodayDateKey(accountTimezone));
   }
 
   return (
@@ -1905,14 +1971,39 @@ function ScheduleListDatePicker({
 function ScheduleDayList({
   activeTab,
   drafts,
+  onCancelDraft,
+  onEditDraft,
+  onRenderDraft,
+  onRetryPublishing,
+  onScheduleDraft,
+  onSelectDate,
+  renderingScheduleId,
+  retryingPublishTargetId,
+  schedulingFinalDraftId,
   selectedDate,
 }: {
   activeTab: ScheduleTab;
   drafts: ScheduleDraft[];
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
+  onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  onSelectDate: (dateKey: string) => void;
+  renderingScheduleId: string | null;
+  retryingPublishTargetId: string | null;
+  schedulingFinalDraftId: string | null;
   selectedDate: string;
 }) {
   const dayDrafts = useMemo(
     () => getScheduleDayListDrafts(drafts, selectedDate),
+    [drafts, selectedDate],
+  );
+  const otherDateSummaries = useMemo(
+    () => getOtherScheduleDateSummaries(drafts, selectedDate),
     [drafts, selectedDate],
   );
   const itemLabel = getTabItemName(activeTab, dayDrafts.length);
@@ -1948,7 +2039,18 @@ function ScheduleDayList({
           className="mt-5 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card"
         >
           {dayDrafts.map((draft) => (
-            <ScheduleDayListItem key={draft.id} draft={draft} />
+            <ScheduleDayListItem
+              key={draft.id}
+              draft={draft}
+              isRendering={renderingScheduleId === draft.id}
+              isSchedulingFinal={schedulingFinalDraftId === draft.id}
+              retryingPublishTargetId={retryingPublishTargetId}
+              onCancelDraft={onCancelDraft}
+              onEditDraft={onEditDraft}
+              onRenderDraft={onRenderDraft}
+              onRetryPublishing={onRetryPublishing}
+              onScheduleDraft={onScheduleDraft}
+            />
           ))}
         </ol>
       ) : (
@@ -1957,46 +2059,110 @@ function ScheduleDayList({
             <EmptyMedia variant="icon">
               <CalendarDays aria-hidden="true" />
             </EmptyMedia>
-            <EmptyTitle>No {tabLabels[activeTab].toLowerCase()} posts</EmptyTitle>
+            <EmptyTitle>No {tabLabels[activeTab].toLowerCase()} posts on this day</EmptyTitle>
             <EmptyDescription>
-              Choose another date to see posts scheduled on that day.
+              {otherDateSummaries.length > 0
+                ? `You have ${drafts.length} ${tabLabels[activeTab].toLowerCase()} ${getTabItemName(activeTab, drafts.length)} on other dates. Jump directly to a date below:`
+                : "Choose another date to see posts scheduled on that day."}
             </EmptyDescription>
           </EmptyHeader>
+          {otherDateSummaries.length > 0 ? (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {otherDateSummaries.slice(0, 5).map(({ count, dateKey }) => (
+                <Button
+                  key={dateKey}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSelectDate(dateKey)}
+                >
+                  {getReadableDateLabel(dateKey)} ({count})
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </Empty>
       )}
     </section>
   );
 }
 
-function ScheduleDayListItem({ draft }: { draft: ScheduleDraft }) {
+function ScheduleDayListItem({
+  draft,
+  isRendering,
+  isSchedulingFinal,
+  onCancelDraft,
+  onEditDraft,
+  onRenderDraft,
+  onRetryPublishing,
+  onScheduleDraft,
+  retryingPublishTargetId,
+}: {
+  draft: ScheduleDraft;
+  isRendering: boolean;
+  isSchedulingFinal: boolean;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
+  onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  retryingPublishTargetId: string | null;
+}) {
+  const hour12 = useDeviceTimeFormat();
   const isCarousel = isCarouselDraft(draft);
   const PostFormatIcon = isCarousel ? Images : FileVideo;
 
   return (
-    <li className="grid gap-3 border-b border-border px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(120px,0.3fr)_minmax(0,1fr)_auto] sm:items-center">
-      <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-        <Clock3 className="size-4 text-muted" aria-hidden="true" />
-        <span>{draft.scheduledTime ?? "Time pending"}</span>
-        <span className="text-xs font-semibold text-muted">{draft.timezone}</span>
-      </div>
-
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
-          <PostFormatIcon className="size-4" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-foreground">
-            {draft.mediaTitle || "Untitled post"}
-          </p>
-          <p className="mt-0.5 text-xs font-semibold text-muted">
-            {getScheduleDayListFormatLabel(draft)}
-          </p>
+    <li className="border-b border-border px-4 py-4 last:border-b-0">
+      <div className="grid gap-3 sm:grid-cols-[minmax(120px,0.3fr)_minmax(0,1fr)_auto] sm:items-center">
+        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <Clock3 className="size-4 text-muted" aria-hidden="true" />
+          <span>
+            {draft.scheduledTime
+              ? displayScheduleTime(draft.scheduledTime, hour12)
+              : "Time pending"}
+          </span>
+          <span className="text-xs font-semibold text-muted">{draft.timezone}</span>
         </div>
+
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+            <PostFormatIcon className="size-4" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-foreground">
+              {draft.mediaTitle || "Untitled post"}
+            </p>
+            <p className="mt-0.5 text-xs font-semibold text-muted">
+              {getScheduleDayListFormatLabel(draft)}
+            </p>
+          </div>
+        </div>
+
+        <Badge variant={getScheduleDayListStatusVariant(draft.status)}>
+          {getScheduleStatusLabel(draft.status)}
+        </Badge>
       </div>
 
-      <Badge variant={getScheduleDayListStatusVariant(draft.status)}>
-        {getScheduleStatusLabel(draft.status)}
-      </Badge>
+      <ScheduleTargetStatusList
+        compact
+        draft={draft}
+        onRetryPublishing={onRetryPublishing}
+        retryingPublishTargetId={retryingPublishTargetId}
+      />
+
+      <ScheduleDraftActions
+        draft={draft}
+        isRendering={isRendering}
+        isSchedulingFinal={isSchedulingFinal}
+        onCancelDraft={onCancelDraft}
+        onEditDraft={onEditDraft}
+        onRenderDraft={onRenderDraft}
+        onScheduleDraft={onScheduleDraft}
+      />
     </li>
   );
 }
@@ -2406,7 +2572,7 @@ function ScheduleTargetStatusList({
               ) : target.status === "action_required" &&
                 shouldReconnectSocialTarget(target.lastErrorCode) ? (
                 <a
-                  href="/settings#instagram-publishing"
+                  href={getSettingsPublishingHref(target.platform)}
                   className="inline-flex h-7 w-fit items-center justify-center rounded-control border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
                   Reconnect
@@ -2450,9 +2616,14 @@ function CalendarPlanner({
   onSelectDate: (dateKey: string) => void;
   selectedDate: string;
 }) {
+  const accountTimezone = useAccountTimeZone();
+  const accountTodayKey = useMemo(
+    () => getAccountTodayDateKey(accountTimezone),
+    [accountTimezone],
+  );
   const monthDays = useMemo(
-    () => getMonthCalendarDays(calendarMonth),
-    [calendarMonth],
+    () => getMonthCalendarDays(calendarMonth, accountTodayKey),
+    [accountTodayKey, calendarMonth],
   );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
   const postCount = drafts.filter(
@@ -2468,9 +2639,9 @@ function CalendarPlanner({
   }
 
   function jumpToToday() {
-    const todayKey = toDateKey(new Date());
+    const todayKey = getAccountTodayDateKey(accountTimezone);
     onSelectDate(todayKey);
-    onMonthChange(toMonthKey(new Date()));
+    onMonthChange(todayKey.slice(0, 7));
   }
 
   function selectDate(dateKey: string) {
@@ -2791,6 +2962,11 @@ function SelectedCalendarDayPanel({
 }
 
 function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
+  const hour12 = useDeviceTimeFormat();
+  const formattedTime = draft.scheduledTime
+    ? displayScheduleTime(draft.scheduledTime, hour12)
+    : "--:--";
+
   return (
     <div className="rounded-control border border-border bg-card-muted px-2 py-1.5">
       <div className="flex items-center gap-1.5">
@@ -2801,7 +2977,7 @@ function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
           )}
         />
         <span className="truncate text-[11px] font-bold text-foreground">
-          {draft.scheduledTime || "--:--"} {draft.mediaTitle || "Combination draft"}
+          {formattedTime} {draft.mediaTitle || "Combination draft"}
         </span>
       </div>
       <p className="mt-0.5 truncate text-[10px] font-semibold text-muted">
@@ -3001,6 +3177,7 @@ function SelectedDayDraftCard({
   onScheduleDraft: (draft: ScheduleDraft) => void;
   retryingPublishTargetId: string | null;
 }) {
+  const hour12 = useDeviceTimeFormat();
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
   const combinedDraft = isCombinedVideoDraft(draft);
   const isWallTextDraft = draft.sourceType === "wall_text_render";
@@ -3023,7 +3200,7 @@ function SelectedDayDraftCard({
             {draft.mediaTitle || "Combination draft"}
           </p>
           <p className="mt-1 text-xs font-semibold text-muted">
-            {draft.scheduledTime ? `${draft.scheduledTime} ${draft.timezone}` : "Publish date and time not selected"}
+            {draft.scheduledTime ? `${displayScheduleTime(draft.scheduledTime, hour12)} ${draft.timezone}` : "Publish date and time not selected"}
           </p>
         </div>
         <span
@@ -3182,14 +3359,15 @@ function groupDraftsByDate(drafts: ScheduleDraft[]) {
   return grouped;
 }
 
-function getMonthCalendarDays(monthKey: string): CalendarDay[] {
+function getMonthCalendarDays(
+  monthKey: string,
+  todayKey = toDateKey(new Date()),
+): CalendarDay[] {
   const monthStart = parseMonthKey(monthKey);
   const gridStart = new Date(monthStart);
 
   gridStart.setDate(1 - monthStart.getDay());
   gridStart.setHours(0, 0, 0, 0);
-
-  const todayKey = toDateKey(new Date());
 
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);
@@ -3203,6 +3381,82 @@ function getMonthCalendarDays(monthKey: string): CalendarDay[] {
       isToday: dateKey === todayKey,
     };
   });
+}
+
+function getAccountTodayDateKey(timezone: string, now: Date | number = new Date()) {
+  try {
+    return getZonedDateTimeParts(now, timezone).date;
+  } catch {
+    return toDateKey(typeof now === "number" ? new Date(now) : now);
+  }
+}
+
+function getOtherScheduleDateSummaries(
+  drafts: ScheduleDraft[],
+  selectedDate: string,
+) {
+  const countsByDate = new Map<string, number>();
+
+  for (const draft of drafts) {
+    if (!draft.scheduledDate || draft.scheduledDate === selectedDate) {
+      continue;
+    }
+
+    countsByDate.set(
+      draft.scheduledDate,
+      (countsByDate.get(draft.scheduledDate) ?? 0) + 1,
+    );
+  }
+
+  return Array.from(countsByDate.entries())
+    .map(([dateKey, count]) => ({ count, dateKey }))
+    .sort((first, second) => second.dateKey.localeCompare(first.dateKey));
+}
+
+function getNearestScheduleDateForDrafts(
+  drafts: ScheduleDraft[],
+  referenceDateKey: string,
+) {
+  const uniqueDates = Array.from(
+    new Set(
+      drafts
+        .map((draft) => draft.scheduledDate)
+        .filter((dateKey): dateKey is string => Boolean(dateKey)),
+    ),
+  );
+
+  if (uniqueDates.length === 0) {
+    return null;
+  }
+
+  const referenceTime = parseDateKey(referenceDateKey).getTime();
+
+  return uniqueDates.sort((first, second) => {
+    const firstDistance = Math.abs(
+      parseDateKey(first).getTime() - referenceTime,
+    );
+    const secondDistance = Math.abs(
+      parseDateKey(second).getTime() - referenceTime,
+    );
+
+    if (firstDistance !== secondDistance) {
+      return firstDistance - secondDistance;
+    }
+
+    return second.localeCompare(first);
+  })[0]!;
+}
+
+function getSettingsPublishingHref(platform?: SchedulePlatform) {
+  if (platform === "tiktok") {
+    return "/settings#tiktok-publishing";
+  }
+
+  if (platform === "youtube") {
+    return "/settings#youtube-publishing";
+  }
+
+  return "/settings#instagram-publishing";
 }
 
 function shiftMonth(monthKey: string, monthOffset: number) {

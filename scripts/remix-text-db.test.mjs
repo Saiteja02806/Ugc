@@ -3,6 +3,36 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
+test("Wall legacy and structured receipts retain their frozen fields through real JSONB claim recovery", async () => {
+  const { ReferenceTextSchema, validateRemixOutput } = await import('../lib/explore/reference-text.ts');
+  const catalog = JSON.parse(await readFile(new URL('../lib/explore/reference-text-catalog.json', import.meta.url), 'utf8'));
+  const source = ReferenceTextSchema.parse(catalog.items.find(item => item.referenceId === 'explore-wall-text-04'));
+  const db = new PGlite();
+  try {
+    await db.exec('create role anon; create role authenticated; create role service_role bypassrls; grant usage on schema public to service_role;');
+    await db.exec(await readFile(new URL('../supabase/migrations/20261012135237_explore_reference_text_remix.sql', import.meta.url), 'utf8'));
+    await db.exec('set role service_role');
+    const outputs = [
+      { blocks: source.blocks.map(block => block.text), heading: '', body: '' },
+      { blocks: [], heading: 'Our heading', body: 'First body paragraph.\n\nSecond body paragraph.' },
+    ];
+    for (const [i, output] of outputs.entries()) {
+      const key = `00000000-0000-4000-8000-${String(i + 101).padStart(12, '0')}`;
+      const input = { source, promptVersion: i === 0 ? 4 : 5, ...(i === 1 ? { outputStructure: 'heading-body-v1' } : {}) };
+      const args = ['owner-a', key, 'a'.repeat(64), input];
+      const claim = async () => (await db.query('select public.explore_claim_text_remix($1,$2,$3,$4) as result', args)).rows[0].result;
+      assert.equal((await claim()).claimed, true);
+      await db.query("update public.explore_text_remixes set status='completed',output_json=$1 where user_id=$2 and request_key=$3", [output, 'owner-a', key]);
+      const recovered = await claim();
+      assert.equal(recovered.claimed, false); assert.equal(recovered.status, 'completed');
+      assert.deepEqual(recovered.output, output); assert.deepEqual(recovered.source, source);
+      assert.deepEqual(validateRemixOutput(recovered.output, recovered.source), output);
+      const saved = (await db.query('select input_json from public.explore_text_remixes where user_id=$1 and request_key=$2', ['owner-a', key])).rows[0];
+      assert.deepEqual(saved.input_json, input);
+    }
+  } finally { await db.close(); }
+});
+
 test("remix claims enforce ownership, idempotency, quota and browser denial", async () => {
   const db = new PGlite();
   const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;

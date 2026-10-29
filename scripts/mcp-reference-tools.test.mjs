@@ -10,7 +10,7 @@ class FirebaseAuthRequestError extends Error { constructor(message, status = 401
 mock.module("@/lib/firebase/server-auth", { namedExports: { FirebaseAuthRequestError } });
 mock.module("@/lib/ai-studio/server-access", { namedExports: { requireAIStudioProUser: async () => { if (authError) throw authError; return { uid: owner }; } } });
 mock.module("@/lib/business-profiles/db", { namedExports: { isBusinessProfileOnboardingComplete: () => true, getBusinessProfileForUser: async uid => { profileOwners.push(uid); return profile; } } });
-mock.module("@/lib/explore/reference-text-store", { namedExports: { getReferenceText: (ref, slide, format) => { if (ref !== "hook-a" || slide !== null || format && format !== "hook") throw new Error("Foreign source"); return source; } } });
+mock.module("@/lib/explore/reference-text-store", { namedExports: { getReferenceText: (ref, slide, format) => { if (ref !== (source?.referenceId ?? "hook-a") || slide !== null || format && format !== (source?.format ?? "hook")) throw new Error("Foreign source"); return source; } } });
 mock.module("openai", { defaultExport: class OpenAI {
   constructor(options) { providerOptions = options; }
   chat = { completions: { parse: async request => { providerCalls++; providerRequest = request; if (providerWait) await providerWait; if (providerError) throw providerError; return { choices: [{ message: { parsed: providerOutput } }] }; } } };
@@ -121,6 +121,22 @@ test("website and MCP use the same owner claim and exact receipt in both directi
   assert.equal((await call("remix_reference_text",input())).structuredContent.outcome,"completed");assert.equal((await handleTextRemix(request())).status,200);assert.equal(providerCalls,1);
   const saved=(await call("get_text_remix",{request_key:id})).structuredContent;assert.equal(saved.source.blocks[0].text,originalSource.blocks[0].text);
   assert.equal(JSON.stringify(saved).includes("Owner only"),false);assert.equal(providerOptions.maxRetries,0);
+});
+
+test("structured Wall receipts preserve a body above600 characters through MCP and website recovery", async () => {
+  const catalog = (await import('../lib/explore/reference-text-catalog.json', { with: { type: 'json' } })).default;
+  source = structuredClone(catalog.items.find(item => item.referenceId === 'explore-wall-text-04'));
+  providerOutput = { blocks: [], heading: 'Plan', body: 'w'.repeat(610) };
+  const options = { ...input(), referenceId: source.referenceId, format: 'wall_text' };
+  const result = await call('remix_reference_text', options);
+  assert.equal(result.isError, undefined, JSON.stringify(result));
+  assert.deepEqual(result.structuredContent.output, providerOutput);
+  assert.equal((await call('get_text_remix', { request_key: id })).structuredContent.output.body.length, 610);
+  const referenceId = source.referenceId;
+  source = null; profile = null;
+  const recovered = await handleTextRemix(request({ referenceId, format: 'wall_text' }));
+  assert.equal(recovered.status, 200); assert.deepEqual((await recovered.json()).output, providerOutput);
+  assert.equal(providerCalls, 1);
 });
 test("concurrent uncertain submissions and status reads never submit twice",async()=>{
   let release;providerWait=new Promise(resolve=>{release=resolve;});const first=call("remix_reference_text",input());

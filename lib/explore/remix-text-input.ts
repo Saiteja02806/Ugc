@@ -15,6 +15,7 @@ export function remixInputSource(request: RemixRequest, original: ReferenceText 
   }
   const inheritedCopy = originalBlocks && request.referenceBlocks?.length === originalBlocks.length &&
     request.referenceBlocks.every((text, index) => text === originalBlocks[index].text);
+  if (inheritedCopy && original?.status === "ready") return original;
   const copy = inheritedCopy && original ? original.blocks.map(block => block.text) : request.referenceBlocks;
   if (!copy?.length) throw new Error("Enter reference text or your own details first.");
   const duration = Math.max(copy.length, ...(original?.blocks.map(block => block.endMs ?? 1) ?? [1000]));

@@ -44,13 +44,13 @@ test("all31 respective references compile full-source assignments and role-bound
     const image = buildHookFullRecreationOpeningImagePrompt({ personImageCount: 2, referenceId: frame.referenceId, sourceSha256: frame.sourceSha256, assignedEntry: privateCase ? entry : undefined });
     assert.equal(image.imageCount, 4);
     assert.match(image.prompt, /Image 1/); assert.match(image.prompt, /Image 2/); assert.match(image.prompt, /Image 3/);
-    const sourceFrame = { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height };
+    const sourceFrame = { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 };
     const partial = { version: 4 as const, ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: frame.referenceId, sourceSha256: frame.sourceSha256, sourceFrame,
       animationOpeningFrame: { index: 0, timeSeconds: 0, sha256: "c".repeat(64), width: frame.width, height: frame.height }, imageModel: "gemini_3_pro" as const,
       personImageAssetIds: ["22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"], instructions: "", preparationInputKey: "" };
     partial.preparationInputKey = JSON.stringify({ version: 3, ownerId: partial.ownerId, draftId: partial.draftId, referenceId: partial.referenceId, sourceSha256: partial.sourceSha256, sourceFrame, imageAssetIds: partial.personImageAssetIds, instructions: "", imageModel: partial.imageModel });
     const receipt = { ...partial, purpose: "hook_starting_frame" as const, promptVersion: 5 as const, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(image.prompt) };
-    assert.ok(parseHookKeyframeGenerationReceipt(receipt));
+    assert.ok(parseHookKeyframeGenerationReceipt(receipt), frame.referenceId);
     assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, sourceFrame: { ...sourceFrame, timeSeconds: 0 } }), null);
     if (privateCase) {
       const urls = [creatorSceneCanonicalUrl(receipt, "opening"), creatorSceneCanonicalUrl(receipt), "https://owned.example/a.png", "https://owned.example/b.png"];
@@ -64,7 +64,7 @@ test("all31 respective references compile full-source assignments and role-bound
 
 test("new assigned defaults preserve explicit edits and old selected-pose image continuations", () => {
   for (const frame of publicFrames.frames) {
-    const draft = updateHookKeyframeDraft(createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: frame.referenceId, sourceSha256: frame.sourceSha256 }), { sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height }, imageAssetIds: ["22222222-2222-4222-8222-222222222222"] });
+    const draft = updateHookKeyframeDraft({ ...createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: frame.referenceId, sourceSha256: frame.sourceSha256 }), version: 3 }, { sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height }, imageAssetIds: ["22222222-2222-4222-8222-222222222222"] });
     assert.equal(getHookKeyframePromptPreview(draft).animationError, null);
     const edited = { ...draft, motionInstructions: "Keep my deliberate slow glance and smile." };
     assert.equal(getHookKeyframePromptPreview(edited).directions, edited.motionInstructions);

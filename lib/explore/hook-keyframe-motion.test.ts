@@ -2,13 +2,12 @@ import { buildHookAnimationPrompt } from "./hook-keyframe-motion.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
-import octoberBatch from "../../worker/src/lib/explore-hook-reference-oct23-release.json" with { type: "json" };
-import octoberRefresh from "../../worker/src/lib/explore-hook-reference-oct23-refresh-release.json" with { type: "json" };
 import { referenceVideoPrompts } from "./reference-video-prompts.ts";
 import {
   compileReviewedHookKeyframeMotionPrompt,
   getHookKeyframeMotionPrompt,
   getHookKeyframeMotionReviewDraft,
+  getReclassifiedHookMotionReview,
   hookKeyframeMotionCatalog,
   type HookMotionCatalogEntry,
   type HookMotionInput,
@@ -47,11 +46,20 @@ function fixture(plan?: HookMotionPlan): HookMotionCatalogEntry {
 
 test("every active canonical reference has an exact source-bound motion review record", () => {
   const active = getHookReferenceGalleryItems();
-  assert.equal(active.length, 95 + (octoberBatch.mediaStatus === "published" && octoberBatch.activation === "active" ? 1 : 0) + (octoberRefresh.mediaStatus === "published" && octoberRefresh.activation === "active" ? 8 : 0));
+  assert.equal(active.length, 106);
+  assert.ok(!active.some(row => row.id === "explore-paired-hook-e683292d4cd22b2a8b5a9cd8"));
   assert.equal(Object.keys(hookKeyframeMotionCatalog).length, 107);
   for (const hook of active) {
     const entry = hookKeyframeMotionCatalog[hook.id];
     const legacy = referenceVideoPrompts[hook.id];
+    if (!entry) {
+      const reviewed = getReclassifiedHookMotionReview(hook.id, hook.videoSha256, 0, active);
+      assert.ok(reviewed?.candidatePlan, hook.id);
+      assert.equal(reviewed.requiresDecision, false);
+      assert.equal(reviewed.canSubmitPaidAnimation, false);
+      assert.equal(getReclassifiedHookMotionReview(hook.id, "a".repeat(64), 0, active), undefined);
+      continue;
+    }
     assert.ok(entry, hook.id);
     assert.equal(entry.sourceSha256, hook.videoSha256);
     assert.equal(entry.sourceSha256, legacy.sourceSha256);

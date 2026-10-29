@@ -17,7 +17,7 @@ file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescrip
 file("css.cjs", `module.exports=s=>'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default {};';`);
 file("module-css.cjs", String.raw`module.exports=function(s){const prefix='automationFixture_',names={};s=s.replace(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>{names[name]=prefix+name;return '.'+prefix+name;});return 'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
 file("accounts.ts", `export const loadAccountSocialConnections=async()=>[];`);
-file("media.tsx", `export function MediaLibraryPanel(){return <div>Media library fixture</div>}`);
+file("media.tsx", `import {useState} from 'react'; import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog'; export function MediaLibraryPanel(){const [open,setOpen]=useState(false);return <div>Media library fixture<button type="button" onClick={()=>setOpen(true)}>New image collection</button>{open?<Dialog open onOpenChange={setOpen}><DialogContent><DialogTitle>New image collection</DialogTitle><DialogDescription>Fixture collection</DialogDescription><button type="button" onClick={()=>setOpen(false)}>Cancel collection</button></DialogContent></Dialog>:null}</div>}`);
 file("client.ts", `import {createDefaultAutomationConfig} from '@/lib/trending/slideshow-automation-contract';
 let config=createDefaultAutomationConfig({timezone:'Asia/Kolkata',dailyAllowance:4});
 config.startDate=new Date(Date.now()+86400000).toISOString().slice(0,10);
@@ -73,6 +73,15 @@ async function main() {
         const primary = page.getByRole("button", { name: "Create collection & upload images" });
         const bounds = await primary.boundingBox();
         assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, "collection recovery action fits mobile viewport");
+        await primary.click();
+        const library = page.getByRole("dialog", { name: "Media library" });
+        await page.screenshot({ path: path.join(out, `library-${width}.png`) });
+        await library.getByRole("button", { name: "New image collection" }).click();
+        const nested = page.getByRole("dialog", { name: "New image collection" });
+        await page.screenshot({ path: path.join(out, `library-collection-${width}.png`) });
+        await nested.getByRole("button", { name: "Cancel collection" }).click();
+        await library.getByRole("button", { name: "Close" }).click();
+        await page.getByText(/You don't have any image collections/).waitFor();
       }
       await page.screenshot({ path: path.join(out, `appearance-${width}.png`) });
       const mutations = await page.evaluate(() => window.fixtureMutations);

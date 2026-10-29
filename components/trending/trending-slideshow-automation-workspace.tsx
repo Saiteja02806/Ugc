@@ -760,7 +760,7 @@ export function TrendingSlideshowAutomationWorkspace({
       role="dialog"
       aria-modal="true"
       aria-label="Trending Slideshow Automation"
-      className="fixed inset-0 z-[var(--z-modal)] flex flex-col bg-background text-foreground"
+      className="fixed inset-0 z-[49] flex flex-col bg-background text-foreground"
     >
       {/* Top workspace header */}
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-card px-4 py-3 sm:px-6">

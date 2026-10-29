@@ -146,7 +146,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: () => ({ maxImages: 6 }) },
       "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
-      "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
+      "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedAccountIds: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };

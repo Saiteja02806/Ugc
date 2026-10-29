@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   useEffect,

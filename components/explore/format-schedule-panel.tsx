@@ -11,10 +11,10 @@ import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-for
 import { displayScheduleTime } from "@/lib/scheduling/time-display";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount } from "@/lib/explore/workflow-scheduling-draft";
+import { workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, workflowAccountSelectionError, selectWorkflowAccount } from "@/lib/explore/workflow-scheduling-draft";
 import type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from "@/lib/explore/format-schedule-draft";
-import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
@@ -115,11 +115,16 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         localStorage.setItem(key, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
         throw e;
       }
+      let rejected = false;
       try {
         const value = await authorized("/api/schedules");
         const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === entry.input.idempotencyKey);
         if (match) { accept(entry, { ok: true, schedule: match }); return; }
+        if (Array.isArray(value.schedules) && isScheduleSubmissionRejected(e) && !entry.scheduleId && alive.current && currentKey.current === key && saved()?.input.idempotencyKey === entry.input.idempotencyKey) {
+          localStorage.removeItem(key); setReceipt(null); setMessage("Review your updated choices, then click Schedule post."); rejected = true;
+        }
       } catch { /* Preserve the same idempotency key for Try again. */ }
+      if (rejected) throw e;
       throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
@@ -157,14 +162,14 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not schedule your post. Try again."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
-  const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "Your previous post is saved. You can schedule this content again." : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Choose your accounts and time, then click Schedule post.";
+  const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "Your previous post is saved. You can schedule this content again." : receipt && !receipt.timeRejected ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : !receipt && !targets.length ? workflowAccountSelectionError(draft) : "Choose your accounts and time, then click Schedule post.";
   const date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? new Date(`${draft.date}T12:00:00Z`) : null;
   const timing = (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Earliest available" : date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
     ? `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${displayScheduleTime(draft.time, deviceHour12)}`
     : "Choose date and time";
   const destinations = platforms.map(platform => platform === "instagram" ? imageOnly ? "Instagram" : "Instagram Reels" : platform === "tiktok" ? "TikTok" : "YouTube").join(" + ");
-  const selectedAccounts = workflowSelectedAccounts(draft);
-  const selectedAccountCount = new Set(platforms.map(platform => selectedAccounts[platform]).filter(Boolean)).size;
+  const selectedAccounts = workflowSelectedAccountIds(draft);
+  const selectedAccountCount = new Set(Object.values(selectedAccounts).flat()).size;
   const actions = <div hidden={!active} className={reviewStyles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {message ? <p role="status" className="text-xs leading-5 text-muted">{message}</p> : null}
@@ -178,11 +183,11 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     {receipt?.scheduleId ? <Link href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
   if (pendingComposition && user && !localPreview && !imageOnly) return <PendingExploreSchedulePanel key={`${format}:${draftScopeId}`} owner={user.uid} scope={`${format}:${draftScopeId ?? "workflow"}`} composition={pendingComposition} draft={draft} onChange={setDraft} timezone={timezone} active={active} onBackToEdit={onBackToEdit} />;
-  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} /></div>
+  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} /></div>
     <section aria-label="Schedule summary" className={reviewStyles.summary}>
       <h3 className="sr-only">Schedule summary</h3>
       <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>
-      <p>{selectedAccountCount === platforms.length && selectedAccountCount > 0 ? `${selectedAccountCount} ${selectedAccountCount === 1 ? "account" : "accounts"} selected` : "Choose an account for each platform"}<span aria-hidden="true"> · </span>{timing}<span aria-hidden="true"> · </span>{timezone || "Your device’s time zone"}</p>
+      <p>{!workflowAccountSelectionError(draft) ? `${selectedAccountCount} ${selectedAccountCount === 1 ? "account" : "accounts"} selected` : "Choose an account for each platform"}<span aria-hidden="true"> · </span>{timing}<span aria-hidden="true"> · </span>{timezone || "Your device’s time zone"}</p>
     </section>
   </div>;
 }

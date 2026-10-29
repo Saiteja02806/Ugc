@@ -200,3 +200,15 @@ test("queued atomic publish jobs cannot be recovered or claimed early, while can
     assert.equal((await db.query("select * from claim_background_job($1,$2,$3,60)", [jobId, "test-worker", id(20)])).rows.length, 1);
   } finally { await db.close(); }
 });
+
+
+test("five distinct accounts on repeated platforms create exactly five durable targets and publish jobs", async () => {
+  const db=await fixture();try{
+    await db.exec("reset role; insert into social_connections values ('"+id(7)+"','owner-a','tiktok','connected',null),('"+id(8)+"','owner-a','tiktok','connected',null),('"+id(10)+"','owner-a','youtube','connected',null);set role service_role;");
+    const destinations=[...targets(),{social_connection_id:id(3),platform:'instagram',settings:{shareToFeed:true}},{social_connection_id:id(7),platform:'tiktok',settings:{}},{social_connection_id:id(8),platform:'tiktok',settings:{}},{social_connection_id:id(10),platform:'youtube',settings:{}}];
+    const first=await create(db,post(),destinations),replay=await create(db,post(),destinations);
+    assert.equal(first.targets.length,5);assert.equal(replay.post.id,first.post.id);
+    assert.deepEqual(new Set(first.targets.map(target=>target.social_connection_id)),new Set(destinations.map(target=>target.social_connection_id)));
+    assert.deepEqual(await counts(db),{scheduled_posts:1,scheduled_post_targets:5,background_jobs:5,free_trial_instagram_schedule_usage:2});
+  }finally{await db.close();}
+});

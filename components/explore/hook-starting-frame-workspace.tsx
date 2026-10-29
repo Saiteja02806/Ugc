@@ -380,7 +380,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     catch { setStorageError("Your choices could not be saved in this browser. Keep this screen open while you continue."); }
   }
   async function generateStartingImage() {
-    if (generationDisabledReason) return;
+    if (generationDisabledReason || motionBlocked) return;
     if (!ready || !checkpointRestored || generationLock.current || costQuery.data === undefined || creatingImage) return;
     if (!navigator.locks) { setGenerationError("Use a browser with Web Locks support to submit images safely."); return; }
     generationLock.current = true; setSubmittingImage(true); setGenerationError(null);
@@ -469,6 +469,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const creatorDirections = reference.creatorAccountId ? preparedDraft.version === 4 && preparedDraft.sourceFrame?.index === 0 ? reference.generationPrompt : preparedDraft.sourceFrame && preparedDraft.sourceFrame.sha256 !== reference.startingFrame?.sha256
     ? reference.legacyGenerationPrompt : reference.generationPrompt : undefined;
   const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections, reference.legacySelectedGenerationPrompt, reference.startingImagePrompt, reference.durationSeconds);
+  const motionBlocked = promptPreview.requiresDecision;
   const imageJob = checkpoint && imageJobQuery?.data ? imageJobQuery.data : null;
   const resultError = imageJobQuery?.error ? `${imageJobQuery.error.message} Your request is preserved.`
     : imageJob?.isTerminal && !imageJob.output ? imageJob.error || "The image did not complete."
@@ -485,7 +486,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const resultStyle = { "--frame-ratio": imageJob?.output ? imageJob.output.width / imageJob.output.height : 9 / 16 } as CSSProperties;
   const selectedIndex = readableEntries.findIndex(entry => entry.checkpoint.requestKey === checkpoint?.requestKey);
   const cannotUseFrame = !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
-  const cannotGenerate = Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
+  const cannotGenerate = Boolean(generationDisabledReason) || motionBlocked || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
   const generateLabel = submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image";
   const resultActions = presentation === "recreation" ? <div className={styles.resultActions} role="group" aria-label="Starting frame approval" data-has-results={Boolean(readableEntries.length)}>
     {readableEntries.length ? <div className={styles.resultSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Review your starting frame"}</strong>
@@ -606,7 +607,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         {variations?.entries.some(entry => entry.state === "planned" || entry.state === "rejected") && !submittingImage ? <p className={styles.variationProgress} role="status">Some images were not submitted or were rejected. Accepted requests are preserved; remaining images will not retry automatically.</p> : null}
         {storageError ? <p role="alert" className="text-destructive">{storageError}</p> : saved ? <p role="status">Preparation saved on this browser.</p> : null}
       {presentation !== "recreation" ? <div className={styles.actionButtons}>{presentation === "dialog" && !imageJob?.output ? <Button type="button" variant="ghost" disabled={!ready} onClick={savePreparation}>Save preparation</Button> : null}
-        <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
+        <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
         </div> : null}
         {promptPreview.reviewedWallMotion && promptPreview.animationPrompt ? <details open className={styles.promptDetails} data-reviewed-wall-video-prompt>
           <summary>Video prompt</summary>

@@ -196,10 +196,11 @@ export function InstagramAnalyticsWorkspace() {
   const [instagramRefreshRequest, setInstagramRefreshRequest] = useState(0);
   const connectionsQuery = useQuery({
     queryKey: getAccountSocialConnectionsQueryKey(accountId),
-    enabled: Boolean(accountId), staleTime: 30 * 60_000, gcTime: 30 * 60_000,
+    enabled: Boolean(accountId), staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS, gcTime: 30 * 60_000,
     retry: false, refetchOnWindowFocus: true,
     queryFn: async ({ signal }) => (await analyticsRequest<{ connections: SocialConnection[] }>("/api/social/connections", accountId, signal)).connections,
   });
+  useAnalyticsWake(connectionsQuery, Boolean(accountId), ANALYTICS_SNAPSHOT_READ_STALE_MS, true);
   const allSocialConnections = useMemo(() => [...(connectionsQuery.data ?? [])].sort(
     (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
   ), [connectionsQuery.data]);
@@ -281,7 +282,7 @@ export function InstagramAnalyticsWorkspace() {
       `/api/analytics/activity?days=${dateRangeDays}&end=${endDate}&offset=${offsetMinutes}&connection=${effectiveInstagramSelectedConnectionId}`, accountId, signal,
     ),
   });
-  useAnalyticsWake(activityQuery, Boolean(accountId && showInstagramAnalytics && connections.length));
+  useAnalyticsWake(activityQuery, Boolean(accountId && showInstagramAnalytics && connections.length), ANALYTICS_SNAPSHOT_READ_STALE_MS, true);
   const refetchConnections = connectionsQuery.refetch;
   const refetchActivity = activityQuery.refetch;
   const retryAnalytics = useCallback(() => {

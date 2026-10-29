@@ -7,7 +7,7 @@ import {getCreatorAccountSource,creatorAccountDirections} from '../lib/explore/c
 import {readCreatorPrivateJson} from '../lib/explore/creator-private-files.ts';
 
 test('every active public reference selects a complete revised frame-zero timed prompt; saved edits win',()=>{
- const rows=getHookReferenceGalleryItems();assert.equal(rows.length,107);
+ const rows=getHookReferenceGalleryItems();assert.equal(rows.length,106);
  for(const row of rows){
   const d=updateHookKeyframeDraft(createHookKeyframeDraft({ownerId:'owner',draftId:'00000000-0000-4000-8000-000000000001',referenceId:row.id,sourceSha256:row.videoSha256}),{sourceFrame:{index:0,timeSeconds:0,width:row.width,height:row.height,sha256:'b'.repeat(64)}});
   const p=getHookKeyframePromptPreview(d,'hook',undefined,undefined,undefined,row.durationSeconds);

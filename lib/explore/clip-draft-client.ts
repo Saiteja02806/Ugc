@@ -1,5 +1,6 @@
 import { ExploreClipDraftError, parseClipDraftContent, parseClipDraftReceipt, parseClipDraftSave,
   type ExploreClipDraft, type ExploreClipDraftContent, type ExploreClipDraftSaveRequest } from "./clip-draft-contract.ts";
+import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline.ts";
 
 const same = (a: ExploreClipDraftContent, b: ExploreClipDraftContent) => JSON.stringify(a) === JSON.stringify(b);
 export function clipDraftPendingKey(owner: string, scope: string, sourceAssetId: string) {
@@ -7,14 +8,24 @@ export function clipDraftPendingKey(owner: string, scope: string, sourceAssetId:
 }
 export type ClipDraftTransport = { token: () => Promise<string | null>; fetch: typeof fetch };
 async function request(deps: ClipDraftTransport, url: string, body?: ExploreClipDraftSaveRequest) {
-  const token = await deps.token(); if (!token) throw new ExploreClipDraftError("Sign in to save your edits.", 401);
-  const { fetch: send } = deps;
-  const response = await send(url, { method: body ? "POST" : "GET", cache: "no-store", signal: AbortSignal.timeout(15000),
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json", "Idempotency-Key": body.requestId } : {}) },
-    ...(body ? { body: JSON.stringify(body) } : {}) });
-  const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok) throw new ExploreClipDraftError(result?.error ?? "Could not confirm your saved edits. Retry this save.", response.status, result?.code ?? "clip_draft_unavailable");
-  return result;
+  // Bound authentication and response parsing too. A late token must never send
+  // a mutation after the UI has already offered a retry of the same request.
+  try { return await withReadDeadline(async signal => {
+    const token = await deps.token();
+    signal.throwIfAborted();
+    if (!token) throw new ExploreClipDraftError("Sign in to save your edits.", 401);
+    const response = await deps.fetch(url, { method: body ? "POST" : "GET", cache: "no-store", signal,
+      headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json", "Idempotency-Key": body.requestId } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}) });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) throw new ExploreClipDraftError(result?.error ?? "Could not confirm your saved edits. Retry this save.", response.status, result?.code ?? "clip_draft_unavailable");
+    return result;
+  }, undefined, 15000); } catch (error) {
+    if (error instanceof ReadDeadlineError) throw new ExploreClipDraftError(body
+      ? "Could not confirm your saved edits in time. Retry Save edits to check the same save."
+      : "Loading your saved edits took too long. Check your connection and retry loading.", 503, "clip_draft_unavailable");
+    throw error;
+  }
 }
 export async function loadClipDraft(deps: ClipDraftTransport, sourceAssetId: string, scope: string) {
   const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`);

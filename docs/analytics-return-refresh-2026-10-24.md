@@ -1,5 +1,10 @@
 # Analytics freshness on return — 24 October 2026
 
+The event-only/no-periodic-read policy below is superseded by the user's renewed
+freshness request and the [29 October automatic-check follow-up](analytics-freshness-fix-2026-10-29.md).
+Provider cooldowns remain unchanged. This document retains the historical behavior
+and validation; neither receipt constitutes authenticated production acceptance.
+
 Status: implemented and tested locally. No deployment, migration, production
 database mutation or live provider synchronization was performed for this task.
 

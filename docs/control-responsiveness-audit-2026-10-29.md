@@ -1,0 +1,39 @@
+# Video-control responsiveness audit — 29 October 2026
+
+Diagnosis only. No application source, UI, API, database, provider or deployment changes.
+
+The supplied screenshots show two different contexts. The final preview contains a visible text-fit warning. The demo screenshot shows the save toolbar; a static screenshot cannot show why it intermittently stopped responding or disappeared.
+
+## Findings
+
+1. **The final preview is deliberately disabled by export/text validation.** In `components/explore/format-video-editor.tsx:169`, a failed text layout creates the exact screenshot warning. At line291 that validation becomes `disabledReason`. `components/explore/format-demo-section.tsx:626` combines the opening reason with demo validation and passes it to the player at line638. `components/explore/workflow-sequence-preview.tsx:187` disables Play; line110 also refuses playback. The text-fit probe confirms that even ready media receives zero play calls. This is a state/validation coupling, and is strongly consistent with screenshot1. It does not establish a media decode or click-overlay failure.
+
+2. **Demo Save can be disabled for prerequisites that have no nearby status.** `components/explore/format-demo-section.tsx:524` combines pending source, render work, upload, audio, draft loading and validation into one boolean. The toolbar at531–535 displays uploading and saved-draft errors, but has no initial saved-draft loading message, nor a complete explanation for all reasons. Its `Saving…` label only reflects the draft mutation, not all busy conditions. Editing text does not clear an unrelated missing prerequisite. The screenshot does not identify which predicate was true.
+
+3. **Shared draft loading has additional failure paths.** `components/explore/use-clip-draft-save.ts:30` accesses localStorage after a successful server GET; revision writes and session initialization must also succeed before loadedKey is set. A storage exception leaves loaded=false and an error, blocking saving. The real hook/transport probe reproduced this with a successful GET and denied storage. The transport in `lib/explore/clip-draft-client.ts:10` awaits authentication before creating its HTTP timeout. The pending-token probe leaves loaded=false, busy=false, error=null and zero fetches. The application wrapper in `lib/firebase/auth.ts:259` awaits Firebase readiness/token acquisition without its own deadline. This establishes a gap in application timeout coverage; it does not prove an indefinitely stalled Firebase SDK or a production auth incident. Retrying does not repair persistent storage denial.
+
+4. **The demo toolbar overflows a mobile viewport.** The existing `scripts/explore-demo-loading.browser.cjs` successfully checked upload/edit and save enablement at1280x720 and1536x864, then failed its390px overflow assertion at line112. A diagnostic copy retained the production component/styles and replaced that failing assertion with measurements. At390x844, document scrollWidth=419; Save & return spans x295.66 through418.92. The action row retains an intrinsic width of385.92 inside a narrower padded container. Source clues: `format-workspace.module.css:52` uses auto width for clipActions; `format-video-editor.module.css:32` uses a full-width flex actionBar while common buttons retain shrink-0/nowrap. Its min-content row exceeds the available toolbar width. In a clipping shell this can cut off the action. The fixture itself reproduces horizontal overflow; missing controls in the user's desktop screenshot remain unproven.
+
+5. **This pattern is shared across video workflows.** `wall-schedule-preview.tsx:16` forwards preview validation or an error to the same player. `workflow-edit-workspace.tsx:70`,82,168,182 forward opening/demo/mixed-preview reasons in Talking Head and other shared workflows. Required audio and media metadata also block Play. These are reachable mechanisms, not a claim that every screen currently fails. Ordinary preview playback correctly reports play rejection with retry; no evidence established a global JavaScript freeze or invisible click-blocking overlay.
+
+## Verification
+
+- `python tools/preflight.py --repo . --task "Investigate unresponsive final video playback and stale or missing demo editor save controls; diagnosis only"`: PASS prerequisite discovery; initial worktree clean.
+- `node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/explore-sequence-preview.test.mjs lib/explore/sequence-preview.test.ts lib/explore/clip-draft.test.mjs`:22/22PASS, including actual PGlite ownership/revision/replay contracts. Initial attempt used strip-only mode and failed to parse TypeScript parameter properties; rerun with transform-types passed.
+- `node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test .tmp/control-audit/playback-probe.mjs`:6/6PASS; five existing cases plus screenshot-warning disabled-play probe. Simulated React/media boundaries.
+- `node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON .tmp/control-audit/hook-probes.mjs`:normal load, storage denial and pending token assertions PASS; real hook/transport with simulated React/auth/storage. Initial cross-realm Error assertion was corrected by sharing Error in the harness; no application change.
+- `node scripts/explore-demo-loading.browser.cjs`: initial sandbox Edge launch failed; authorized outside-sandbox run completed two desktop cases and FAILED the mobile overflow check. Entire suite is not green; downstream cases after that assertion were not executed.
+- `node .tmp/control-audit/browser-audit.cjs`: diagnostic copy PASS desktop cases and captured mobile overflow JSON/screenshot; it intentionally stops after capture and does not claim the remaining original cases pass.
+- Production `https://www.getugcpilot.com/explore`:redirected to `https://getugcpilot.com/sign-in`. Authenticated production button/persistence/network acceptance NOT VERIFIED.
+
+Artifacts: `.tmp/control-audit/browser/mobile-diagnostics.png` visually inspected; companion JSON records exact button coordinates. Local fixture substitutes authentication, upload completion and saved-draft boundaries. The mobile test is not a full production-shell baseline.
+
+## Scope and next correction boundary
+
+Recommended correction areas are preview-vs-export gating, explicit disabled reasons, bounded shared draft/auth recovery and narrow-width action wrapping. Preserve missing-media/audio safety, server save confirmation, owner isolation, revision conflicts, exact retry identity, selected source and all authored text. No fix was requested or implemented in this audit.
+
+Protected behavior receipt: application source/config unchanged VERIFIED by final diff; selected source/text/draft replay covered by focused tests VERIFIED locally; mobile action containment FAILED in the fixture; authenticated production workflows, other complete feature flows and publishing NOT TESTED. Incident UGC-UI-048-CONTROLS remains OPEN.
+
+Sources actually inspected: root AGENTS.md; docs/ai-context/nonnegotiables.md; relevant Explore workflow/preview/save/navigation and incident sections of EXPLORE_CONTEXT.md and docs/ai-context/clear.md; full ugc-context-memory, ugc-immutable-contracts and ugc-ui-clarity SKILL.md files; affected components, shared callers, transport, auth wrapper, CSS, history and existing tests. The large historical context/ledger were searched and relevant sections read, not fully reviewed end to end. No application-code edit preflight completion is claimed.
+
+Tracked documentation changes: this report, the appended UGC-UI-048-CONTROLS entry in docs/ai-context/clear.md and the recurrence note in EXPLORE_CONTEXT.md. Generated diagnostic scripts, bundles, screenshots and JSON remain under ignored .tmp; browser inspection metadata may be generated under .playwright-mcp. No secrets read or changed.

@@ -51,16 +51,16 @@ async function main() {
     let pw;try{pw=require("playwright");}catch{pw=require(path.join(process.env.USERPROFILE,".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));}
     browser=await pw.chromium.launch({headless:true,...(process.platform==="win32"?{channel:"msedge"}:{})});const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on("pageerror",e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${server.address().port}`);
     const select=page.getByRole("combobox",{name:"Text font",exact:true}),weight=page.getByRole("combobox",{name:"Text weight",exact:true});
-    // Existing Medium choices remain; new text uses the supplied Proxima Semibold.
+    // Existing Medium choices remain; new text uses the measured reference treatment.
     assert.equal(await weight.inputValue(),"500");
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"proximanovaa");assert.equal(await weight.inputValue(),"600");
-    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"tiktoksans");assert.equal(await weight.inputValue(),"700");
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'6');
     await page.getByRole('textbox',{name:'Overlay text',exact:true}).fill('A fresh caption');
     await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
     await page.getByRole('button',{name:'Edit text block 2',exact:true}).click();
-    assert.equal(await select.inputValue(),'proximanovaa');assert.equal(await weight.inputValue(),'600');
-    assert.equal(await weight.locator('option').count(),1);
-    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
+    assert.equal(await select.inputValue(),'tiktoksans');assert.equal(await weight.inputValue(),'700');
+    assert.equal(await weight.locator('option').count(),3);
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'6');
     await page.getByRole("button",{name:"Remove text block 2",exact:true}).click();assert.equal(await weight.inputValue(),"500");
     for(const font of ["inter","dmsans","robotocondensed","montserrat","tiktoksans","poppins"]) for(const value of ["400","500","700"]) {
       await select.selectOption(font);await weight.selectOption(value);
@@ -196,10 +196,25 @@ async function main() {
 
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"proximanovaa");assert.equal(await weight.inputValue(),"600");
-    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"tiktoksans");assert.equal(await weight.inputValue(),"700");
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'6');
+    // Both reference treatments are selectable through the existing preset control.
+    const referencePage=await browser.newPage({viewport:{width:1366,height:768}});
+    for(const viewport of [{width:1366,height:768},{width:390,height:844}]) for(const [preset,font,copy] of [['reference-social','tiktoksans','Computer Science students!!\nThis website is EVERYTHING'],['reference-classic','dmsans','Part time job ❌\nColoring Books✅']]) {
+      await referencePage.setViewportSize(viewport);await referencePage.goto(`http://127.0.0.1:${server.address().port}`);
+      await referencePage.getByRole('textbox',{name:'Overlay text',exact:true}).fill(copy);
+      await referencePage.getByRole('combobox',{name:'Text preset',exact:true}).selectOption(preset);
+      assert.equal(await referencePage.getByRole('combobox',{name:'Text font',exact:true}).inputValue(),font);
+      assert.equal(await referencePage.getByRole('combobox',{name:'Text weight',exact:true}).inputValue(),'700');
+      assert.equal(await referencePage.locator('svg[aria-label="Text preview"] > g').first().getAttribute('stroke-linejoin'),'round');
+      await referencePage.getByRole('button',{name:'Save edits',exact:true}).click();await referencePage.reload();
+      assert.equal(await referencePage.getByRole('combobox',{name:'Text preset',exact:true}).inputValue(),preset);
+      assert.equal(await referencePage.getByRole('textbox',{name:'Overlay text',exact:true}).inputValue(),copy);
+      await referencePage.screenshot({path:path.join(out,`${preset}-${viewport.width}.png`),fullPage:true});
+    }
+    await referencePage.close();
     if(process.env.FONT_REFERENCE_CROP){await page.setViewportSize({width:720,height:850});await page.goto(`http://127.0.0.1:${server.address().port}/compare`);await page.evaluate(()=>document.fonts.ready);await page.locator('.comparison').screenshot({path:path.join(out,'poppins-reference-comparison.png')});}
-    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Proxima Nova A Semibold600; 19 bundled faces loaded, saved choices retained, Wall advanced-only controls, laptop/mobile fit. "+out);
+    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Reference Social; 19 bundled faces loaded, saved choices retained, Wall advanced-only controls, laptop/mobile fit. "+out);
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

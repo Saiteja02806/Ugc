@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import ts from "typescript";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, formatTextEmojiError } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
@@ -19,11 +20,48 @@ import * as sequencePreview from "../lib/explore/sequence-preview.ts";
 import { isExploreUuid } from "../worker/src/lib/explore-finishing-contract.ts";
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
+
+test("correcting a failed remix restores saving without clearing an unrelated audio error", async () => {
+  for (const audioError of [null, "Audio read failed", "Audio upload failed"]) {
+    let cursor = 0, saves = 0, showSound = audioError === "Audio upload failed"; const slots = [];
+    const react = {
+      useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
+    };
+    const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "https://media.test/video.mp4", width: 1080, height: 1920, durationSeconds: 5, metadata: {} };
+    const mod = load("components/explore/format-video-editor.tsx", {
+      react, "react-dom": { createPortal: children => children },
+      "@tanstack/react-query": { useQuery: () => ({ data: source }) },
+      "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+      "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ loading: false, error: audioError === "Audio read failed" ? audioError : null, choose: async () => true }) },
+      "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => { throw new Error("Audio upload failed"); } },
+      "@/components/explore/use-clip-draft-save": { useClipDraftSave: () => ({ loaded: true, busy: false, dirty: true, error: null, save: async () => { saves++; return true; } }) },
+      "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: false } }) },
+    });
+    const render = () => { cursor = 0; return mod.FormatVideoEditor({ format: "wall_text", video: { ...source, mediaAssetId: source.id, title: "Wall", ratio: "9:16" }, active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, showSoundControls: showSound, onDirty() {}, onSaved() {}, onContinue() {} }); };
+    let tree = render();
+    if (showSound) {
+      nodes(tree).find(n => n.props?.["aria-label"] === "Edit video with advanced controls").props.onClick(); tree = render();
+      await nodes(tree).find(n => n.type === "WorkflowBackgroundAudioPicker").props.onChoose({ name: "sound.mp3" });
+      showSound = false; tree = render();
+    }
+    const remix = nodes(tree).find(n => n.type === "RemixTextSection");
+    assert.equal(remix.props.onUse({ blocks: ["Invalid"], heading: "", body: "" }, { format: "hook" }), false);
+    tree = render();
+    const save = () => nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits");
+    assert.equal(save().props.disabled, true);
+    const fields = nodes(tree).find(n => n.type === "FormatVideoTextFields");
+    fields.props.onChange({ ...fields.props.editing, text: null, textOverlays: [{ value: "Corrected Wall text", width: .8, y: .2, fontSize: 36, color: "#ffffff", startMs: 0, endMs: 5000 }] });
+    tree = render(); assert.equal(save().props.disabled, Boolean(audioError));
+    if (!audioError) { save().props.onClick(); assert.equal(saves, 1); }
+  }
+});
 function load(path, imports, globals = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, ...globals, require(name) {
+    if (name === "react") return { ...imports.react, useId: imports.react?.useId ?? (() => "clip-save-status") };
     if (name === "@/lib/explore/format-edit-draft") return editDraft;
     if (name === "@/lib/explore/wall-text-editor") return wallTextEditor;
     if (name === "@/lib/explore/hook-text-timing") return hookTextTiming;
@@ -688,4 +726,37 @@ for (const accepted of [false, true]) test(`single remix input ${accepted ? "rec
   assert.equal(sent.requestKey, saved.requestKey);
   assert.equal(sent.instructions, accepted ? "Keep it friendly" : "Saved source text\n\nKeep it friendly");
   assert.deepEqual(sent.referenceBlocks, accepted ? ["Saved source text"] : ["Saved source text\n\nKeep it friendly"]);
+});
+
+
+test("shared editor source and soundtrack reads bound auth waits and cancel before late media access", async () => {
+  const queries = [], reads = [];
+  let releaseToken;
+  const editing = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null };
+  const react = { useId: () => "save-status", useState: initial => [typeof initial === "function" ? initial() : initial, () => {}], useRef: initial => ({ current: initial }), useCallback: fn => fn, useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", {
+    react,
+    "@tanstack/react-query": { useQuery: options => { queries.push(options); return {}; } },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/lib/firebase/auth": { getCurrentUserIdToken: () => new Promise(resolve => { releaseToken = resolve; }) },
+    "@/lib/http/read-deadline": { withReadDeadline: (read, signal) => withReadDeadline(read, signal, 10) },
+    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (...args) => { reads.push(args); throw Error("late read"); } },
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ output: null, action: {} }) },
+  }, { window: {}, localStorage: { getItem: () => JSON.stringify({ editing, backgroundId: "22222222-2222-4222-8222-222222222222", playback: "once" }) } });
+  mod.FormatVideoEditor({ format: "hook", video: { id: "11111111-1111-4111-8111-111111111111", mediaAssetId: "11111111-1111-4111-8111-111111111111", durationSeconds: 5 }, active: false, enabled: true, controlsTarget: null, resultsTarget: null });
+  for (const key of ["explore-edit-source", "explore-edit-audio"]) {
+    const query = queries.find(options => options.queryKey[0] === key);
+    assert.equal(query.enabled, true);
+    const controller = new AbortController(), waiting = query.queryFn({ signal: controller.signal });
+    const rejection = assert.rejects(waiting, /cancelled/);
+    controller.abort(Error("cancelled")); await rejection;
+    releaseToken("fixture"); await new Promise(setImmediate);
+    const timed = query.queryFn({ signal: new AbortController().signal });
+    // Keep the test process alive while AbortSignal.timeout's unref'ed timer fires.
+    const keepAlive = setTimeout(() => {}, 1000);
+    try { await assert.rejects(timed, /Loading took too long/); } finally { clearTimeout(keepAlive); }
+    releaseToken("fixture"); await new Promise(setImmediate);
+  }
+  assert.equal(reads.length, 0);
 });

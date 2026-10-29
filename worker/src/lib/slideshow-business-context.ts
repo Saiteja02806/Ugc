@@ -17,12 +17,12 @@ export function parseSlideshowBusinessContext(value: unknown): SlideshowBusiness
   const context = snapshot.businessContext;
   for (const field of textFields) {
     const text = context[field];
-    if (text !== null && (typeof text !== "string" || text.length > 500)) return null;
+    if (text !== null && typeof text !== "string") return null;
   }
   if (!context.businessName?.trim() || !context.productSummary?.trim()) return null;
   for (const field of listFields) {
     const list = context[field];
-    if (!Array.isArray(list) || list.length > 10 || list.some(text => typeof text !== "string" || text.length > 240)) return null;
+    if (!Array.isArray(list) || list.some(text => typeof text !== "string")) return null;
   }
   return snapshot as SlideshowBusinessContext;
 }

@@ -116,13 +116,13 @@ test("skills toggle without editing the draft, submit IDs, freeze during uncerta
 test("adding a second config entry needs no UI change and allows independent multi-selection", () => {
   const h = characterHarness([...promptSkills.CHARACTER_PROMPT_SKILLS, { id: "lighting-fixture", name: "Lighting", description: "Fixture", instruction: "Dim background" }]);
   const options = () => all(h.composer().settings, node => node.props?.role === "checkbox");
-  options()[1].props.onClick(); options()[0].props.onClick();
+  options().at(-1).props.onClick(); options()[0].props.onClick();
   h.composer().onSubmit();
   assert.deepEqual(Array.from(h.submitted[0].skillIds), ["lighting-fixture", "realistic-skin"]);
   options()[0].props.onClick();
   h.composer().onSubmit();
   assert.deepEqual(Array.from(h.submitted[1].skillIds), ["lighting-fixture"]);
-  assert.equal(options()[1].props["aria-checked"], true);
+  assert.equal(options().at(-1).props["aria-checked"], true);
 });
 
 test("the character composer submits the attached asset ID with the prompt and never a browser or signed URL", () => {

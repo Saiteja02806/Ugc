@@ -187,6 +187,7 @@
 .clipTools textarea { resize: vertical; }
 .clipTools [aria-label="Overlay text"], .clipTools [aria-label="Wall of text"] { min-height: 144px; }
 @container (max-width: 599px) {
+  .clipStage[data-editing="true"] .clipActions { width: 100%; max-width: 100%; }
   .clipActionContent { flex-direction: column; align-items: stretch; }
   .clipActionContent > p { min-width: 0; }
   .clipActionButtons { flex-direction: column-reverse; margin-left: 0; }

@@ -4,6 +4,7 @@ import opentype from "opentype.js";
 import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.js";
 import { formatTextLayout, type ExploreFormatText } from "./explore-format-edit.js";
 import { serializeGlyphPath } from "./svg-glyph-path.js";
+import { referenceCaptionPaths } from "./reference-caption-paths.js";
 import { formatInlineRuns, formatInlineSymbolSvg, formatTextEmojiError, formatTextGraphemes, type FormatInlineRun } from "./explore-inline-symbols.js";
 import { readExploreEmojiArtwork } from "./explore-emoji-artwork.js";
 
@@ -40,11 +41,12 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
     const advance = (value: string) => Array.from(value).reduce((sum, character) => sum + (font.charToGlyph(character).advanceWidth ?? font.unitsPerEm) * layout.fontSize / font.unitsPerEm, 0);
     const advances = runs.map(run => run.symbol || run.emoji ? layout.fontSize : run.supported ? advance(run.text) : estimateEditOverlayLineWidth(run.text, layout.fontSize));
 
-    let x = layout.x - advances.reduce((sum, advance) => sum + advance, 0) / 2;
+    let x = layout.x - (text.align === "left" ? layout.textWidth : advances.reduce((sum, advance) => sum + advance, 0)) / 2;
     const y = layout.y + i * layout.lineHeight + layout.fontSize;
     return (await Promise.all(runs.map(async (run, index) => {
       const startX = x;
       x += advances[index];
+      const referencePaths = referenceCaptionPaths(run.text, text.font, layout.fontWeight, text.preset, layout.fontSize, startX, y);
       let glyphX = startX;
       const paths = run.supported ? Array.from(run.text).map(character => {
         const glyph = font.charToGlyph(character), data = serializeGlyphPath(glyph.getPath(glyphX, y, layout.fontSize));
@@ -53,9 +55,9 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
       }).join("") : "";
       const markup = run.symbol ? formatInlineSymbolSvg(run.symbol, startX, y - layout.fontSize, layout.fontSize) : run.artwork
         ? `<image data-format-emoji="${run.artwork}" aria-label="${escapeXml(run.value)}" x="${startX}" y="${y - layout.fontSize}" width="${layout.fontSize}" height="${layout.fontSize}" href="data:image/svg+xml;base64,${Buffer.from(await readExploreEmojiArtwork(run.artwork, join(fontsDir, "../emoji"))).toString("base64")}"/>`
-        : run.supported ? paths : `<text x="${startX}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}">${escapeXml(run.text)}</text>`;
+        : referencePaths ? referencePaths.map(d => `<path d="${d}"/>`).join("") : run.supported ? paths : `<text x="${startX}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}">${escapeXml(run.text)}</text>`;
       return markup;
     }))).join("");
   }))).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${background ? `<rect x="0" y="${background.y}" width="${width}" height="${background.height}" fill="#000000" fill-opacity="${background.opacity}"/>` : ""}<g fill="${text.color}"${background ? "" : ` stroke="black" stroke-width="${layout.outlineWidth}" paint-order="stroke"`}>${lines}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${background ? `<rect x="${background.x}" y="${background.y}" width="${background.width}" height="${background.height}" fill="${"color" in background ? background.color : "#000000"}" fill-opacity="${background.opacity}"/>` : ""}<g fill="${text.color}"${background ? "" : ` stroke="black" stroke-width="${layout.outlineWidth}"${layout.outlineJoin === "round" ? ' stroke-linejoin="round"' : ""} paint-order="stroke"`}>${lines}</g></svg>`;
 }

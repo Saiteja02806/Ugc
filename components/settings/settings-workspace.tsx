@@ -137,7 +137,17 @@ export function SettingsWorkspace() {
 
   useEffect(() => {
     function syncSectionFromLocation() {
-      setActiveSection(getSettingsSectionFromHash(window.location.hash));
+      const hash = window.location.hash;
+      setActiveSection(getSettingsSectionFromHash(hash));
+      const targetElementId = getConnectedAccountHeadingIdFromHash(hash);
+      if (targetElementId) {
+        window.requestAnimationFrame(() => {
+          document.getElementById(targetElementId)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+      }
     }
 
     const initialSync = window.setTimeout(syncSectionFromLocation, 0);
@@ -863,7 +873,32 @@ function getProviderLabel(providerId: string) {
 
 function getSettingsSectionFromHash(hash: string): SettingsSectionId {
   const sectionId = hash.replace(/^#/, "");
+  if (
+    sectionId === "tiktok-publishing" ||
+    sectionId === "youtube-publishing" ||
+    sectionId === "connected-accounts" ||
+    sectionId === "instagram-accounts-title" ||
+    sectionId === "tiktok-accounts-title" ||
+    sectionId === "youtube-accounts-title"
+  ) {
+    return "instagram-publishing";
+  }
+
   const section = SETTINGS_SECTIONS.find((item) => item.id === sectionId);
 
   return section?.id ?? "account";
+}
+
+function getConnectedAccountHeadingIdFromHash(hash: string): string | null {
+  const sectionId = hash.replace(/^#/, "");
+  if (sectionId === "tiktok-publishing" || sectionId === "tiktok-accounts-title") {
+    return "tiktok-accounts-title";
+  }
+  if (sectionId === "youtube-publishing" || sectionId === "youtube-accounts-title") {
+    return "youtube-accounts-title";
+  }
+  if (sectionId === "instagram-accounts-title") {
+    return "instagram-accounts-title";
+  }
+  return null;
 }

@@ -87,6 +87,10 @@ test("only a fact-ready context can apply, without prebuilding today's feed", ()
   assert.match(settingsPanel, /Apply changes to future content/);
   assert.match(settingsPanel, /disabled=\{busyAction !== null \|\| !canApplyChanges\}/);
   assert.doesNotMatch(settingsPanel, />\s*Save draft/);
+  assert.doesNotMatch(settingsPanel, /Create draft from description/);
+  assert.doesNotMatch(settingsPanel, /Create a draft from a description/);
+  assert.match(settingsPanel, /placeholder="e\.g\. Acme Nutrition"/);
+  assert.match(settingsPanel, /An AI-powered meal tracking mobile app/);
 });
 
 test("list fields preserve raw typing and normalize only when applying", () => {

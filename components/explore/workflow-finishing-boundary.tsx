@@ -6,13 +6,13 @@ import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing, type FinishingOptions,
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
-import { workflowScheduleTargets } from "@/lib/explore/workflow-scheduling-draft";
+import { workflowAccountSelectionError, workflowScheduleTargets } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
 import type { MediaAsset } from "@/lib/media/types";
-import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
 import { trimmedDemoFraming } from "@/lib/explore/format-demo";
 import { useTalkingHeadPendingComposition } from "./talking-head-pending-composition";
@@ -162,12 +162,17 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         // Preserve the exact receipt while replacing help for an older time error.
         setMessage(UNCONFIRMED_SCHEDULE_MESSAGE);
       }
+      let rejected = false;
       try {
         const value = await authorized("/api/schedules");
         if (!isCurrent()) return;
         const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === saved.input.idempotencyKey);
         if (match) { accept(saved, { ok: true, schedule: match }); return; }
+        if (kind === "hook" && Array.isArray(value.schedules) && isScheduleSubmissionRejected(e) && !saved.scheduleId && readScheduleReceipt(localStorage.getItem(storageKey), saved.owner, kind)?.input.idempotencyKey === saved.input.idempotencyKey) {
+          localStorage.removeItem(storageKey); setReceipt(null); setMessage("Review your updated choices, then click Schedule post."); rejected = true;
+        }
       } catch { /* Preserve the original scheduling intent for Try again. */ }
+      if (rejected) throw e;
       throw new Error("Could not schedule your post. Try again.");
     }
   }
@@ -230,6 +235,6 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }
   const output = finishing.output;
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : (scheduleDraft.publishMode === "now" || !scheduleDraft.publishMode && !scheduleDraft.date && !scheduleDraft.time) ? "Post now" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : (scheduleDraft.publishMode === "now" || !scheduleDraft.publishMode && !scheduleDraft.date && !scheduleDraft.time) ? "Post now" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: resumeSaved && !receipt?.timeRejected ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : output && !receipt ? workflowAccountSelectionError(scheduleDraft) ?? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

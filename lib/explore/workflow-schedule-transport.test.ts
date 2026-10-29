@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { requestWorkflowSchedule } from "./workflow-schedule-transport.ts";
-import { ScheduleRequestError } from "./workflow-schedule-client.ts";
+import { ScheduleRequestError, isScheduleSubmissionRejected } from "./workflow-schedule-client.ts";
+
+test("only definite client rejections qualify for absence reconciliation; ambiguous outcomes never release intent", () => {
+  for (const status of [400, 401, 402, 403, 404, 413, 422]) assert.equal(isScheduleSubmissionRejected(new ScheduleRequestError("Rejected", status)), true);
+  assert.equal(isScheduleSubmissionRejected(new ScheduleRequestError("Selection changed", 409, "schedule_selection_unavailable")), true);
+  for (const [status, code] of [[408, "schedule_request_timeout"], [429, undefined], [500, undefined], [503, "schedule_creation_unconfirmed"], [409, "schedule_idempotency_conflict"], [409, "explore_finish_busy"], [409, "schedule_creation_incomplete"], [409, "schedule_time_too_soon"], [409, undefined]] as const) {
+    assert.equal(isScheduleSubmissionRejected(new ScheduleRequestError("Unconfirmed", status, code)), false);
+  }
+  assert.equal(isScheduleSubmissionRejected(new Error("Connection lost")), false);
+  assert.equal(isScheduleSubmissionRejected({ status: 400 }), false);
+});
 
 const stalled = () => new Promise<never>(() => {});
 const keepAlive = () => setInterval(() => {}, 1000);

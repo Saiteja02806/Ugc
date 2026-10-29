@@ -253,9 +253,11 @@
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -376,10 +378,8 @@
           115
         ],
         "frameCount": 116,
-        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Independent integration review confirmed the visible actions but identified unresolved hidden prop placement; the four-second adaptation is not approved.",
-        "issues": [
-          "The sunglasses lower offscreen, then the same hand returns bare to the forehead. Hidden prop placement needs a continuity decision before animation; do not make the sunglasses disappear from the hand."
-        ],
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Independent integration review confirmed the visible actions but identified unresolved hidden prop placement; the four-second adaptation is not approved. User decision, 29 October 2026: Preserve the sunglasses reaction: the sunglasses leave below the crop before the same empty hand returns; do not invent a visible handoff. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
         "visualQualification": "not_tested"
       }
@@ -1617,14 +1617,16 @@
         "camera": "Keep the tabletop camera fixed on both sides of the deliberate cut.",
         "endingState": "The raised arm is lowered and both hands are near the slightly lifted laptop lid.",
         "constraints": [
-          "The cut is an intentional transition awaiting an explicit decision; do not silently turn it into an unexplained pose jump.",
+          "Preserve the deliberate hard cut between the arm stretch and neck stretch; do not turn it into continuous movement.",
           "Keep the laptop as the same physical object."
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -1725,10 +1727,8 @@
           95
         ],
         "frameCount": 96,
-        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
-        "issues": [
-          "Choose whether to retain the visible jump cut between arm stretch and neck stretch or deliberately adapt it to a continuous movement; do not silently change the take structure."
-        ],
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only. User decision, 29 October 2026: Preserve the original arm stretch, deliberate jump cut and neck stretch; do not smooth the cut into a continuous movement. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
         "visualQualification": "not_tested"
       }
@@ -2199,14 +2199,16 @@
         "endingState": "The eyes are closed behind the empty hand crossing the forehead and nose, with an amused smile below.",
         "constraints": [
           "Do not add a sip.",
-          "The can must leave below the picture before the empty hand returns; its hidden placement requires a continuity decision.",
+          "The can must leave below the picture before the same empty hand returns; keep its placement offscreen without inventing a visible handoff.",
           "Do not make the can disappear while it is still visible in the hand."
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -2288,10 +2290,8 @@
           76
         ],
         "frameCount": 77,
-        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
-        "issues": [
-          "The can leaves below view before the same empty hand returns. Hidden placement is not visible; resolve continuity before approval rather than inventing a handoff."
-        ],
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only. User decision, 29 October 2026: Preserve the can and reaction: the can exits below the crop before the same empty hand returns; no invented visible handoff or sip. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
         "visualQualification": "not_tested"
       }
@@ -2704,13 +2704,15 @@
         "endingState": "The café tabletop, laptop and pen are visible, and the performer keeps the surprised expression with the hand low.",
         "constraints": [
           "Keep the headphones on and the laptop geometry continuous.",
-          "The newly revealed table and incidental people need an explicit scene-continuity decision before this plan is approved."
+          "Reveal the cafe table and incidental people continuously as the camera retreats; keep the opening crop and scene geometry consistent."
         ]
       },
       "review": {
-        "status": "needs_decision",
+        "status": "static_reviewed",
         "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
+        "supportedDurationsSeconds": [
+          4
+        ],
         "method": "canonical_frames_and_prior_notes",
         "sampledFrameIndices": [
           0,
@@ -2806,10 +2808,8 @@
           90
         ],
         "frameCount": 91,
-        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
-        "issues": [
-          "The moving viewpoint reveals table geometry and café patrons not fully supplied by the opening image. Review a wider approved starting image or accept deliberate reconstruction before approval."
-        ],
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only. User decision, 29 October 2026: Preserve the original opening and camera retreat/downward movement, reconstructing the revealed cafe and table continuously rather than widening the starting crop. Use original source frame zero, substitute influencer identity, and remove source text/logos without removing props. This resolves the product decision only; generated image/video quality remains not tested.",
+        "issues": [],
         "sourceFileSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
         "visualQualification": "not_tested"
       }

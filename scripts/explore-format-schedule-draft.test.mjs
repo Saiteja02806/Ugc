@@ -204,6 +204,38 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
 const clickSchedule = h => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
 const settle = () => new Promise(setImmediate);
 
+test("definite selection rejection releases the format request and corrected choices get a fresh identity", async () => {
+  const account = randomUUID(); let rejected = false;
+  const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (url, init) => {
+    if (url === "/api/schedules" && init.method === "POST" && !rejected) { rejected = true; return Response.json({ ok: false, code: "schedule_selection_unavailable", message: "Choose your current account." }, { status: 409 }); }
+    if (url === "/api/schedules" && !init.method) return Response.json({ ok: true, schedules: [] });
+    return null;
+  } });
+  h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
+  clickSchedule(h); await settle(); h.render();
+  assert.equal([...h.storage.values()].some(raw => { try { return Boolean(JSON.parse(raw).input?.idempotencyKey); } catch { return false; } }), false);
+  h.form().onChange({ ...h.form().draft, caption: "Corrected caption" }); h.render(); clickSchedule(h); await settle(); h.render();
+  const posted = h.requests.filter(r => r.options.method === "POST").map(r => JSON.parse(r.options.body));
+  assert.equal(posted.length, 2); assert.notEqual(posted[1].idempotencyKey, posted[0].idempotencyKey);
+  assert.equal(posted[1].caption, "Corrected caption");
+});
+
+test("format rejection cannot release a request when status reconciliation fails or the response is ambiguous", async () => {
+  for (const scenario of ["read-failed", "malformed-read", "server-error", "unknown-conflict", "timeout", "rate-limit"]) {
+    const account = randomUUID();
+    const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (url, init) => {
+      if (url !== "/api/schedules") return null;
+      if (init.method === "POST") return Response.json({ ok: false, code: scenario === "unknown-conflict" ? "schedule_idempotency_conflict" : "schedule_selection_unavailable", message: "Rejected or unconfirmed" }, { status: scenario === "server-error" ? 503 : scenario === "timeout" ? 408 : scenario === "rate-limit" ? 429 : 409 });
+      return Response.json(scenario === "read-failed" ? { ok: false } : scenario === "malformed-read" ? { ok: true } : { ok: true, schedules: [] }, { status: scenario === "read-failed" ? 500 : 200 });
+    } });
+    h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render(); clickSchedule(h); await settle(); h.render();
+    const first = h.requests.find(r => r.options.method === "POST").options.body;
+    assert.ok([...h.storage.values()].some(raw => { try { return JSON.parse(raw).input?.idempotencyKey === JSON.parse(first).idempotencyKey; } catch { return false; } }), scenario);
+    h.form().onChange({ ...h.form().draft, caption: "Changed after failure" }); h.render(); clickSchedule(h); await settle(); h.render();
+    assert.equal(h.requests.filter(r => r.options.method === "POST")[1].options.body, first, scenario);
+  }
+});
+
 test("Hook, Wall and Slideshow use the original simple form and schedule directly", async () => {
   for(const format of ["hook","wall_text","slideshow"]) {
     const account=randomUUID(), h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account});

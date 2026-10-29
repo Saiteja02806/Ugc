@@ -34,7 +34,7 @@ function load(path, imports = {}, environment = "production", flags = {}, global
   return exported;
 }
 
-const link = { default: "link", __esModule: true };
+const link = { WorkspaceLink: "link" };
 const indicatorImport = { ExploreLinkIndicator: "indicator" };
 const workflows = load("lib/explore/workflows.ts");
 const presets = load("lib/explore/launch-presets.ts", {
@@ -64,7 +64,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
 
 test("all three workflow cards keep real links and place feedback inside the corresponding link", () => {
   const { ExploreWorkflowCard } = load("components/explore/explore-workflow-card.tsx", {
-    "next/link": link,
+    "@/components/layout/workspace-navigation-feedback": link,
     "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
@@ -84,7 +84,7 @@ test("all three workflow cards keep real links and place feedback inside the cor
 
 test("AI character cover and caption remain inside a single live link without a click lock", () => {
   const { AICharacterCard } = load("components/explore/ai-character-card.tsx", {
-    "next/link": link,
+    "@/components/layout/workspace-navigation-feedback": link,
     "next/image": { default: "image", __esModule: true },
     "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
@@ -102,7 +102,7 @@ test("AI character cover and caption remain inside a single live link without a 
 
 test("quick starts preserve destinations, duration and preview query parameters with per-link feedback", () => {
   const { ExploreWorkspace } = load("components/explore/explore-workspace.tsx", {
-    "next/link": link,
+    "@/components/layout/workspace-navigation-feedback": link,
     "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
@@ -279,6 +279,31 @@ test("cover motion does not download on visibility, cancels fast clicks and resp
   handlers.get("focus")(); assert.equal(timers.size, 0);
   assert.ok(paused > 0);
   cleanup(); assert.equal(handlers.size, 0); assert.equal(videoHandlers.size, 0);
+});
+
+test("Explore covers warm metadata and start immediately on hover without changing gallery behavior", () => {
+  const handlers = new Map(), pageHandlers = new Map();
+  let effect, observe, plays = 0, preferenceChanged;
+  const preference = { matches: false, addEventListener(_name, fn) { preferenceChanged = fn; }, removeEventListener() {} };
+  const link = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const video = { src: null, preload: "none", closest: () => link, hasAttribute: () => video.src !== null,
+    removeAttribute() { video.src = null; }, load() {}, pause() {}, play: async () => { plays++; }, addEventListener() {}, removeEventListener() {} };
+  const page = { visibilityState: "visible", activeElement: null, addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, { window: { matchMedia: () => preference }, document: page,
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout() { throw Error("Explore covers must not delay playback"); }, clearTimeout() {} });
+  useCoverPlayback("/cover.mp4", "a", true); const cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  assert.equal(video.src, "/cover.mp4"); assert.equal(video.preload, "metadata"); assert.equal(plays, 0);
+  handlers.get("pointerenter")({ pointerType: "touch" }); assert.equal(plays, 0);
+  handlers.get("pointerenter")({ pointerType: "mouse" }); assert.equal(plays, 1);
+  handlers.get("pointerleave")(); assert.equal(video.src, null);
+  handlers.get("focus")(); assert.equal(plays, 2);
+  preference.matches = true; preferenceChanged(); assert.equal(video.src, null);
+  handlers.get("focus")(); assert.equal(plays, 2);
+  cleanup(); assert.equal(handlers.size, 0); assert.equal(pageHandlers.size, 0);
 });
 
 test("gallery button hover releases video on hidden tab, offscreen scroll, dialog click and unmount", () => {

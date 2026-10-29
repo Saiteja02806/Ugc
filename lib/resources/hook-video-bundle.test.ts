@@ -6,6 +6,7 @@ import test from "node:test";
 import { bundleStatus, claimBundleDownload, readBundleState, validateBundleItems, type BundleState, type BundleStateStore } from "./hook-video-bundle.ts";
 import { bundleZipSize, streamBundleZip, type BundleZipEntry } from "./hook-video-bundle-zip.ts";
 import { createHookBundleHandlers } from "./hook-video-bundle-api.ts";
+import { getHookReferenceReleaseItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const bundleHash = hash("test bundle");
@@ -28,13 +29,17 @@ function post(id: string = randomUUID(), origin = "https://getugcpilot.com") {
 }
 const statusRequest = () => new Request("https://getugcpilot.com/api/resources/hook-video-bundle");
 
-test("frozen bundle contains exactly the 104 active ordinary public references", () => {
+test("frozen bundle retains its 104 original public sources independently of later gallery changes", () => {
   const m = JSON.parse(readFileSync(new URL("./hook-video-bundle-manifest.json", import.meta.url), "utf8"));
   assert.equal(m.items.length, 104); assert.match(validateBundleItems(m.items), /^[a-f0-9]{64}$/);
-  const names = ["explore-hook-reference-release", "explore-hook-reference-addition-release", "explore-hook-reference-new-batch-release", "explore-hook-reference-oct23-release", "explore-hook-reference-oct23-refresh-release"];
-  const active = names.map(name => JSON.parse(readFileSync(new URL(`../../worker/src/lib/${name}.json`, import.meta.url), "utf8"))).filter(r => r.mediaStatus === "published" && r.activation === "active");
-  const excluded = new Set(active.flatMap(r => r.excludedReferenceIds));
-  assert.deepEqual(m.items.map((item: { id: string }) => item.id), active.flatMap(r => r.items).filter(item => !excluded.has(item.id)).map(item => item.id));
+  assert.equal(hash(JSON.stringify(m)), "8547e2255c7a69e02e8602a95d8d45dacabb4a6acac76dbb72152ac5af43bc18");
+  const released = getHookReferenceReleaseItems();
+  for (const item of m.items) {
+    const source = released.find(row => row.id === item.id);
+    assert.ok(source, item.id);
+    assert.equal(item.sha256, source.videoSha256);
+    assert.equal(item.key, source.videoStorageKey);
+  }
   assert.throws(() => validateBundleItems([{ ...m.items[0], key: "users/private.mp4" }]));
 });
 test("110 concurrent claims accept exactly 100 and reject the remaining 10", async () => {

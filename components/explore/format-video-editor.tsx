@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ClipPreviewControls } from "./clip-preview-controls";
 import { ClipTrimTimeline } from "./clip-trim-timeline";
@@ -38,6 +38,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { MediaAsset } from "@/lib/media/types";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 import { useClipDraftSave } from "@/components/explore/use-clip-draft-save";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import type { ExploreClipDraft, ExploreClipDraftContent } from "@/lib/explore/clip-draft-contract";
 import { formatPreviewAudioPosition, type SequencePreviewAudio, type SequencePreviewSegment } from "@/lib/explore/sequence-preview";
 
@@ -52,7 +53,7 @@ export type WorkflowClipEditState = { sourceId: string; editing: ExploreFormatEd
   backgroundAssetId?: string | null; backgroundPlayback?: "once" | "repeat"; savedDraft?: ExploreClipDraft | null; needsDraftSaving?: boolean;
   draftBusy?: boolean; draftError?: string | null };
 
-export type FormatOpeningPreview = { segment: SequencePreviewSegment; referenceAudio: SequencePreviewAudio | null; disabledReason?: string | null };
+export type FormatOpeningPreview = { segment: SequencePreviewSegment; referenceAudio: SequencePreviewAudio | null; disabledReason?: string | null; warning?: string | null };
 export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, originalSoundTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, showSoundControls = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel, fullDurationHookText = false }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
@@ -72,6 +73,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   fullDurationHookText?: boolean;
 }) {
   const { user } = useAuth();
+  const saveStatusId = useId();
   const owner = user?.uid ?? null;
   const draftKey = `ugc-explore:format-draft:v1:${owner}:${draftScope ?? format}:${video.mediaAssetId ?? video.id}`;
   const [initialDraft] = useState(() => {
@@ -108,6 +110,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const [playback, setPlayback] = useState<"once" | "repeat">(initialDraft.playback);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [remixError, setRemixError] = useState<string | null>(null);
   const localAudio = useLocalWorkflowMedia("audio");
   const audioSelectionError = localAudio.loading ? "Wait for your selected audio to finish loading." : localAudio.error;
   const player = useRef<HTMLVideoElement | null>(null);
@@ -133,21 +136,23 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     tick();
   }
   useEffect(() => { alive.current = true; return () => { alive.current = false; stopSoundtrackPlayback(); }; }, []);
-  const sourceQuery = useQuery({ queryKey: ["explore-edit-source", owner, video.mediaAssetId, "remix-source"], staleTime: 30_000, enabled: Boolean(owner && video.mediaAssetId && !localPreview), queryFn: async () => {
-    const token = await getCurrentUserIdToken(owner ?? undefined); if (!token || !video.mediaAssetId) throw new Error("Sign in to edit this saved video.");
-    const asset = await fetchAIStudioMediaAsset(video.mediaAssetId, token, { remixSource: true });
+  const sourceQuery = useQuery({ queryKey: ["explore-edit-source", owner, video.mediaAssetId, "remix-source"], staleTime: 30_000, enabled: Boolean(owner && video.mediaAssetId && !localPreview), queryFn: ({ signal }) => withReadDeadline(async bounded => {
+    const token = await getCurrentUserIdToken(owner ?? undefined); bounded.throwIfAborted();
+    if (!token || !video.mediaAssetId) throw new Error("Sign in to edit this saved video.");
+    const asset = await fetchAIStudioMediaAsset(video.mediaAssetId, token, { remixSource: true, signal: bounded });
     formatVideoFromAsset(asset);
     return asset;
-  }});
+  }, signal) });
   const remixSource = sourceQuery.data && Object.hasOwn(sourceQuery.data.metadata ?? {}, "remixTextSource") ? readRemixSource(sourceQuery.data.metadata.remixTextSource) : video.remixTextSource;
   const boundReference = remixSource === undefined ? remixReference : resolveRemixSource(remixSource, remixReferences ?? (remixReference ? [remixReference] : []), format).reference;
   const editing = normalizeTextTiming(repairHookRemixEdit(storedEditing, boundReference?.id), fullDurationHookText);
-  const backgroundQuery = useQuery({ queryKey: ["explore-edit-audio", owner, backgroundId], enabled: Boolean(owner && backgroundId), queryFn: async () => {
-    const token = await getCurrentUserIdToken(owner ?? undefined); if (!token || !backgroundId) throw new Error("Sign in to load this audio.");
-    const asset = await fetchAIStudioMediaAsset(backgroundId, token);
+  const backgroundQuery = useQuery({ queryKey: ["explore-edit-audio", owner, backgroundId], enabled: Boolean(owner && backgroundId), queryFn: ({ signal }) => withReadDeadline(async bounded => {
+    const token = await getCurrentUserIdToken(owner ?? undefined); bounded.throwIfAborted();
+    if (!token || !backgroundId) throw new Error("Sign in to load this audio.");
+    const asset = await fetchAIStudioMediaAsset(backgroundId, token, { signal: bounded });
     if (asset.status !== "ready" || asset.collection !== "audio") throw new Error("Choose ready background audio.");
     return asset;
-  }});
+  }, signal) });
   const referenceAudio = getReferenceAudioPreview(sourceQuery.data);
   const [referenceAudioVolumeInitialized, setReferenceAudioVolumeInitialized] = useState(initialDraft.restored);
   useEffect(() => {
@@ -163,6 +168,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   let draftValidation: string | null = null;
   try { readFormatEditDraft(editing); } catch (error) { draftValidation = error instanceof Error ? error.message : "Review your edits."; }
   if (editing.trimEndMs > duration * 1000 + 50) draftValidation = "Keep the trim range inside this video.";
+  const previewValidation = draftValidation;
   let validation: string | null = null;
   try { parseExploreFormatEdit(exportEditing); } catch (error) { validation = error instanceof Error ? error.message : "Review your edits."; }
   if (editing.trimEndMs > duration * 1000 + 50) validation = "Keep the trim range inside this video.";
@@ -192,26 +198,27 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     content: clipDraftContent, enabled: enabled && !localPreview, onRestore: restoreSavedDraft });
   const [continueWithoutAutomaticText, setContinueWithoutAutomaticText] = useState(false);
   const automaticText = sourceQuery.data?.metadata?.automaticHookText as { status?: string } | undefined;
-  const automaticTextNeedsReview = format === "hook" && (draftScope ?? format) === "hook" && automaticText?.status === "needs_review" &&
+  const automaticTextNeedsReview = (format === "wall_text" || format === "hook" && (draftScope ?? format) === "hook") && automaticText?.status === "needs_review" &&
     !continueWithoutAutomaticText && !draftSave.saved && !overlays.some(text => text.value.trim());
   if (automaticTextNeedsReview) {
-    validation ??= "Your video is ready, but automatic text needs review. Add text or choose Continue without text.";
+    if (format === "wall_text" && validation === "Add your wall of text before saving.") validation = "Your video is ready, but automatic text needs review. Add or remix your Wall text before saving.";
+    else validation ??= "Your video is ready, but automatic text needs review. Add text or choose Continue without text.";
     draftValidation ??= validation;
   }
   const finishing = useWorkflowFinishing({ ownerId: owner, enabled, kind: "hook", source: sourceQuery.data ?? null, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS,
     editing: exportEditing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `${draftScope ?? `format:${format}`}:${video.mediaAssetId}`, onRestoreDraft: restore,
     reuseUnchangedSource: canReuseUnchangedHookSource(sourceQuery.data ?? null, exportEditing, backgroundId), fastStatus: prepareRequest > 0,
-    demoFramingError: validation ?? audioSelectionError ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
+    demoFramingError: validation ?? remixError ?? audioSelectionError ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
   });
   const preparationBusy = pendingSource || localAudio.loading || finishing.action.busy || Boolean(finishing.action.cancel);
-  const preparationError = validation ?? audioSelectionError ?? finishing.action.error ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null);
+  const preparationError = validation ?? remixError ?? audioSelectionError ?? finishing.action.error ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null);
   const preparationMessage = finishing.action.message;
   const hasClipEdits = exportEditing.trimStartMs !== 0 || exportEditing.trimEndMs !== Math.round(duration * 1000) || exportEditing.originalVolume !== 1 || overlays.length > 0 || Boolean(backgroundId) || Boolean(referenceAudio && exportEditing.musicVolume !== referenceAudio.volume);
   const needsSaving = hasClipEdits && !finishing.output;
   // Raw final composition uses the saved edit JSON. A separate clip export's
   // pending receipt or failure must not lock that draft or the final sequence.
   const draftBusy = pendingSource || localAudio.loading || uploading || draftSave.busy;
-  const draftError = validation ?? audioSelectionError ?? uploadError
+  const draftError = validation ?? remixError ?? audioSelectionError ?? uploadError
     ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null)
     ?? (backgroundQuery.isError ? "Could not load your background audio. Choose it again." : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null)
     ?? (enabled && !localPreview ? draftSave.error ?? (!draftSave.loaded ? "Loading your saved clip edits…" : null) : null);
@@ -239,6 +246,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     try { localStorage.setItem(draftKey, JSON.stringify({ version: 1, editing: next, backgroundId: audioId, playback: mode })); } catch { /* No provider request is made by editing. */ }
   }
   function change(next: ExploreFormatEdit) {
+    setRemixError(null);
     next = normalizeTextTiming(next, fullDurationHookText);
     setReferenceAudioVolumeInitialized(true);
     setEditing(next);
@@ -288,7 +296,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       addedAudio: !referenceAudio && previewAudioUrl ? { url: previewAudioUrl, volume: editing.musicVolume, playback: previewPlayback,
         timelineOffsetMs: exportEditing.trimStartMs, mixDurationMs: duration * 1000 } : null },
     referenceAudio: referenceAudio ? { url: referenceAudio.audioUrl, volume: editing.musicVolume, playback: "repeat" } : null,
-    disabledReason: validation ?? (video.mediaAssetId && !localPreview && !sourceQuery.data ? sourceQuery.isError ? "The hook source could not load. Return to Edit to choose it again." : !owner ? "Sign in to preview this saved hook." : "Loading your hook settings…"
+    warning: validation,
+    disabledReason: previewValidation ?? (video.mediaAssetId && !localPreview && !sourceQuery.data ? sourceQuery.isError ? "The hook source could not load. Return to Edit to choose it again." : !owner ? "Sign in to preview this saved hook." : "Loading your hook settings…"
       : backgroundId && !previewAudioUrl ? backgroundQuery.isError ? "Hook audio could not load. Return to Edit and choose another track." : !owner ? "Sign in to preview your selected hook audio." : "Loading hook audio…" : null),
   } satisfies FormatOpeningPreview);
   useEffect(() => { onPreviewChange?.(JSON.parse(sequencePreview) as FormatOpeningPreview); }, [onPreviewChange, sequencePreview]);
@@ -314,7 +323,13 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   });
   const previewTextTime = clipPreviewTextTimeMs(time, editing.trimEndMs - editing.trimStartMs);
   const referenceFirst = allowRemix && boundReference?.format === format && !boundReference.id.startsWith("uploaded:");
-  const saveDisabled = !enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data);
+  const saveBlockedReason = localPreview ? "Saving is unavailable in this local preview." : !owner ? "Sign in to save your edits." : !enabled ? "Saving is unavailable for this editor."
+    : pendingSource ? "Wait for your selected video to finish loading." : uploading ? "Wait for your audio upload to finish."
+    : audioSelectionError ?? uploadError ?? remixError ?? draftValidation ?? (draftSave.busy ? "Saving your edits…" : null)
+    ?? (!draftSave.loaded ? draftSave.error ?? "Loading your saved clip edits…" : null)
+    ?? (!sourceQuery.data ? sourceQuery.isError ? "Could not load this saved video. Retry below." : "Loading your saved video…" : null)
+    ?? (backgroundId && !backgroundQuery.data ? backgroundQuery.isError ? "Could not load your background audio. Choose it again." : "Loading your background audio…" : null);
+  const saveDisabled = Boolean(saveBlockedReason);
   async function saveAndContinue() {
     if (saveDisabled) return;
     const snapshot = JSON.stringify(clipDraftContent);
@@ -325,15 +340,15 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const originalSound = <div className="space-y-2"><label className="block space-y-2 text-xs text-muted">Demo original sound · {Math.round(editing.originalVolume * 100)}%<input aria-label="Demo original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} disabled={pendingSource || uploading || draftSave.busy || enabled && !draftSave.loaded} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>{enabled && draftSave.dirty ? <Button type="button" variant="outline" size="sm" disabled={Boolean(draftError) || !draftSave.loaded || !sourceQuery.data || draftSave.busy} onClick={() => void draftSave.save()}>Save demo edits</Button> : null}{draftError ? <p role="alert" className="text-xs text-destructive">{draftError}</p> : null}</div>;
   if (!active || !controlsTarget || !resultsTarget) return originalSoundTarget ? createPortal(originalSound, originalSoundTarget) : null;
   const actions = <div className={styles.clipActionContent}>
-    {validation || draftSave.error || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? draftSave.error ?? finishing.action.error}</p> : null}
-    {automaticTextNeedsReview ? <Button type="button" size="sm" variant="outline" disabled={!draftSave.loaded || draftSave.busy} onClick={() => { setContinueWithoutAutomaticText(true); void draftSave.save(); }}>Continue without text</Button> : null}
+    {validation || remixError || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? remixError ?? finishing.action.error}</p> : null}
+    {automaticTextNeedsReview && format === "hook" ? <Button type="button" size="sm" variant="outline" disabled={!draftSave.loaded || draftSave.busy} onClick={() => { setContinueWithoutAutomaticText(true); void draftSave.save(); }}>Continue without text</Button> : null}
     <div className={editorStyles.actionBar}>
       {onBackToPreview ? <Button type="button" variant="ghost" onClick={onBackToPreview} disabled={draftSave.busy} className="h-11 rounded-xl px-4"><ArrowLeft className="size-4" aria-hidden="true" />{backLabel}</Button> : null}
-      <Button type="button" variant="outline" disabled={saveDisabled} onClick={() => void draftSave.save()} className={`${editorStyles.saveAction} h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`}>{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
-      <Button type="button" disabled={saveDisabled} onClick={() => void saveAndContinue()} className="h-11 rounded-xl px-5 font-semibold">{format === "wall_text" ? "Save & review post" : "Save & return"}</Button>
+      <Button type="button" variant="outline" disabled={saveDisabled} aria-describedby={saveBlockedReason || draftSave.error ? saveStatusId : undefined} onClick={() => void draftSave.save()} className={`${editorStyles.saveAction} h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`}>{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+      <Button type="button" disabled={saveDisabled} aria-describedby={saveBlockedReason || draftSave.error ? saveStatusId : undefined} onClick={() => void saveAndContinue()} className="h-11 rounded-xl px-5 font-semibold">{format === "wall_text" ? "Save & review post" : "Save & return"}</Button>
       {!prepareInSequence && ((draftSave.saved && !draftSave.dirty) || localPreview) ? <div className={editorStyles.nextAction}><Button type="button" variant="outline" disabled={pendingSource || draftSave.busy} onClick={onContinue} className="h-11 rounded-xl px-5 font-semibold">{continueLabel}</Button></div> : null}
     </div>
-    {enabled && !draftSave.loaded ? <p role="status" className="text-xs leading-5 text-muted">Loading saved edits…</p> : null}
+    {saveBlockedReason || draftSave.error ? <p id={saveStatusId} role="status" className="text-xs leading-5 text-muted">{saveBlockedReason ?? draftSave.error}</p> : null}
     {draftSave.error ? <Button type="button" variant="ghost" size="sm" onClick={draftSave.reload} disabled={draftSave.busy}>Reload saved draft</Button> : null}
     {!prepareInSequence && enabled && !finishing.output ? <Button type="button" size="sm" variant="outline" disabled={pendingSource || !!audioSelectionError || uploading || draftSave.busy || finishing.action.disabled || !sourceQuery.data} onClick={() => finishing.action.onAction()}>{finishing.action.busy || finishing.action.cancel ? "Preparing video…" : "Prepare final video"}</Button> : null}
     {finishing.action.busy || finishing.output ? <p role="status" className="text-xs leading-5 text-muted">{finishing.output ? "Publishing video ready in Library." : finishing.action.message}</p> : null}
@@ -345,9 +360,9 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       <div className={editorStyles.trimTimingFields}><label>Start <span>Seconds</span><input aria-label="Trim start" type="number" min={0} max={Math.max(0, editing.trimEndMs / 1000 - 1)} step={.1} value={editing.trimStartMs / 1000} onChange={event => trim(Math.round(Number(event.target.value) * 1000), editing.trimEndMs)} className={field} /></label><label>End <span>Seconds</span><input aria-label="Trim end" type="number" min={editing.trimStartMs / 1000 + 1} max={duration} step={.1} value={editing.trimEndMs / 1000} onChange={event => trim(editing.trimStartMs, Math.round(Number(event.target.value) * 1000))} className={field} /></label></div>
       <ClipTrimTimeline disabled={uploading || pendingSource || draftSave.busy} durationMs={Math.round(duration * 1000)} startMs={editing.trimStartMs} endMs={editing.trimEndMs} timeMs={editing.trimStartMs + time} onChange={trim} />
     </section></details>;
-  const remixEditor = allowRemix ? <RemixTextSection expanded editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source, { width, height }); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }} /> : null;
+  const remixEditor = allowRemix ? <RemixTextSection expanded editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source, { width, height }); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setRemixError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }} /> : null;
   const manualTextEditor = <FormatVideoTextFields fullDurationHookText={fullDurationHookText} styleTarget={textStyleTarget} showStyleControls={!simpleWall} editing={editing} onChange={change} timeMs={time} onSeek={seekText} />;
-  const textControls = <div key="text" className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>{allowRemix ? <RemixTextSection expanded={referenceFirst} editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source, { width, height }); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}>{manualTextEditor}</RemixTextSection> : manualTextEditor}</div>;
+  const textControls = <div key="text" className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>{allowRemix ? <RemixTextSection expanded={referenceFirst} editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source, { width, height }); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setRemixError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}>{manualTextEditor}</RemixTextSection> : manualTextEditor}</div>;
   const manualTextControls = <div key="manual-text" className={`${styles.clipTextControls} ${editorStyles.textControlSection} ${editorStyles.manualTextSection}`}>{manualTextEditor}</div>;
   const remixControls = <div key="remix" className={`${styles.clipTextControls} ${editorStyles.remixControlSection}`}>{remixEditor}</div>;
   const controls = <div className={`${styles.clipControlContent} ${editorStyles.editorRoot}`} data-remix-priority={referenceFirst || undefined} data-wall-mode={format === "wall_text" ? simpleWall ? "text" : "advanced" : undefined}>

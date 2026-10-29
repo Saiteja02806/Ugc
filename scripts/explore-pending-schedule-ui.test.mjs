@@ -114,6 +114,36 @@ test("mount, receipt restoration and preparation polling never create a schedule
   assert.match(h.text(), /Post scheduled/); h.unmount();
 });
 
+test("definite background rejection releases only an unconfirmed request so corrected choices can be submitted", async () => {
+  let rejected = false;
+  const h = fixture({ transport: async (url, init) => {
+    if (url === "/api/explore/schedules" && init.method === "POST" && !rejected) { rejected = true; return Response.json({ ok: false, code: "schedule_selection_unavailable", message: "Choose your current account." }, { status: 409 }); }
+    return null;
+  } });
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  assert.equal(h.values.has("ugc-explore:background-schedule:v1:owner-a:hook"), false);
+  h.props.draft = { ...h.props.draft, caption: "Corrected caption" }; h.render();
+  h.button("Schedule post").props.onClick(); await settle(); h.render();
+  const posted = h.calls.filter(c => c.method === "POST").map(c => JSON.parse(c.body));
+  assert.equal(posted.length, 2); assert.notEqual(posted[0].requestKey, posted[1].requestKey);
+  assert.equal(posted[1].schedule.caption, "Corrected caption"); h.unmount();
+});
+
+test("a background selection rejection preserves an accepted post or an unavailable status read", async () => {
+  for (const accepted of [true, false]) {
+    let captured;
+    const h = fixture({ transport: async (url, init) => {
+      if (init.method === "POST") { captured = JSON.parse(init.body); return Response.json({ ok: false, code: "schedule_selection_unavailable", message: "Account changed" }, { status: 409 }); }
+      if (url.startsWith("/api/explore/schedules?requestKey=")) return accepted ? Response.json(reply(captured)) : Response.json({ ok: false }, { status: 503 });
+      return null;
+    } });
+    await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+    const stored = JSON.parse(h.values.get("ugc-explore:background-schedule:v1:owner-a:hook"));
+    assert.equal(stored.input.requestKey, captured.requestKey); assert.equal(stored.confirmed, accepted);
+    h.unmount();
+  }
+});
+
 test("a pending preparation does not complete the editing draft; a verified scheduled result does",async()=>{
   let completed=0;const h=fixture({saved:savedEntry(true),serverReply:reply(),props:{onScheduled:()=>completed++}});
   h.render();await settle();h.render();assert.equal(completed,0);

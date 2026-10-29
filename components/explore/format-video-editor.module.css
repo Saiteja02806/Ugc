@@ -36,8 +36,8 @@
 .nextAction { display: flex; border-left: 1px solid var(--border); margin-left: 4px; padding-left: 12px; }
 .actionBar button { min-height: 44px; }
 @media (max-width: 599px) {
-  .actionBar { gap: 8px; }
-  .actionBar > button { flex: 1; padding-inline: 12px; }
+  .actionBar { gap: 8px; max-width: 100%; }
+  .actionBar > button { flex: 1 1 120px; min-width: 0; max-width: 100%; padding-inline: 12px; white-space: normal; }
   .nextAction { flex-basis: 100%; justify-content: flex-end; border-left: 0; border-top: 1px solid var(--border); margin: 4px 0 0; padding: 8px 0 0; }
 }
 @media (max-width: 359px) {

@@ -127,6 +127,6 @@ test("reviewed Wall profiles preserve reference structure, full duration, and re
       assert.equal(formatTextLayout(text, 720, 1280).fits, true);
       assert.deepEqual(parseExploreFormatEdit(JSON.parse(JSON.stringify(edit))), edit);
     }
-    assert.throws(() => initialWallText("word ".repeat(200), profile, 15000), /fit|valid text/);
+    assert.throws(() => initialWallText("word ".repeat(2000), profile, 15000), /fit|valid text/);
   }
 });

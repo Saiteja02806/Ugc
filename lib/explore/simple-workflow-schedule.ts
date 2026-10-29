@@ -3,7 +3,7 @@ import { getEarliestScheduleTimestamp, getZonedDateTimeParts, resolveZonedDateTi
 import { getDefaultScheduleTargetSettings, getConfirmedScheduleTargetSettings, getScheduleTargetSettingsError, type ScheduleTargetSettings, type TikTokScheduleCapabilityState } from "../scheduling/platform-settings.ts";
 import { parsePublishingPreferences } from "../scheduling/publishing-preferences.ts";
 import { parseWorkflowConnectedAccounts, workflowAccountBlock } from "./workflow-connected-accounts";
-import { workflowScheduleTargets, type WorkflowScheduleDraft } from "./workflow-scheduling-draft.ts";
+import { workflowAccountSelectionError, workflowScheduleTargets, type WorkflowScheduleDraft } from "./workflow-scheduling-draft.ts";
 import type { ScheduleCreateSourceInput } from "../scheduling/types";
 import type { TikTokPublishCapabilities } from "../social/tiktok-publishing.ts";
 import { isScheduleTimeout } from "./workflow-schedule-transport.ts";
@@ -15,7 +15,7 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   load: (url: string) => Promise<unknown>;
 }): Promise<ScheduleFormSubmission> {
   const targets = workflowScheduleTargets(draft);
-  if (!targets.length) throw new Error("Choose an account for each selected platform.");
+  if (!targets.length) throw new Error(workflowAccountSelectionError(draft) ?? "Review your selected accounts.");
   if (draft.caption.length > 5000) throw new Error("Keep your post caption within 5,000 characters.");
   const automatic = (draft.fiveMinutesFromSubmit === true || draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time);
   let scheduledFor = automatic ? "" : resolveZonedDateTime({ date: draft.date, time: draft.time, timeZone: timezone });

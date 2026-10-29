@@ -1,7 +1,7 @@
 "use client";
 
 import { Headphones, ImageIcon, Sparkles, Video } from "lucide-react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";

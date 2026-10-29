@@ -14,6 +14,10 @@ process.env.GCP_STORAGE_PUBLIC_BASE_URL = "https://media.fixture.test";
 
 // Deliberately retired on 22 October; retain transcripts without reactivating cards.
 const retiredWallSources = new Map([
+  ["explore-wall-text-06", "e85c145d5316e4bdd4395900895e6f51c220b44accc84f3025149c554620856f"],
+  ["explore-wall-text-21", "d3ed4f1f5e6c491f83ceab686444d67713e3fc9cfb3d90cabce0215ec0504434"],
+  ["explore-wall-text-28", "46871589f47a434baedda1ae05aa6b1115f87eb6e3b381cccbfbf51e55ea70d1"],
+  ["explore-wall-text-59", "99241cc10573b7b1b4defe485c3c9e042303e6f548781a29e7ebee1b9af3d052"],
   ["explore-wall-text-08", "686eed6e67b73c82c703bf2bab0add794268e2cdab075eedcca58cc2e2474ff2"],
   ["explore-wall-text-09", "b6159891652a6f4ea1a3e13d79f5736f24b20de30111c136733e47f22f5e61ab"],
 ]);

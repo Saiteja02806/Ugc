@@ -201,8 +201,9 @@ export function getMissingBusinessProfileOnboardingFields(
   const context = deriveBusinessProfileOnboardingContext(analysis);
 
   return ONBOARDING_FIELDS.filter((field) => {
-    const fieldSchema = BusinessProfileOnboardingContextSchema.shape[field];
-    return !fieldSchema.safeParse(context[field]).success;
+    // Onboarding input has its own limits, but an owner may subsequently edit
+    // the saved business name without making a completed profile incomplete.
+    return !context[field].trim();
   });
 }
 

@@ -43,8 +43,8 @@ test("Add to hook preserves the reported emoji caption through draft recovery, c
     const remixed = applyVideoTextRemix(edit, { blocks: [copy], heading: "", body: "" }, source);
     const restored = readFormatEditDraft(JSON.parse(JSON.stringify(remixed)));
     assert.equal(restored.textOverlays[0].value, copy);
-    assert.equal(restored.textOverlays[0].font, "proximanovaa");
-    assert.equal(restored.textOverlays[0].fontWeight, 600);
+    assert.equal(restored.textOverlays[0].font, "tiktoksans");
+    assert.equal(restored.textOverlays[0].fontWeight, 700);
     for (const mode of ["clip", "composition"]) {
       const parent = join(dir, `${index}-${mode}`);
       await mkdir(parent);

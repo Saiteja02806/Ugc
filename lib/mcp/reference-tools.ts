@@ -3,7 +3,7 @@ import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { getUserSubscription } from "@/lib/billing/subscription-db";
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
-import { ReferenceTextSchema, RemixOutputSchema, RemixRequestSchema } from "@/lib/explore/reference-text";
+import { ReferenceTextSchema, RemixOutputSchema, WallHeadingBodyRemixOutputSchema, RemixRequestSchema } from "@/lib/explore/reference-text";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 
@@ -17,7 +17,7 @@ const reference = z.strictObject({
   paired_audio:z.strictObject({ title:z.string(), url:https, duration_seconds:z.number().positive() }).nullable(),
 });
 const resultSchema = z.strictObject({ request_key:z.uuid(), outcome:z.enum(["completed","failed","uncertain"]),
-  source:ReferenceTextSchema.nullable(), output:RemixOutputSchema.nullable(), message:z.string() });
+  source:ReferenceTextSchema.nullable(), output:z.union([RemixOutputSchema, WallHeadingBodyRemixOutputSchema]).nullable(), message:z.string() });
 const readOnly = { readOnlyHint:true, destructiveHint:false, openWorldHint:false } as const;
 export const registeredReferenceMcpTools = ["get_reference_capabilities","list_references","get_reference","remix_reference_text","get_text_remix","list_text_remixes"] as const;
 function summary(item: RecreateReference) {

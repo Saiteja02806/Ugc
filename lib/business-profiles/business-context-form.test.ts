@@ -7,6 +7,7 @@ import {
   createBusinessContextListText,
 } from "./business-context-form.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
+import { getMissingBusinessProfileOnboardingFields } from "./schema.ts";
 
 function createContext(
   overrides: Partial<WebsiteBusinessAnalysis> = {},
@@ -87,14 +88,14 @@ test("keeps Wall-of-Text reader categories while list fields are edited", () => 
   assert.equal(saved.wallTextSecondaryReader, "Agency account managers");
 });
 
-test("oversized edits identify the field without dropping any typed lines", () => {
+test("long edits and any number of category tags are retained and valid", () => {
   const text = createBusinessContextListText(createContext());
-  text.targetAudience = Array.from({ length: 6 }, (_, index) => `Audience ${index + 1}`).join("\n");
+  text.categories = Array.from({ length: 12 }, (_, index) => `Category ${index + 1}`).join("\n");
+  text.targetAudience = Array.from({ length: 12 }, (_, index) => `Audience ${index + 1} ${"a".repeat(300)}`).join("\n");
   const candidate = applyBusinessContextListText(createContext(), text);
-  assert.equal(candidate.targetAudience.length, 6);
-  assert.match(businessContextValidationMessage(candidate) ?? "", /Target audience allows at most 5 entries/);
-  text.targetAudience = "A".repeat(241);
-  assert.match(businessContextValidationMessage(applyBusinessContextListText(createContext(), text)) ?? "", /Target audience, line 1, must be 240 characters or fewer/);
-  assert.match(businessContextValidationMessage(createContext({ productSummary: "x".repeat(501) })) ?? "", /Product summary must be 500 characters or fewer/);
-  assert.equal(businessContextValidationMessage(createContext({ productSummary: "A useful product." })), null);
+  assert.equal(candidate.categories?.length, 12);
+  assert.equal(candidate.targetAudience.length, 12);
+  assert.equal(businessContextValidationMessage({ ...candidate, productSummary: "x".repeat(5000) }), null);
+  assert.deepEqual(getMissingBusinessProfileOnboardingFields({ ...candidate, businessName: "B".repeat(500) }), []);
+  assert.match(businessContextValidationMessage({ ...candidate, categories: [42] }) ?? "", /Category tags/);
 });

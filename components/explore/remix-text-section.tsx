@@ -5,7 +5,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { RecreateReference, RecreateFormat } from "@/lib/explore/recreate-types";
-import { ReferenceTextSchema, RemixRequestSchema, remixSourceMatches, validateRemixDraft, validateRemixOutput, type ReferenceText, type RemixOutput, type RemixRequest } from "@/lib/explore/reference-text";
+import { ReferenceTextSchema, RemixRequestSchema, remixSourceMatches, validateRemixDraft, validateRemixOutput, isWallHeadingBodySource, type ReferenceText, type RemixOutput, type RemixRequest } from "@/lib/explore/reference-text";
 import { readRemixTextDraft } from "@/lib/explore/remix-text-draft";
 import { hookRemixResult, hookRemixSource } from "@/lib/explore/hook-remix-source";
 import styles from "./remix-text-section.module.css";
@@ -166,7 +166,8 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
   const locked = disabled || busy || outcome === "uncertain";
   const generationDisabled = disabled || busy || loading || !owner || !enabled || localPreview || Boolean(draft) || outcome !== "uncertain" && (!startingText.trim() || !business?.ready) || outcome === "failed";
   let draftError: string | null = null;
-  if (draft && outputSource) try { validateRemixDraft(draft, outputSource); } catch { draftError = "Keep every text block nonempty and within its character limit."; }
+  const structuredWallDraft = Boolean(draft && outputSource && isWallHeadingBodySource(outputSource) && draft.blocks.length === 0);
+  if (draft && outputSource) try { validateRemixDraft(draft, outputSource); } catch { draftError = structuredWallDraft ? "Add both a heading and body within their character limits." : "Keep every text block nonempty and within its character limit."; }
   function showMode(next: "manual" | "reference") {
     if (next === mode) return;
     setMode(next);
@@ -189,7 +190,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
           {localPreview ? null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is currently unavailable. Please try again later.</p> : null}
         </> : <div className={styles.draft}>
           <p className={styles.draftTitle} role="status">Review your remix</p>
-          {format === "slideshow" ? <><label className={styles.label}>Heading<textarea aria-label="Remixed heading" value={draft.heading} disabled={disabled} maxLength={180} rows={2} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, heading: event.target.value }, outputSource); }} /></label><label className={styles.label}>Body<textarea aria-label="Remixed body" value={draft.body} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, body: event.target.value }, outputSource); }} /></label></> : draft.blocks.map((block, i) => <label key={i} className={styles.label}>{draft.blocks.length === 1 ? "Remixed text" : `Text block ${i + 1}`}<textarea aria-label={draft.blocks.length === 1 ? "Remixed text" : `Remixed text block ${i + 1}`} value={block} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, blocks: draft.blocks.map((text, n) => n === i ? event.target.value : text) }, outputSource); }} /></label>)}
+          {format === "slideshow" || structuredWallDraft ? <><label className={styles.label}>Heading<textarea aria-label="Remixed heading" value={draft.heading} disabled={disabled} maxLength={180} rows={2} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, heading: event.target.value }, outputSource); }} /></label><label className={styles.label}>Body<textarea aria-label="Remixed body" value={draft.body} disabled={disabled} maxLength={format === "wall_text" ? 6000 : 600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, body: event.target.value }, outputSource); }} /></label></> : draft.blocks.map((block, i) => <label key={i} className={styles.label}>{draft.blocks.length === 1 ? "Remixed text" : `Text block ${i + 1}`}<textarea aria-label={draft.blocks.length === 1 ? "Remixed text" : `Remixed text block ${i + 1}`} value={block} disabled={disabled} maxLength={format === "wall_text" ? 6000 : 600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, blocks: draft.blocks.map((text, n) => n === i ? event.target.value : text) }, outputSource); }} /></label>)}
           {draftError ? <p role="alert" className={`${styles.notice} ${styles.error}`}>{draftError}</p> : null}
           <Button type="button" disabled={disabled || busy || Boolean(draftError)} onClick={() => { if (outputSource && onUse(validateRemixDraft(draft, outputSource), outputSource) !== false) { reset(); setMode(overview || expanded ? "reference" : "manual"); } }}>{format === "slideshow" ? "Apply to this slide" : overview ? "Apply to hook" : "Apply to this clip"}</Button>
         </div>}

@@ -21,15 +21,29 @@ async function boundedBody(request: Request) {
   } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
 }
 export async function handleClipDraftRead(request: Request) {
+  const started = performance.now();
+  const timings: string[] = [];
+  const mark = (name: string, since: number) => timings.push(`${name};dur=${(performance.now() - since).toFixed(1)}`);
   try {
     const owner = (await requireFirebaseUser(request)).uid;
+    mark("clip_auth", started);
     const query = new URL(request.url).searchParams, source = query.get("sourceAssetId"), scope = clipDraftScope(query.get("scope"));
     if (!isExploreUuid(source) || query.getAll("sourceAssetId").length !== 1 || query.getAll("scope").length !== 1 ||
         Array.from(query.keys()).some(key => key !== "sourceAssetId" && key !== "scope")) throw new ExploreClipDraftError("Choose a saved clip to edit.");
     const store = new ExploreClipDraftStore();
+    const readStarted = performance.now();
     const draft = await store.read(owner, source.toLowerCase(), scope);
-    return json({ ok: true, draft, initialContent: draft ? null : await store.initialContent(owner, source.toLowerCase(), scope) });
-  } catch (error) { return failure(error); }
+    mark("clip_read", readStarted);
+    const initialStarted = performance.now();
+    const initialContent = draft ? null : await store.initialContent(owner, source.toLowerCase(), scope);
+    mark("clip_initial", initialStarted); mark("clip_total", started);
+    const response = json({ ok: true, draft, initialContent });
+    response.headers.set("Server-Timing", timings.join(", "));
+    return response;
+  } catch (error) {
+    mark("clip_total", started); const response = failure(error);
+    response.headers.set("Server-Timing", timings.join(", ")); return response;
+  }
 }
 export async function handleClipDraftSave(request: Request) {
   const started = Date.now();

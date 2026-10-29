@@ -46,7 +46,11 @@ export function workflowAccountSelectionError(draft: WorkflowScheduleDraft): str
   const platforms = workflowSelectedPlatforms(draft), accounts = workflowSelectedAccountIds(draft);
   if (!platforms.length) return "Choose where you want to post, then select your connected accounts.";
   if (platforms.length > 3 || platforms.some(platform => !["instagram", "youtube", "tiktok"].includes(platform))) return "Choose a supported posting platform.";
-  if (platforms.some(platform => !accounts[platform]?.length)) return "Choose at least one connected account for each selected platform.";
+  const missing = platforms.filter(platform => !accounts[platform]?.length);
+  if (missing.length) {
+    const labels = missing.map(platform => platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube").join(" and ");
+    return `Choose at least one connected account for ${labels}, or deselect ${labels} above.`;
+  }
   const ids = platforms.flatMap(platform => accounts[platform]);
   if (ids.length > 5) return "Schedule up to 5 accounts at a time. Deselect an account to continue.";
   if (ids.some(id => typeof id !== "string" || !id.trim()) || new Set(ids).size !== ids.length) return "Review your selected accounts before posting.";

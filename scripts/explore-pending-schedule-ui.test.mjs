@@ -367,3 +367,43 @@ test("reply verification rejects wrong snapshots and allows existing provider de
     value => { value.schedule.metadata.plannedTargetsJson = "bad json"; }, value => { value.preparation.mediaAssetId = id(99); }, value => { value.requestKey = id(99); },
   ]) { const value = reply(); corrupt(value); assert.throws(() => client.verifyExploreScheduleReply(value, saved)); }
 });
+
+
+test("confirmed schedule places one small Scheduling link beside status before action buttons", async () => {
+  for(const state of ["preparing","scheduled"]){
+    const h=fixture({saved:savedEntry(true),serverReply:reply(input(),state)});h.render();await settle();h.render();
+    const all=h.nodes(), links=all.filter(n=>n.type==="Link"&&text(n)==="View in Scheduling");
+    assert.equal(links.length,1);assert.equal(links[0].props.href,"/scheduling");assert.match(links[0].props.className,/compactSchedulingLink/);
+    const row=all.find(n=>n.props?.className==="actionHelp confirmation");assert.ok(row);assert.ok(nodes(row).includes(links[0]));
+    assert.ok(all.indexOf(links[0])<all.findIndex(n=>n.type==="SharedButton"&&text(n).startsWith("Schedule post")));
+    assert.doesNotMatch(h.text(),/preparing in the background/);h.unmount();
+  }
+  const empty=fixture();empty.render();await settle();empty.render();assert.equal(empty.nodes().filter(n=>n.type==="Link").length,0);empty.unmount();
+});
+
+
+test("confirmed Instagram post followed by TikTok is a new one-click intent, not another receipt-clear click",async()=>{
+ const h=fixture({saved:savedEntry(true),serverReply:reply(),transport:async(url)=>{
+  if(url==="/api/social/connections")return Response.json({ok:true,connections:[{id:id(4),platform:"tiktok",status:"connected",platformAccountName:"Creator",platformAccountUsername:"creator",scopes:["video.publish"],supportsBackgroundRefresh:true}]});
+  if(url.includes("publishing-preferences"))return Response.json({ok:true,preferences:{containsSyntheticMedia:false,youtubePrivacyStatus:"private",youtubeMadeForKids:false,youtubeNotifySubscribers:false,tiktokPrivacyLevel:"SELF_ONLY",tiktokAllowComments:true}});
+  if(url.includes("publish-settings"))return Response.json({ok:true,capabilities:{privacyLevels:["SELF_ONLY"],directPostAudited:false}});return null;
+ }});
+ await h.form();assert.match(h.text(),/Post scheduled/);
+ h.props.draft={...h.props.draft,platform:"tiktok",platforms:["tiktok"],connectionId:id(4),accountIds:{tiktok:[id(4)]}};h.render();
+ assert.doesNotMatch(h.text(),/Post scheduled/);assert.equal(h.button("Schedule post").props.disabled,false);
+ h.button("Schedule post").props.onClick();await settle();h.render();
+ const posts=h.calls.filter(c=>c.method==="POST");assert.equal(posts.length,1,h.text()+JSON.stringify(h.calls));
+ const next=JSON.parse(posts[0].body);assert.notEqual(next.requestKey,id(10));assert.deepEqual(next.schedule.targets.map(t=>({platform:t.platform,id:t.connectionId})),[{platform:"tiktok",id:id(4)}]);
+ assert.ok(h.values.has("ugc-explore:background-schedule:v1:owner-a:hook:confirmed:"+id(10)));h.unmount();
+});
+
+test("selected Instagram without account blocks TikTok scheduling with a named explanation",async()=>{
+ const h=fixture({saved:savedEntry(true),serverReply:reply()});await h.form();
+ h.props.draft={...h.props.draft,platform:"instagram",platforms:["instagram","tiktok"],accountIds:{instagram:[],tiktok:[id(4)]}};h.render();
+ assert.equal(h.button("Schedule post").props.disabled,true);assert.match(h.text(),/connected account for Instagram, or deselect Instagram/);assert.equal(h.calls.filter(c=>c.method==="POST").length,0);h.unmount();
+});
+
+test("saved-edit load failure exposes a read-only retry on Schedule without submitting",async()=>{
+ let retries=0;const h=fixture({props:{composition:{signature:"load-error",sourceId:id(1),title:"Video",draft:null,error:"Loading your saved edits took too long.",retryLoad:()=>retries++,resolve:async()=>assert.fail("No render")}}});await h.form();
+ h.button("Retry loading saved edits").props.onClick();assert.equal(retries,1);assert.equal(h.calls.filter(c=>c.method==="POST").length,0);h.unmount();
+});

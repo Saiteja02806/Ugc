@@ -46,6 +46,7 @@ function ui(state = {}) {
   };
   const component = load("components/explore/workflow-connected-accounts.tsx", {
     react,
+    "@/components/social/social-account-avatar": { SocialAccountAvatar: "AccountAvatar" },
     "@tanstack/react-query": { useQuery(options) { queries.push(options); return { data: [account()], isPending: false, isError: false, isFetching: false, refetch() {}, ...state }; } },
     "lucide-react": { Check: "check" }, "next/link": { default: "link" },
     "@/components/ui/button": { Button: "button" },
@@ -253,4 +254,23 @@ test("cached publishable accounts remain toggleable throughout a background refr
 test("explicit empty selection survives a fresh account-picker mount without auto-selection", () => {
   const actual=ui(),selected=[];
   actual.testConnectedAccounts({ownerId:'owner',platforms:['instagram'],selectedIds:{instagram:[]},onSelect:(...args)=>selected.push(args)});actual.flushEffects();assert.deepEqual(selected,[]);
+});
+
+
+test("profile display metadata is retained safely without credentials or invalid image schemes", () => {
+  const fields = { connectedAt: "2026-10-29T00:00:00Z", authorizationRevision: "revision-2", profilePictureUrl: "https://owned.test/avatar.jpg" };
+  assert.deepEqual(plain(client.parseWorkflowConnectedAccounts(payload([account({...fields,accessToken:"private"})]))), [account(fields)]);
+  for (const url of ["javascript:alert(1)", "data:image/svg+xml,abc", "https://"+"x".repeat(4100)]) {
+    assert.equal(client.parseWorkflowConnectedAccounts(payload([account({profilePictureUrl:url})]))[0].profilePictureUrl, undefined);
+  }
+});
+
+
+test("each connected account row includes its own profile avatar without changing selection identity", () => {
+  const accounts=[account(),account({id:"second",platformAccountUsername:"other"})], choices=[];
+  const actual=ui({data:accounts});
+  const tree=actual.testConnectedAccounts({ownerId:"owner",platforms:["instagram"],selectedIds:{instagram:[]},onSelect:(...args)=>choices.push(args)});
+  const avatars=nodes(tree).filter(n=>n.type==="AccountAvatar");
+  assert.equal(avatars.length,2);assert.equal(avatars[0].props.connection,accounts[0]);assert.equal(avatars[1].props.connection,accounts[1]);
+  const buttons=nodes(tree).filter(n=>n.type==="button");buttons[1].props.onClick();assert.deepEqual(choices,[["instagram","second"]]);
 });

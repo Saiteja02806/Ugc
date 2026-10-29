@@ -54,6 +54,7 @@ export type InstagramContentAccount = {
 export type InstagramContentFilter = "all" | InstagramContentType;
 
 export type InstagramContentSort =
+  | "published"
   | "interactions"
   | "reach"
   | "saves"
@@ -365,6 +366,10 @@ export function filterAndSortInstagramContent(params: {
         params.filter === "all" || item.contentType === params.filter,
     )
     .sort((left, right) => {
+      if (params.sort === "published") {
+        return Date.parse(right.publishedAt) - Date.parse(left.publishedAt) ||
+          left.id.localeCompare(right.id);
+      }
       const leftValue = left.metrics[params.sort];
       const rightValue = right.metrics[params.sort];
 

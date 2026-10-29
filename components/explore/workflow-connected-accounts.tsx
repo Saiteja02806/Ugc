@@ -1,5 +1,7 @@
 "use client";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
@@ -73,7 +75,8 @@ function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
             aria-pressed={selected} aria-label={`Post to ${workflowAccountLabel(account)} on ${platformLabel}`}
             title={blocked ?? workflowAccountLabel(account)} className={creation.connectedAccount}
             onClick={() => { handledPlatforms.current.add(account.platform); onSelect(account.platform, account.id); }}>
-            <span className={creation.connectedAccountLabel}>{workflowAccountLabel(account)}
+            <SocialAccountAvatar connection={account} />
+            <span className={creation.connectedAccountLabel} style={{ flex: 1 }}>{workflowAccountLabel(account)}
               <span className="block text-xs font-normal text-muted">{platformLabel}</span>
               {blocked && <span className="block text-xs font-normal text-muted">{blocked}</span>}
             </span>

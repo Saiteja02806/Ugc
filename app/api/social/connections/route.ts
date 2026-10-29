@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
+import { refreshAnalyticsSnapshot } from "@/lib/analytics/snapshot-service";
 
 import {
   FirebaseAuthRequestError,
@@ -23,6 +24,19 @@ export async function GET(request: Request) {
     const authenticated = performance.now();
     const connections = await listSocialConnections(user.uid, trace);
     const readAt = performance.now();
+    // Analytics defaults to Instagram. Keep connected TikTok snapshots current
+    // during that visit too, without waiting on provider work in this response.
+    // Other account pickers retain their existing read-only metrics behavior.
+    if (new URL(request.url).searchParams.get("analytics") === "1" &&
+        connections.some(connection => connection.platform === "tiktok" && connection.status === "connected")) {
+      after(async () => {
+        try {
+          await refreshAnalyticsSnapshot({ userId: user.uid, operation: "tiktok_videos", force: false });
+        } catch (error) {
+          console.error("TikTok analytics background refresh could not start:", error);
+        }
+      });
+    }
     if (connections.some(connection => connection.profileNeedsRefresh)) {
       after(async () => {
         try {

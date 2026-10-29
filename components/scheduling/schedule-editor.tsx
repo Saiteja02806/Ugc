@@ -1,5 +1,7 @@
 "use client";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+
 import {
   CheckCircle2,
   ChevronDown,
@@ -1994,12 +1996,7 @@ function ConnectedAccountSelector({
             const tileContent = (
               <>
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card-muted">
-                    <SocialPlatformIcon
-                      className="size-5"
-                      platform={connection.platform}
-                    />
-                  </span>
+                  <SocialAccountAvatar connection={connection} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="text-sm font-bold text-foreground">

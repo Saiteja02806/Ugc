@@ -1,5 +1,7 @@
 "use client";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+
 import {
   AlertCircle,
   ArrowRight,
@@ -1317,9 +1319,7 @@ function ConnectionList({ connections }: { connections: SocialConnection[] }) {
             }`}
           >
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-card-muted">
-                <SocialPlatformIcon platform={connection.platform} className="size-5" />
-              </span>
+              <SocialAccountAvatar connection={connection} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground-strong">
                   {getConnectionName(connection)}

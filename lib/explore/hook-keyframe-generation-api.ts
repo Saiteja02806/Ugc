@@ -40,10 +40,11 @@ async function readRequest(request: Request) {
   if (request.headers.get("content-type")?.split(";", 1)[0].trim() !== "application/json" || !request.body) throw new HookKeyframeGenerationError("Send a valid starting-image preparation.", 400);
   const reader = request.body.getReader(), chunks: Uint8Array[] = []; let size = 0;
   try { while (true) { const next = await reader.read(); if (next.done) break; size += next.value.byteLength;
-    if (size > 16_384) throw new HookKeyframeGenerationError("This preparation is too large.", 413); chunks.push(next.value); }
+    if (size > 131_072) throw new HookKeyframeGenerationError("This preparation is too large.", 413); chunks.push(next.value); }
   } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
   let input: unknown; try { input = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new HookKeyframeGenerationError("Send a valid starting-image preparation.", 400); }
-  if (!record(input) || input.preparationInputKey !== undefined && (typeof input.preparationInputKey !== "string" || input.preparationInputKey.length > 7000) || Object.keys(input).some(key => !["referenceId", "sourceSha256", "draftId", "personImageAssetIds", "instructions", "idempotencyKey", "imageModel", "preparationInputKey"].includes(key)) ||
+  if (!record(input) || input.preparationInputKey !== undefined && (typeof input.preparationInputKey !== "string" || input.preparationInputKey.length > 24000) || Object.keys(input).some(key => !["referenceId", "sourceSha256", "draftId", "personImageAssetIds", "instructions", "customImagePrompt", "idempotencyKey", "imageModel", "preparationInputKey"].includes(key)) ||
+    input.customImagePrompt !== undefined && (typeof input.customImagePrompt !== "string" || !input.customImagePrompt.trim() || input.customImagePrompt.length > 6000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.customImagePrompt)) ||
     input.imageModel !== undefined && !isHookKeyframeImageModel(input.imageModel) ||
     typeof input.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(input.referenceId) ||
     typeof input.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.sourceSha256) ||
@@ -56,12 +57,12 @@ async function readRequest(request: Request) {
   }
   // Missing model is the cached legacy Flash client, never an implicit Pro
   // upgrade of an already accepted request. Current clients send it explicitly.
-  return input as { referenceId: string; sourceSha256: string; draftId: string; personImageAssetIds: string[]; instructions: string; idempotencyKey: string; imageModel?: HookKeyframeImageModel; preparationInputKey?: string };
+  return input as { referenceId: string; sourceSha256: string; draftId: string; personImageAssetIds: string[]; instructions: string; customImagePrompt?: string; idempotencyKey: string; imageModel?: HookKeyframeImageModel; preparationInputKey?: string };
 }
 function samePreparation(receipt: HookKeyframeGenerationReceipt, input: Awaited<ReturnType<typeof readRequest>>) {
   return receipt.referenceId === input.referenceId && receipt.sourceSha256 === input.sourceSha256 && receipt.draftId === input.draftId &&
     (receipt.version === 1 ? input.imageModel === undefined : receipt.imageModel === input.imageModel) &&
-    (input.preparationInputKey === undefined || input.preparationInputKey === hookKeyframePreparationInputKey(receipt)) && receipt.instructions === input.instructions && JSON.stringify(receipt.personImageAssetIds) === JSON.stringify(input.personImageAssetIds);
+    (input.preparationInputKey === undefined || input.preparationInputKey === hookKeyframePreparationInputKey(receipt)) && receipt.instructions === input.instructions && receipt.customImagePrompt === input.customImagePrompt && JSON.stringify(receipt.personImageAssetIds) === JSON.stringify(input.personImageAssetIds);
 }
 function queuedResponse(job: BackgroundJobRecord, ownerId: string) {
   const { receipt, generationId } = hookKeyframeReceiptFromJob(job, ownerId);
@@ -74,7 +75,7 @@ export async function handleHookKeyframeGeneration(request: Request) {
     const user = await requireAIStudioProUser(request), input = await readRequest(request);
     if (isCreatorAccountReference(input.referenceId) && !canAccessCreatorAccounts(user)) return errorResponse("This reference is unavailable.", 404);
     const key = requestStorageKey(user.uid, input.idempotencyKey);
-    const preparation = JSON.stringify([input.referenceId, input.sourceSha256, input.draftId, input.personImageAssetIds, input.instructions, input.imageModel ?? "legacy_flash", input.preparationInputKey ?? null]);
+    const preparation = JSON.stringify([input.referenceId, input.sourceSha256, input.draftId, input.personImageAssetIds, input.instructions, input.imageModel ?? "legacy_flash", input.preparationInputKey ?? null, input.customImagePrompt ?? null]);
     const pending = inFlight.get(key);
     if (pending) {
       if (pending.preparation !== preparation) throw new HookKeyframeGenerationError("This request ID already belongs to different image instructions. Recover its saved result.", 409);
@@ -121,14 +122,14 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     if (!aspectRatio) throw new HookKeyframeGenerationError("This reference's frame shape is not supported without changing its composition.", 400);
     if (frame.workflow && frame.workflow !== "hook" && !["9:16", "16:9"].includes(aspectRatio)) throw new HookKeyframeGenerationError("Choose a portrait or landscape reference.", 400);
     const promptResult = buildOriginalOpeningImagePrompt({ personImageCount: photos.length, instructions: input.instructions, referenceId: input.referenceId, sourceSha256: frame.sourceSha256 });
-    const prompt = promptResult.prompt;
+    const prompt = input.customImagePrompt ?? promptResult.prompt;
     const model = input.imageModel ?? "nano_banana_2";
     const sourceFrame = { index: 0, timeSeconds: 0, width: frame.width, height: frame.height, sha256: frame.frameSha256 };
     const expectedPreparationInputKey = JSON.stringify({ version: 4, ownerId, draftId: input.draftId, referenceId: input.referenceId,
-      sourceSha256: frame.sourceSha256, sourceFrame, imageAssetIds: input.personImageAssetIds, instructions: input.instructions, imageModel: model });
+      sourceSha256: frame.sourceSha256, sourceFrame, imageAssetIds: input.personImageAssetIds, instructions: input.instructions, ...(input.customImagePrompt !== undefined ? { customImagePrompt: input.customImagePrompt } : {}), imageModel: model });
     if (input.preparationInputKey !== expectedPreparationInputKey) throw new HookKeyframeGenerationError("The source frame changed. Refresh this preparation before generating.", 409);
     const partial = { version: 5 as const, imageModel: model, ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
-      sourceFrame, preparationInputKey: expectedPreparationInputKey, personImageAssetIds: input.personImageAssetIds, instructions: input.instructions };
+      sourceFrame, preparationInputKey: expectedPreparationInputKey, personImageAssetIds: input.personImageAssetIds, instructions: input.instructions, ...(input.customImagePrompt !== undefined ? { customImagePrompt: input.customImagePrompt } : {}) };
     const receipt: HookKeyframeGenerationReceipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 7,
       inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
     const privateCreator = isCreatorAccountReference(input.referenceId);

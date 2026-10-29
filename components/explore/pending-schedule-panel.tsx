@@ -85,9 +85,13 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     }, intervalMs: 5000 });
     return () => { stopped = true; stop(); };
   }, [active, saved, result?.preparation.state, owner, accept]);
+  const matchesDestinations = (entry: SavedExploreSchedule) => {
+    const keys = (values: readonly { platform?: string; connectionId: string }[]) => values.map(target => `${target.platform}:${target.connectionId}`).sort().join("|");
+    return keys(entry.input.schedule.targets ?? []) === keys(targets);
+  };
   const boundResult = saved?.signature === composition.signature ? result : null;
   const failedBeforePublishing = boundResult?.preparation.state === "failed" && boundResult.schedule?.targets.length === 0;
-  const confirmed = saved?.signature === composition.signature && saved.confirmed && !failedBeforePublishing;
+  const confirmed = saved?.signature === composition.signature && saved.confirmed && matchesDestinations(saved) && !failedBeforePublishing;
   const unresolved = !!saved && !saved.confirmed && !saved.timeRejected;
   async function startAnother() {
     if (!active || !restored || !saved?.confirmed || working.current) return;
@@ -149,7 +153,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
           const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
           if (checked.preparation.state !== "unconfirmed") { accept(prior, checked); return; }
         }
-        if (prior?.confirmed && prior.signature === composition.signature) {
+        if (prior?.confirmed && prior.signature === composition.signature && matchesDestinations(prior)) {
           const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
           if (checked.preparation.state !== "failed" || checked.schedule?.targets.length !== 0) { accept(prior, checked); return; }
           // A verified preparation failure with no publishing targets can be
@@ -178,14 +182,16 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const actionHelp = saved?.timeRejected && !saved.confirmed ? SCHEDULE_TIME_REJECTED_MESSAGE
     : preparationState === "failed" ? "Video preparation failed. You can try scheduling again."
     : preparationState === "cancelled" ? "This post was cancelled. You can schedule another post."
-    : confirmed ? preparationState === "preparing" ? "Post scheduled. Your video is preparing in the background." : "Post scheduled"
+    : confirmed ? "Post scheduled"
     : composition.error ?? (!confirmed && !unresolved ? workflowAccountSelectionError(draft) : null) ?? (unresolved ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : "Choose your accounts, caption, date and time, then schedule your post.");
+  const accountProblem = !confirmed && !unresolved ? workflowAccountSelectionError(draft) : null;
   const actions = <div className={styles.actions} aria-label="Schedule actions">
+    {accountProblem && composition.error ? <p role="alert" className="text-xs text-destructive">{accountProblem}</p> : null}
+    {composition.error && composition.retryLoad ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={composition.retryLoad}>Retry loading saved edits</Button> : null}
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
-      <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{busy ? progress : actionHelp}</p>
+      <div className={styles.reviewAction}><div className={`${styles.actionHelp} ${styles.confirmation}`}><p role="status">{busy ? progress : actionHelp}</p>{confirmed ? <Link href="/scheduling" className={`${styles.schedulingLink} ${styles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link> : null}</div>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
-    {confirmed ? <Link href="/scheduling" className={styles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
   return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
 }

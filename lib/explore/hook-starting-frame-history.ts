@@ -24,7 +24,7 @@ export async function resolveRecentHookStartingFrame(ownerId: string, jobId: str
       creatorAccountLegacySelectedDirections(result.referenceId, result.sourceSha256, result.startingFrameIndex, result.receipt.sourceFrame.sha256), undefined, result.sourceDurationSeconds);
   if (preview.requiresDecision || preview.animationError || !preview.directions.trim()) throw new HookKeyframeGenerationError("This frame's motion instructions need review before use.", 409);
   return { ...scope, assetId: result.assetId, jobId, url: result.imageUrl, width: result.output.width, height: result.output.height,
-    identityAssetIds: [...result.receipt.personImageAssetIds],
+    identityAssetIds: [...result.receipt.personImageAssetIds], sourceDurationSeconds: result.sourceDurationSeconds,
     durationSeconds: preview.durationSeconds === 6 ? 6 : preview.durationSeconds === 8 ? 8 : 4, motionInstructions: preview.directions, generateAudio: false };
 }
 

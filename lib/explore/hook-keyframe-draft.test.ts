@@ -189,3 +189,12 @@ test("distinct uploaded/owned image IDs keep the main photo explicit without sil
   assert.equal(hookKeyframeAnimationReadiness(cleared, motion, duration).ready, false);
   assert.throws(() => recordHookKeyframeImage(cleared, { assetId: imageId, inputKey: hookKeyframeInputKey(cleared), promptVersion: 1 }));
 });
+
+test("full custom prompt survives draft storage and is bound to the generated frame", () => {
+ const scope={ownerId:"owner",draftId:"11111111-1111-4111-8111-111111111111",referenceId:"hook-test",sourceSha256:"a".repeat(64)};
+ const original=createHookKeyframeDraft(scope);
+ const custom=updateHookKeyframeDraft(original,{customImagePrompt:"Follow my lighting. ".repeat(150)});
+ assert.notEqual(hookKeyframeInputKey(custom),hookKeyframeInputKey(original));
+ assert.equal(readHookKeyframeDraft(serializeHookKeyframeDraft(custom),scope)?.customImagePrompt,custom.customImagePrompt);
+ assert.equal(updateHookKeyframeDraft(custom,{customImagePrompt:undefined}).customImagePrompt,undefined);
+});

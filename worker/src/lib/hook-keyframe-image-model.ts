@@ -1,7 +1,7 @@
 /** Browser-safe model contract for the still-image preparation step. */
-export const HOOK_KEYFRAME_IMAGE_MODELS = ["gemini_3_pro", "nano_banana_2", "gpt_image", "gpt_image_2_5", "seedream_5_pro"] as const;
+export const HOOK_KEYFRAME_IMAGE_MODELS = ["gemini_3_pro", "nano_banana_2", "nano_banana_2_1", "gpt_image", "gpt_image_2_5", "seedream_5_pro"] as const;
 export const HOOK_KEYFRAME_IMAGE_MODEL_OPTIONS = [
-  { value: "gemini_3_pro", label: "Gemini 3 Pro" }, { value: "nano_banana_2", label: "Gemini 3.1 Flash" },
+  { value: "gemini_3_pro", label: "Gemini 3 Pro" }, { value: "nano_banana_2", label: "Gemini 3.1 Flash" }, { value: "nano_banana_2_1", label: "Nano Banana 2.1" },
   { value: "gpt_image", label: "GPT Image" }, { value: "gpt_image_2_5", label: "GPT Image 2.5 Sunburst" },
   { value: "seedream_5_pro", label: "Seedream 5.0 Pro" },
 ] as const;
@@ -13,7 +13,7 @@ export function isHookKeyframeImageModel(value: unknown): value is HookKeyframeI
 /** Workflow identity-photo cap follows the selected model's character-image
  * guidance; the separate base scene is not an additional identity reference. */
 export function hookKeyframeMaxPersonImages(model: HookKeyframeImageModel): number {
-  return model === "nano_banana_2" ? 4 : 5;
+  return (model === "nano_banana_2" || model === "nano_banana_2_1") ? 4 : 5;
 }
 export function hookKeyframePromptLimit(model: HookKeyframeImageModel) { return model === "seedream_5_pro" ? 4_000 : 8_000; }
 export function hookKeyframeReceiptImageModel(receipt: { version: 1 | 2 | 3 | 4 | 5; imageModel?: HookKeyframeImageModel }): HookKeyframeImageModel {

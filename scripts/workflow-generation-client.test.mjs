@@ -82,6 +82,18 @@ test("Talking Head starting-frame requests preserve script and owned identities 
   for (const name of ["avatarImageUrl", "referenceImageUrls", "referenceVideoUrl", "sourceSha256"]) assert.equal(name in body, false);
 });
 
+test("Talking Head approved image with voice uses explicit reference mode on WAN and Seedance", async () => {
+  for (const model of ["wan_3_0", "seedance_2_5"]) {
+    const actual = harness({ uploadReference: async () => ({url:"https://storage.googleapis.com/test/voice.mp3",assetId:"11111111-1111-4111-8111-111111111111",duration:4}) });
+    await actual.client.generate(draft({ startingFrame, audioReference:{url:"blob:voice",file:{type:"audio/mpeg",size:1024},duration:4}, settings:settings.normalizeWorkflowGenerationSettings({model,duration:4}) }));
+    const body=JSON.parse(actual.calls[0].body);
+    assert.equal(body.startingFrameMode,"image_voice_reference");assert.equal(body.generateAudio,true);
+    assert.equal(body.startingFrameAssetId,startingFrame.assetId);assert.equal(body.startingFrameJobId,startingFrame.jobId);
+    assert.deepEqual(body.referenceAudioUrls,["https://storage.googleapis.com/test/voice.mp3"]);
+    assert.equal(body.avatarImageUrl,undefined);
+  }
+});
+
 test("Starting-frame animation blocks unsupported settings and retained audio before uploads or submission", async () => {
   for (const overrides of [
     { settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0", duration: 5 }) },

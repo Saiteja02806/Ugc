@@ -10,7 +10,7 @@ export function isWorkflowAccountSelected(selectedIds: WorkflowAccountSelection,
 
 export type WorkflowConnectedAccount = Pick<SocialConnection,
   "id" | "platform" | "platformAccountName" | "platformAccountUsername" | "status" | "scopes" | "supportsBackgroundRefresh"
->;
+> & Partial<Pick<SocialConnection, "connectedAt" | "authorizationRevision" | "profilePictureUrl">>;
 
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 const optionalLabel = (value: unknown) => value === null || (typeof value === "string" && value.length <= 512);
@@ -34,6 +34,9 @@ export function parseWorkflowConnectedAccounts(value: unknown): WorkflowConnecte
       id: item.id, platform: item.platform,
       platformAccountName: item.platformAccountName as string | null,
       platformAccountUsername: item.platformAccountUsername as string | null,
+      ...(typeof item.connectedAt === "string" && item.connectedAt.length <= 128 ? { connectedAt: item.connectedAt } : {}),
+      ...(typeof item.authorizationRevision === "string" && item.authorizationRevision.length <= 128 ? { authorizationRevision: item.authorizationRevision } : {}),
+      ...(typeof item.profilePictureUrl === "string" && item.profilePictureUrl.length <= 4096 && /^https:\/\//i.test(item.profilePictureUrl) ? { profilePictureUrl: item.profilePictureUrl } : {}),
       status: item.status as WorkflowConnectedAccount["status"],
       scopes: item.scopes as string[], supportsBackgroundRefresh: item.supportsBackgroundRefresh,
     };

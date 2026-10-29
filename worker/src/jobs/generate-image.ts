@@ -41,7 +41,7 @@ const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "nano_banana_2_1" | "seedream_5_pro";
   provider?: "runway" | "openrouter";
   slideshowGeneration?: SlideshowGenerationSlot;
   slideshowBusinessContext?: SlideshowBusinessContext;
@@ -164,7 +164,7 @@ export async function runGenerateImageJob(
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
   // Jobs admitted before the OpenRouter switch have no route field. Keep their
   // Runway operation key and fingerprint so recovery cannot spend twice.
-  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
+  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "nano_banana_2" || input.model === "nano_banana_2_1" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
   const dimensions = getAIStudioImageDimensions(input.aspectRatio);
@@ -221,12 +221,12 @@ export async function runGenerateImageJob(
         : referenceImageUrl;
       const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;
       const hook = input.hookKeyframe;
-      if (hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model)) {
+      if (hook && !["gemini_3_pro", "nano_banana_2", "nano_banana_2_1"].includes(input.model)) {
         const downloaded = await downloadReferenceImageContext(referenceImages as string[]);
         if (downloaded.length !== hookKeyframeReferenceImageCount(hook) || !hookKeyframeSceneBytesMatch(hook, downloaded[0]) ||
           hook.version === 4 && !hookKeyframeAnchorBytesMatch(hook, downloaded[1])) throw new ProviderRequestNotSubmittedError("The starting-frame inputs do not match their verified source roles. No image generation was submitted.");
       }
-      const hookLabels = hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model) ? hookKeyframeProviderImageLabels(hook.personImageAssetIds.length, hook.promptVersion === 1 ? 2 : hook.promptVersion) : undefined;
+      const hookLabels = hook && !["gemini_3_pro", "nano_banana_2", "nano_banana_2_1"].includes(input.model) ? hookKeyframeProviderImageLabels(hook.personImageAssetIds.length, hook.promptVersion === 1 ? 2 : hook.promptVersion) : undefined;
       const labelledPrompt = hookLabels ? `${providerPrompt}\n\nIMAGE INPUT ORDER:\n${hookLabels.join("\n")}` : providerPrompt;
       if (input.model === "seedream_5_pro" && labelledPrompt.length > 4_000) throw new ProviderRequestNotSubmittedError("Shorten the Seedream image instructions to fit its 4,000-character limit including image roles.");
       const referenceLabels = hookLabels ?? (plan ? input.referenceImageUrls!.map((_, index) => plan.images.filter(image => image.imageIndex === index + 1).map(image => `${image.label} (${image.role})`).join("; ")) : undefined);
@@ -237,7 +237,7 @@ export async function runGenerateImageJob(
               referenceImageUrl,
               ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
             })
-          : input.model === "nano_banana_2"
+          : input.model === "nano_banana_2" || input.model === "nano_banana_2_1"
           ? referenceLabels ? await generateGeminiImageBuffer(providerPrompt, input.aspectRatio, referenceImages, undefined, referenceLabels) : await generateGeminiImageBuffer(
               providerPrompt,
               input.aspectRatio,
@@ -440,7 +440,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "gpt_image_2_5_flare" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "nano_banana_2_1" || value === "gpt_image" || value === "gpt_image_2_5" || value === "gpt_image_2_5_flare" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

@@ -2,11 +2,6 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
-import { WorkflowReferencePreview } from "./workflow-reference-preview";
-import previewStyles from "./workflow-reference-preview.module.css";
-import creation from "./workflow-creation.module.css";
 import { FormatGenerationReferences } from "./format-generation-references";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -83,31 +78,21 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
       if (request === revision.current) { pending.current = false; onPendingChange(false); }
     }
   }
-  const controls = <div className={styles.root} data-starting-frame-references>
-    {frameControl ?? <FormatGenerationReferences startingFrame={frame} startingFramesOnly onSelectStartingFrame={onSelectFrame} onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
-      heading="Starting frame" selection={null} imageSelections={[]} imagePurpose="general" videoInputEnabled={false} audioInputEnabled={false}
-      active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />}
-    <div className={styles.faces}>
-      <FormatGenerationReferences heading="Your photos" inlineImagePicker imagePresentation="person-strip" imagePurpose="person" imagePickerDisabled={!limit}
+  const photoPicker = <FormatGenerationReferences heading="Your photos" inlineImagePicker={!compact} imagePresentation={compact ? "tile" : "person-strip"}
+        startingFramePreview={compact ? frame : undefined} onSelectStartingFrame={compact ? onSelectFrame : undefined}
+        onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
+        onPrepareStartingFrame={compact ? onPrepareFrame : undefined} imagePurpose="person" imagePickerDisabled={!limit}
         selection={photos[0] ?? null} imageSelections={photos} onImagesChange={onPhotosChange} maxImages={limit || hookStartingFrameFaceReferenceLimit("google_omni")}
         active={active} ownerId={ownerId} preview={preview} disabled={disabled} videoInputEnabled={false} audioInputEnabled={false}
         influencerLibrary={{ images: historyImages, loading: !preview && history.isPending, error: history.error, selectionError, hasMore: history.hasNextPage,
           loadingMore: history.isFetchingNextPage, onRetry: () => void history.refetch(), onLoadMore: () => void history.fetchNextPage(), onSelect: selectInfluencer }}
         onChange={selection => onPhotosChange(selection?.kind === "image" ? [...photos.filter(photo => photo.asset.id !== selection.asset.id), selection] : [])}
-        onPendingChange={onPendingChange} onErrorChange={onErrorChange} />
-
-    </div>
-  </div>;
-  if (!compact) return controls;
-  return <div className={`${previewStyles.picker} ${previewStyles.startingFrameCard}`} data-starting-frame>
-    <WorkflowReferencePreview url={frame.url} name="Starting frame" disabled={disabled} onRemove={onClearFrame} />
-    <Popover>
-      <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Change starting frame" data-state="selected" disabled={disabled} className={`${creation.referenceButton} ${previewStyles.action} ${previewStyles.startingFrameChange}`} />}>Change</PopoverTrigger>
-      <PopoverContent side="bottom" align="center" className="max-h-[70dvh] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-border bg-card p-4 text-foreground shadow-xl">
-        <PopoverTitle>Choose image</PopoverTitle>
-        {controls}
-        {onPrepareFrame ? <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={onPrepareFrame}>Create starting frame</Button> : null}
-      </PopoverContent>
-    </Popover>
+        onPendingChange={onPendingChange} onErrorChange={onErrorChange} />;
+  if (compact) return photoPicker;
+  return <div className={styles.root} data-starting-frame-references>
+    {frameControl ?? <FormatGenerationReferences startingFrame={frame} startingFramesOnly onSelectStartingFrame={onSelectFrame} onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
+      heading="Starting frame" selection={null} imageSelections={[]} imagePurpose="general" videoInputEnabled={false} audioInputEnabled={false}
+      active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />}
+    <div className={styles.faces}>{photoPicker}</div>
   </div>;
 }

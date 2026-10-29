@@ -1,5 +1,7 @@
 "use client";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+
 import {
   AlertCircle,
   CheckCircle2,
@@ -365,7 +367,8 @@ function ConnectionCard({
   return (
     <div className="rounded-lg border border-border bg-surface-subtle p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <SocialAccountAvatar connection={connection} />
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-black text-foreground-strong">
             {connection.platformAccountName ??
               connection.platformAccountUsername ??

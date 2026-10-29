@@ -29,7 +29,8 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = fals
   const audioName = audioLabel.toLowerCase();
   const maxDuration = getVideoReferencePolicy(model).maxAudioDuration;
   return <div className={reference.picker}>
-    {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} disabled={audio.loading} onRemove={audio.remove} /> : null}
+    {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} disabled={audio.loading} onRemove={audio.remove}
+      media={<div className="flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-2 pb-10 pt-2 text-center"><AudioLines aria-hidden="true" className="size-5 shrink-0" /><span className="line-clamp-2 w-full whitespace-normal break-all text-xs leading-4" title={audio.asset.name}>{audio.asset.name}</span></div>} /> : null}
     <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, reference.action)} aria-busy={audio.loading} data-state={audio.loading ? "loading" : audio.error ? "error" : audio.asset ? "selected" : "empty"} aria-label={`Select audio, ${audioName}${audio.asset ? ` selected: ${audio.asset.name}` : " optional"}`} title={audio.asset?.name ?? "Choose an optional audio reference"} />}>
       {!audio.asset ? <>{tile ? <AudioLines aria-hidden="true" /> : null}<span className={creation.referenceLabel}>{tile ? "Select audio" : "Choose audio"}</span></> : null}<Plus className={reference.add} aria-hidden="true" />

@@ -106,10 +106,13 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
     <div className={creation.instructionsField}>
       <label htmlFor={promptId} className="block text-sm font-medium">Your instructions</label>
       {kind === "hook" ? <p id={helperId} className="sr-only">Describe the words, delivery and setting. Text-only prompts are supported; reference images are optional.</p> : null}
+      <div data-prompt-editor className={cn("relative", startingFrameSoundControl && creation.promptWithAction)}>
       <textarea id={promptId} name={`${kind}Instructions`} autoComplete="off" rows={4} value={instructions}
         onChange={(event) => onInstructionsChange(event.target.value)}
         placeholder={kind === "hook" ? "Example: A creator looks into the camera and says, “Still planning your day in five apps? Try this instead.” Use natural lighting, a close-up shot, and a casual, friendly tone." : "Example: A creator holds a phone toward the camera and says, “This app keeps my day in one place.” Show the attached app screen inside the phone. Use natural lighting and a casual, friendly delivery."} aria-describedby={helperId}
-        className={creation.prompt} />
+        className={cn(creation.prompt, startingFrameSoundControl && creation.promptWithAttachments)} />
+      {startingFrameSoundControl ? <div className="absolute right-3 bottom-3">{startingFrameSoundControl}</div> : null}
+      </div>
     </div>
     {kind === "phone" ? <p id={helperId} className="sr-only">Nothing is prefilled or rewritten. Your instructions stay unchanged. Text-only prompts are supported; reference images are optional.</p> : null}
 
@@ -119,7 +122,6 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <SettingField label="Duration">{startingFrameMode ? <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} duration`} value={String(duration)} onChange={value => onGenerationSettingsChange({ duration: Number(value) as AIStudioVideoDuration })} options={hookStartingFrameVideoDurations(model).map(value => ({ value: String(value), label: `${value} seconds` }))} /> : <WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} />}</SettingField>
       {qualityField}{quantityField}
       {ratioField}
-      {startingFrameSoundControl}
     </div>
     </section>
   </section>;

@@ -8,12 +8,13 @@ export type HookSourceTimeline = {
 type OpeningReceipt = { version: number; promptVersion: number; referenceId: string; sourceSha256: string;
   sourceFrame: { index: number; timeSeconds: number } };
 
-export function createHookSourceTimeline(receipt: OpeningReceipt, sourceDurationSeconds: number, generatedDurationSeconds: number): HookSourceTimeline {
+export function createHookSourceTimeline(receipt: OpeningReceipt, sourceDurationSeconds: number, generatedDurationSeconds: number, options: { preserveFullSource?: boolean } = {}): HookSourceTimeline {
   if (receipt.version !== 5 || receipt.promptVersion !== 7 || receipt.sourceFrame.index !== 0 || receipt.sourceFrame.timeSeconds !== 0 ||
     !receipt.referenceId || !/^[a-f0-9]{64}$/.test(receipt.sourceSha256) ||
     !Number.isFinite(sourceDurationSeconds) || sourceDurationSeconds < .001 || sourceDurationSeconds > 120 ||
     !Number.isInteger(generatedDurationSeconds) || generatedDurationSeconds < 3 || generatedDurationSeconds > 15)
     throw new Error("This original-opening action timeline could not be verified.");
+  if (options.preserveFullSource && generatedDurationSeconds + .001 < sourceDurationSeconds) throw new Error(`Choose a video duration of at least ${Math.ceil(sourceDurationSeconds - .001)} seconds to preserve the full source Hook.`);
   const actionDurationSeconds = Math.min(sourceDurationSeconds, generatedDurationSeconds);
   return { version: 1, policy: "source_speed", referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256,
     sourceDurationSeconds, generatedDurationSeconds, actionDurationSeconds, trimEndMs: Math.round(actionDurationSeconds * 1000) };

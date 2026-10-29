@@ -7,6 +7,7 @@ type WallClipSnapshot = {
   editing: ExploreFormatEdit;
   busy: boolean;
   error: string | null;
+  retryLoad?: () => void;
   backgroundAssetId?: string | null;
   backgroundPlayback?: "once" | "repeat";
 };
@@ -35,7 +36,7 @@ export function createWallScheduleComposition({ ownerId, sourceAssetId, title, c
       editing: clip.editing });
   } catch (e) { error = e instanceof Error ? e.message : "Review the selected video before scheduling."; }
   const signature = JSON.stringify([ownerId, sourceAssetId, draft, error]);
-  return { signature, sourceId: sourceAssetId ?? "", title, draft, error,
+  return { signature, sourceId: sourceAssetId ?? "", title, draft, error, retryLoad: error ? clip?.retryLoad : undefined,
     resolve: async () => {
       if (currentSignature && currentSignature() !== signature) throw new Error("Your video or audio changed. Review the updated video before scheduling.");
       if (error || !draft) throw new Error(error ?? "Choose a saved video before scheduling.");

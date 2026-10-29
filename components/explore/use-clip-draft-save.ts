@@ -21,6 +21,8 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
   const active = useRef(true), working = useRef(false), session = useRef<ClipDraftSaveSession | null>(null);
   const currentContent = useRef(content);
   useEffect(() => { currentContent.current = content; }, [content]);
+  const restoreCallback = useRef(onRestore);
+  useEffect(() => { restoreCallback.current = onRestore; }, [onRestore]);
   const storageKey = owner && sourceAssetId ? clipDraftPendingKey(owner, scope, sourceAssetId) : null;
   const currentScope = useRef(storageKey);
   useEffect(() => { currentScope.current = storageKey; }, [storageKey]);
@@ -29,9 +31,10 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
   useEffect(() => {
     if (!enabled || !owner || !sourceAssetId || !storageKey) return;
     let stopped = false;
+    const controller = new AbortController();
     const replaceLocal = replaceOnReload.current === storageKey;
     // Recovery only reads the saved draft. Mounting cannot submit a save/render.
-    void loadClipDraftWithInitial(deps(), sourceAssetId, scope).then(({ draft, initialContent }) => {
+    void loadClipDraftWithInitial(deps(), sourceAssetId, scope, controller.signal).then(({ draft, initialContent }) => {
       if (stopped) return;
       let pending: unknown = null;
       const raw = draftStorage(() => localStorage.getItem(storageKey));
@@ -48,12 +51,12 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
         draftStorage(() => { if (request) localStorage.setItem(storageKey, JSON.stringify(request)); else localStorage.removeItem(storageKey); });
       }, pending);
       setSavedEntry({ key: storageKey, draft });
-      if (draft) onRestore(draft.content, replaceLocal);
-      else if (!pending && initialContent) onRestore(initialContent, false);
+      if (draft) restoreCallback.current(draft.content, replaceLocal);
+      else if (!pending && initialContent) restoreCallback.current(initialContent, false);
       setLoadedKey(storageKey); setError(null);
     }).catch(error => { if (!stopped) { setLoadedKey(null); setError(error instanceof Error ? error.message : "Could not load your saved edits."); } });
-    return () => { stopped = true; };
-  }, [enabled, owner, sourceAssetId, scope, storageKey, deps, loadAttempt, onRestore]);
+    return () => { stopped = true; controller.abort(); };
+  }, [enabled, owner, sourceAssetId, scope, storageKey, deps, loadAttempt]);
   const currentSaved = savedEntry?.key === storageKey ? savedEntry.draft : null;
   const loaded = enabled && storageKey !== null && loadedKey === storageKey;
   let canonicalContent = content;
@@ -72,5 +75,8 @@ export function useClipDraftSave({ owner, sourceAssetId, scope, content, enabled
     } catch (error) { if (active.current && currentScope.current === storageKey) setError(error instanceof Error ? error.message : "Could not save your edits. Your local changes are kept."); }
     finally { working.current = false; if (active.current) setBusy(false); }
   }
-  return { saved: currentSaved, loaded, busy, dirty, error, save, reload: () => { if (!working.current) { replaceOnReload.current = loaded ? storageKey : null; setLoadedKey(null); setLoadAttempt(attempt => attempt + 1); } } };
+  const reload = useCallback(() => {
+    if (!working.current) { replaceOnReload.current = loaded ? storageKey : null; setLoadedKey(null); setError(null); setLoadAttempt(attempt => attempt + 1); }
+  }, [loaded, storageKey]);
+  return { saved: currentSaved, loaded, busy, dirty, error, save, reload };
 }

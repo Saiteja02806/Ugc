@@ -38,6 +38,24 @@ function context() {
   } };
 }
 
+test("Talking Head approved-image reference plus voice preserves roles and recovers the same provider operation", async () => {
+  for(const model of ["wan_3_0","seedance_2_5"]){
+    const ctx=context();let posts=0;
+    const selected={...job,input_json:{...job.input_json,model,durationSeconds:4,referenceVideoUrl:undefined,referenceVideoDurationSeconds:undefined,generateAudio:true,generationIntent:"image_voice_reference",
+      startingImageReference:{version:1,mode:"image_voice_reference",assetId:"approved-image",imageJobId:"image-job",sourceFrameIndex:0}}};
+    mock.method(globalThis,"fetch",async(url,init)=>{
+      if(init?.method==="POST"){
+        posts++;const body=JSON.parse(init.body);assert.deepEqual(body.image_urls,selected.input_json.referenceImageUrls);assert.deepEqual(body.audio_urls,selected.input_json.referenceAudioUrls);
+        assert.equal(body.image_with_roles,undefined);assert.equal(body.video_urls,undefined);assert.equal(model==="wan_3_0"?body.generation_type:body.omni_reference_task_type,"reference");
+        assert.equal(model==="wan_3_0"?body.audio:body.generate_audio,true);return json({id:"voice-task"},202);
+      }
+      if(String(url).includes("/tasks/"))return json({status:"completed",output:{video_urls:["https://cdn.reapi.ai/voice.mp4"]}});
+      return new Response(video,{headers:{"content-type":"video/mp4"}});
+    });
+    await runGenerateHookVideoJob(selected,ctx);await runGenerateHookVideoJob(selected,ctx);assert.equal(posts,1);mock.restoreAll();
+  }
+});
+
 test("both real worker routes send every reference to reapi.ai, keep selected duration, and recover without another paid POST", async () => {
   for (const model of ["seedance_2_5", "wan_3_0"]) {
     const ctx = context(); let posts = 0;

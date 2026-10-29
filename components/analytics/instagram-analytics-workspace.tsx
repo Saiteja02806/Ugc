@@ -171,6 +171,7 @@ const contentSortOptions: Array<{
   label: string;
   value: InstagramContentSort;
 }> = [
+  { label: "Newest first", value: "published" },
   { label: "Views", value: "views" },
   { label: "Reach", value: "reach" },
   { label: "Interactions", value: "interactions" },
@@ -198,7 +199,7 @@ export function InstagramAnalyticsWorkspace() {
     queryKey: getAccountSocialConnectionsQueryKey(accountId),
     enabled: Boolean(accountId), staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS, gcTime: 30 * 60_000,
     retry: false, refetchOnWindowFocus: true,
-    queryFn: async ({ signal }) => (await analyticsRequest<{ connections: SocialConnection[] }>("/api/social/connections", accountId, signal)).connections,
+    queryFn: async ({ signal }) => (await analyticsRequest<{ connections: SocialConnection[] }>("/api/social/connections?analytics=1", accountId, signal)).connections,
   });
   useAnalyticsWake(connectionsQuery, Boolean(accountId), ANALYTICS_SNAPSHOT_READ_STALE_MS, true);
   const allSocialConnections = useMemo(() => [...(connectionsQuery.data ?? [])].sort(
@@ -1818,7 +1819,7 @@ function InstagramContentPerformance({
   message: string | null;
 }) {
   const [filter, setFilter] = useState<InstagramContentFilter>("all");
-  const [sort, setSort] = useState<InstagramContentSort>("views");
+  const [sort, setSort] = useState<InstagramContentSort>("published");
   const [page, setPage] = useState(0);
   const [selectedItem, setSelectedItem] = useState<InstagramContentItem | null>(
     null,

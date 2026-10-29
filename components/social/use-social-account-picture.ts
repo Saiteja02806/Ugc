@@ -7,13 +7,16 @@ import { withReadDeadline } from "@/lib/http/read-deadline";
 import { getConnectionRevision } from "@/lib/social/connection-revision";
 import type { SocialConnection } from "@/lib/social/types";
 
-export function useSocialAccountPicture(connection: SocialConnection) {
+export type SocialAccountPictureSource = Pick<SocialConnection, "id" | "platform" | "platformAccountName" | "platformAccountUsername"> &
+  Partial<Pick<SocialConnection, "connectedAt" | "authorizationRevision" | "profilePictureUrl">>;
+
+export function useSocialAccountPicture(connection: SocialAccountPictureSource) {
   const { user } = useAuth();
   const owner = user?.uid ?? "";
   const managed = connection.platform === "instagram" || connection.platform === "tiktok";
   const picture = useQuery({
     queryKey: ["account", owner, "social-profile-picture", connection.id,
-      getConnectionRevision(connection), connection.profilePictureUrl],
+      getConnectionRevision({ connectedAt: connection.connectedAt ?? "", authorizationRevision: connection.authorizationRevision }), connection.profilePictureUrl],
     enabled: Boolean(owner && managed),
     staleTime: 5 * 60_000,
     gcTime: 5 * 60_000,

@@ -34,3 +34,9 @@
 @media (max-width: 767px) { .form { gap: 16px; padding: 18px; } .form > h2 { font-size: 22px; } .form [data-platform] { font-size: 12px; } .form textarea[name="postCaption"], .form [data-schedule-date-time] input { font-size: 16px; } }
 @media (max-width: 479px) { .form [data-schedule-date-time] { gap: 10px; } }
 @container workflow-schedule (max-width: 280px) { .backButton { grid-column: 1 / -1; } .reviewButton { grid-column: 1 / -1; grid-row: 3; } }
+
+/* Keep the confirmed destination next to the status, above the existing actions. */
+.confirmation { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.confirmation > p { margin: 0; }
+.schedulingLink.compactSchedulingLink { min-height: 28px; padding-block: 2px; font-size: 12px; line-height: 18px; gap: 4px; }
+@media (pointer: coarse) { .schedulingLink.compactSchedulingLink { min-height: 44px; } }

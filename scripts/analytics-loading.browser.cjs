@@ -24,10 +24,17 @@ const id = n => `00000000-0000-4000-8000-00000000000${n}`;
 let holdInstagram = true, holdActivity = true, views = 7, needsRefresh = false, complete = false, postFails = false, ownerB = false;
 let authorizationRevision="consent-1";
 let snapshotFails=false;
+let newestOrdering=false;
+let tiktokPilot=false, tiktokPilotComplete=false;
 let postWithoutJob=false;
 const held = [];
 const timestamp = () => new Date().toISOString();
 function accounts(platform) {
+  if(platform === "tiktok" && tiktokPilot) return [{connectionId:id(2),accountName:"TikTok Demo",status:"ready",lastSyncedAt:timestamp(),message:null,privatePublishingRecords:[],videos:[
+    {id:"old-tiktok",title:"Older popular TikTok",createdAt:"2026-10-27T10:00:00Z",viewCount:5000},
+    ...(tiktokPilotComplete?[{id:"new-tiktok",title:"Newest zero-view TikTok",createdAt:"2026-10-29T10:00:00Z",viewCount:0}]:[])
+  ]}];
+  if(platform === "instagram" && newestOrdering) return [{connectionId:id(1),accountName:"Instagram Demo",status:"ready",lastSyncedAt:timestamp(),message:null,daily:[],totals:{views:5000,reach:0,interactions:0},items:Array.from({length:12},(_,i)=>({id:"ordered-"+i,connectionId:id(1),accountName:"Instagram Demo",caption:i===11?"Newest zero-view Instagram":"Older popular Instagram "+i,contentType:"reel",publishedAt:new Date(Date.UTC(2026,9,18+i)).toISOString(),mediaType:"VIDEO",thumbnailUrl:null,permalink:null,metrics:{views:i===11?0:5000-i,reach:0,interactions:0,likes:0,comments:0,saves:0,shares:0}}))}];
   if (platform === "instagram") return [{connectionId:id(1),accountName:"Instagram Demo",accountUsername:"instagramdemo",status:"ready",lastSyncedAt:timestamp(),message:null,
     daily:[],totals:{views,reach:views,interactions:views},items:[{id:"post-1",connectionId:id(1),accountName:"Instagram Demo",accountUsername:"instagramdemo",caption:"A saved analytics post",contentType:"reel",publishedAt:timestamp(),mediaType:"VIDEO",thumbnailUrl:null,permalink:null,metrics:{views,reach:views,interactions:views,likes:views,comments:0,saves:0,shares:0}}]}];
   return [{connectionId:id(platform === "tiktok"?2:3),accountName:platform==="tiktok"?"TikTok Demo":"YouTube Demo",status:"ready",lastSyncedAt:timestamp(),message:null,videos:[],privatePublishingRecords:[],metrics:{views:0,likes:0,comments:0,estimatedMinutesWatched:0}}];
@@ -36,6 +43,7 @@ function data(url) { const platform=url.includes("tiktok")?"tiktok":url.includes
 function job() {return {id:"job-1",status:complete?"completed":"processing",createdAt:timestamp(),updatedAt:timestamp(),completedAt:complete?timestamp():null,output:complete?data("instagram"):null,error:null};}
 function json(res, value, status=200) { if(res.destroyed)return;res.writeHead(status,{"Content-Type":"application/json"});res.end(JSON.stringify(value)); }
 function respond(res,url) {
+  if(url.includes("tiktok") && tiktokPilot) return json(res,{ok:true,data:data(url),needsRefresh:!tiktokPilotComplete,refreshKey:tiktokPilotComplete?"tiktok-pilot-fresh":"tiktok-pilot-stale"});
   if(url.includes("activity"))return json(res,{ok:true,activity:{activityRows:[],buckets:[],needsAttention:0,published:0,scheduled:0}});
   return json(res,{ok:true,data:data(url),needsRefresh,refreshKey:needsRefresh?"stale":"fresh"});
 }
@@ -50,6 +58,7 @@ async function main(){
     if(url.pathname==="/api/social/connections")return json(res,{ok:true,connections:ownerB?[]:["instagram","tiktok","youtube"].map((platform,i)=>({id:id(i+1),platform,platformAccountId:platform+"-account",authorizationRevision,connectedAt:"2026-10-19T00:00:00Z",updatedAt:"2026-10-19T00:00:00Z",platformAccountName:platform==="instagram"?"Instagram Demo":platform==="tiktok"?"TikTok Demo":"YouTube Demo",platformAccountUsername:platform+"demo",status:"connected",scopes:[],profilePictureUrl:null}))});
     if(url.pathname.startsWith("/api/jobs/"))return json(res,{ok:true,job:job()});
     if(req.method==="POST"){
+      if(url.pathname.includes("tiktok") && tiktokPilot){tiktokPilotComplete=true;return json(res,{ok:true,data:data(url.pathname),jobId:"tiktok-pilot-job",job:{...job(),id:"tiktok-pilot-job",status:"completed"}});}
       if(postWithoutJob){views=23;needsRefresh=false;return respond(res,url.pathname);}
       return postFails?json(res,{ok:false,message:"Queue unavailable"},502):json(res,{ok:true,data:data(url.pathname),job:job(),jobId:"job-1"});
     }
@@ -243,6 +252,32 @@ async function main(){
     const beforeQuiet=await page.evaluate(()=>window.calls['/api/jobs/job-1']);
     await advance(60_000);
     assert.equal(await page.evaluate(()=>window.calls['/api/jobs/job-1']),beforeQuiet);
+    // Newest-first retains a zero-view post before older high-view rows.
+    newestOrdering=true;needsRefresh=false;postWithoutJob=false;
+    await page.evaluate(()=>{window.client.removeQueries({queryKey:['account','owner-a','analytics']});window.showWorkspace(false)});
+    await page.getByText("Workspace closed",{exact:true}).waitFor();
+    await page.evaluate(()=>window.showWorkspace(true));
+    await page.getByText("Newest zero-view Instagram",{exact:true}).first().waitFor();
+    const sortControl=page.getByRole('combobox').filter({has:page.locator('option[value="published"]')});
+    assert.equal(await sortControl.inputValue(),"published");
+    await page.getByText("Newest zero-view Instagram",{exact:true}).first().scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(out,"analytics-newest-desktop.png")});
+    await page.setViewportSize({width:390,height:844});
+    await page.getByText("Newest zero-view Instagram",{exact:true}).first().waitFor();
+    await page.getByText("Newest zero-view Instagram",{exact:true}).first().scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(out,"analytics-newest-mobile.png")});
+    await sortControl.selectOption('views');
+    assert.equal(await page.getByText("Newest zero-view Instagram",{exact:true}).count(),0,"Views ranking remains available");
+    await sortControl.selectOption('published');
+    await page.getByText("Newest zero-view Instagram",{exact:true}).first().waitFor();
+    await page.setViewportSize({width:1400,height:1000});
+    tiktokPilot=true;
+    await page.getByRole("button",{name:"TikTok: choose analytics account"}).click();
+    await page.keyboard.press('Escape');
+    await page.getByText("Newest zero-view TikTok",{exact:true}).first().waitFor();
+    assert.ok(tiktokPilotComplete,"stale TikTok snapshot starts refresh and completed job reconciles GET");
+    assert.equal(await page.getByRole('combobox').inputValue(),'published');
+    await page.screenshot({path:path.join(out,"analytics-tiktok-refreshed.png")});
     // A different authenticated owner gets a different QueryClient/screen.
     ownerB=true;await page.evaluate(()=>window.switchOwner('owner-b'));
     await page.waitForFunction(()=>window.currentOwner==='owner-b');
@@ -251,7 +286,7 @@ async function main(){
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,openScreenUpdatesMetricsActivityAndAccounts:true,hiddenAndOfflineReadsPaused:true,noJobRefreshReconciled:true,noJobManualEventConsumed:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,failedCompletionReadRecoversAutomatically:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={newestZeroViewFirst:true,performanceSortRetained:true,tiktokStaleRefreshReconciled:true,accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,openScreenUpdatesMetricsActivityAndAccounts:true,hiddenAndOfflineReadsPaused:true,noJobRefreshReconciled:true,noJobManualEventConsumed:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,failedCompletionReadRecoversAutomatically:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

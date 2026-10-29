@@ -174,3 +174,12 @@ test("v4 private full recreation signs both opening and clarity before provider 
     }
   } finally { delete process.env.CREATOR_REFERENCE_SIGNING_SECRET; }
 });
+
+
+test("new Nano Banana 2.1 starting-image jobs dispatch through Gemini with their model/receipt unchanged",async()=>{
+ calls.length=0;const input=job(),body=input.input_json,r=body.hookKeyframe;
+ body.model=r.imageModel="nano_banana_2_1";r.version=5;r.promptVersion=7;
+ r.preparationInputKey=JSON.stringify({version:4,ownerId:r.ownerId,draftId:r.draftId,referenceId:r.referenceId,sourceSha256:r.sourceSha256,sourceFrame:r.sourceFrame,imageAssetIds:r.personImageAssetIds,instructions:r.instructions,imageModel:r.imageModel});r.inputKey=hookKeyframeGenerationInputKey(r);
+ const output=await runGenerateImageJob(input,context);assert.equal(output.model,"nano_banana_2_1");assert.equal(output.hookKeyframe.imageModel,"nano_banana_2_1");
+ assert.ok(calls.some(c=>c.paid));assert.deepEqual(calls.find(c=>c.paid).paid.references,body.referenceImageUrls);
+});

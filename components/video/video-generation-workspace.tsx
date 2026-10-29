@@ -52,7 +52,7 @@ import { CreatorReferencePicker } from "@/components/video/creator-reference-pic
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import resultLayout from "@/components/video/video-results.module.css";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameDefaultDuration, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameDefaultDuration, hookStartingFrameSourceDuration, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -426,7 +426,7 @@ export function VideoGenerationStudioPanel({
       // Keep a supported model choice when changing the approved scene.
       setPrompt(formatMotionPromptTimes(startingFrame.motionInstructions));
       if (!isHookStartingFrameVideoModel(model) || !isAIStudioVideoModelAvailable(model)) setModel("google_omni");
-      setDurationSeconds(startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(model)); setQuantity(1);
+      setDurationSeconds((workflowFormat === "hook" ? hookStartingFrameSourceDuration(model, startingFrame.sourceDurationSeconds, startingFrame.durationSeconds) : startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(model)) as AIStudioVideoDuration); setQuantity(1);
       setAspectRatio(startingFrame.width > startingFrame.height ? "16:9" : "9:16");
       setSoundPreference({ owner: startingFrame.ownerId, format: workflowFormat ?? "hook", enabled: startingFrame.generateAudio });
       // Clear stale URLs; restore this frame's owned photos and explicit
@@ -439,7 +439,7 @@ export function VideoGenerationStudioPanel({
   }
   const startingFramePhotos = useStartingFramePhotos(startingFrame, model, Boolean(user && !recreateView?.preview), photos => {
     setUploadedReference(photos[0] ?? null); setAdditionalImageReferences(photos.slice(1));
-  });
+  }, workflowFormat === "hook");
   const storedJobIds = useStoredBackgroundJobIds(user ? `${VIDEO_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
@@ -575,7 +575,8 @@ export function VideoGenerationStudioPanel({
   const referenceCreationError = workflow && hasVideoReference && !hasWorkflowVideoReference && model === "google_omni" &&
     (referenceImages.length > 0 || (sourceDuration != null && sourceDuration > 3))
     ? "Choose Seedance 2.5 or WAN 3.0 to create from this reference, or choose Edit source video with Google Omni." : null;
-  const startingFrameError = startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to animate this starting frame."
+  const startingFrameError = startingFrame && workflowFormat === "hook" && Number.isFinite(startingFrame.sourceDurationSeconds) && durationSeconds + .001 < startingFrame.sourceDurationSeconds! ? `Choose a duration of at least ${Math.ceil(startingFrame.sourceDurationSeconds! - .001)} seconds to preserve the full source Hook, or choose a model that supports it.`
+    : startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to animate this starting frame."
     : startingFrame && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation."
     : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to ${model === "google_omni" ? 10 : 15} seconds.`
     : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
@@ -642,11 +643,15 @@ export function VideoGenerationStudioPanel({
       getVideoHistoryDateLabel(job.updatedAt, currentDay) === "Today"
     ),
   );
-  const failedDurableJob = durableJobs.find((job) => job.status === "failed");
-  const cancelledDurableJob = durableJobs.find(
+  // Browser job hints are shared across tabs. Only this composer's explicit
+  // URL/submission may lock a workflow; other jobs remain visible in history.
+  const composerJobIds = new Set([...submittedJobIds, ...(urlJobId ? [urlJobId] : [])]);
+  const composerJobs = workflowFormat ? durableJobs.filter(job => composerJobIds.has(job.id)) : durableJobs;
+  const failedDurableJob = composerJobs.find((job) => job.status === "failed");
+  const cancelledDurableJob = composerJobs.find(
     (job) => job.status === "cancelled",
   );
-  const completedWithoutOutput = durableJobs.find(
+  const completedWithoutOutput = composerJobs.find(
     (job) =>
       job.status === "completed" && !getVideoJobOutput(job.output)?.url,
   );
@@ -661,8 +666,8 @@ export function VideoGenerationStudioPanel({
           : null;
   const effectiveGenerationState = getVideoGenerationState({
     submitting: isSubmitting,
-    loading: activeJobQueries.some((query) => query.isLoading),
-    jobs: durableJobs,
+    loading: activeJobQueries.some((query, index) => query.isLoading && (!workflowFormat || composerJobIds.has(activeJobIds[index]))),
+    jobs: composerJobs,
     fallback: generationState,
     missingOutput: Boolean(completedWithoutOutput),
   });
@@ -792,12 +797,12 @@ export function VideoGenerationStudioPanel({
 
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
-    for (const job of durableJobs) {
+    for (const job of composerJobs) {
       if (!discoveredJobIdsRef.current.has(job.id) && (!["cancelled", "completed", "failed"].includes(job.status) || job.id === urlJobId)) {
         foregroundJobIdsRef.current.add(job.id);
       }
     }
-  }, [durableJobs, urlJobId]);
+  }, [composerJobs, urlJobId]);
 
   useEffect(() => {
     if (
@@ -1625,7 +1630,7 @@ export function VideoGenerationStudioPanel({
                 if (!isAIStudioVideoModelAvailable(nextModel) || startingFrame && !isHookStartingFrameVideoModel(nextModel)) return;
                 const durations = startingFrame ? hookStartingFrameVideoDurations(nextModel) : getAIStudioVideoDurations(nextModel);
                 if (startingFrame) {
-                  setDurationSeconds(startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(nextModel));
+                  setDurationSeconds((workflowFormat === "hook" ? hookStartingFrameSourceDuration(nextModel, startingFrame.sourceDurationSeconds, startingFrame.durationSeconds) : startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(nextModel)) as AIStudioVideoDuration);
                 } else if (!durations.includes(durationSeconds)) {
                   setDurationSeconds(Math.min(Math.max(durationSeconds, durations[0]), durations[durations.length - 1]) as AIStudioVideoDuration);
                 }

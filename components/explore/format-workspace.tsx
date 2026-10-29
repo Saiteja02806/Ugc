@@ -168,7 +168,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [slideshowRegenerationImage, setSlideshowRegenerationImage] = useState<AIStudioImageResult | null>(null);
 
   const [referenceSelectionRevision, setReferenceSelectionRevision] = useState(0);
-  const frameSelection = useHookComposerSelection(keyframeOwnerId, startingFrameEnabled && !localPreview, format === "wall_text" ? "wall_text" : "hook");
+  const frameSelection = useHookComposerSelection(keyframeOwnerId, startingFrameEnabled && !localPreview, format === "wall_text" ? "wall_text" : "hook", { tabScoped: format === "hook", resumeDraftId: searchParams.get("hookFrameDraft") });
   const startingFrame = frameSelection.frame, setStartingFrame = frameSelection.setFrame;
   const [hookPreparation, setHookPreparation] = useState<{ referenceId: string; draftId: string } | null>(() => {
     const id = searchParams.get("hookFrameDraft"), referenceId = searchParams.get("refId");
@@ -241,8 +241,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     });
     return () => { subscribed = false; };
   }, [scheduleCapabilityPending, backgroundCapability.isFetching, backgroundScheduling, step]);
-  const reportOpeningClip = useCallback((value: WorkflowClipEditState) => setOpeningClipState(previous => JSON.stringify(previous) === JSON.stringify(value) ? previous : value), []);
-  const reportPendingComposition = useCallback((value: ExploreScheduleComposition) => setPendingComposition(previous => previous?.signature === value.signature ? previous : value), []);
+  const reportOpeningClip = useCallback((value: WorkflowClipEditState) => setOpeningClipState(previous => JSON.stringify(previous) === JSON.stringify(value) && previous?.retryLoad === value.retryLoad ? previous : value), []);
+  const reportPendingComposition = useCallback((value: ExploreScheduleComposition) => setPendingComposition(previous => previous?.signature === value.signature && previous.retryLoad === value.retryLoad ? previous : value), []);
   const [demoSelected, setDemoSelected] = useState(false);
   const [finalPassRequired, setFinalPassRequired] = useState(false);
   const reportDemoSelection = useCallback((present: boolean) => { setDemoSelected(present); if (!present) { setEditTarget("opening"); setEditExpanded(false); } }, [setDemoSelected, setEditTarget, setEditExpanded]);

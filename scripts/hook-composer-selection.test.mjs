@@ -9,17 +9,18 @@ const frame = { ownerId: "owner", assetId: "11111111-1111-4111-8111-111111111111
   draftId: "33333333-3333-4333-8333-333333333333", referenceId: "hook-15", sourceSha256: "a".repeat(64), url: "https://media.example.test/frame.png?signature=temporary",
   width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Custom reviewed motion", generateAudio: true };
 const settle = async () => { await new Promise(setImmediate); await new Promise(setImmediate); };
-function harness({ raw = storage.serializeHookComposerSelection(frame), load = async () => ({ ...frame, url: "https://media.example.test/fresh.png", motionInstructions: "Suggested motion", generateAudio: false }), storageFails = false } = {}) {
-  const stored = new Map(raw === null ? [] : [[storage.hookComposerSelectionKey("owner"), raw]]), slots = [], effects = [], calls = [];
+function harness({ raw = storage.serializeHookComposerSelection(frame), load = async () => ({ ...frame, url: "https://media.example.test/fresh.png", motionInstructions: "Suggested motion", generateAudio: false }), storageFails = false, tabScoped = false, resumeDraftId = null, shared = null, tab = new Map() } = {}) {
+  const stored = shared ?? new Map(raw === null ? [] : [[storage.hookComposerSelectionKey("owner"), raw]]), slots = [], effects = [], calls = [];
   let cursor = 0, owner = "owner", enabled = true, namespace = "hook";
   const react = {
+    useCallback: callback => callback,
     useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === "function" ? initial() : initial; return [slots[index], value => { slots[index] = typeof value === "function" ? value(slots[index]) : value; }]; },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
     useEffect(run, deps) { const index = cursor++, previous = slots[index]; if (!previous || deps.some((value, n) => value !== previous.deps[n])) { const next = { deps }; slots[index] = next; effects.push(() => { previous?.cleanup?.(); next.cleanup = run(); }); } },
   };
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/use-hook-composer-selection.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { exports: exported, AbortController, Error, localStorage: {
+  vm.runInNewContext(code, { exports: exported, AbortController, Error, sessionStorage: { getItem: key => tab.get(key) ?? null, setItem: (key,value) => tab.set(key,value), removeItem: key => tab.delete(key) }, localStorage: {
     getItem: key => stored.get(key) ?? null,
     setItem(key, value) { if (storageFails) throw new Error("storage unavailable"); stored.set(key, value); },
     removeItem(key) { if (storageFails) throw new Error("storage unavailable"); stored.delete(key); },
@@ -29,7 +30,7 @@ function harness({ raw = storage.serializeHookComposerSelection(frame), load = a
     if (name.endsWith("hook-starting-frame-history-client")) return { fetchRecentStartingFrame: async (...args) => { calls.push(args); return load(...args); } };
     throw new Error(name);
   } });
-  return { stored, calls, render() { cursor = 0; const result = exported.useHookComposerSelection(owner, enabled, namespace); effects.splice(0).forEach(run => run()); return result; }, setNamespace(value) { namespace = value; }, setOwner(value) { owner = value; }, disable() { enabled = false; }, unmount() { slots.forEach(value => value?.cleanup?.()); } };
+  return { stored, tab, calls, render() { cursor = 0; const result = exported.useHookComposerSelection(owner, enabled, namespace, { tabScoped, resumeDraftId }); effects.splice(0).forEach(run => run()); return result; }, setNamespace(value) { namespace = value; }, setOwner(value) { owner = value; }, disable() { enabled = false; }, unmount() { slots.forEach(value => value?.cleanup?.()); } };
 }
 
 test("Hook, Wall and individual Talking Head drafts preserve independent approved selections", async () => {
@@ -90,4 +91,24 @@ test("account changes abort the old read and hide the previous selection immedia
 test("signed-out screens remain available without initiating an owned-frame read", async () => {
   const h = harness(); h.setOwner(null); assert.equal(h.render().ready, true); await settle();
   assert.equal(h.render().frame, null); assert.equal(h.calls.length, 0); h.unmount();
+});
+
+
+test("two Hook tabs retain separate frames, custom instructions and explicit removals through reload", async () => {
+  const shared=new Map([[storage.hookComposerSelectionKey("owner"),storage.serializeHookComposerSelection(frame)]]), aTab=new Map(), bTab=new Map();
+  const load=async saved=>({...frame,...saved,url:frame.url});
+  const a=harness({tabScoped:true,shared,tab:aTab,load}), b=harness({tabScoped:true,shared,tab:bTab,load});
+  a.render();b.render();await settle();assert.equal(a.render().frame,null);assert.equal(b.render().frame,null);
+  a.render().setFrame({...frame,motionInstructions:"Tab A custom motion"});
+  b.render().setFrame({...frame,referenceId:"hook-other",assetId:"44444444-4444-4444-8444-444444444444",motionInstructions:"Tab B custom motion"});
+  a.unmount();b.unmount();
+  const ar=harness({tabScoped:true,shared,tab:aTab,load}), br=harness({tabScoped:true,shared,tab:bTab,load});ar.render();br.render();await settle();
+  assert.equal(ar.render().frame.motionInstructions,"Tab A custom motion");assert.equal(br.render().frame.referenceId,"hook-other");assert.equal(br.render().frame.motionInstructions,"Tab B custom motion");
+  assert.equal(storage.readHookComposerSelection(shared.get(storage.hookComposerSelectionKey("owner")),"owner").motionInstructions,frame.motionInstructions);
+  ar.render().setFrame(null);ar.unmount();br.unmount();
+  const cleared=harness({tabScoped:true,shared,tab:aTab,load,resumeDraftId:frame.draftId});cleared.render();await settle();assert.equal(cleared.render().frame,null);assert.equal(cleared.calls.length,0);cleared.unmount();
+});
+
+test("legacy Hook selection is adopted only for an explicitly matching frame draft",async()=>{
+  const h=harness({tabScoped:true,resumeDraftId:frame.draftId});h.render();await settle();assert.equal(h.render().frame.assetId,frame.assetId);assert.equal(h.stored.size,1);h.unmount();
 });

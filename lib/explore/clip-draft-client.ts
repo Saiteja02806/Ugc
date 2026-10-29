@@ -7,7 +7,7 @@ export function clipDraftPendingKey(owner: string, scope: string, sourceAssetId:
   return `ugc-explore:clip-save:v1:${owner}:${scope}:${sourceAssetId}`;
 }
 export type ClipDraftTransport = { token: () => Promise<string | null>; fetch: typeof fetch };
-async function request(deps: ClipDraftTransport, url: string, body?: ExploreClipDraftSaveRequest) {
+async function request(deps: ClipDraftTransport, url: string, body?: ExploreClipDraftSaveRequest, parentSignal?: AbortSignal) {
   // Bound authentication and response parsing too. A late token must never send
   // a mutation after the UI has already offered a retry of the same request.
   try { return await withReadDeadline(async signal => {
@@ -20,19 +20,19 @@ async function request(deps: ClipDraftTransport, url: string, body?: ExploreClip
     const result = await response.json().catch(() => null);
     if (!response.ok || !result?.ok) throw new ExploreClipDraftError(result?.error ?? "Could not confirm your saved edits. Retry this save.", response.status, result?.code ?? "clip_draft_unavailable");
     return result;
-  }, undefined, 15000); } catch (error) {
+  }, parentSignal, 15000); } catch (error) {
     if (error instanceof ReadDeadlineError) throw new ExploreClipDraftError(body
       ? "Could not confirm your saved edits in time. Retry Save edits to check the same save."
-      : "Loading your saved edits took too long. Check your connection and retry loading.", 503, "clip_draft_unavailable");
+      : "Loading your saved edits took too long. Please retry loading your saved edits.", 503, "clip_draft_unavailable");
     throw error;
   }
 }
-export async function loadClipDraft(deps: ClipDraftTransport, sourceAssetId: string, scope: string) {
-  const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`);
+export async function loadClipDraft(deps: ClipDraftTransport, sourceAssetId: string, scope: string, signal?: AbortSignal) {
+  const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`, undefined, signal);
   return result.draft === null ? null : parseClipDraftReceipt(result.draft, sourceAssetId, scope);
 }
-export async function loadClipDraftWithInitial(deps: ClipDraftTransport, sourceAssetId: string, scope: string) {
-  const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`);
+export async function loadClipDraftWithInitial(deps: ClipDraftTransport, sourceAssetId: string, scope: string, signal?: AbortSignal) {
+  const result = await request(deps, `/api/explore/clip-drafts?${new URLSearchParams({ sourceAssetId, scope })}`, undefined, signal);
   const draft = result.draft === null ? null : parseClipDraftReceipt(result.draft, sourceAssetId, scope);
   const initialContent = !draft && result.initialContent ? parseClipDraftContent(result.initialContent) : null;
   if (initialContent && (!["hook", "wall_text"].includes(scope) || initialContent.editing.format !== scope || initialContent.sourceAssetId !== sourceAssetId)) throw new ExploreClipDraftError("The initial clip belongs to a different source.");

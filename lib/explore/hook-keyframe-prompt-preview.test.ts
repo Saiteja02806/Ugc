@@ -101,3 +101,13 @@ test("Hooks45 80 86 select reviewed six-second source-speed prompts rather than 
   if(id.endsWith("caf411c79"))assert.match(p.directions,/eyelids lowering|lower the eyelids/);
  }
 });
+
+
+test("known 4s/5s sources preview their full timeline, with only a trailing hold for 4.3s",()=>{
+ const opening=updateHookKeyframeDraft(draft,{sourceFrame:{index:0,timeSeconds:0,width:720,height:1280,sha256:"b".repeat(64)},motionInstructions:"OPENING: PHASE [0–0.5]: Raise the right hand.\nENDING: PHASE [0.5–1]: Cover the mouth and hold."});
+ for(const source of [4,5,4.3]){
+ const p=getHookKeyframePromptPreview(opening,"hook",undefined,undefined,undefined,source);assert.equal(p.durationSeconds,Math.ceil(source));assert.equal(p.animationError,null);
+ assert.match(p.animationPrompt!,new RegExp(Math.ceil(source)+"-second video"));
+ if(source===4.3)assert.match(p.animationPrompt!,/FINAL HOLD 4.3–5s/);
+ }
+});

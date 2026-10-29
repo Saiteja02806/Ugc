@@ -11,6 +11,7 @@ import * as keyframeClient from "../lib/explore/hook-keyframe-client.ts";
 import * as variationClient from "../lib/explore/hook-keyframe-variations.ts";
 import * as statusPolling from "../lib/explore/hook-starting-image-polling.ts";
 import * as recentPhotos from "../lib/explore/recent-person-photos.ts";
+import * as imageLabels from "../worker/src/lib/hook-keyframe-image-labels.ts";
 import * as curatedFrames from "../worker/src/lib/hook-curated-frames.ts";
 
 const draftId = "00000000-0000-4000-8000-000000000001";
@@ -84,6 +85,7 @@ function harness({ captureCreatorDirections, referenceOverrides = {}, curatedRep
     navigator: { locks: { request: async (_name, _options, callback) => callback() } }, crypto: { randomUUID: () => `00000000-0000-4000-8000-${String(++uuidIndex).padStart(12, "0")}` }, URL: class extends URL {
     static createObjectURL() { const url = `blob:fixture-${urls.length}`; urls.push(url); return url; } static revokeObjectURL(url) { revoked.push(url); }
   }, require(name) {
+    if (name === "@/worker/src/lib/hook-keyframe-image-labels") return imageLabels;
     if (name in imports) return imports[name];
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     if (name.endsWith(".module.css")) return { default: {} };
@@ -251,7 +253,7 @@ test("restoration resolves the owned photo IDs again and the builder preserves t
   const d = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: [photoId], instructions: "Keep the surprised look." });
   const h = harness({ raw: drafts.serializeHookKeyframeDraft(d) }); h.render(); await h.settle(); const tree = h.render();
   assert.deepEqual(h.fetched, [photoId]);
-  assert.equal(nodes(tree).find(node => node.type === "textarea" && node.props["aria-label"] !== "Animation instructions").props.value, "Keep the surprised look.");
+  assert.equal(nodes(tree).find(node => node.type === "textarea" && node.props["aria-label"] !== "Animation instructions").props.value.includes("Keep the surprised look."), true);
   assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections[0].asset.id, photoId);
   const builder = nodes(tree).find(node => node.type === "a" && node.props.href === "/explore/build-character");
   assert.equal(builder.props.target, "_blank"); assert.match(builder.props.rel, /noopener/);
@@ -420,7 +422,7 @@ test("explicit image generation freezes person order, and approval hands off a s
 });
 test("changing image inputs prevents use of a previously generated image", async () => {
   const h = harness(); await prepareImageRequest(h); completeImage(h); let tree = h.render();
-  const imageInstructions = nodes(tree).find(node => node.type === "textarea" && !node.props["aria-label"]);
+  const imageInstructions = nodes(tree).find(node => node.type === "textarea" && node.props["aria-label"] === "Starting image prompt");
   imageInstructions.props.onChange({ target: { value: "Change the expression." } }); tree = h.render();
   assert.equal(button(tree, "Use as starting frame").props.disabled, true);
   assert.match(text(tree), /photos, model or image instructions have changed/);
@@ -633,7 +635,7 @@ test("Recreate reserves source, person and result columns before generation with
   assert.equal(nodes(tree).filter(node => node.type === "footer").length, 0, "No separate bottom action bar");
   assert.equal(h.submissions.length, 0);
   const settings = nodes(tree).find(node => node.props?.["aria-label"] === "Starting image actions");
-  assert.ok(text(settings).includes("Adjust image instructions"));
+  assert.ok(text(settings).includes("Starting image prompt"));
   assert.equal(nodes(person).some(node => node.type === "textarea"), false, "Optional instructions follow the model settings");
 });
 
@@ -849,4 +851,35 @@ test("private frame-zero preparation passes full-source directions over the lega
  const full = "OPENING: PHASE [0–0.5]: Hold the cup.\nENDING: PHASE [0.5–1]: Lower it and look up.";
  const seen=[]; const h=harness({creatorAccountId:"creator",captureCreatorDirections:value=>seen.push(value),referenceOverrides:{generationPrompt:full,legacyGenerationPrompt:"Old untimed directions",startingFrame:{sha256:"c".repeat(64)}}});
  h.render(); await h.settle(); h.render(); assert.equal(seen.at(-1),full);
+});
+
+
+test("Nano Banana 2.1 appears as a separate starting-image option and freezes its own model key",async()=>{
+ const h=harness();h.render();await h.settle();let tree=h.render();
+ const model=()=>nodes(tree).find(n=>n.type==="AiStudioSettingSelect"&&n.props.ariaLabel==="Starting image model");
+ assert.ok(model().props.options.some(o=>o.value==="nano_banana_2_1"&&o.label==="Nano Banana 2.1"));
+ assert.ok(model().props.options.some(o=>o.value==="nano_banana_2"&&o.label==="Gemini 3.1 Flash"));
+ find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);model().props.onChange("nano_banana_2_1");tree=h.render();
+ assert.equal(find(tree,"FormatGenerationReferences").props.maxImages,4);button(tree,"Generate starting image").props.onClick();await h.settle();
+ assert.equal(h.submissions.at(-1).imageModel,"nano_banana_2_1");
+});
+
+test("full prompt editing, saving, default restoration and application reset use the exact chosen text", async () => {
+ const h=harness();h.render();await h.settle();let tree=h.render();
+ find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
+ const editor=()=>nodes(h.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt");
+ assert.match(editor().props.value,/SOURCE SHOT/);
+ const custom="Image 1 supplies the scene. Image 2 supplies identity. Match warm light.";
+ editor().props.onChange({target:{value:custom}});tree=h.render();
+ assert.equal(editor().props.value,custom);
+ button(tree,"Save my prompt").props.onClick();tree=h.render();
+ const prefKey="ugc-starting-image-prompt:v1:owner";
+ assert.equal(JSON.parse(h.stored.get(prefKey)).text,custom);
+ nodes(tree).find(n=>n.type==="input"&&n.props.type==="checkbox").props.onChange({target:{checked:true}});
+ tree=h.render();assert.equal(JSON.parse(h.stored.get(prefKey)).useDefault,true);
+ button(tree,"Use application prompt").props.onClick();h.render();assert.match(editor().props.value,/SOURCE SHOT/);
+ const fresh=harness();fresh.stored.set(prefKey,h.stored.get(prefKey));fresh.render();await fresh.settle();
+ assert.equal(nodes(fresh.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt").props.value,custom);
+ const other=harness({ownerId:"another"});other.stored.set(prefKey,h.stored.get(prefKey));other.render();await other.settle();
+ assert.notEqual(nodes(other.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt").props.value,custom);
 });

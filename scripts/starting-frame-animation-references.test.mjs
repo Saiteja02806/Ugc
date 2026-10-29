@@ -41,7 +41,7 @@ function harness({ resolveAsset = async id => photo(id).asset } = {}) {
   function render(patch = {}) {
     cursor = 0; const tree = exported.StartingFrameAnimationReferences({ ...base, ...patch });
     effects.forEach(effect => effect()); effects = []; cleanups = slots.flatMap(slot => slot?.cleanup ? [slot.cleanup] : []);
-    const pickers = nodes(tree).filter(node => node.type === "picker"); return { tree, scene: pickers[0].props, faces: pickers[1].props };
+    const pickers = nodes(tree).filter(node => node.type === "picker"); return { tree, scene: pickers.length > 1 ? pickers[0].props : null, faces: pickers.at(-1).props };
   }
   return { render, pending, errors, changes, selectedFrames, clearedFrames: () => clearedFrames, unmount() { cleanups.forEach(fn => fn()); } };
 }
@@ -108,18 +108,21 @@ test("a stale influencer read cannot add photos after frame/model changes or lea
   h.unmount(); assert.equal(h.pending.at(-1), false);
 });
 
-test("compact approved frame is a single tile and keeps photo controls inside Change", () => {
-  const result = harness().render({ compact: true });
-  const all = nodes(result.tree);
-  assert.equal(all.filter(node => node.type === "frame-preview").length, 1);
-  assert.equal(result.tree.props["data-starting-frame"], true);
-  const popup = all.find(node => node.type === "PopoverContent");
-  assert.ok(popup);
-  assert.equal(nodes(popup).filter(node => node.type === "picker").length, 2);
-  const source = readFileSync(new URL("../components/explore/starting-frame-animation-references.tsx", import.meta.url), "utf8");
-  assert.match(source, /previewStyles\.startingFrameCard/);
-  assert.match(source, /previewStyles\.startingFrameChange/);
-  assert.doesNotMatch(source, /Choose Omni Flash 1.1 to add face references|Add clear photos of the same person for facial guidance/);
+test("compact Change directly uses the full dialog and keeps frame/identity roles separate", () => {
+  const h = harness(), photos = [photo("face-a")];
+  const result = h.render({ compact: true, photos });
+  assert.equal(result.scene, null);
+  assert.equal(result.faces.inlineImagePicker, false);
+  assert.equal(result.faces.startingFramePreview, frame);
+  assert.equal(result.faces.startingFrame, undefined);
+  assert.equal(result.faces.imageSelections, photos);
+  assert.equal(result.faces.onSelectStartingFrame instanceof Function, true);
+  assert.equal(nodes(result.tree).some(node => node.type === "PopoverContent"), false);
+  result.faces.onChange(photo("face-b"));
+  assert.deepEqual(Array.from(h.changes.at(-1), item => item.asset.id), ["face-a", "face-b"]);
+  assert.equal(h.clearedFrames(), 0);
+  result.faces.onSelectStartingFrame({ ...frame, assetId: "other-frame" });
+  assert.equal(h.selectedFrames.at(-1).assetId, "other-frame");
 });
 
 test("model-specific starting-frame defaults preserve the supported duration contract", () => {
@@ -130,4 +133,14 @@ test("model-specific starting-frame defaults preserve the supported duration con
   const workspace = readFileSync(new URL("../components/video/video-generation-workspace.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(workspace, /Animate this image with your selected model/);
   assert.match(workspace, /compact frame=\{startingFrame\}/);
+});
+
+
+test("measured Hook source duration selects full source length within provider limits",()=>{
+ for(const model of ["google_omni","wan_3_0","seedance_2_5"]){
+  assert.equal(policy.hookStartingFrameSourceDuration(model,4),4);assert.equal(policy.hookStartingFrameSourceDuration(model,5),5);assert.equal(policy.hookStartingFrameSourceDuration(model,4.3),5);
+ }
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",2.3),3);
+ assert.equal(policy.hookStartingFrameSourceDuration("seedance_2_5",2.3),4);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",undefined,6),6);
 });

@@ -16,7 +16,8 @@ const file = (name, source) => fs.writeFileSync(path.join(out, name), source);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
 file("css.cjs", `module.exports=s=>'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default {};';`);
 file("module-css.cjs", String.raw`module.exports=function(s){const prefix='automationFixture_',names={};s=s.replace(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>{names[name]=prefix+name;return '.'+prefix+name;});return 'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
-file("accounts.ts", `export const loadAccountSocialConnections=async()=>[];`);
+file("accounts.ts", `export const loadAccountSocialConnections=async()=>['alpha','beta'].map((name,i)=>({id:'account-'+i,platform:'instagram',platformAccountName:name,platformAccountUsername:name,status:'connected',scopes:['instagram_business_content_publish'],supportsBackgroundRefresh:true}));`);
+file("picture.ts", `export const useSocialAccountPicture=()=>'/fixture-image.png';`);
 file("media.tsx", `import {useState} from 'react'; import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog'; export function MediaLibraryPanel(){const [open,setOpen]=useState(false);return <div>Media library fixture<button type="button" onClick={()=>window.fixtureAddImage?.()}>Simulate upload</button><button type="button" onClick={()=>setOpen(true)}>New image collection</button>{open?<Dialog open onOpenChange={setOpen}><DialogContent><DialogTitle>New image collection</DialogTitle><DialogDescription>Fixture collection</DialogDescription><button type="button" onClick={()=>setOpen(false)}>Cancel collection</button></DialogContent></Dialog>:null}</div>}`);
 file("client.ts", `import {createDefaultAutomationConfig} from '@/lib/trending/slideshow-automation-contract';
 let config=createDefaultAutomationConfig({timezone:'Asia/Kolkata',dailyAllowance:4});
@@ -40,6 +41,7 @@ async function main() {
       resolve: { extensions: [".tsx", ".ts", ".js"], alias: {
         "automation-under-test": path.join(root, baseline ? ".tmp/trending-followup/automation-workspace.before.tsx" : "components/trending/trending-slideshow-automation-workspace.tsx"),
         "@/lib/trending/slideshow-automation-client": path.join(out, "client.ts"),
+        "@/components/social/use-social-account-picture": path.join(out, "picture.ts"),
         "@/lib/scheduling/account-data-query": path.join(out, "accounts.ts"),
         "@/components/media/media-library-dialog": path.join(out, "media.tsx"), "@": root,
       } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.module\.css$/, use: path.join(out, "module-css.cjs") }, { test: /\.css$/, exclude: /\.module\.css$/, use: path.join(out, "css.cjs") }] } });
@@ -103,6 +105,19 @@ async function main() {
       await page.close();
     }
     if (!baseline) {
+      for (const width of [1440,390]) {
+        const posting=await browser.newPage({viewport:{width,height:900}});
+        await posting.goto(`http://127.0.0.1:${server.address().port}/?avatars`);
+        await posting.getByRole('button',{name:'Continue to Appearance'}).click();
+        await posting.getByRole('button',{name:'Continue to Posting'}).click();
+        await posting.getByRole('img',{name:'alpha profile picture'}).waitFor();
+        assert.equal(await posting.locator('[data-slot=avatar]').count(),2);
+        const alpha=posting.getByRole('checkbox',{name:/alpha/}), beta=posting.getByRole('checkbox',{name:/beta/});
+        await alpha.check();await beta.check();assert.equal(await alpha.isChecked(),true);await alpha.uncheck();assert.equal(await beta.isChecked(),true);
+        assert.equal(await posting.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+        assert.ok((await posting.evaluate(()=>window.fixtureMutations)).every(v=>v==='save'));
+        await posting.screenshot({animations:'disabled',path:path.join(out,`posting-avatars-${width}.png`)});await posting.close();
+      }
       for (const width of [1440,390]) {
         const overview = await browser.newPage({viewport:{width,height:900}});
         await overview.goto(`http://127.0.0.1:${server.address().port}/?active`);

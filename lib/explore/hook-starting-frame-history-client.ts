@@ -12,6 +12,7 @@ export function readRecentStartingFrame(value: unknown, ownerId: string): HookSt
     typeof frame.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(frame.referenceId) || !/^[a-f0-9]{64}$/.test(frame.sourceSha256) || !validUrl ||
     !Number.isInteger(frame.width) || frame.width < 1 || frame.width > 8192 || !Number.isInteger(frame.height) || frame.height < 1 || frame.height > 8192 ||
     ![4, 6, 8].includes(frame.durationSeconds) || typeof frame.motionInstructions !== "string" || !frame.motionInstructions.trim() || frame.motionInstructions.length > 24000 ||
+    frame.sourceDurationSeconds !== undefined && (!Number.isFinite(frame.sourceDurationSeconds) || frame.sourceDurationSeconds <= 0 || frame.sourceDurationSeconds > 120) ||
     typeof frame.generateAudio !== "boolean") throw new Error("This starting frame could not be verified. Refresh the list and try again.");
   return frame;
 }

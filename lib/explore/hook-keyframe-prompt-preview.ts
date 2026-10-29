@@ -23,7 +23,7 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
     : openingMotion ? buildSourceMotionDirections(openingMotion)
     : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : creatorDirections ?? "");
   const directions = formatMotionPromptTimes(draft.motionInstructions ?? suggestedDirections);
-  const durationSeconds = format === "hook" ? suggestion?.previewDurationSeconds ?? 4 : 4;
+  const durationSeconds = format === "hook" ? Number.isFinite(sourceDurationSeconds) && sourceDurationSeconds! > 0 ? Math.max(3, Math.ceil(sourceDurationSeconds! - .001)) : suggestion?.previewDurationSeconds ?? 4 : 4;
   let animationPrompt: string | null = null;
   let animationError: string | null = null;
   if (directions) {
@@ -33,10 +33,10 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
     catch (error) { animationError = error instanceof Error ? error.message : "Review the animation instructions."; }
   }
   const publicEntry = draft.sourceFrame && getPublicMiddleFrameMotionEntry(draft.scope.referenceId, draft.scope.sourceSha256, draft.sourceFrame.index);
-  const imagePrompt = !draft.imageAssetIds.length ? null : draft.version === 4 ? buildOriginalOpeningImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions, referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256 }).prompt : publicEntry
+  const imagePrompt = draft.customImagePrompt ?? (!draft.imageAssetIds.length ? null : draft.version === 4 ? buildOriginalOpeningImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions, referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256 }).prompt : publicEntry
     ? buildHookFullRecreationOpeningImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions, referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256 }).prompt
     : assignedOpeningPrompt ? [assignedOpeningPrompt, draft.instructions.trim() ? `USER IMAGE INSTRUCTIONS:\n${draft.instructions.trim()}` : ""].filter(Boolean).join("\n\n")
-    : buildHookKeyframeImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions, referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256, sourceFrameIndex: draft.sourceFrame?.index }).prompt;
+    : buildHookKeyframeImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions, referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256, sourceFrameIndex: draft.sourceFrame?.index }).prompt);
   return {
     status: "preparation_preview" as const,
     canSubmitPaidAnimation: false as const,

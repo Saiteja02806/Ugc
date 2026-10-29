@@ -631,3 +631,15 @@ function emptyMetrics() {
     views: null,
   };
 }
+
+
+test("newest-first retains zero and unavailable views ahead of older popular posts", () => {
+  const items = [
+    createItem({id:"older",publishedAt:"2026-10-27T10:00:00Z",metrics:{...emptyMetrics(),views:9000}}),
+    createItem({id:"zero",publishedAt:"2026-10-29T10:00:00Z",metrics:{...emptyMetrics(),views:0}}),
+    createItem({id:"pending",publishedAt:"2026-10-29T11:00:00Z"}),
+  ];
+  assert.deepEqual(filterAndSortInstagramContent({items,filter:"all",sort:"published"}).map(i=>i.id),["pending","zero","older"]);
+  assert.deepEqual(items.map(i=>i.id),["older","zero","pending"]);
+  assert.deepEqual(filterAndSortInstagramContent({items,filter:"all",sort:"views"}).map(i=>i.id),["older","zero","pending"]);
+});

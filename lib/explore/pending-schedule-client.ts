@@ -8,6 +8,7 @@ export type ExploreScheduleComposition = {
   title: string;
   draft: ExploreFinishDraft | null;
   error: string | null;
+  retryLoad?: () => void;
   resolve: () => Promise<ExploreFinishDraft>;
 };
 export type SavedExploreSchedule = { version: 1; owner: string; signature: string; confirmed: boolean; input: ExplorePendingScheduleInput; timeRejected?: true };

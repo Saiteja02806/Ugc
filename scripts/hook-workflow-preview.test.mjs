@@ -99,7 +99,7 @@ test("the creation form has visible labels and reflows without remounting settin
   for (const label of ["Model", "Duration", "Quality", "Videos", "Ratio"]) {
     assert.ok(composer.includes(`<SettingField label="${label}"`));
   }
-  assert.match(composer, /className=\{creation\.prompt\}/);
+  assert.match(composer, /className=\{cn\(creation\.prompt, startingFrameSoundControl && creation\.promptWithAttachments\)\}/);
   assert.match(composer, /aria-label=\{`\$\{prefix\} generation settings`\} className=\{creation\.settingsGrid\}/);
   assert.match(composer, /One mounted form at every size/);
   assert.doesNotMatch(composer, /ResizeObserver|SettingsStrip/);

@@ -546,3 +546,28 @@ test("Person photos and My Influencers sections replace Other images and use own
   assert.equal(h.all(tree,node=>node.props?.["aria-label"]==="Use saved influencer 1")[0].props["aria-pressed"],true);
   h.cleanup();
 });
+
+test("display-only animation frame survives uploaded photo selection and unsupported-model removal", async () => {
+  const h = harness(async () => assert.fail("No upload"), { images: [savedImage("face-b")] });
+  let cleared = 0;
+  const frame = { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 };
+  const photos = [{kind:"image",asset:savedImage("face-a")}];
+  const options = { startingFramePreview: frame, imageSelections: photos, selection: photos[0], imagePurpose: "person", videoInputEnabled: false,
+    onClearStartingFrame: () => { cleared++; }, onImagesChange() {} };
+  let tree = h.render(options);
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
+  tree = h.render(options);
+  assert.equal(h.all(tree, node => node.type === "DialogContent").length, 1);
+  const preview = h.all(tree, node => node.type === "ImagePreview" && node.props.name === "Starting frame")[0];
+  assert.equal(preview.props.url, frame.url);
+  await h.all(tree, node => node.type === "Button" && node.props["aria-label"] === "Use your image my-reference.png")[0].props.onClick();
+  await flush();
+  assert.equal(cleared, 0);
+  assert.equal(h.changes.at(-1).asset.id, "face-b");
+  const updates=[];
+  tree=h.render({...options,imagePickerDisabled:true,onImagesChange:next=>updates.push(next)});
+  assert.equal(h.all(tree,node=>node.type==="DialogTrigger")[0].props.render.props.disabled,false);
+  h.all(tree,node=>node.type==="Button"&&node.props["aria-label"]==="Remove photo 1")[0].props.onClick();
+  assert.equal(updates.at(-1).length,0);
+  assert.equal(cleared,0);
+});

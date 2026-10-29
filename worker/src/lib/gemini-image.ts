@@ -13,6 +13,7 @@ import { hookKeyframeReceiptImageModel } from "./hook-keyframe-image-model.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
+export const HOOK_NANO_BANANA_2_1_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const HOOK_GEMINI_FLASH_IMAGE_MODEL = "gemini-3.1-flash-image";
 
 let googleClient: GoogleGenAI | null = null;
@@ -25,11 +26,12 @@ export async function generateGeminiImageBuffer(
   slideshowLabels?: string[],
 ) {
   const ai = getGoogleClient();
-  const model = hookKeyframe && hookKeyframe.version !== 1 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
+  const hookModel = hookKeyframe && hookKeyframeReceiptImageModel(hookKeyframe) === "nano_banana_2_1" ? "nano_banana_2_1" : "nano_banana_2";
+  const model = hookModel === "nano_banana_2_1" ? HOOK_NANO_BANANA_2_1_IMAGE_MODEL : hookKeyframe && hookKeyframe.version !== 1 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
   const downloadedImages = Array.isArray(referenceImageUrl) ? await downloadReferenceImageContext(referenceImageUrl) : undefined;
   if (slideshowLabels && (hookKeyframe || slideshowLabels.length !== downloadedImages?.length)) throw new ProviderRequestNotSubmittedError("The slideshow image labels do not match the inputs.");
-  const referenceLabels = slideshowLabels ?? verifiedHookImageLabels(prompt, downloadedImages, hookKeyframe, "nano_banana_2");
+  const referenceLabels = slideshowLabels ?? verifiedHookImageLabels(prompt, downloadedImages, hookKeyframe, hookModel);
   const referenceImages = downloadedImages?.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
   const referenceImage = typeof referenceImageUrl === "string"
     ? await downloadReferenceImage(referenceImageUrl)
@@ -162,7 +164,7 @@ export async function generateGemini3ProImageBuffer(params: {
 }
 
 function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<typeof downloadReferenceImageContext>> | undefined,
-  receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2") {
+  receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2" | "nano_banana_2_1") {
   if (!receipt) return undefined;
   if (!parseHookKeyframeGenerationReceipt(receipt) || ![2, 3, 4, 5, 7].includes(receipt.promptVersion) ||
     hookKeyframeReceiptImageModel(receipt) !== model ||

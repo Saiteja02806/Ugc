@@ -109,7 +109,7 @@ export function TikTokBetaAnalyticsPanel({
   const [metric, setMetric] = useState<TikTokMetric>("views");
   const [selectedContent, setSelectedContent] =
     useState<TikTokTrendContentItem | null>(null);
-  const [sort, setSort] = useState<TikTokSort>("views");
+  const [sort, setSort] = useState<TikTokSort>("published");
 
   const visibleConnections = useMemo(
     () =>

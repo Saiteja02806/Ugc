@@ -138,7 +138,9 @@ async function main() {
         const overflowing=Array(10).fill('Exact wording for preview and draft saving.').join('\n');
         await page.getByLabel('Overlay text',{exact:true}).fill(overflowing);
         await page.getByRole('alert').filter({hasText:'Your text does not fit.'}).waitFor();
-        const save=page.getByRole('button',{name:'Save edits',exact:true});assert.equal(await save.isEnabled(),true);
+        // Reopening starts a verified draft read; visible fields do not mean
+        // that read has finished. Saving must wait for its accepted revision.
+        const save=page.getByRole('button',{name:'Save edits',exact:true});await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Save edits'&&!b.disabled)).catch(async error=>{console.error(await page.locator('body').innerText());await page.screenshot({path:path.join(out,'save-blocked-debug.png')});throw error;});assert.equal(await save.isEnabled(),true);
         await save.click();await page.getByRole('button',{name:'Edits saved',exact:true}).waitFor();
         assert.equal(draftReceipt.content.editing.textOverlays[0].value,overflowing);
         await page.evaluate(()=>window.previewFinal());

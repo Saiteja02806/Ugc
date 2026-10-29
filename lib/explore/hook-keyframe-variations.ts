@@ -36,7 +36,7 @@ export function readHookKeyframeVariations(raw: string | null, scope: HookKeyfra
   if (raw === null) return null;
   try {
     createHookKeyframeDraft(scope);
-    if (!raw || raw.length > 300_000) invalid();
+    if (!raw || raw.length > 768_000) invalid();
     const value: unknown = JSON.parse(raw);
     if (!object(value) || !exact(value, ["version", "scope", "revision", "batchId", "selectedRequestKey", "entries"]) || value.version !== 1 ||
       !object(value.scope) || !exact(value.scope, ["ownerId", "draftId", "referenceId", "sourceSha256"]) ||

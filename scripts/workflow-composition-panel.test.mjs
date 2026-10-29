@@ -447,6 +447,18 @@ test("audio reference selection and validation states retain the waveform and re
   }
 });
 
+test("selected audio tile shows its exact filename without opening the picker", () => {
+  const name = "My selected delivery recording with a long descriptive filename.mp3";
+  const audio = makeAttachment(name, true);
+  const { tree } = audioRender({ audioLabel: "Talking head audio", audio });
+  const preview = nodes(tree).find(node => node.type === "reference-preview");
+  const label = nodes(preview.props.media).find(node => node.type === "span");
+  assert.equal(text(label), name); assert.equal(label.props.title, name);
+  assert.match(label.props.className, /line-clamp-2/);
+  assert.equal(preview.props.name, name); assert.equal(preview.props.url, audio.asset.url);
+  assert.equal(preview.props.onRemove, audio.remove);
+});
+
 test("concise reference pickers preserve uploads, playback, removal, errors and the 30-second limit", async () => {
   for (const audioLabel of ["Hook audio", "Creator audio"]) {
     const chosen = [], removed = [], file = { name: "replacement.mp3", type: "audio/mpeg" };

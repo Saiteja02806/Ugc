@@ -25,7 +25,7 @@ function fixture() {
   let read = async () => ({ ok: true, draft: null });
   let send = async body => ({ ok: true, requestId: body.requestId, replayed: false, draft: receipt(body.content) });
   const exports = {};
-  vm.runInNewContext(transpiled, { exports, Error,
+  vm.runInNewContext(transpiled, { exports, Error, AbortController,
     localStorage: { getItem(key) { if (denyRead) throw Error('Denied'); return storage.get(key) ?? null; }, setItem(key, value) { if (denyWrite) throw Error('Quota'); storage.set(key, value); }, removeItem(key) { if (denyWrite) throw Error('Quota'); storage.delete(key); } },
     fetch: async (url, options) => { if (options.method === 'GET') return Response.json(await read(url)); const body = JSON.parse(options.body); writes.push(body); return Response.json(await send(body)); },
     require(name) { if (name === 'react') return react; if (name.includes('firebase/auth')) return { getCurrentUserIdToken: async () => 'fixture' }; if (name.includes('clip-draft-client')) return client; if (name.includes('clip-draft-contract')) return contract; throw Error(name); },
@@ -82,4 +82,45 @@ test('explicit reload of a loaded draft still replaces the revision after confli
   h.read = async () => ({ ok: true, draft: receipt(content, 2) }); h.state.reload(); h.render(); await h.settle();
   assert.equal(h.restores.at(-1).explicit, true); assert.equal(h.state.saved.revision, 2);
   assert.equal(h.storage.get(`${client.clipDraftPendingKey('owner-a', 'hook:demo', source)}:revision`), '2'); h.cleanup();
+});
+
+
+test('retry after a failed draft read preserves unsaved local words and performs no save',async()=>{
+ const h=fixture();h.read=async()=>{throw Error('Loading your saved edits took too long')};h.render();await h.settle();assert.equal(h.state.loaded,false);
+ h.props.content={...content,editing:{...content.editing,originalVolume:.6}};
+ h.read=async()=>({ok:true,draft:receipt()});h.state.reload();h.render();assert.equal(h.state.error,null);await h.settle();
+ assert.equal(h.state.loaded,true);assert.equal(h.state.dirty,true);assert.equal(h.props.content.editing.originalVolume,.6);assert.equal(h.restores.at(-1).explicit,false);assert.equal(h.writes.length,0);h.cleanup();
+});
+
+test('changing restore callbacks cannot restart an in-flight or completed draft read', async () => {
+  const h = fixture(); let reads = 0, release;
+  h.read = () => { reads++; return new Promise(resolve => { release = resolve; }); };
+  h.render(); await tick();
+  for (let i = 0; i < 4; i++) { h.props.onRestore = (value, explicit) => h.restores.push({ value, explicit, latest: i }); h.render(); await tick(); }
+  assert.equal(reads, 1);
+  release({ ok: true, draft: receipt() }); await h.settle();
+  assert.equal(h.state.loaded, true); assert.equal(h.restores.at(-1).latest, 3);
+  h.props.onRestore = () => { throw Error('A parent render must not reload the draft'); }; h.render(); await h.settle();
+  assert.equal(reads, 1); assert.equal(h.state.error, null); h.cleanup();
+});
+
+test('editing while a save is pending keeps newer work dirty and prevents duplicate saves', async () => {
+  const h = fixture(); h.render(); await h.settle(); let release;
+  h.send = body => new Promise(resolve => { release = () => resolve({ ok: true, requestId: body.requestId, replayed: false, draft: receipt(body.content) }); });
+  const saving = h.state.save(); await tick(); h.render(); assert.equal(h.state.busy, true);
+  h.props.content = { ...content, editing: { ...content.editing, originalVolume: .6 } }; h.render();
+  await h.state.save(); assert.equal(h.writes.length, 1);
+  release(); await saving; h.render();
+  assert.equal(h.state.busy, false); assert.equal(h.state.dirty, true);
+  assert.equal(h.props.content.editing.originalVolume, .6); assert.equal(h.state.saved.content.editing.originalVolume, 1);
+  assert.equal(h.restores.length, 0); h.cleanup();
+});
+
+test('canceling an old draft load during authentication cannot fetch after the token arrives', async () => {
+  let releaseToken, reads = 0;
+  const controller = new AbortController();
+  const loading = client.loadClipDraftWithInitial({ token: () => new Promise(resolve => { releaseToken = resolve; }), fetch: async () => { reads++; throw Error('late fetch'); } }, source, 'hook', controller.signal);
+  const rejected = assert.rejects(loading, /cancelled/);
+  controller.abort(Error('cancelled')); await rejected;
+  releaseToken('fixture'); await tick(); assert.equal(reads, 0);
 });

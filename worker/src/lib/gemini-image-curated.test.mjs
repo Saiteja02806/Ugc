@@ -122,3 +122,11 @@ for (const [version, model] of [[1, "nano_banana_2"], [2, "nano_banana_2"], [2, 
     assert.match(requests[0].input[0].text, /BASE_SCENE_TO_EDIT/);
   });
 }
+
+
+test("Nano Banana 2.1 is a distinct explicit provider model and preserves verified scene/identity roles",async()=>{
+ const frame=publicFrames.frames[0],png=readFileSync(publicPath(frame));requests.length=0;
+ await generate(frame,"nano_banana_2_1",png);
+ assert.equal(requests.length,1);assert.equal(requests[0].model,"gemini-nano-banana-2.1");assert.equal(requests[0].response_format.image_size,"1K");
+ assert.equal(requests[0].input[1].data,png.toString("base64"));assert.match(requests[0].input[2].text,/MY_INFLUENCER/);
+});

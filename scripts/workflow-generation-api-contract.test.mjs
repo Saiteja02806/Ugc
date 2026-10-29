@@ -233,3 +233,38 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.equal(jobs.size,count);
   } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });
+
+test("Talking Head image plus owned voice reaches real admission in reference mode without frame-role mixing", async () => {
+  const previous=process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION="true";
+  const frame={assetId:"00000000-0000-4000-8000-000000000001",jobId:"00000000-0000-4000-8000-000000000002",referenceId:"talking-car-story",url:"https://storage.example.com/opening.png",width:720,height:1280,durationSeconds:4,motionInstructions:"Natural delivery",generateAudio:true};
+  approvedFrame={imageUrl:frame.url,assetId:frame.assetId,imageJobId:frame.jobId,referenceId:frame.referenceId,workflow:"talking_head",exploreFormat:"hook",sourceSha256:"a".repeat(64),startingFrameIndex:0,receipt:{version:1},output:{width:720,height:1280,ratio:"9:16"}};
+  try {
+    for(const model of ["wan_3_0","seedance_2_5"])for(const withFace of [false,true]){
+      jobs.clear();reservations.clear();ownedAssets.set(frame.assetId,{id:frame.assetId,url:frame.url,user_id:"owner-a",collection:"image",status:"ready",deleted_at:null,mime_type:"image/png",file_size_bytes:1024});
+      await client().generate(draft({instructions:'Say "My product saves time."',startingFrame:frame,startingFramePhotos:withFace?[{assetId:"face-owned",name:"Face",url:"https://storage.example.com/face.png"}]:[],audioReference:{url:"blob:voice",name:"Voice.mp3",duration:4,file:{type:"audio/mpeg",size:1024}},settings:normalizeWorkflowGenerationSettings({model,duration:4,quantity:1},true)}));
+      const job=[...jobs.values()][0];assert.ok(job);
+      assert.equal(job.input.referenceImageUrls[0],frame.url);assert.equal(job.input.referenceImageUrls.length,withFace?2:1);assert.deepEqual(job.input.referenceAudioUrls,["https://storage.example.com/audio.media"]);
+      assert.equal(job.input.startingFrameImageUrl,undefined);assert.equal(job.input.startingFrameReceipt,undefined);
+      assert.equal(job.input.startingImageReference.assetId,frame.assetId);assert.equal(job.input.startingImageReference.mode,"image_voice_reference");
+      assert.equal(job.input.startingImageReference.sourceFrameIndex,0);assert.equal(job.input.generateAudio,true);assert.equal(job.input.provider,"reapi");
+      assert.match(job.input.hookIdea,/Audio 1 is a voice reference/);assert.match(job.input.hookIdea,/My product saves time/);assert.match(job.input.hookIdea,/not a strict first-frame input/);
+      assert.equal(job.input.personReference,undefined);
+      if(withFace)assert.match(job.input.hookIdea,/Images 2 through 2 are supporting facial identity/);
+    }
+    const base={prompt:'Say "My product saves time."',model:"wan_3_0",durationSeconds:4,quantity:1,resolution:"720p",aspectRatio:"9:16",generateAudio:true,exploreFormat:"hook",startingFrameMode:"image_voice_reference",startingFrameAssetId:frame.assetId,startingFrameJobId:frame.jobId,referenceId:frame.referenceId,referenceAudioUrls:["https://storage.example.com/audio.media"],referenceAudioAssetIds:[audioId]};
+    for(const change of [{model:"google_omni"},{generateAudio:false},{startingFrameMode:"unknown"},{referenceAudioUrls:[]},{referenceAudioAssetIds:[]},{referenceId:"different-reference"}]){
+      jobs.clear();reservations.clear();const result=await handleAIStudioVideoGeneration(new Request("https://www.getugcpilot.com/api/ai-studio/videos/generate",{method:"POST",headers:{Authorization:"Bearer fake-owner-token","Content-Type":"application/json","Idempotency-Key":"negative"},body:JSON.stringify({...base,...change})}));
+      assert.equal(result.status,400);assert.equal(jobs.size,0);assert.equal(reservations.size,0);
+    }
+    for(const invalid of ["foreign-audio","oversized-image","public-hook"]){
+      jobs.clear();reservations.clear();
+      const audio=ownedAssets.get(audioId),image=ownedAssets.get(frame.assetId);
+      if(invalid==="foreign-audio")ownedAssets.set(audioId,{...audio,user_id:"other-owner"});
+      if(invalid==="oversized-image")ownedAssets.set(frame.assetId,{...image,file_size_bytes:17*1024**2});
+      if(invalid==="public-hook")approvedFrame={...approvedFrame,workflow:"hook"};
+      const result=await handleAIStudioVideoGeneration(new Request("https://www.getugcpilot.com/api/ai-studio/videos/generate",{method:"POST",headers:{Authorization:"Bearer fake-owner-token","Content-Type":"application/json","Idempotency-Key":"negative"},body:JSON.stringify(base)}));
+      assert.equal(result.status,400,invalid);assert.equal(jobs.size,0);assert.equal(reservations.size,0);
+      ownedAssets.set(audioId,audio);ownedAssets.set(frame.assetId,image);approvedFrame={...approvedFrame,workflow:"talking_head"};
+    }
+  }finally{approvedFrame=null;if(previous===undefined)delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION=previous;}
+});

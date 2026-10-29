@@ -21,6 +21,31 @@ import { isExploreUuid } from "../worker/src/lib/explore-finishing-contract.ts";
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
 
+test("saving a snapshot keeps Hook trim and text controls interactive while duplicate save stays disabled", () => {
+  let cursor = 0; const slots = [];
+  const react = {
+    useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {},
+  };
+  const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "/ready.mp4", width: 1080, height: 1920, durationSeconds: 5, metadata: {} };
+  const mod = load("components/explore/format-video-editor.tsx", {
+    react, "react-dom": { createPortal: children => children },
+    "@/components/explore/format-video-text-fields": fields,
+    "@tanstack/react-query": { useQuery: () => ({ data: source }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ loading: false }) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: () => ({ loaded: true, busy: true, dirty: true, error: null }) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: false } }) },
+  });
+  const render = () => { cursor = 0; return mod.FormatVideoEditor({ format: "hook", video: { ...source, mediaAssetId: source.id, title: "Hook", ratio: "9:16" }, active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, onDirty() {} }); };
+  let tree = render();
+  assert.equal(nodes(tree).find(n => n.type === "fieldset").props.disabled, false);
+  assert.equal(nodes(tree).find(n => n.type === "ClipTrimTimeline").props.disabled, false);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Saving…").props.disabled, true);
+  nodes(tree).find(n => n.props?.["aria-label"] === "Trim end").props.onChange({ target: { value: "4" } });
+  tree = render(); assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Trim end").props.value, 4);
+});
+
 test("correcting a failed remix restores saving without clearing an unrelated audio error", async () => {
   for (const audioError of [null, "Audio read failed", "Audio upload failed"]) {
     let cursor = 0, saves = 0, showSound = audioError === "Audio upload failed"; const slots = [];

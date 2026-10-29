@@ -43,7 +43,10 @@ test("Hook scheduling uses the wide, compact platform-details layout", () => {
 
   assert.match(reelDrawer, /sm:max-w-\[960px\]/);
   assert.match(detailsStep, /schedule-accounts-heading/);
-  assert.match(detailsStep, /schedule-caption-heading/);
+  assert.match(detailsStep, /<PostCaptionField applyDefault=\{false\}/);
+  const captionField = readProjectFile("components/scheduling/post-caption-field.tsx");
+  assert.match(captionField, /aria-label="Post caption"/);
+  assert.match(captionField, /<label htmlFor=\{id\}>Post caption/);
   assert.match(detailsStep, /schedule-time-heading/);
   assert.doesNotMatch(reelDrawer, /Content disclosure|Your brand|Paid partnership/);
   assert.doesNotMatch(detailsStep, /Music Usage Confirmation/);

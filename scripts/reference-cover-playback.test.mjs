@@ -52,3 +52,29 @@ test("a private blob resolving under an already hovered card starts without requ
   intersect([{ isIntersecting: true }]); assert.equal(typeof timer, "function"); timer();
   assert.equal(source, "blob:private-authenticated");
 });
+
+for (const saveData of [false, true]) test(`visible landing cover keeps its buffer across hover and releases it offscreen; saveData=${saveData}`, () => {
+  const events = new Map(), listeners = new Map(); let intersect, cleanup, source, assignments = 0, loads = 0;
+  const preference = { matches: false, addEventListener: (name, fn) => events.set(name, fn), removeEventListener() {} };
+  const link = { matches: () => false, addEventListener: (name, fn) => events.set(name, fn), removeEventListener() {} };
+  const video = { plays: 0, pauses: 0, closest: () => link, hasAttribute: () => Boolean(source), removeAttribute() { source = undefined; }, load() { loads++; },
+    set src(value) { source = value; assignments++; }, play() { this.plays++; return Promise.resolve(); }, pause() { this.pauses++; }, addEventListener: (name, fn) => events.set(name, fn), removeEventListener() {} };
+  const document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener() {} };
+  const exported = {};
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/use-cover-playback.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
+    exports: exported, document, navigator: { connection: { saveData } }, window: { matchMedia: () => preference }, setTimeout: () => assert.fail("Landing hover must not wait on a timer"), clearTimeout() {},
+    IntersectionObserver: class { constructor(fn) { intersect = fn; } observe() {} disconnect() {} },
+    require: () => ({ useRef: () => ({ current: video }), useEffect: fn => { cleanup = fn(); } }),
+  });
+  exported.useCoverPlayback("/cover.mp4", "a", true);
+  assert.equal(source, undefined); intersect([{ isIntersecting: true }]);
+  assert.equal(source, "/cover.mp4"); assert.equal(video.preload, saveData ? "metadata" : "auto"); assert.equal(video.plays, 0);
+  for (let i = 0; i < 3; i++) { events.get("pointerenter")({ pointerType: "mouse" }); assert.equal(video.plays, i + 1); events.get("pointerleave")(); assert.equal(source, "/cover.mp4"); }
+  assert.equal(assignments, 1); assert.equal(loads, 0);
+  events.get("pointerenter")({ pointerType: "touch" }); assert.equal(video.plays, 3);
+  events.get("focus")(); assert.equal(video.plays, 4); events.get("blur")(); assert.equal(source, "/cover.mp4");
+  intersect([{ isIntersecting: false }]); assert.equal(source, undefined); assert.equal(loads, 1);
+  intersect([{ isIntersecting: true }]); preference.matches = true; events.get("change")(); assert.equal(source, undefined);
+  preference.matches = false; events.get("change")(); document.visibilityState = "hidden"; listeners.get("visibilitychange")(); assert.equal(source, undefined);
+  cleanup();
+});

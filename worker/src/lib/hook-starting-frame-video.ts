@@ -27,3 +27,13 @@ export function hookStartingFrameFaceReferenceLimit(model: unknown): number {
 export function supportsHookStartingFrameFaceReferences(model: unknown): boolean {
   return hookStartingFrameFaceReferenceLimit(model) > 0;
 }
+
+/** New Hook drafts use the smallest supported duration covering the source.
+ * Legacy frames without measured duration retain their existing default. */
+export function hookStartingFrameSourceDuration(model: unknown, sourceDurationSeconds?: number, legacyDurationSeconds?: number): number {
+  const durations = hookStartingFrameVideoDurations(model);
+  if (Number.isFinite(sourceDurationSeconds) && sourceDurationSeconds! > 0) {
+    return durations.find(duration => duration + .001 >= sourceDurationSeconds!) ?? durations.at(-1) ?? hookStartingFrameDefaultDuration(model);
+  }
+  return legacyDurationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(model);
+}

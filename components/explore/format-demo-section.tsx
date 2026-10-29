@@ -323,6 +323,13 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           sourceAudioAssetId: sourceAudioId ?? null, sourceAudioPlayback: sourceAudioId ? hasOpening ? openingClipState!.backgroundPlayback : draft.playback : "once" },
       });
     } catch (error) { compositionError = error instanceof Error ? error.message : "Review the selected clips before scheduling."; }
+    const retryOpeningLoad = openingClipState?.retryLoad;
+    const retryDemoLoad = demoDraftSave.error && !demoDraftSave.loaded ? demoDraftSave.reload : undefined;
+    const retryCompositionLoad = useCallback(() => {
+      retryOpeningLoad?.();
+      retryDemoLoad?.();
+    }, [retryOpeningLoad, retryDemoLoad]);
+    const canRetryLoad = Boolean(retryOpeningLoad || retryDemoLoad);
     const compositionSignature = JSON.stringify([videoId, compositionDraft, compositionError, needsDefaultMusic, draft.backgroundMusic]);
     const latestCompositionSignature = useRef(compositionSignature);
     const defaultMusicUploads = useRef(new Map<string, { id: string; playback: "once" | "repeat" }>());
@@ -331,7 +338,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       if (!onPendingCompositionChange) return;
       const captured = compositionDraft;
       onPendingCompositionChange({ signature: compositionSignature, sourceId: captured?.sourceAssetId ?? videoId ?? demo?.id ?? "",
-        title: hasOpening ? format === "wall_text" ? "Wall of text video" : "Hook + demo video" : preview?.name ?? "Demo video", draft: captured, error: compositionError,
+        title: hasOpening ? format === "wall_text" ? "Wall of text video" : "Hook + demo video" : preview?.name ?? "Demo video", draft: captured, error: compositionError, retryLoad: compositionError && canRetryLoad ? retryCompositionLoad : undefined,
         resolve: async () => {
           if (compositionError) throw new Error(compositionError);
           if (!captured || compositionError || latestCompositionSignature.current !== compositionSignature || !alive.current) throw new Error("Your clips changed. Review the updated video before scheduling.");
@@ -349,7 +356,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           if (!alive.current || latestCompositionSignature.current !== compositionSignature) throw new Error("Your clips changed. Review the updated video before scheduling.");
           return result;
         } });
-    }, [onPendingCompositionChange, compositionSignature, compositionDraft, compositionError, videoId, demo?.id, hasOpening, format, preview?.name, needsDefaultMusic, owner, defaultMusicQuery.data]);
+    }, [onPendingCompositionChange, compositionSignature, compositionDraft, compositionError, videoId, demo?.id, hasOpening, format, preview?.name, needsDefaultMusic, owner, defaultMusicQuery.data, retryCompositionLoad, canRetryLoad]);
     const ready = !pendingSource && (hasOpening ? !!openingQuery.data : !!demo) && (hasDemo ? !!demo : draft.backgroundMusic === true) && !selection.busy && !selection.error && !validation && !audio.loading && !backgroundAudio.loading && !audio.error && !backgroundAudio.error && !audioError && !backgroundError && !uploadingAudio && !uploadingBackground && (!draft.audioId || !!audioQuery.data) && (!draft.backgroundMusic || !draft.backgroundAudioId || !!backgroundQuery.data);
     const handledPrepareRequest = useRef(0);
     useEffect(() => {
@@ -531,7 +538,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       : pendingSource ? "Wait for your selected video to finish loading." : selection.busy ? "Uploading demo… You can edit now. Save when the upload finishes."
       : demoDraftSave.busy ? "Saving your demo edits…" : activeSave && saveBusy ? "Wait for final video preparation to finish."
       : audio.loading || backgroundAudio.loading || uploadingAudio || uploadingBackground ? "Wait for your selected audio to finish loading."
-      : validation ?? draftValidation ?? audio.error ?? backgroundAudio.error ?? audioError ?? backgroundError
+      : draftValidation ?? audio.error ?? backgroundAudio.error ?? audioError ?? backgroundError
       ?? (!preview || !demo ? "Choose an available demo video before saving." : null)
       ?? (!demoDraftSave.loaded ? demoDraftSave.error ?? "Loading your saved demo edits…" : null)
       ?? (draft.audioId && !audioQuery.data ? audioQuery.isError ? "Could not load your demo audio. Return to Demo and choose it again." : "Loading your demo audio…" : null)

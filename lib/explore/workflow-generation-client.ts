@@ -68,11 +68,21 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     const frameRatio = Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0
       ? width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : null : null;
     if (!frameRatio || draft.settings.aspectRatio !== frameRatio) return "Starting-frame animation keeps your approved image's shape. Choose a matching frame.";
-    if (draft.audioReference) return "Starting-frame animation cannot use an audio reference. Remove it and use Sound for generated speech, or remove the starting frame to keep audio guidance.";
+    if (draft.audioReference) {
+      const typeError = getVideoReferenceTypeError(draft.settings.model, false, true);
+      if (typeError) return typeError;
+      if (!draft.startingFrame.generateAudio) return "Turn Sound on to use your voice reference.";
+      const audio = draft.audioReference;
+      if (!audio.file || !audio.file.type.startsWith("audio/")) return "Choose or upload the voice reference again.";
+      const audioError = getVideoTimedReferenceError(draft.settings.model, "audio", audio.duration, audio.file.size);
+      if (audioError) return audioError;
+    }
     if (draft.videoReference || draft.creator || draft.referenceImages?.length || draft.appScreen) return "Remove other generation references before animating your approved starting frame.";
     const photos = draft.startingFramePhotos ?? [];
     if (photos.some(photo => !photo.assetId || !photo.url.startsWith("https://"))) return "Choose owned ready face photos before generating.";
-    const faceError = startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })));
+    const faceError = draft.audioReference
+      ? photos.length + 1 > getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: true }).maxImages ? "Use fewer identity photos with this image and voice reference." : null
+      : startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })));
     if (faceError) return faceError;
     return null;
   }
@@ -213,7 +223,7 @@ export function createWorkflowGenerationClient(dependencies: {
             quantity: settings.quantity,
             resolution: settings.resolution,
             aspectRatio: settings.aspectRatio,
-            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio, ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
+            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, ...(audioReference ? { startingFrameMode: "image_voice_reference" } : {}), referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio, ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
             ...(videoReference ? { referenceVideoUrl: videoReference.url, referenceVideoAssetId: videoReference.assetId, referenceVideoDurationSeconds: videoReference.duration } : {}),
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),
             idempotencyKey: submission.key,

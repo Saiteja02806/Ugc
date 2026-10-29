@@ -7,6 +7,7 @@ export type HookStartingFrameSelection = {
   ownerId: string; draftId: string; referenceId: string; sourceSha256: string;
   assetId: string; jobId: string; url: string; width: number; height: number;
   identityAssetIds?: string[];
+  sourceDurationSeconds?: number;
   durationSeconds: 4 | 6 | 8; motionInstructions: string; generateAudio: boolean;
 };
 export type HookKeyframeJob = {
@@ -20,10 +21,10 @@ export function hookKeyframeCheckpointKey(scope: HookKeyframeScope) {
 export function readHookKeyframeCheckpoint(raw: string | null, scope: HookKeyframeScope): HookKeyframeCheckpoint | null {
   if (raw === null) return null;
   try {
-    if (raw.length > 24_000) throw Error();
+    if (raw.length > 64_000) throw Error();
     const value = JSON.parse(raw) as HookKeyframeCheckpoint;
     if (value.version !== 1 || !value.scope || Object.keys(scope).some(key => value.scope[key as keyof HookKeyframeScope] !== scope[key as keyof HookKeyframeScope]) ||
-      typeof value.inputKey !== "string" || !value.inputKey || value.inputKey.length > 20_000 || !UUID.test(value.requestKey) || value.jobId !== null && !UUID.test(value.jobId)) throw Error();
+      typeof value.inputKey !== "string" || !value.inputKey || value.inputKey.length > 24_000 || !UUID.test(value.requestKey) || value.jobId !== null && !UUID.test(value.jobId)) throw Error();
     return { version: 1, scope: { ...scope }, inputKey: value.inputKey, requestKey: value.requestKey, jobId: value.jobId };
   } catch { throw new Error("The saved starting-image request could not be verified. Its recovery record has been preserved."); }
 }

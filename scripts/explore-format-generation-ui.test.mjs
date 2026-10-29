@@ -19,6 +19,7 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
+    if (name === "../../lib/explore/motion-phase-display.ts") return load("lib/explore/motion-phase-display.ts");
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name === "@/worker/src/lib/hook-starting-frame-video") return startingFrameVideo;
     if (name === "../../worker/src/lib/wall-initial-text-layout.ts") return wallInitialTextLayout;
@@ -973,4 +974,28 @@ test("reviewed source-speed Hook handoff initializes and submits six seconds",as
  assert.match(composer.props.settingsSummary,/6s/);assert.equal(composer.props.prompt,frame.motionInstructions);
  await composer.props.onSubmit({preventDefault(){}});
  assert.equal(h.requests.at(-1).body.durationSeconds,6);assert.equal(h.requests.at(-1).body.prompt,frame.motionInstructions);
+});
+
+
+test("another tab's running Hook job does not lock a fresh composer or take its foreground", async () => {
+  const job={id:"other-tab-job",jobType:"video_generation",exploreFormat:"hook",status:"processing",output:null,updatedAt:new Date().toISOString()};
+  const first=harness("hook",{completedJobs:[job],persistedJobId:job.id,reference:false});
+  assert.equal(first.render().composer.props.isGenerating,true,"The tab explicitly viewing its job retains progress");
+  const second=harness("hook",{completedJobs:[job],persistedJobId:null,reference:false,captureRequests:true});
+  assert.equal(second.render().composer.props.isGenerating,false,"Shared storage/history does not own this composer");
+  const frame={ownerId:"test-owner",draftId:"second-draft",referenceId:"second-reference",assetId:"second-frame",jobId:"second-image-job",url:"https://owned.test/second.png",width:720,height:1280,durationSeconds:3,motionInstructions:"OPENING: PHASE [0–1]: Hold the opening pose.",generateAudio:false};
+  const composer=second.selectStartingFrame(frame).composer;
+  assert.equal(composer.props.isGenerating,false);
+  await composer.props.onSubmit({preventDefault(){}});
+  assert.equal(second.requests.length,1);
+  assert.equal(second.requests[0].body.startingFrameAssetId,"second-frame");
+  assert.equal(first.render().composer.props.isGenerating,true,"The first tab is unaffected");
+});
+
+
+test("4s and 5s Hook sources initialize full duration instead of provider minimum",()=>{
+ for(const seconds of [4,5,4.3]){
+ const h=harness("hook",{reference:false});const composer=h.selectStartingFrame({ownerId:"test-owner",draftId:"source-length",referenceId:"hook-fixture",assetId:"frame",jobId:"job",url:"https://owned.test/frame.png",width:720,height:1280,durationSeconds:4,sourceDurationSeconds:seconds,motionInstructions:"OPENING: PHASE [0–1]: Preserve source motion.",generateAudio:false}).composer;
+ assert.match(composer.props.settingsSummary,new RegExp(Math.ceil(seconds)+"s"));
+ }
 });

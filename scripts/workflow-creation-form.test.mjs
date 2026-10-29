@@ -106,6 +106,24 @@ test("approved-frame mode preserves all three cards and normal ratio selector wh
   assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [3, 4, 5, 6, 7, 8, 9, 10]);
 });
 
+test("Talking Head sound stays inside instructions with no duplicate in model settings", () => {
+  let sound = false;
+  const h = harness();
+  const render = disabled => h.render({ startingFrameMode: true,
+    startingFrameSoundControl: element("button", { type: "button", role: "switch", "aria-label": "Generate sound", "aria-checked": sound, disabled, onClick: () => { sound = !sound; }, children: sound ? "Sound on" : "Sound off" }) });
+  let tree = render(false);
+  const editor = nodes(tree).find(node => node.props["data-prompt-editor"] !== undefined);
+  assert.equal(nodes(editor).filter(node => node.props.role === "switch").length, 1);
+  const settings = nodes(tree).find(node => node.props["aria-label"] === "Video settings");
+  assert.equal(nodes(settings).filter(node => node.props.role === "switch").length, 0);
+  let control = nodes(tree).find(node => node.props.role === "switch");
+  assert.equal(control.props["aria-checked"], false); control.props.onClick();
+  tree = render(false); control = nodes(tree).find(node => node.props.role === "switch");
+  assert.equal(control.props["aria-checked"], true);
+  assert.equal(nodes(render(true)).find(node => node.props.role === "switch").props.disabled, true);
+  assert.equal(nodes(h.render()).filter(node => node.props.role === "switch").length, 0);
+});
+
 test("Talking Head exposes its saved image library with owner, limits and explicit selection", async () => {
   const chosen = [], saved = {id:"saved",url:"https://owned.test/product.png"};
   const h = harness();

@@ -19,6 +19,7 @@ export type HookKeyframeGenerationReceipt = {
    * identity_clarity_anchor so existing draft/checkpoint recovery stays stable. */
   animationOpeningFrame?: { index: number; timeSeconds: number; width: number; height: number; sha256: string };
   preparationInputKey?: string;
+  customImagePrompt?: string;
   personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7;
   inputKey: string; promptSha256: string;
 };
@@ -37,7 +38,7 @@ export function hookKeyframeGenerationInputKey(receipt: Omit<HookKeyframeGenerat
     sourceFrame: canonicalFrame(sourceFrame),
     ...(receipt.version === 5 ? { preparationInputKey } : {}),
     ...(receipt.version === 4 ? { animationOpeningFrame: animationOpeningFrame ? canonicalFrame(animationOpeningFrame) : undefined, preparationInputKey } : {}),
-    imageAssetIds: personImageAssetIds, instructions, ...(receipt.version !== 1 && receipt.version !== undefined ? { imageModel: receipt.imageModel } : {}) });
+    imageAssetIds: personImageAssetIds, instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}), ...(receipt.version !== 1 && receipt.version !== undefined ? { imageModel: receipt.imageModel } : {}) });
 }
 export function hookKeyframePreparationInputKey(receipt: HookKeyframeGenerationReceipt) {
   return receipt.version === 4 || receipt.version === 5 ? receipt.preparationInputKey! : receipt.inputKey;
@@ -53,7 +54,7 @@ export function hookKeyframeSourceRatio(width: number, height: number): "9:16" |
   return null;
 }
 export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframeGenerationReceipt | null {
-  if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "promptVersion", "inputKey", "promptSha256"]) ||
+  if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "customImagePrompt", "promptVersion", "inputKey", "promptSha256"]) ||
     value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 && value.version !== 5 || value.version === 1 && value.imageModel !== undefined ||
     (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5, 7].includes(value.promptVersion as number)) ||
     value.version === 2 && ![2, 3, 4, 5].includes(value.promptVersion as number) ||
@@ -75,22 +76,23 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
     !hookKeyframeSourceRatio(value.sourceFrame.width as number, value.sourceFrame.height as number) ||
     value.version === 4 && (!record(value.animationOpeningFrame) || !fields(value.animationOpeningFrame, ["index", "timeSeconds", "width", "height", "sha256"]) ||
       !isHookFullRecreationPilotOpeningFrame(String(value.referenceId), String(value.sourceSha256), value.animationOpeningFrame as HookKeyframeGenerationReceipt["sourceFrame"]) ||
-      typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 7000) ||
+      typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 24000) ||
     value.version !== 4 && value.animationOpeningFrame !== undefined ||
     value.version !== 4 && value.version !== 5 && value.preparationInputKey !== undefined ||
-    value.version === 5 && (typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 7000) ||
+    value.version === 5 && (typeof value.preparationInputKey !== "string" || !value.preparationInputKey || value.preparationInputKey.length > 24000) ||
     !Array.isArray(value.personImageAssetIds) || value.personImageAssetIds.length < 1 || value.personImageAssetIds.length > 5 ||
     (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && value.personImageAssetIds.length > hookKeyframeMaxPersonImages(value.imageModel as HookKeyframeImageModel) ||
     value.personImageAssetIds.some(id => typeof id !== "string" || !uuid.test(id)) ||
     new Set(value.personImageAssetIds.map(id => String(id).toLowerCase())).size !== value.personImageAssetIds.length ||
+    value.customImagePrompt !== undefined && (value.version !== 5 || typeof value.customImagePrompt !== "string" || !value.customImagePrompt.trim() || value.customImagePrompt.length > 6000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.customImagePrompt)) ||
     typeof value.instructions !== "string" || value.instructions.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.instructions) ||
-    typeof value.inputKey !== "string" || value.inputKey.length > 7000 ||
+    typeof value.inputKey !== "string" || value.inputKey.length > 64000 ||
     typeof value.promptSha256 !== "string" || !hash.test(value.promptSha256)) return null;
   const receipt = value as unknown as HookKeyframeGenerationReceipt;
   if (receipt.inputKey !== hookKeyframeGenerationInputKey(receipt)) return null;
   if ((receipt.version === 4 || receipt.version === 5) && receipt.preparationInputKey !== JSON.stringify({ version: receipt.version === 5 ? 4 : 3, ownerId: receipt.ownerId, draftId: receipt.draftId,
     referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: canonicalFrame(receipt.sourceFrame),
-    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, imageModel: receipt.imageModel })) return null;
+    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}), imageModel: receipt.imageModel })) return null;
   return { ...receipt, sourceFrame: { ...receipt.sourceFrame },
     ...(receipt.animationOpeningFrame ? { animationOpeningFrame: { ...receipt.animationOpeningFrame } } : {}),
     personImageAssetIds: [...receipt.personImageAssetIds] };
@@ -100,35 +102,7 @@ export function hookKeyframePromptSha256(prompt: string) { return createHash("sh
 /** Bind labels to the next image block using the accepted prompt version.
  * The default preserves V2 callers. These are prompt instructions, not structural
  * identity/mask roles offered by Gemini. */
-export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 = 2): string[] {
-  if (!Number.isInteger(personImageCount) || personImageCount < 1 || personImageCount > 5) throw new Error("Choose one main face photo and up to four supporting views.");
-  if (promptVersion === 7) return [
-    "IMAGE 1 — ORIGINAL_OPENING_SCENE. Source frame0 is the sole authority for lighting direction and color, exposure, shadows, outfit, camera, pose, hands, props and occlusion. Remove all captions, physical logos and readable text while restoring those surfaces; do not use the source person's identity.",
-    "IMAGE 2 — INFLUENCER_IDENTITY. Depict this person's facial proportions and natural identity in Image1's scene, outfit and lighting. Do not import this photo's room, clothing, light, pose or expression.",
-    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image2; facial identity only, never background, clothing, lighting or pose.`),
-  ];
-  if (promptVersion === 5) return [
-    "IMAGE 1 — ANIMATION_OPENING_FRAME_BLUEPRINT. Recreate this original source t=0 shot with the selected influencer. This image alone defines the output pose, camera, composition, hands, glasses, clothing, lighting and background; it does not define facial identity.",
-    "IMAGE 2 — IDENTITY_CLARITY_ANCHOR. A later clear moment from the same source performance. Use only to understand stable scene, wardrobe, hair, earbuds and facial-area geometry obscured in Image 1. Do not use its later pose as the output pose and do not copy this source performer's identity.",
-    "IMAGE 3 — MAIN_INFLUENCER_IDENTITY. This is the only person who must appear in the recreated opening frame. Preserve this person's recognizable facial structure and natural appearance while following Image 1's original opening pose and occlusions.",
-    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 4} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image 3. Use facial identity only; do not copy its pose, clothing, lighting or background.`),
-  ];
-  if (promptVersion === 4) return [
-    "IMAGE 1 — VISUAL_REFERENCE. A reference for the setting, composition, lighting, clothing, pose, expression and gesture of a new photograph of my influencer. Use it as visual guidance for how my influencer should be photographed.",
-    "IMAGE 2 — MY_INFLUENCER. The person to photograph. Generate this influencer with their recognizable facial features and natural appearance in the situation illustrated by Image 1.",
-    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — MY_INFLUENCER_SUPPORT_${index + 1}. Another view of my influencer from Image 2, to help depict their recognizable appearance from the requested angle.`),
-  ];
-  if (promptVersion === 3) return [
-    "IMAGE 1 — PRIMARY_FRAME_BLUEPRINT. Recreate this complete shot with the selected influencer as the performer. This image defines camera framing, background, lighting, pose, expression, hands, occlusions, clothing and hairstyle. It does not define the output person's facial identity. Remove creator-added captions.",
-    "IMAGE 2 — MAIN_INFLUENCER_IDENTITY. This is the person who must appear in the recreated primary frame. Use this person's facial structure and proportions, adapted to Image 1's head angle, expression and light. Do not copy this photo's background, clothing or pose, or retain Image 1's original facial identity.",
-    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image 2. Use it to understand their facial structure. Image 1 remains the blueprint for the shot; this photo supplies identity only.`),
-  ];
-  return [
-    "IMAGE 1 — BASE_SCENE_TO_EDIT. Edit this image. It is the sole source for the composition, background, lighting, body pose, hands, expression, clothing and hairstyle. The final image must remain this scene, with only the face replaced and creator-added captions removed.",
-    "IMAGE 2 — MAIN_FACE_IDENTITY. Use only this person's facial identity and proportions for the face in BASE_SCENE_TO_EDIT. This photo is not the output scene: do not copy its background, body pose, expression, clothing or lighting.",
-    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_FACE_IDENTITY_${index + 1}. An additional view of the same person as MAIN_FACE_IDENTITY. Use facial structure only; do not copy this photo's background, body pose, expression, clothing or lighting.`),
-  ];
-}
+export { hookKeyframeProviderImageLabels } from "./hook-keyframe-image-labels.ts";
 
 /** Validate the actual bytes that will go to Google, rather than just trusting a
  * content-addressed URL. Legacy accepted jobs keep their original wire contract. */

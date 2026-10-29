@@ -1,4 +1,6 @@
 "use client";
+import { hookKeyframeProviderImageLabels } from "@/worker/src/lib/hook-keyframe-image-labels";
+import { buildOriginalOpeningImagePrompt } from "@/lib/explore/hook-keyframe-image-prompt";
 
 /* eslint-disable @next/next/no-img-element */
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
@@ -97,6 +99,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   preparationFormat: StartingFrameWorkflow;
 }) {
   const [draft, setDraft] = useState<HookKeyframeDraft>(() => createHookKeyframeDraft(scope));
+  const [savedPrompt, setSavedPrompt] = useState<{ text: string; useDefault: boolean } | null>(null);
+  const promptPreferenceKey = `ugc-starting-image-prompt:v1:${encodeURIComponent(scope.ownerId)}`;
   const [images, setImages] = useState<AIStudioReferenceMedia[]>([]);
   const [previewStates, setPreviewStates] = useState<Record<string, { url: string; state: StartingFramePreviewState }>>({});
   const [previewAttempts, setPreviewAttempts] = useState<Record<string, number>>({});
@@ -261,7 +265,14 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     void Promise.resolve().then(async () => {
       try {
         const rawDraft = localStorage.getItem(key);
-        const previous = readHookKeyframeDraft(rawDraft, scope);
+        let previous = readHookKeyframeDraft(rawDraft, scope);
+        try {
+          const preference = JSON.parse(localStorage.getItem(promptPreferenceKey) ?? "null");
+          if (preference && typeof preference.text === "string" && preference.text.trim() && preference.text.length <= 6000 && typeof preference.useDefault === "boolean") {
+            setSavedPrompt(preference);
+            if (!previous && preference.useDefault && !localStorage.getItem(checkpointKey) && !localStorage.getItem(variationsKey)) previous = updateHookKeyframeDraft(createHookKeyframeDraft(scope), { customImagePrompt: preference.text });
+          }
+        } catch { /* A damaged optional preference must not block saved jobs. */ }
         if (active) { if (previous) setDraft(previous); setSourceRestored(true); }
         // Autosaving an untouched empty draft must not suppress recent photos.
         // Explicit choices and accepted jobs always preserve their exact inputs.
@@ -298,7 +309,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       }
     });
     return () => { active = false; controller.abort(); influencerRequest.current?.abort(); revision.current += 1; };
-  }, [key, scope, previewRuntime, checkpointKey, variationsKey]);
+  }, [key, scope, previewRuntime, checkpointKey, variationsKey, promptPreferenceKey]);
 
   useEffect(() => {
     if (!frameQuery.data) return;
@@ -380,7 +391,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     catch { setStorageError("Your choices could not be saved in this browser. Keep this screen open while you continue."); }
   }
   async function generateStartingImage() {
-    if (generationDisabledReason || motionBlocked) return;
+    if (generationDisabledReason || motionBlocked || promptLimitError) return;
+    if (preparedDraft.customImagePrompt !== undefined && !preparedDraft.customImagePrompt.trim()) { setGenerationError("Enter a starting-image prompt."); return; }
     if (!ready || !checkpointRestored || generationLock.current || costQuery.data === undefined || creatingImage) return;
     if (!navigator.locks) { setGenerationError("Use a browser with Web Locks support to submit images safely."); return; }
     generationLock.current = true; setSubmittingImage(true); setGenerationError(null);
@@ -414,7 +426,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           localStorage.setItem(checkpointKey, JSON.stringify(saved));
           const input = { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, draftId: scope.draftId,
             personImageAssetIds: frozen.imageAssetIds, instructions: frozen.instructions, idempotencyKey: saved.requestKey,
-            imageModel: frozen.imageModel, preparationInputKey: saved.inputKey };
+            ...(frozen.customImagePrompt !== undefined ? { customImagePrompt: frozen.customImagePrompt } : {}), imageModel: frozen.imageModel, preparationInputKey: saved.inputKey };
           const response = previewRuntime ? await previewRuntime.submit(input) : await fetch("/api/explore/hook-keyframe", {
             method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(input) });
           const body = "value" in response ? response.value : await response.json();
@@ -459,13 +471,13 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     onUseStartingFrame({ ...scope, assetId: verified.output.mediaAssetId, jobId: verified.id,
       url: previewRuntime?.outputPreviewUrls?.[verified.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? verified.output.url,
       width: verified.output.width, height: verified.output.height, durationSeconds: promptPreview.durationSeconds === 6 ? 6 : promptPreview.durationSeconds === 8 ? 8 : 4,
-      identityAssetIds: [...approved.imageAssetIds], motionInstructions: promptPreview.directions, generateAudio: preparedDraft.generateAudio });
+      identityAssetIds: [...approved.imageAssetIds], sourceDurationSeconds: reference.durationSeconds, motionInstructions: promptPreview.directions, generateAudio: preparedDraft.generateAudio });
   }
   const busy = pending || choosingInfluencer || !restored || submittingImage;
   // Upload/lookup warnings must not discard already accepted, owned photos.
   const maxPersonImages = hookKeyframeMaxPersonImages(draft.imageModel);
   const tooManyImages = images.length > maxPersonImages;
-  const ready = restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
+  const ready = (draft.customImagePrompt === undefined || Boolean(draft.customImagePrompt.trim())) && restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
   const creatorDirections = reference.creatorAccountId ? preparedDraft.version === 4 && preparedDraft.sourceFrame?.index === 0 ? reference.generationPrompt : preparedDraft.sourceFrame && preparedDraft.sourceFrame.sha256 !== reference.startingFrame?.sha256
     ? reference.legacyGenerationPrompt : reference.generationPrompt : undefined;
   const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections, reference.legacySelectedGenerationPrompt, reference.startingImagePrompt, reference.durationSeconds);
@@ -486,7 +498,10 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const resultStyle = { "--frame-ratio": imageJob?.output ? imageJob.output.width / imageJob.output.height : 9 / 16 } as CSSProperties;
   const selectedIndex = readableEntries.findIndex(entry => entry.checkpoint.requestKey === checkpoint?.requestKey);
   const cannotUseFrame = !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
-  const cannotGenerate = Boolean(generationDisabledReason) || motionBlocked || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
+  const customPromptSize = draft.customImagePrompt === undefined ? 0 : draft.customImagePrompt.length + "\n\nIMAGE INPUT ORDER:\n".length + hookKeyframeProviderImageLabels(Math.max(1, draft.imageAssetIds.length), 7).join("\n").length;
+  const customPromptLimit = draft.imageModel === "seedream_5_pro" ? 4000 : 8000;
+  const promptLimitError = customPromptSize > customPromptLimit ? `Shorten this prompt to fit ${customPromptLimit.toLocaleString()} characters including image labels for this model.` : null;
+  const cannotGenerate = Boolean(promptLimitError) || Boolean(generationDisabledReason) || motionBlocked || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
   const generateLabel = submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image";
   const resultActions = presentation === "recreation" ? <div className={styles.resultActions} role="group" aria-label="Starting frame approval" data-has-results={Boolean(readableEntries.length)}>
     {readableEntries.length ? <div className={styles.resultSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Review your starting frame"}</strong>
@@ -498,13 +513,30 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       {readableEntries.length ? <Button type="button" aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
     </div>
   </div> : null;
-  const optionalInstructions = <details className={styles.promptDetails}><summary>Adjust image instructions <span>Optional</span></summary>
-        <label className={styles.instructions}>Changes to the starting image
-          <textarea name="starting-image-instructions" autoComplete="off" value={draft.instructions} disabled={busy} maxLength={2000} placeholder="For example, keep the same surprised expression."
-            onChange={event => { setDraft(current => updateHookKeyframeDraft(current, { instructions: event.target.value })); setSaved(false); }} />
-        </label>
-        {promptPreview.imagePrompt ? <details className={styles.promptDetails}><summary>View image instructions</summary><p className={styles.compiledPrompt}>{promptPreview.imagePrompt}</p></details> : null}
-        </details>;
+  const applicationPrompt = buildOriginalOpeningImagePrompt({ personImageCount: Math.max(1, draft.imageAssetIds.length), instructions: draft.instructions }).prompt;
+  const editorPrompt = draft.customImagePrompt ?? promptPreview.imagePrompt ?? applicationPrompt;
+  function savePromptPreference(useDefault: boolean) {
+    if (!editorPrompt.trim()) { setStorageError("Enter a prompt before saving it."); return; }
+    try {
+      const next = { text: editorPrompt, useDefault };
+      localStorage.setItem(promptPreferenceKey, JSON.stringify(next)); setSavedPrompt(next); setStorageError(null);
+    } catch { setStorageError("Your prompt could not be saved in this browser."); }
+  }
+  const optionalInstructions = <section className={styles.promptDetails} aria-label="Starting image prompt">
+    <label className={styles.instructions}>Starting image prompt
+      <textarea name="starting-image-prompt" aria-label="Starting image prompt" rows={9} autoComplete="off" value={editorPrompt} disabled={busy || creatingImage || Boolean(retainedFrame)} maxLength={6000}
+        onChange={event => { const value = event.target.value; setError(value.trim() ? null : "Enter a starting-image prompt."); setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: value })); setSaved(false); }} />
+    </label>
+    {promptLimitError ? <p role="alert" className="text-destructive">{promptLimitError}</p> : null}
+    <p className="text-xs text-muted">Image 1 supplies the scene. Image 2 and later photos supply the influencer’s identity.</p>
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="outline" disabled={busy || creatingImage || Boolean(retainedFrame)} onClick={() => { setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: undefined })); setSaved(false); }}>Use application prompt</Button>
+      <Button type="button" variant="outline" disabled={busy || creatingImage} onClick={() => savePromptPreference(savedPrompt?.useDefault ?? false)}>Save my prompt</Button>
+      {savedPrompt ? <Button type="button" variant="outline" disabled={busy || creatingImage || Boolean(retainedFrame)} onClick={() => setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: savedPrompt.text }))}>Use saved prompt</Button> : null}
+    </div>
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={busy || creatingImage} checked={savedPrompt?.useDefault ?? false} onChange={event => savePromptPreference(event.target.checked)} />Use as my default in this browser</label>
+    {savedPrompt ? <p role="status" className="text-xs text-muted">Prompt saved in this browser.</p> : null}
+  </section>;
   const generatedPreview = checkpoint || presentation === "recreation" ? <section ref={generatedSection} className={styles.generated} style={resultStyle} data-recreation-step={presentation === "recreation" ? "result" : undefined} aria-label={presentation === "recreation" ? "Generated starting frames" : "Generated starting image"}>
         <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">3</span> : null}{presentation === "recreation" ? "Your starting frame" : "Your starting image"}</h2><p>{previewRuntime ? "Sample result · layout only" : "Compare with the source"}</p></div></div>
         {imageJob?.output ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label={presentation === "recreation" ? `Enlarge variation ${selectedIndex + 1}` : "Enlarge generated starting image"} title="Enlarge generated starting image"
@@ -579,7 +611,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           <p>Your last photo selection is remembered in this browser.</p>
           {photoNotice ? <p role="status">{photoNotice}</p> : null}
         </div>
-        {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, Gemini 3.1 Flash supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
+        {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, this model supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
         <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={styles.builder}>Create a new influencer <ExternalLink aria-hidden="true" /><span className="sr-only"> in a new tab; your preparation stays here</span></a>
         {presentation !== "recreation" ? optionalInstructions : null}
         {error ? <p role="alert" className="text-destructive">{error}</p> : null}

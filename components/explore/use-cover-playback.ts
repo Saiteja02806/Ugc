@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/** Landing covers warm metadata; gallery previews load only on sustained interest. */
+/** Visible landing covers buffer once; galleries load only on sustained interest. */
 export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", warmCover = false) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -15,15 +15,18 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     // the current hover/focus when its blob URL becomes available.
     let interested = link.matches(":hover") || document.activeElement === link;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
-    const stop = () => {
+    const stop = (release = true) => {
       if (startTimer !== null) { clearTimeout(startTimer); startTimer = null; }
       video.pause();
-      if (video.hasAttribute("src")) { video.removeAttribute("src"); video.load(); }
+      if (release && video.hasAttribute("src")) { video.removeAttribute("src"); video.load(); }
     };
     const sync = () => {
       if (!visible || preference.matches || document.visibilityState === "hidden") { stop(); return; }
       if (warmCover) {
-        if (!video.hasAttribute("src")) { video.preload = "metadata"; video.src = source; }
+        if (!video.hasAttribute("src")) {
+          const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+          video.preload = connection?.saveData ? "metadata" : "auto"; video.src = source;
+        }
         if (interested) void video.play().catch(() => {});
         return;
       }
@@ -38,7 +41,7 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     };
     const enter = (event: PointerEvent) => { if (event.pointerType === "touch") return; interested = true; sync(); };
     const focus = () => { interested = true; sync(); };
-    const leave = () => { interested = false; stop(); };
+    const leave = () => { interested = false; stop(!warmCover); };
     const ready = () => { if (interested && visible && !preference.matches && document.visibilityState !== "hidden") void video.play().catch(() => {}); };
     const observer = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); sync(); }, { rootMargin: "0px" });
     observer.observe(video);

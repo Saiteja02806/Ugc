@@ -1,19 +1,18 @@
 "use client";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
-import { useSocialAccountPicture } from "@/components/social/use-social-account-picture";
+import { useSocialAccountPicture, type SocialAccountPictureSource } from "@/components/social/use-social-account-picture";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import type { SocialConnection } from "@/lib/social/types";
 
 export function SocialAccountAvatar({
   connection,
   size = "default",
 }: {
-  connection: SocialConnection;
+  connection: SocialAccountPictureSource;
   size?: "default" | "sm" | "lg";
 }) {
   const profilePictureUrl = useSocialAccountPicture(connection);

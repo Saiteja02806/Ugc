@@ -1,5 +1,7 @@
 "use client";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -2142,6 +2144,7 @@ export function TrendingSlideshowAutomationWorkspace({
                                           handleToggleTargetConnection(conn)
                                         }
                                       />
+                                      <SocialAccountAvatar connection={conn} />
                                       <span className="capitalize">
                                         {conn.platform}
                                       </span>

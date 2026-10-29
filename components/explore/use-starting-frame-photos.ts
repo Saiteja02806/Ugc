@@ -7,13 +7,15 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import { hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import { startingFramePhotoKey, readStartingFramePhotos, serializeStartingFramePhotos } from "@/lib/explore/starting-frame-photo-selection";
 
+const photoStore = (tabScoped: boolean) => tabScoped ? sessionStorage : localStorage;
+
 /** Restore once per frame/model, cancel stale reads, and never reinsert photos
  * after an explicit edit. Every URL is refreshed through the owned media GET. */
 export function useStartingFramePhotos(frame: HookStartingFrameSelection | undefined, model: string, enabled: boolean,
-  apply: (photos: AIStudioReferenceMedia[]) => void) {
+  apply: (photos: AIStudioReferenceMedia[]) => void, tabScoped = false) {
   const key = frame ? startingFramePhotoKey(frame) : null;
   const limit = hookStartingFrameFaceReferenceLimit(model);
-  const loadKey = enabled && key && limit ? `${key}:${model}` : null;
+  const loadKey = enabled && key && limit ? `${key}:${model}:${tabScoped ? "tab" : "shared"}` : null;
   const [state, setState] = useState<{ key: string | null; pending: boolean; error: string | null }>({ key: null, pending: false, error: null });
   const applyRef = useRef(apply), revision = useRef(0);
   useEffect(() => { applyRef.current = apply; }, [apply]);
@@ -28,7 +30,11 @@ export function useStartingFramePhotos(frame: HookStartingFrameSelection | undef
       if (controller.signal.aborted) return;
       setState({ key: loadKey, pending: true, error: null });
       try {
-        const ids = readStartingFramePhotos(localStorage.getItem(startingFramePhotoKey(scope)), scope) ?? JSON.parse(idsJson) as string[];
+        const photoKey = startingFramePhotoKey(scope), raw = photoStore(tabScoped).getItem(photoKey);
+        // Snapshot existing explicit choices once; later edits belong to this tab.
+        const prior = tabScoped && raw === null ? localStorage.getItem(photoKey) : raw;
+        const ids = readStartingFramePhotos(prior, scope) ?? JSON.parse(idsJson) as string[];
+        if (tabScoped && raw === null) photoStore(true).setItem(photoKey, serializeStartingFramePhotos(ids, scope));
         // Validate the receipt-derived fallback through the same bounded parser.
         serializeStartingFramePhotos(ids, scope);
         if (ids.length > limit) throw new Error("Review your selected face photos before generating.");
@@ -50,12 +56,12 @@ export function useStartingFramePhotos(frame: HookStartingFrameSelection | undef
       }
     })();
     return () => controller.abort();
-  }, [loadKey, ownerId, jobId, assetId, idsJson, limit]);
+  }, [loadKey, ownerId, jobId, assetId, idsJson, limit, tabScoped]);
   function remember(photos: AIStudioReferenceMedia[]) {
     if (!frame || !loadKey) return;
     revision.current += 1;
     try {
-      localStorage.setItem(startingFramePhotoKey(frame), serializeStartingFramePhotos(photos.map(photo => photo.asset.id), frame));
+      photoStore(tabScoped).setItem(startingFramePhotoKey(frame), serializeStartingFramePhotos(photos.map(photo => photo.asset.id), frame));
       setState({ key: loadKey, pending: false, error: null });
     } catch { setState({ key: loadKey, pending: false, error: "Your browser could not save this photo selection. Allow site storage before generating." }); }
   }

@@ -408,7 +408,7 @@ export async function completeSocialOAuthCallback(params: {
 
   if (!session.user_id) {
     throw new SocialOAuthError(
-      "The account connection is not associated with a UGC Pilot user.",
+      "The account connection is not associated with a Vidmake user.",
       400,
       "oauth_user_missing",
       "resolve_application_user",
@@ -1234,6 +1234,13 @@ export function getMissingSocialOAuthEnvVars(platform?: SocialPlatform) {
 export function getSocialAppBaseUrl() {
   return (
     process.env.APP_BASE_URL?.trim().replace(/\/+$/, "") ||
+    "https://vidmake.io"
+  );
+}
+
+export function getSocialOAuthBaseUrl() {
+  return (
+    process.env.SOCIAL_OAUTH_BASE_URL?.trim().replace(/\/+$/, "") ||
     "https://getugcpilot.com"
   );
 }
@@ -2013,22 +2020,23 @@ function buildYouTubeAuthorizationUrl(params: {
   });
 }
 
-function getPlatformRedirectUri(platform: SocialPlatform) {
+export function getPlatformRedirectUri(platform: SocialPlatform) {
+  const legacyOAuthBaseUrl = getSocialOAuthBaseUrl();
   switch (platform) {
     case "instagram":
       return (
         process.env.INSTAGRAM_REDIRECT_URI?.trim() ||
-        `${getSocialAppBaseUrl()}/api/social/instagram/callback`
+        `${legacyOAuthBaseUrl}/api/social/instagram/callback`
       );
     case "tiktok":
       return (
         process.env.TIKTOK_REDIRECT_URI?.trim() ||
-        `${getSocialAppBaseUrl()}/api/social/tiktok/callback`
+        `${legacyOAuthBaseUrl}/api/social/tiktok/callback`
       );
     case "youtube":
       return (
         process.env.GOOGLE_REDIRECT_URI?.trim() ||
-        `${getSocialAppBaseUrl()}/api/social/youtube/callback`
+        `${legacyOAuthBaseUrl}/api/social/youtube/callback`
       );
   }
 }

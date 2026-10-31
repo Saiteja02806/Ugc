@@ -127,7 +127,7 @@ export function AppSidebar({
     () => getServerSidebarPreference(defaultCollapsed),
   );
   const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "UGC Pilot user";
+    user?.displayName || user?.email?.split("@")[0] || "Vidmake user";
   const initials = getInitials(displayName);
 
   useEffect(() => {
@@ -311,7 +311,7 @@ function Brand() {
         />
       </span>
       <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground-strong">
-        UGCPilot
+        Vidmake
       </span>
     </Link>
   );

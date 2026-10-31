@@ -21,20 +21,20 @@ import { LandingContentShowcase } from "@/components/marketing/landing-content-s
 import { homepageJsonLd } from "@/lib/marketing/mcp-public";
 
 const authHref = "/sign-in";
-const homepageTitle = "UGC Pilot — AI UGC Video & Content Studio";
+const homepageTitle = "Vidmake — AI UGC Video & Content Studio";
 const homepageDescription =
-  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and keep every finished asset in your UGC Pilot library.";
+  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and keep every finished asset in your Vidmake library.";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "https://getugcpilot.com/" },
+  alternates: { canonical: "/" },
   title: {
     absolute: homepageTitle,
   },
   description: homepageDescription,
   openGraph: {
     type: "website",
-    url: "https://getugcpilot.com/",
-    siteName: "UGC Pilot",
+    url: "/",
+    siteName: "Vidmake",
     title: homepageTitle,
     description: homepageDescription,
   },

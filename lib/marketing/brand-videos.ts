@@ -1,4 +1,6 @@
-export const publicOrigin = "https://getugcpilot.com";
+import { publicOrigin } from "./public-origin";
+
+export { publicOrigin };
 
 export type BrandYouTubeVideo = {
   id: string;
@@ -126,12 +128,12 @@ export function articleJsonLd(input: { path: string; headline: string; descripti
     ...(input.datePublished ? { datePublished: input.datePublished } : {}),
     author: {
       "@type": "Organization",
-      name: "UGC Pilot",
+      name: "Vidmake",
       url: publicOrigin,
     },
     publisher: {
       "@type": "Organization",
-      name: "UGC Pilot",
+      name: "Vidmake",
       url: publicOrigin,
       logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
     },

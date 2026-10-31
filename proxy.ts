@@ -74,6 +74,7 @@ export function proxy(request: NextRequest) {
     if (targetHostname && targetHostname !== hostname) {
       const search = request.nextUrl.search || "";
       const targetUrl = new URL(pathname + search, primaryDomain);
+      targetUrl.searchParams.set("moved", "1");
       return NextResponse.redirect(targetUrl, 307);
     }
   }

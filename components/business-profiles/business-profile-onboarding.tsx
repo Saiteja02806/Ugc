@@ -1259,11 +1259,11 @@ export function OnboardingFrame({
       <a href="#business-profile-content" className="sr-only rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus-visible:ring-2 focus-visible:ring-focus">Skip to business setup</a>
       <header className="relative border-b border-border/80 bg-background/80 backdrop-blur-xl">
         <div className={cn("mx-auto flex h-[68px] w-full items-center justify-between gap-4 px-5 sm:px-6 lg:px-8", shellWidth)}>
-          <div className="flex items-center gap-2.5" aria-label="UGC Pilot">
+          <div className="flex items-center gap-2.5" aria-label="Vidmake">
             <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
               <ProductLogoMark className="size-full" imageClassName="brightness-0 invert" sizes="36px" />
             </span>
-            <span className="text-base font-bold text-foreground-strong">UGC Pilot</span>
+            <span className="text-base font-bold text-foreground-strong">Vidmake</span>
           </div>
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Business setup</span>
         </div>

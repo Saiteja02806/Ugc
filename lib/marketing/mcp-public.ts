@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { brandOrganizationSameAs } from "./brand-videos";
+import { publicOrigin } from "./public-origin";
 import { ogSize } from "./og-card";
 import { publicPagePaths } from "./public-pages";
 import catalog from "./mcp-tool-catalog.json";
@@ -40,7 +41,7 @@ const publicMcpGroups = catalog.groups.map((group) => ({
 export const publicMcpToolCount = publicMcpGroups.reduce((count, group) => count + group.tools.length, 0);
 export const publicMcpToolCatalog = { toolCount: publicMcpToolCount, groups: publicMcpGroups };
 
-export const publicOrigin = "https://getugcpilot.com";
+export { publicOrigin };
 export const mcpEndpoint = "https://mcp.getugcpilot.com/mcp";
 export const mcpIssuer = "https://mcp.getugcpilot.com";
 
@@ -203,7 +204,7 @@ export function publicPageMetadata(input: {
     openGraph: {
       type: "website",
       url,
-      siteName: "UGC Pilot",
+      siteName: "Vidmake",
       title: input.title,
       description: input.description,
       ...(image ? { images: image } : {}),
@@ -243,7 +244,7 @@ export function mcpSoftwareJsonLd(path: string, description: string, faqs: reado
         featureList: `${publicMcpToolCount} MCP tools for account reads, image and video generation, speech, edit drafts, and exports`,
         provider: {
           "@type": "Organization",
-          name: "UGC Pilot",
+          name: "Vidmake",
           url: publicOrigin,
           logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
         },
@@ -259,20 +260,20 @@ export function homepageJsonLd(description: string) {
     "@graph": [
       {
         "@type": "Organization",
-        name: "UGC Pilot",
+        name: "Vidmake",
         url: publicOrigin,
         logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
         sameAs: [...brandOrganizationSameAs],
       },
       {
         "@type": "WebSite",
-        name: "UGC Pilot",
+        name: "Vidmake",
         url: publicOrigin,
-        publisher: { "@type": "Organization", name: "UGC Pilot", url: publicOrigin },
+        publisher: { "@type": "Organization", name: "Vidmake", url: publicOrigin },
       },
       {
         "@type": "SoftwareApplication",
-        name: "UGC Pilot",
+        name: "Vidmake",
         applicationCategory: "MultimediaApplication",
         operatingSystem: "Web",
         url: publicOrigin,

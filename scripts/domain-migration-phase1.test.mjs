@@ -30,17 +30,17 @@ const {
 
 test("proxy redirects legacy public routes to vidmake.io with 307 and preserves query params", () => {
   const cases = [
-    { from: "https://getugcpilot.com/", expected: "https://vidmake.io/" },
-    { from: "https://www.getugcpilot.com/", expected: "https://vidmake.io/" },
-    { from: "https://getugcpilot.com/pricing", expected: "https://vidmake.io/pricing" },
+    { from: "https://getugcpilot.com/", expected: "https://vidmake.io/?moved=1" },
+    { from: "https://www.getugcpilot.com/", expected: "https://vidmake.io/?moved=1" },
+    { from: "https://getugcpilot.com/pricing", expected: "https://vidmake.io/pricing?moved=1" },
     {
       from: "https://getugcpilot.com/pricing?plan=growth&billing=yearly",
-      expected: "https://vidmake.io/pricing?plan=growth&billing=yearly",
+      expected: "https://vidmake.io/pricing?plan=growth&billing=yearly&moved=1",
     },
-    { from: "https://getugcpilot.com/dashboard", expected: "https://vidmake.io/dashboard" },
-    { from: "https://getugcpilot.com/sign-in", expected: "https://vidmake.io/sign-in" },
-    { from: "https://getugcpilot.com/explore/hook-video", expected: "https://vidmake.io/explore/hook-video" },
-    { from: "https://getugcpilot.com/blog/ugc-hooks", expected: "https://vidmake.io/blog/ugc-hooks" },
+    { from: "https://getugcpilot.com/dashboard", expected: "https://vidmake.io/dashboard?moved=1" },
+    { from: "https://getugcpilot.com/sign-in", expected: "https://vidmake.io/sign-in?moved=1" },
+    { from: "https://getugcpilot.com/explore/hook-video", expected: "https://vidmake.io/explore/hook-video?moved=1" },
+    { from: "https://getugcpilot.com/blog/ugc-hooks", expected: "https://vidmake.io/blog/ugc-hooks?moved=1" },
   ];
 
   for (const { from, expected } of cases) {
@@ -175,7 +175,7 @@ test("legacy APP_BASE_URL does not keep public pages or OAuth completion on getu
     assert.equal(resolvePrimaryAppOrigin(), "https://vidmake.io");
     const pricing = proxy(new NextRequest("https://getugcpilot.com/pricing?plan=starter"));
     assert.equal(pricing.status, 307);
-    assert.equal(pricing.headers.get("location"), "https://vidmake.io/pricing?plan=starter");
+    assert.equal(pricing.headers.get("location"), "https://vidmake.io/pricing?plan=starter&moved=1");
     const callback = proxy(new NextRequest("https://getugcpilot.com/api/social/tiktok/callback?code=abc&state=def"));
     assert.equal(callback.status, 200);
     const media = proxy(new NextRequest("https://www.getugcpilot.com/api/media/delivery/11111111-1111-4111-8111-111111111111"));

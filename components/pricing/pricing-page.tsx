@@ -261,7 +261,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-normal text-muted sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <ProductLogoMark className="size-4.5 rounded-md bg-primary p-1" imageClassName="brightness-0 invert" sizes="18px" />
-            <span className="font-semibold text-foreground-strong">UGC Pilot</span>
+            <span className="font-semibold text-foreground-strong">Vidmake</span>
             <span>— Your content workspace</span>
           </div>
           <span>Prices in USD; applicable taxes shown at checkout. Billing by Dodo Payments.</span>

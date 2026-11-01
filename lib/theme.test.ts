@@ -70,7 +70,7 @@ test("sidebar and workflow chrome stay neutral while the action button stays vio
   const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(signIn, /sign-in-screen/);
   assert.doesNotMatch(signIn, /bg-primary|instagram-violet/);
-  assert.match(styles, /\.sign-in-screen \.bg-primary \{[^}]*background-image: none;/s);
+  assert.match(styles, /\.sign-in-screen \.bg-primary \{[^}]*background-image: none;/);
 });
 
 test("the product mark is the blue play logo and the name uses the brand serif", () => {

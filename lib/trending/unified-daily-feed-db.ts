@@ -26,7 +26,7 @@ const ENTITLEMENTS_TABLE = "subscription_entitlements";
 
 export type TrendingPlanEntitlement = {
   dailyLimit: number;
-  displayName: "Free" | "Growth" | "Starter";
+  displayName: "Free" | "Growth" | "Starter" | "Startup";
   planKey: "creator" | "free" | "pro" | "ultra_pro";
 };
 

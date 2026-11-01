@@ -27,8 +27,8 @@ const faqs = [
     answer: "UGC production agencies generally operate on monthly retainers between $3,000 and $7,000 per month, providing a package of 8 to 16 videos. While they handle creator vetting, this cost is prohibitive for early-stage or bootstrapped SaaS founders.",
   },
   {
-    question: "What is the cost of generating AI UGC videos with UGC Pilot?",
-    answer: "UGC Pilot offers a 7-day free trial with 2 one-time credits and no credit card required. Paid monthly plans start at $19 and $49 per month, allowing founders to produce dozens of video hooks for a fraction of the cost of a single human creator.",
+    question: "What is the cost of generating AI UGC videos with Vidmake?",
+    answer: "Vidmake offers a 7-day free trial with 2 one-time credits and no credit card required. Paid monthly plans start at $19 and $49 per month, allowing founders to produce dozens of video hooks for a fraction of the cost of a single human creator.",
   },
   {
     question: "When should a SaaS company still pay for human creators?",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -105,7 +105,7 @@ export default function CostOfUgcVideoForSaasPage() {
                 <td className="p-4 align-top">Managed vetting, but high barrier to entry</td>
               </tr>
               <tr className="border-t border-border">
-                <th scope="row" className="p-4 font-semibold text-foreground-strong">AI UGC Studio (UGC Pilot)</th>
+                <th scope="row" className="p-4 font-semibold text-foreground-strong">AI UGC Studio (Vidmake)</th>
                 <td className="p-4 align-top">A few dollars / clip</td>
                 <td className="p-4 align-top">2 to 4 minutes</td>
                 <td className="p-4 align-top">$19 or $49 / mo (no contract)</td>
@@ -127,7 +127,7 @@ export default function CostOfUgcVideoForSaasPage() {
             <strong>With Human Creators:</strong> Testing 10 different hook variations costs $2,000+ and requires managing contracts and schedules with 5 different people over two weeks.
           </li>
           <li>
-            <strong>With UGC Pilot:</strong> Testing 10 hook variations costs a fraction of a single monthly subscription and takes under an hour in the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink>.
+            <strong>With Vidmake:</strong> Testing 10 hook variations costs a fraction of a single monthly subscription and takes under an hour in the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink>.
           </li>
         </ul>
 
@@ -156,7 +156,7 @@ export default function CostOfUgcVideoForSaasPage() {
             <strong className="font-semibold text-foreground-strong">TikTok Creator Examples:</strong> See <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699923510092631318">this TikTok hook</ArticleExternalLink> on @clara_iamm.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">In-Depth Comparison:</strong> Read our full breakdown of <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">UGC Pilot vs hiring UGC creators</ArticleLink>.
+            <strong className="font-semibold text-foreground-strong">In-Depth Comparison:</strong> Read our full breakdown of <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink>.
           </li>
         </ul>
 
@@ -168,7 +168,7 @@ export default function CostOfUgcVideoForSaasPage() {
               question: faqs[2].question,
               answer: (
                 <>
-                  Start testing with 2 free credits on our 7-day free trial. See full details on{" "}
+                  Start with our 7-day free trial. See full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -181,11 +181,11 @@ export default function CostOfUgcVideoForSaasPage() {
       <VideoRelatedLinks
         links={[
           { href: "/pricing", title: "Pricing & Plans", description: "Seven-day trial and monthly credit details." },
-          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/ai-ugc-video-generator", title: "AI UGC Video Generator", description: "Generate short-form video hooks from your software brief." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for short-form software ads." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video workflows." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video workflows." },
         ]}
       />
     </VideoMarketingPage>

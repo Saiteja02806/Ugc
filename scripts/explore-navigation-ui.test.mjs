@@ -103,6 +103,8 @@ test("AI character cover and caption remain inside a single live link without a 
 test("quick starts preserve destinations, duration and preview query parameters with per-link feedback", () => {
   const { ExploreWorkspace } = load("components/explore/explore-workspace.tsx", {
     "@/components/layout/workspace-navigation-feedback": link,
+    "next/link": { default: "next-link", __esModule: true },
+    "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
     "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
@@ -222,6 +224,16 @@ test("Explore preview URL handling stays client-side and cannot enable productio
 test("decorative covers pass pointer input to the link rather than acting as media controls", () => {
   const css = read("components/explore/explore-workspace.module.css");
   assert.match(css, /\.cover video, \.characterMotion\s*\{\s*pointer-events: none;/);
+});
+
+test("explore catalog cards stay neutral and do not paint a violet hover chip", () => {
+  const css = read("components/explore/explore-workspace.module.css");
+  const workflow = read("components/explore/explore-workflow-card.tsx");
+  const character = read("components/explore/ai-character-card.tsx");
+  assert.doesNotMatch(workflow, /bg-primary|border-primary/);
+  assert.doesNotMatch(character, /bg-primary|border-primary/);
+  assert.match(css, /\.cover\s*\{[^}]*border:\s*0;/s);
+  assert.match(css, /\.linkChip/);
 });
 
 test("Talking Head is a synchronous route and keeps its preview guard in the client", () => {

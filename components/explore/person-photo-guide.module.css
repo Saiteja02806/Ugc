@@ -1,4 +1,4 @@
-.trigger { gap: 8px; color: var(--foreground); font-size: 12px; }
+.trigger { display: none !important; gap: 8px; color: var(--foreground); font-size: 12px; }
 .dialog { display: flex; flex-direction: column; width: min(800px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 40px); padding: 0; gap: 0; overflow: hidden; border-radius: 20px; background: var(--card); }
 .header { flex: none; padding: 26px 28px 20px; border-bottom: 1px solid var(--border); }
 .title { padding-right: 20px; font-size: 22px; line-height: 1.25; letter-spacing: -.025em; }

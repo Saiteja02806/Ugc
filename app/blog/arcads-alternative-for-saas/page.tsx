@@ -14,7 +14,7 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/arcads-alternative-for-saas";
 const title = "Arcads Alternative for SaaS: Why Software Founders Need a Dedicated Video Studio";
-const description = "Looking for an Arcads alternative for SaaS? Compare Arcads and UGC Pilot: physical e-commerce ads vs software demo cutaways, tech personas, and MCP automation.";
+const description = "Looking for an Arcads alternative for SaaS? Compare Arcads and Vidmake: physical e-commerce ads vs software demo cutaways, tech personas, and MCP automation.";
 const datePublished = "2026-10-29";
 
 const faqs = [
@@ -27,16 +27,16 @@ const faqs = [
     answer: "Arcads focuses on talking-head avatars holding physical products or reacting to consumer goods. It is not optimized for multi-clip editing that transitions smoothly from a creator hook to software UI screen captures.",
   },
   {
-    question: "How does UGC Pilot differ from Arcads for software marketing?",
-    answer: "UGC Pilot is built specifically for SaaS founders and digital product teams. It includes tech-native creator personas (developers, growth operators), screen demo framing guidance, multi-slide carousel creation, and a multi-tool OAuth MCP server for Claude and Codex.",
+    question: "How does Vidmake differ from Arcads for software marketing?",
+    answer: "Vidmake is built specifically for SaaS founders and digital product teams. It includes tech-native creator personas (developers, growth operators), screen demo framing guidance, multi-slide carousel creation, and a multi-tool OAuth MCP server for Claude and Codex.",
   },
   {
-    question: "How does pricing compare between Arcads and UGC Pilot?",
-    answer: "Arcads requires higher monthly entry plans typically geared toward established e-commerce ad spenders. UGC Pilot offers a 7-day free trial with 2 credits and self-serve plans starting at $19 and $49 per month with no annual lock-in.",
+    question: "How does pricing compare between Arcads and Vidmake?",
+    answer: "Arcads requires higher monthly entry plans typically geared toward established e-commerce ad spenders. Vidmake offers a 7-day free trial with 2 credits and self-serve plans starting at $19 and $49 per month with no annual lock-in.",
   },
   {
-    question: "Can I automate video generation in UGC Pilot with an AI coding assistant?",
-    answer: "Yes. UGC Pilot features an official Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp, allowing Claude Desktop and Codex CLI agents to research hooks, generate creator videos, and inspect render jobs directly.",
+    question: "Can I automate video generation in Vidmake with an AI coding assistant?",
+    answer: "Yes. Vidmake features an official Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp, allowing Claude Desktop and Codex CLI agents to research hooks, generate creator videos, and inspect render jobs directly.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -76,18 +76,18 @@ export default function ArcadsAlternativeForSaasPage() {
           However, when software founders and B2B marketers try using Arcads to market their SaaS products, they quickly hit a wall. Software is not a face cream or a water bottle: you cannot simply hand an AI avatar a physical item to hold. You need to demonstrate <strong className="font-semibold text-foreground-strong">digital workflows, code, dashboards, and productivity outcomes</strong>.
         </p>
         <p>
-          This guide provides an honest comparison of Arcads and <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> to help you choose the right video generator for your product.
+          This guide provides an honest comparison of Arcads and <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> to help you choose the right video generator for your product.
         </p>
 
-        <ArticleH2>Arcads vs UGC Pilot: The Architectural Differences</ArticleH2>
+        <ArticleH2>Arcads vs Vidmake: The Architectural Differences</ArticleH2>
         <div className="overflow-x-auto rounded-[22px] border border-border">
           <table className="w-full min-w-[500px] border-collapse text-left text-sm leading-6">
-            <caption className="sr-only">Detailed feature comparison between Arcads and UGC Pilot for SaaS</caption>
+            <caption className="sr-only">Detailed feature comparison between Arcads and Vidmake for SaaS</caption>
             <thead className="bg-card-muted/60 text-foreground-strong">
               <tr>
                 <th scope="col" className="p-4 font-semibold">Evaluation Criteria</th>
                 <th scope="col" className="p-4 font-semibold">Arcads</th>
-                <th scope="col" className="p-4 font-semibold">UGC Pilot</th>
+                <th scope="col" className="p-4 font-semibold">Vidmake</th>
               </tr>
             </thead>
             <tbody>
@@ -129,17 +129,17 @@ export default function ArcadsAlternativeForSaasPage() {
 
         <ArticleH3>1. The Product-in-Hand Problem</ArticleH3>
         <p>
-          Arcads excels when an actor needs to hold up a physical bottle, point to the label, and smile. For a B2B SaaS tool (like an invoicing platform or developer API), holding a prop looks absurd. In software video ads, the &quot;product in hand&quot; is your actual user interface. UGC Pilot is designed around cutting from a 3-second hook avatar directly to a crisp screen recording.
+          Arcads excels when an actor needs to hold up a physical bottle, point to the label, and smile. For a B2B SaaS tool (like an invoicing platform or developer API), holding a prop looks absurd. In software video ads, the &quot;product in hand&quot; is your actual user interface. Vidmake is designed around cutting from a 3-second hook avatar directly to a crisp screen recording.
         </p>
 
         <ArticleH3>2. Tech Persona Credibility</ArticleH3>
         <p>
-          Developers and technical founders possess strong skepticism toward generic lifestyle creators reviewing software. UGC Pilot provides creator avatars with desk environments, dual monitors, and natural vocal delivery that tech audiences trust. Check our guide on <ArticleLink href="/blog/ai-creator-avatars-tech-products">AI creator avatars for tech products</ArticleLink>.
+          Developers and technical founders possess strong skepticism toward generic lifestyle creators reviewing software. Vidmake provides creator avatars with desk environments, dual monitors, and natural vocal delivery that tech audiences trust. Check our guide on <ArticleLink href="/blog/ai-creator-avatars-tech-products">AI creator avatars for tech products</ArticleLink>.
         </p>
 
         <ArticleH3>3. Developer Workflows &amp; MCP Integration</ArticleH3>
         <p>
-          Technical founders often live in AI coding environments rather than web dashboards. With UGC Pilot&apos;s <ArticleLink href="/mcp">hosted MCP server</ArticleLink>, you can orchestrate script research, video rendering, and asset downloads directly from Claude or Codex with a prompt.
+          Technical founders often live in AI coding environments rather than web dashboards. With Vidmake&apos;s <ArticleLink href="/mcp">hosted MCP server</ArticleLink>, you can orchestrate script research, video rendering, and asset downloads directly from Claude or Codex with a prompt.
         </p>
 
         <ArticleH2>When Should You Choose Arcads?</ArticleH2>
@@ -152,9 +152,9 @@ export default function ArcadsAlternativeForSaasPage() {
           <li>You want lifestyle influencers holding physical packaging to camera.</li>
         </ul>
 
-        <ArticleH2>When Should You Choose UGC Pilot?</ArticleH2>
+        <ArticleH2>When Should You Choose Vidmake?</ArticleH2>
         <p>
-          UGC Pilot is the right choice if:
+          Vidmake is the right choice if:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>You are a SaaS founder, indie hacker, or digital agency marketing software.</li>
@@ -172,7 +172,7 @@ export default function ArcadsAlternativeForSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  UGC Pilot offers self-serve plans from $19/mo with no long-term contracts. See{" "}
+                  Vidmake offers self-serve plans from $19/mo with no long-term contracts. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -181,7 +181,7 @@ export default function ArcadsAlternativeForSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and full{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and full{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),
@@ -195,8 +195,8 @@ export default function ArcadsAlternativeForSaasPage() {
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Free Trial", description: "Start testing demo hooks with 2 free credits." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
+          { href: "/pricing", title: "Pricing & Free Trial", description: "Start testing demo hooks on the 7-day trial." },
         ]}
       />
     </VideoMarketingPage>

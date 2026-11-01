@@ -245,7 +245,7 @@ function analyticsOwner(ctx: Parameters<typeof principalIdentity>[0]) {
   if (!identity.emailVerified) {
     throw new ToolFailure(
       "VERIFIED_IDENTITY_REQUIRED",
-      "Verify the email on your UGC Pilot account before reading social analytics.",
+      "Verify the email on your Vidmake account before reading social analytics.",
     );
   }
 
@@ -406,7 +406,7 @@ export function registerAnalyticsMcpTools(server: McpServer) {
         : [
             !configured
               ? "Analytics snapshot storage is not configured for this deployment."
-              : "Verify the email on the connected UGC Pilot account before reading social analytics.",
+              : "Verify the email on the connected Vidmake account before reading social analytics.",
           ],
     };
   }));

@@ -3,7 +3,7 @@ import type { YouTubeTargetPublishSettings } from "./social-publish-settings.js"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
 const DEFAULT_VIDEO_CATEGORY_ID = "22";
-const DEFAULT_VIDEO_TITLE = "UGC Pilot Short";
+const DEFAULT_VIDEO_TITLE = "Vidmake Short";
 const YOUTUBE_WATCH_BASE_URL = "https://www.youtube.com/watch";
 
 export type YouTubePublishResult = {

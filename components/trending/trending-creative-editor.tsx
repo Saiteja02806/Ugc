@@ -2930,10 +2930,10 @@ function VideoFolderCard({
   return (
     <button
       type="button"
-      className="group flex min-h-24 items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/45 hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35 motion-reduce:transform-none"
+      className="group flex min-h-24 items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-white/50 hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35 motion-reduce:transform-none"
       onClick={onOpen}
     >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary [&_svg]:size-5">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground transition-colors group-hover:border-white/30 group-hover:bg-primary/10 group-hover:text-primary [&_svg]:size-5">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

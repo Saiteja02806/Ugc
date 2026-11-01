@@ -168,7 +168,7 @@ voiceFixture.write('data', 36); voiceFixture.writeUInt32LE(16000, 40);
           const refs = page.getByRole('region', { name: 'Optional generation references', exact: true });
           assert.equal(await refs.getByRole('heading', { name: 'Voice reference', exact: true }).count(), 0, 'Hook/Wall keep image and video generation inputs');
           await page.getByRole('button', { name: 'Add image reference', exact: true }).click();
-          await page.getByRole('tab', { name: 'UGC Pilot images', exact: true }).click();
+          await page.getByRole('tab', { name: 'Vidmake images', exact: true }).click();
           await page.getByRole('button', { name: 'Use creator 1', exact: true }).click();
           const thumbnail = page.getByRole('button', { name: /^Preview image reference:/ });
           await thumbnail.waitFor();

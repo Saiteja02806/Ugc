@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { buttonClassName } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -126,8 +126,8 @@ function VerifyEmailContent() {
     <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3 font-bold">
-          <ProductLogoMark className="h-8 w-12" sizes="52px" />
-          <span>UGC Pilot</span>
+          <ProductLogoMark className="size-8" sizes="32px" />
+          <ProductWordmark className="text-[18px] text-foreground-strong" />
         </Link>
 
         <button

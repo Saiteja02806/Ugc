@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { selectWorkflowAccount, toggleWorkflowPlatform, workflowSelectedAccountIds, workflowScheduleTargets, workflowAccountSelectionError } from '../lib/explore/workflow-scheduling-draft.ts';
+import { resolveWorkflowScheduleDraft, selectWorkflowAccount, toggleWorkflowPlatform, workflowSelectedAccountIds, workflowScheduleTargets, workflowAccountSelectionError } from '../lib/explore/workflow-scheduling-draft.ts';
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from '../lib/explore/format-schedule-draft.ts';
 import { readScheduleReceipt, verifySavedSchedule } from '../lib/explore/workflow-schedule-client.ts';
 import { prepareSimpleWorkflowSchedule } from '../lib/explore/simple-workflow-schedule.ts';
@@ -61,6 +61,18 @@ test('four selected accounts get individual capability checks, exact targets and
   assert.equal(result.scheduledFor,'2099-12-01T16:00:00.000Z');assert.equal(result.scheduledTime,'21:30');
   assert.ok(calls.includes(`/api/social/connections/${id(3)}/publish-settings`));assert.ok(calls.includes(`/api/social/connections/${id(4)}/publish-settings`));
   failAccount=true;await assert.rejects(prepareSimpleWorkflowSchedule(params),/expired/);
+});
+test('a default caption and an account selection compose in either order', () => {
+  const base = { platform: 'instagram', caption: '', date: '', time: '', connectionId: '' };
+  const caption = current => ({ ...current, caption: 'Default line', captionInitialized: true });
+  const account = current => selectWorkflowAccount(current, 'instagram', id(1));
+  const captionFirst = resolveWorkflowScheduleDraft(resolveWorkflowScheduleDraft(base, caption), account);
+  const accountFirst = resolveWorkflowScheduleDraft(resolveWorkflowScheduleDraft(base, account), caption);
+  assert.equal(captionFirst.caption, 'Default line');
+  assert.equal(accountFirst.caption, 'Default line');
+  assert.equal(captionFirst.captionInitialized, true);
+  assert.deepEqual(captionFirst.accountIds, accountFirst.accountIds);
+  assert.deepEqual(workflowSelectedAccountIds(captionFirst).instagram, [id(1)]);
 });
 test('account refresh times out during authentication and a late token cannot fetch', async t => {
   const controller=new AbortController();t.mock.method(AbortSignal,'timeout',()=>controller.signal);

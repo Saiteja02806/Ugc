@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "durationSeconds": 3.733333,
+      "previewStorageKey": "explore/browser-previews/v1/8bb69b91adcf61a3efac29bd53c760de6fabcbeb331217a45aaec1ad62bd9793.mp4",
+      "sourceStorageKey": "explore/paired-references/v1/8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647.mp4",
+      "audioPolicy": "silent",
+      "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "sha256": "8bb69b91adcf61a3efac29bd53c760de6fabcbeb331217a45aaec1ad62bd9793"
+    }
+  ]
+}

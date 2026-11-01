@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "Build a sustainable social content routine for your startup with videos, text-led posts, and carousels that your team reviews before publishing.",
   alternates: { canonical: content.canonicalPath },
   openGraph: {
-    title: "Social Media Marketing for Startups | UGCPilot",
+    title: "Social Media Marketing for Startups | Vidmake",
     description:
       "A practical social content routine for founders and lean marketing teams.",
     url: content.canonicalPath,
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "Social Media Marketing for Startups | UGCPilot",
+    title: "Social Media Marketing for Startups | Vidmake",
     description:
       "A practical social content routine for founders and lean marketing teams.",
   },

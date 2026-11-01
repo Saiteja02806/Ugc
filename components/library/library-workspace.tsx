@@ -77,13 +77,13 @@ type LibraryContentResponse =
     };
 
 const primaryActionClassName =
-  "inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const secondaryActionClassName =
-  "inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border/80 bg-card px-4 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-border/80 bg-card px-4 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const compactSecondaryActionClassName =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border/80 bg-card px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-border/80 bg-card px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const iconActionClassName =
-  "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const metricChipClassName =
   "inline-flex h-8 items-center rounded-full border border-border/70 bg-card-muted/80 px-3 text-xs font-mono font-medium text-muted";
 

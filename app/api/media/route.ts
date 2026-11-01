@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     const rawSourceTypes = searchParams.get("sourceTypes");
     const sourceTypes = parseSourceTypes(rawSourceTypes);
     const purpose = searchParams.get("purpose");
+    const workflow = searchParams.get("workflow");
 
     if (rawCollection && !collection) {
       return Response.json(
@@ -74,16 +75,22 @@ export async function GET(request: Request) {
         ]),
     );
 
+    const mappedAssets = visibleAssets.map((asset) => {
+      const metadata = generatedJobMetadata.get(asset.sourceRecordId ?? "");
+
+      return metadata
+        ? { ...asset, metadata: { ...asset.metadata, ...metadata } }
+        : asset;
+    });
+
+    const filteredAssets = workflow
+      ? mappedAssets.filter((asset) => asset.metadata?.workflow === workflow)
+      : mappedAssets;
+
     return Response.json(
       {
         ok: true,
-        assets: visibleAssets.map((asset) => {
-          const metadata = generatedJobMetadata.get(asset.sourceRecordId ?? "");
-
-          return metadata
-            ? { ...asset, metadata: { ...asset.metadata, ...metadata } }
-            : asset;
-        }),
+        assets: filteredAssets,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

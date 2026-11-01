@@ -14,8 +14,8 @@
 .phrase { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 2px; }
 .word { min-width: 0; max-width: 100%; min-height: 36px; padding: 4px; border: 1px solid transparent; border-bottom-color: var(--border); border-radius: 4px; background: transparent; color: var(--foreground); font-size: 15px; line-height: 26px; }
 .word:hover { background: var(--card-muted); }
-.word:focus { outline: 2px solid var(--primary); outline-offset: 1px; background: var(--card-muted); }
-.word[data-corrected="true"] { border-bottom-color: var(--primary); }
+.word:focus { outline: 2px solid var(--foreground); outline-offset: 1px; background: var(--card-muted); }
+.word[data-corrected="true"] { border-bottom-color: var(--foreground); }
 .word:disabled { opacity: .6; }
 .empty { display: flex; flex: 1; min-height: 220px; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; }
 .footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border); }

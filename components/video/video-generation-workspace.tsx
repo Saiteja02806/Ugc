@@ -34,6 +34,7 @@ import {
   AiStudioSettingSelect,
   AiStudioRatioPicker,
 } from "@/components/generation/ai-studio-composer";
+import { getModelProviderInfo } from "@/components/generation/model-provider-logos";
 import {
   AiStudioResults,
   type AiStudioResultsStatus,
@@ -76,6 +77,7 @@ import {
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
   AI_STUDIO_VIDEO_MODELS,
   AI_STUDIO_VIDEO_RESOLUTIONS,
+  getDefaultAIStudioVideoModel,
   isAIStudioVideoResolutionSupported,
   isAIStudioVideoModelAvailable,
   getAIStudioVideoModelLabel,
@@ -342,7 +344,9 @@ export function VideoGenerationStudioPanel({
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
   const [model, setModel] = useState<AIStudioVideoModel>(() => {
-    if (workflow) return "google_omni";
+    const defaultModel = getDefaultAIStudioVideoModel();
+    if (workflow) return defaultModel === "seedance_2_5" ? defaultModel : "google_omni";
+    if (!searchParams.get("model")) return defaultModel;
     const requested = parseAIStudioVideoModel(searchParams.get("model"));
     return isAIStudioVideoModelAvailable(requested) ? requested : "kling_3_0";
   });
@@ -575,10 +579,10 @@ export function VideoGenerationStudioPanel({
   const referenceCreationError = workflow && hasVideoReference && !hasWorkflowVideoReference && model === "google_omni" &&
     (referenceImages.length > 0 || (sourceDuration != null && sourceDuration > 3))
     ? "Choose Seedance 2.5 or WAN 3.0 to create from this reference, or choose Edit source video with Google Omni." : null;
-  const startingFrameError = startingFrame && workflowFormat === "hook" && Number.isFinite(startingFrame.sourceDurationSeconds) && durationSeconds + .001 < startingFrame.sourceDurationSeconds! ? `Choose a duration of at least ${Math.ceil(startingFrame.sourceDurationSeconds! - .001)} seconds to preserve the full source Hook, or choose a model that supports it.`
+  const startingFrameError = startingFrame && workflowFormat === "hook" && Number.isFinite(startingFrame.sourceDurationSeconds) && durationSeconds + .001 < startingFrame.sourceDurationSeconds! ? `Choose a duration of at least ${model === "google_omni" ? hookStartingFrameSourceDuration(model, startingFrame.sourceDurationSeconds) : Math.ceil(startingFrame.sourceDurationSeconds! - .001)} seconds to preserve the full source Hook, or choose a model that supports it.`
     : startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to animate this starting frame."
     : startingFrame && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation."
-    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to ${model === "google_omni" ? 10 : 15} seconds.`
+    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? model === "google_omni" ? "Google Omni duration must be 4, 6, 8, or 10 seconds." : `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to 15 seconds.`
     : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
   const startingFramePhotosError = startingFrame ? startingFrameFaceReferenceError(model, startingFrame, referenceImages) : null;
   const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null)
@@ -1384,7 +1388,7 @@ export function VideoGenerationStudioPanel({
             variant="outline"
             size="sm"
             onClick={() => setHistoryOpen(true)}
-            className="gap-2 rounded-full bg-card/90 px-3 shadow-xs"
+            className="gap-2 rounded-[10px] bg-card/90 px-3 shadow-xs"
           >
             <History className="size-3.5" aria-hidden="true" />
             History
@@ -1498,7 +1502,7 @@ export function VideoGenerationStudioPanel({
         ariaLabel="Video prompt"
         contextBanner={
           <>{automaticHookTextAvailable ? <div><label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={automaticHookText} onChange={event => setAutomaticHookText(event.target.checked)} disabled={isGenerating || Boolean(pendingSubmission)} className="mt-1 accent-primary" /><span>Automatically adapt and add {workflowFormat === "wall_text" ? "Wall" : "Hook"} text<span className="block text-xs text-muted">Uses your business context and one text remix per batch. You can edit the text on the video.</span></span></label>{automaticTextProblem ? <p role="status" className="mt-2 text-xs text-muted">{automaticTextProblem}{automaticTextReadiness.isError ? <button type="button" onClick={() => void automaticTextReadiness.refetch()} className="ml-2 underline">Retry</button> : null}</p> : null}</div> : null}{recreateView?.contextBanner ?? (referenceContext ? (
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/30 px-3 py-1.5 text-xs text-foreground shadow-sm">
               <div className="flex items-center gap-2 truncate">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
                   {referenceContext.type === "hook" ? (
@@ -1617,11 +1621,18 @@ export function VideoGenerationStudioPanel({
               fieldLayout={workflow ? "classic" : undefined}
               disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || creatorReferenceUploadPending}
               size="sm"
-              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "seedance_2_5" || value === "wan_3_0").map((value) => ({
-                label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
-                disabled: !isAIStudioVideoModelAvailable(value) || Boolean(startingFrame && !isHookStartingFrameVideoModel(value)),
-                value,
-              }))}
+              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "seedance_2_5" || value === "wan_3_0").map((value) => {
+                const meta = getModelProviderInfo(value);
+                return {
+                  label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " — temporarily unavailable"}`,
+                  triggerLabel: getAIStudioVideoModelLabel(value),
+                  disabled: !isAIStudioVideoModelAvailable(value) || Boolean(startingFrame && !isHookStartingFrameVideoModel(value)),
+                  value,
+                  icon: meta.logo,
+                  badge: meta.badge,
+                  description: meta.description,
+                };
+              })}
               value={model}
               onChange={(value) => {
                 if (isGenerating || referenceFilesPending || creatorReferenceUploadPending) return;
@@ -2108,7 +2119,7 @@ function VideoHistoryDrawer({
                         onClick={() => onSelectVideo(video.id)}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-[16px] border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                          selectedVideoId === video.id && "border-primary/60 bg-primary/[0.06]",
+                          selectedVideoId === video.id && "border-white",
                         )}
                       >
                         <div

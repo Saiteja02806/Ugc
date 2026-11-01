@@ -20,7 +20,7 @@ export function PublishDateLineChart<T>({ points, onSelect, getLabel, getThumbna
   const unavailable = points.filter((point) => point.value === null);
   const marker = (point: Point<T>) => (
     <>
-      <span className="relative flex size-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-card text-[10px] font-bold shadow-card ring-4 ring-primary/10 transition-transform group-hover:scale-110 group-focus-visible:scale-110">
+      <span className="relative flex size-11 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-card text-[10px] font-bold shadow-card ring-4 ring-white/15 transition-transform group-hover:scale-110 group-focus-visible:scale-110">
         {platform === "YouTube" ? "YT" : "TT"}
         {getThumbnail(point.items[0]) ? (
           // Provider-owned thumbnails can expire; keep the platform fallback.
@@ -35,7 +35,7 @@ export function PublishDateLineChart<T>({ points, onSelect, getLabel, getThumbna
   return (
     <div className="rounded-[var(--radius-control)] border border-border bg-card-muted/25 p-3 sm:p-4">
       <div className="relative h-72" role="group" aria-label={`${platform} content by publish date`}>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible text-primary" aria-hidden="true">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible text-foreground" aria-hidden="true">
           {[16, 38, 60, 82].map((y) => <line key={y} x1="6" x2="94" y1={y} y2={y} stroke="currentColor" strokeOpacity="0.15" strokeDasharray="1 1" vectorEffect="non-scaling-stroke" />)}
           <path d={path} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
         </svg>

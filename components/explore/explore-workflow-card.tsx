@@ -32,11 +32,11 @@ export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: Expl
               className="size-full object-cover"
             />
           ) : null}
-          <span className="absolute bottom-4 right-4 flex size-9 items-center justify-center rounded-full border border-border bg-background/60 text-muted transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground motion-reduce:transition-none">
+          <span className={styles.linkChip}>
             <ExploreLinkIndicator label={workflow.title} className="size-4" />
           </span>
         </div>
-        <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground-strong">{workflow.title}</h3>
+        <h3 className="mt-3 text-lg font-semibold tracking-tight text-foreground-strong">{workflow.title}</h3>
         <p className="mt-1.5 max-w-[44ch] text-pretty text-sm leading-6 text-muted">{workflow.description}</p>
       </Link>
     </article>

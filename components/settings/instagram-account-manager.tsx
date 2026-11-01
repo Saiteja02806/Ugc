@@ -64,7 +64,7 @@ type InstagramConnectionViewState = {
 
 /*
  * TikTok and YouTube account-management UI is intentionally dormant while
- * UGC Pilot is Instagram-only. Their provider, OAuth, and API implementations
+ * Vidmake is Instagram-only. Their provider, OAuth, and API implementations
  * remain preserved in the shared social modules for a future multi-platform
  * release.
  *
@@ -348,7 +348,7 @@ export function InstagramAccountManager() {
       >
         <header className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:px-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-card-muted text-foreground ring-1 ring-inset ring-white/15">
               <SocialPlatformIcon className="size-5" platform="instagram" />
             </span>
             <div className="min-w-0">
@@ -518,7 +518,7 @@ export function InstagramAccountManager() {
               Disconnect Instagram?
             </DialogTitle>
             <DialogDescription>
-              UGC Pilot will no longer be able to publish new posts to this
+              Vidmake will no longer be able to publish new posts to this
               account. Existing Instagram posts will not be removed.
             </DialogDescription>
           </DialogHeader>

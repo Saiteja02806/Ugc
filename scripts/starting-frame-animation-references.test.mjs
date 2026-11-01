@@ -51,12 +51,12 @@ test("the payload keeps first-frame identity and ordered face references in sepa
   assert.deepEqual(startingFrameAnimationInput(frame, photos), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId,
     referenceImageUrls: photos.map(value => value.asset.url), imageReferencePurpose: "person" });
   assert.deepEqual(startingFrameAnimationInput(frame, []), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId });
-  assert.equal(startingFrameFaceReferenceError("google_omni", frame, photos), null);
-  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /Choose Omni.*kept/);
-  assert.match(startingFrameFaceReferenceError("seedance_2_5", frame, photos), /Choose Omni/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /up to 5/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /separate clear face/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, [photos[0], photos[0]]), /duplicate/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /starting image alone/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /starting image alone.*kept/);
+  assert.match(startingFrameFaceReferenceError("seedance_2_5", frame, photos), /starting image alone/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /starting image alone/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /starting image alone/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, [photos[0], photos[0]]), /starting image alone/);
 });
 
 test("scene history and optional faces have independent selectors and removals", async () => {
@@ -67,10 +67,9 @@ test("scene history and optional faces have independent selectors and removals",
   assert.equal(first.faces.startingFrame, undefined);
   assert.equal(first.faces.inlineImagePicker, true);
   assert.equal(first.faces.heading, "Your photos");
-  assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), true);
-  assert.equal(h.clearedFrames(), 0);
-  assert.deepEqual(Array.from(h.changes.at(-1), value => value.asset.id), ["face-a"]);
-  const photos = h.changes.at(-1), nextFrame = { ...frame, assetId: "other-frame" };
+  assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), false);
+  assert.equal(h.changes.length, 0);
+  const photos = [photo("face-a")], nextFrame = { ...frame, assetId: "other-frame" };
   const next = h.render({ frame: nextFrame, photos });
   assert.equal(next.faces.imageSelections, photos);
   next.faces.onImagesChange([]);
@@ -99,12 +98,8 @@ test("a stale influencer read cannot add photos after frame/model changes or lea
   const h = harness({ resolveAsset: () => new Promise(done => { resolve = done; notifyRead(); }) });
   const first = h.render();
   const selection = first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" });
-  await readStarted;
-  h.render({ model: "seedance_2_5" });
-  resolve(photo("face-a").asset);
   assert.equal(await selection, false);
   assert.equal(h.changes.length, 0);
-  assert.equal(h.pending.at(-1), false);
   h.unmount(); assert.equal(h.pending.at(-1), false);
 });
 
@@ -126,7 +121,7 @@ test("compact Change directly uses the full dialog and keeps frame/identity role
 });
 
 test("model-specific starting-frame defaults preserve the supported duration contract", () => {
-  for (const [model, expected] of [["google_omni", 3], ["wan_3_0", 3], ["seedance_2_5", 4]]) {
+  for (const [model, expected] of [["google_omni", 4], ["wan_3_0", 3], ["seedance_2_5", 4]]) {
     assert.equal(policy.hookStartingFrameDefaultDuration(model), expected);
     assert.ok(policy.hookStartingFrameVideoDurations(model).includes(expected));
   }
@@ -137,10 +132,13 @@ test("model-specific starting-frame defaults preserve the supported duration con
 
 
 test("measured Hook source duration selects full source length within provider limits",()=>{
- for(const model of ["google_omni","wan_3_0","seedance_2_5"]){
+ for(const model of ["wan_3_0","seedance_2_5"]){
   assert.equal(policy.hookStartingFrameSourceDuration(model,4),4);assert.equal(policy.hookStartingFrameSourceDuration(model,5),5);assert.equal(policy.hookStartingFrameSourceDuration(model,4.3),5);
  }
- assert.equal(policy.hookStartingFrameSourceDuration("google_omni",2.3),3);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4),4);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4.3),6);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",5),6);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",2.3),4);
  assert.equal(policy.hookStartingFrameSourceDuration("seedance_2_5",2.3),4);
  assert.equal(policy.hookStartingFrameSourceDuration("google_omni",undefined,6),6);
 });

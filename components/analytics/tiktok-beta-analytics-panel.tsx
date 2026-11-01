@@ -176,11 +176,11 @@ export function TikTokBetaAnalyticsPanel({
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <span
-          className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-[#111111]"
+          className="absolute inset-y-0 left-0 w-1 bg-foreground"
           aria-hidden="true"
         />
         <header className="px-5 py-5 sm:px-6">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             Performance snapshot
           </p>
           <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -248,7 +248,7 @@ export function TikTokBetaAnalyticsPanel({
       <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
               Content insights
             </p>
             <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -256,7 +256,7 @@ export function TikTokBetaAnalyticsPanel({
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               The 20 most recent public videos returned by TikTok, plus private
-              publishing records from UGC Pilot.
+              publishing records from Vidmake.
             </p>
           </div>
           <ContentSortControl sort={sort} onChange={setSort} />
@@ -312,7 +312,7 @@ function AnalyticsSurface({
     <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             {eyebrow}
           </p>
           <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -346,7 +346,7 @@ function SnapshotMetric({
     <div className="min-w-0 border-b border-border p-4 [&:nth-child(odd)]:border-r [&:nth-last-child(-n+2)]:border-b-0 sm:p-5 lg:border-b-0 lg:border-r lg:last:border-r-0">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-muted">{label}</p>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-primary [&>svg]:size-4">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-foreground [&>svg]:size-4">
           {icon}
         </span>
       </div>
@@ -608,7 +608,7 @@ function TikTokContentDetailDialog({
                   <section aria-labelledby="tiktok-metric-breakdown">
                     <p
                       id="tiktok-metric-breakdown"
-                      className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                      className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong"
                     >
                       Metric breakdown
                     </p>
@@ -621,7 +621,7 @@ function TikTokContentDetailDialog({
                     </dl>
                   </section>
                   <section className="mt-6" aria-labelledby="tiktok-caption">
-                    <p id="tiktok-caption" className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+                    <p id="tiktok-caption" className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
                       Caption
                     </p>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted">
@@ -633,7 +633,7 @@ function TikTokContentDetailDialog({
                 <section className="rounded-[var(--radius-control)] border border-warning/25 bg-warning/10 p-4">
                   <p className="text-sm font-semibold text-foreground-strong">Metrics are unavailable for this private post</p>
                   <p className="mt-2 text-sm leading-6 text-muted">
-                    TikTok returns analytics only for public videos. This UGC Pilot publishing record stays visible so it is not mistaken for a zero-view video.
+                    TikTok returns analytics only for public videos. This Vidmake publishing record stays visible so it is not mistaken for a zero-view video.
                   </p>
                 </section>
               )}
@@ -718,7 +718,7 @@ function ContentDetailMetric({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
-      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-primary">
+      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-foreground">
         {icon}
         {label}
       </dt>
@@ -738,7 +738,7 @@ function AccountReadiness({
 }) {
   return (
     <aside className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
         Account readiness
       </p>
       <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -1326,7 +1326,7 @@ function getEmptyContentDescription({
   )?.message;
   if (providerMessage) return providerMessage;
   return hasRefreshed
-    ? "TikTok did not return public videos for this selection. Private UGC Pilot posts appear here separately when available."
+    ? "TikTok did not return public videos for this selection. Private Vidmake posts appear here separately when available."
     : "Loading public-video metrics and private publishing records.";
 }
 function getReadiness(

@@ -12,7 +12,7 @@ import {
 
 const path = "/docs/mcp-tools";
 const title = "MCP tool reference";
-const description = `Reference for ${publicMcpToolCount} UGC Pilot MCP tools, grouped by job, with the OAuth scope each listed tool requires.`;
+const description = `Reference for ${publicMcpToolCount} Vidmake MCP tools, grouped by job, with the OAuth scope each listed tool requires.`;
 
 export const metadata = publicPageMetadata({ title, description, path });
 
@@ -27,7 +27,7 @@ export default function McpToolReferencePage() {
           "@graph": [
             {
               "@type": "SoftwareApplication",
-              name: "UGC Pilot MCP Server",
+              name: "Vidmake MCP Server",
               applicationCategory: "DeveloperApplication",
               operatingSystem: "Web",
               url: `${publicOrigin}${path}`,
@@ -35,7 +35,7 @@ export default function McpToolReferencePage() {
             },
             {
               "@type": "ItemList",
-              name: "UGC Pilot MCP tools",
+              name: "Vidmake MCP tools",
               numberOfItems: tools.length,
               itemListElement: tools.map((tool, index) => ({
                 "@type": "ListItem",
@@ -51,7 +51,7 @@ export default function McpToolReferencePage() {
       <article className="mx-auto max-w-4xl px-4 pb-20 pt-28 sm:px-6 sm:pt-36">
         <p className="text-sm font-semibold text-primary">Registry reference</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-[-0.045em] text-foreground-strong sm:text-5xl">
-          UGC Pilot MCP tool reference
+          Vidmake MCP tool reference
         </h1>
         <p className="mt-5 text-base leading-7 text-muted">
           {publicMcpToolCount} tools listed for {mcpEndpoint}. Names and scopes match the registered catalog. A write tool can still be closed by a live capability check.

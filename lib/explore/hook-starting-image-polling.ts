@@ -2,7 +2,11 @@ import type { HookKeyframeJob } from "./hook-keyframe-client";
 
 /** Status reads only. Submission and receipt validation never use this policy. */
 export class HookStartingImageReadError extends Error {
-  constructor(message: string, readonly status: number) { super(message); }
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
 export function isRecoverableStartingImageRead(error: unknown) {
@@ -13,20 +17,41 @@ export function isRecoverableStartingImageRead(error: unknown) {
     (error.name === "TimeoutError" || error.message === "Loading took too long. Try again.");
 }
 
-type StatusQuery = { state: { error: unknown; data?: HookKeyframeJob } };
-const canRecoverOnReturn = (query: StatusQuery) => !query.state.data?.isTerminal &&
-  (!query.state.error || isRecoverableStartingImageRead(query.state.error));
+export async function startingImageStatusPolling<T>(
+  fetcher: () => Promise<T>,
+  options: {
+    attempts?: number;
+    delayMs?: number;
+    signal?: AbortSignal;
+    isTerminal?: (result: T) => boolean;
+  } = {}
+): Promise<T> {
+  const attempts = options.attempts ?? 30;
+  const delayMs = options.delayMs ?? 1500;
+  let lastError: unknown;
 
-export const startingImageStatusPolling = {
-  retry: false,
-  staleTime: 0,
-  refetchOnMount: canRecoverOnReturn,
-  refetchOnWindowFocus: canRecoverOnReturn,
-  refetchOnReconnect: canRecoverOnReturn,
-  refetchInterval: (query: StatusQuery) => {
-    if (query.state.data?.isTerminal) return false;
-    if (query.state.error instanceof HookStartingImageReadError && query.state.error.status === 404) return 30_000;
-    if (query.state.error) return isRecoverableStartingImageRead(query.state.error) ? 15_000 : false;
-    return 3_000;
-  },
-};
+  for (let i = 0; i < attempts; i++) {
+    if (options.signal?.aborted) {
+      throw new Error("Polling was cancelled.");
+    }
+
+    try {
+      const result = await fetcher();
+      if (options.isTerminal && options.isTerminal(result)) {
+        return result;
+      }
+      if (!options.isTerminal) {
+        return result;
+      }
+    } catch (err) {
+      lastError = err;
+      if (!isRecoverableStartingImageRead(err)) {
+        throw err;
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Polling timed out.");
+}

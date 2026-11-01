@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Check, Download, FileText, Layers3, MousePointer2 } from "lucide-react";
 
 import collections from "@/lib/marketing/reaction-hooks.json";
+import { publicOrigin } from "@/lib/marketing/public-origin";
 import { CopyHookButton } from "./copy-hook-button";
 import styles from "./page.module.css";
 
 const pdfPath = "/resources/ugc-pilot-110-hooks.pdf";
-const pageUrl = "https://getugcpilot.com/free-hook-lines";
+const pageUrl = `${publicOrigin}/free-hook-lines`;
 const resourceName = "The Reaction Hook Library";
 const title = `${resourceName}: 110 Free Video Hooks`;
 const description = "The Reaction Hook Library: 110 natural video hooks for TikTok, Reels, Shorts and app demos. Copy a line or download the free PDF. No signup.";
@@ -19,13 +21,13 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: "/free-hook-lines" },
-  openGraph: { title: `${title} | UGC Pilot`, description, url: pageUrl, type: "website", siteName: "UGC Pilot" },
+  openGraph: { title: `${title} | Vidmake`, description, url: pageUrl, type: "website", siteName: "Vidmake" },
   twitter: { card: "summary_large_image", title, description },
 };
 
 function DownloadLink({ compact = false }: { compact?: boolean }) {
   return (
-    <a href={pdfPath} download="UGCPilot_The_Reaction_Hook_Library.pdf" className={`${styles.download} ${compact ? styles.downloadCompact : ""}`}>
+    <a href={pdfPath} download="Vidmake_The_Reaction_Hook_Library.pdf" className={`${styles.download} ${compact ? styles.downloadCompact : ""}`}>
       <Download size={21} strokeWidth={1.8} aria-hidden="true" />
       Download 110 free hooks
     </a>
@@ -46,13 +48,13 @@ export default function FreeHookLinesPage() {
     description,
     url: pageUrl,
     isAccessibleForFree: true,
-    publisher: { "@type": "Organization", name: "UGC Pilot", url: "https://getugcpilot.com" },
+    publisher: { "@type": "Organization", name: "Vidmake", url: publicOrigin },
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: hooks.length,
       itemListElement: hooks.map((hook) => ({ "@type": "ListItem", position: hook.id, name: hook.text })),
     },
-    hasPart: { "@type": "DigitalDocument", name: resourceName, encodingFormat: "application/pdf", url: `https://getugcpilot.com${pdfPath}`, isAccessibleForFree: true },
+    hasPart: { "@type": "DigitalDocument", name: resourceName, encodingFormat: "application/pdf", url: `${publicOrigin}${pdfPath}`, isAccessibleForFree: true },
   };
 
   return (
@@ -60,9 +62,9 @@ export default function FreeHookLinesPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <a className={styles.skipLink} href="#hook-preview">Skip to hook lines</a>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand} aria-label="UGC Pilot home">
-          <Image src="/brand/ugc-pilot-icon-dark-theme.png" alt="" width={30} height={30} unoptimized />
-          <span>UGC Pilot</span>
+        <Link href="/" className={styles.brand} aria-label="Vidmake home">
+          <ProductLogoMark className="size-8" sizes="32px" />
+          <ProductWordmark className="text-[18px]" />
         </Link>
         <Link href="/free-tools" className={styles.headerLabel}>Free tools</Link>
       </header>
@@ -78,7 +80,7 @@ export default function FreeHookLinesPage() {
         </div>
         <div className={styles.paperStack}>
           <Image className={styles.backPaper} src="/resources/ugc-pilot-hooks-preview.webp" alt="" width={778} height={1100} sizes="(max-width: 700px) 220px, 310px" aria-hidden="true" />
-          <Image className={styles.frontPaper} src="/resources/reaction-hook-library-cover-v4.webp" alt="The Reaction Hook Library PDF cover: 110 natural video hooks from UGC Pilot" width={778} height={1100} sizes="(max-width: 700px) 250px, (max-width: 1000px) 280px, 340px" preload />
+          <Image className={styles.frontPaper} src="/resources/reaction-hook-library-cover-v4.webp" alt="The Reaction Hook Library PDF cover: 110 natural video hooks from Vidmake" width={778} height={1100} sizes="(max-width: 700px) 250px, (max-width: 1000px) 280px, 340px" preload />
         </div>
       </section>
 
@@ -145,7 +147,7 @@ export default function FreeHookLinesPage() {
         <Benefits small />
       </section>
       <footer className={styles.footer}>
-        <Link href="/">UGC Pilot</Link>
+        <Link href="/">Vidmake</Link>
         <nav aria-label="Resource footer"><Link href="/guides">More guides</Link><Link href="/ai-ugc-video-generator">Create a hook video <ArrowRight size={14} aria-hidden="true" /></Link></nav>
       </footer>
     </main>

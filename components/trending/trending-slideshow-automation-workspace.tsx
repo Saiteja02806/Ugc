@@ -82,7 +82,7 @@ type WorkspaceMode = "setup" | "overview";
 
 // Scope the requested pill corners to this workspace, including its dialogs.
 function Button({ className, ...props }: ComponentProps<typeof BaseButton>) {
-  return <BaseButton {...props} className={cn(className, "rounded-full")} />;
+  return <BaseButton {...props} className={cn(className, "rounded-[10px]")} />;
 }
 
 const SETUP_STEPS: ReadonlyArray<{ id: SetupStep; label: string; number: number }> = [
@@ -829,7 +829,7 @@ export function TrendingSlideshowAutomationWorkspace({
                 ? "border-warning/45 bg-warning/15 text-warning"
                 : automation?.status === "paused"
                 ? "border-border bg-card-muted text-muted"
-                : "border-primary/30 bg-primary/10 text-primary"
+                : "border-white/40 text-foreground-strong"
             }`}
           >
             {automation?.status === "active"
@@ -1177,7 +1177,7 @@ export function TrendingSlideshowAutomationWorkspace({
                   {slots.some((slot) => slot.status === "preparing") && attentionSlotCount === 0 ? (
                     <p
                       data-automation-preparing-reason
-                      className="rounded-lg border border-primary/25 bg-primary/[0.06] px-3 py-2 text-xs text-foreground"
+                      className="rounded-lg border border-white/30 px-3 py-2 text-xs text-foreground"
                     >
                       Some slideshows are still preparing. Check their status below.
                     </p>
@@ -1332,8 +1332,8 @@ export function TrendingSlideshowAutomationWorkspace({
                               onClick={() => handleDailyTotalChange(count)}
                               className={`flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition-all ${
                                 selected
-                                  ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
-                                  : "border-border bg-card-muted text-foreground hover:border-primary/40"
+                                  ? "border-white bg-card text-foreground-strong ring-1 ring-white/30"
+                                  : "border-border bg-card-muted text-foreground hover:border-white/50"
                               } ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
                             >
                               {count} / day
@@ -1403,7 +1403,7 @@ export function TrendingSlideshowAutomationWorkspace({
                             data-automation-format-card={formatKey}
                             className={`rounded-xl border p-4 transition-colors ${
                               count > 0
-                                ? "border-primary/40 bg-primary/[0.03]"
+                                ? "border-white/40"
                                 : "border-border/80 bg-card-muted/40"
                             }`}
                           >
@@ -1526,7 +1526,7 @@ export function TrendingSlideshowAutomationWorkspace({
                         <label
                           className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-4 transition-colors ${
                             config.backgrounds.mode === "default"
-                              ? "border-primary bg-primary/[0.05]"
+                              ? "border-white bg-card"
                               : "border-border bg-card-muted/40"
                           }`}
                         >
@@ -1556,7 +1556,7 @@ export function TrendingSlideshowAutomationWorkspace({
                         <label
                           className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-4 transition-colors ${
                             config.backgrounds.mode === "collection_only"
-                              ? "border-primary bg-primary/[0.05]"
+                              ? "border-white bg-card"
                               : "border-border bg-card-muted/40"
                           }`}
                         >
@@ -1815,7 +1815,7 @@ export function TrendingSlideshowAutomationWorkspace({
                                             aria-pressed={checked}
                                             className={`group relative aspect-[4/5] overflow-hidden rounded-lg border transition-all ${
                                               checked
-                                                ? "border-primary ring-2 ring-primary/35"
+                                                ? "border-white ring-2 ring-white/25"
                                                 : "border-border opacity-55 hover:opacity-90"
                                             }`}
                                           >
@@ -2130,7 +2130,7 @@ export function TrendingSlideshowAutomationWorkspace({
                                   key={conn.id}
                                   className={`rounded-xl border p-3.5 transition-colors ${
                                     selectedTarget
-                                      ? "border-primary/45 bg-primary/[0.04]"
+                                      ? "border-white/50 bg-card"
                                       : "border-border bg-card-muted/30"
                                   }`}
                                 >
@@ -2532,7 +2532,7 @@ export function TrendingSlideshowAutomationWorkspace({
               >
                 <div className="rounded-2xl border border-border/80 bg-card p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/40 px-2.5 py-0.5 text-[11px] font-semibold text-foreground-strong">
                       Example preview
                     </span>
                     <span className="text-xs text-muted">
@@ -2700,8 +2700,8 @@ export function TrendingSlideshowAutomationWorkspace({
                       onClick={() => handleSelectCollection(col)}
                       className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-colors ${
                         isCurrent
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-card hover:border-primary/40"
+                          ? "border-white bg-card"
+                          : "border-border bg-card hover:border-white/50"
                       }`}
                     >
                       <div>
@@ -2898,7 +2898,7 @@ function SlotStatusBadge({
       label: "Partially published",
     },
     preparing: {
-      className: "border-primary/35 bg-primary/10 text-primary",
+      className: "border-white/40 text-foreground-strong",
       icon: Layers,
       label: "Preparing",
     },
@@ -2908,7 +2908,7 @@ function SlotStatusBadge({
       label: "Published",
     },
     scheduled: {
-      className: "border-primary/35 bg-primary/10 text-primary",
+      className: "border-white/40 text-foreground-strong",
       icon: CalendarClock,
       label: "Scheduled",
     },

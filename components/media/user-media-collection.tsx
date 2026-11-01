@@ -934,8 +934,8 @@ export function UserMediaCollection({
       className="relative"
     >
       {isDraggingOver ? (
-        <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-primary bg-background/95 p-6 text-center backdrop-blur-xs">
-          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary ring-4 ring-primary/20">
+        <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-white bg-background/95 p-6 text-center backdrop-blur-xs">
+          <div className="flex size-14 items-center justify-center rounded-full bg-card-muted text-foreground ring-4 ring-white/15">
             <UploadCloud className="size-7 animate-bounce" aria-hidden="true" />
           </div>
           <p className="mt-3 text-base font-bold text-foreground">
@@ -1001,7 +1001,7 @@ export function UserMediaCollection({
         <button
           type="button"
           onClick={openCreateGroupDialog}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
         >
           <FolderPlus className="size-3.5" aria-hidden="true" />
           Create group
@@ -1012,10 +1012,10 @@ export function UserMediaCollection({
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
-              "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-primary shadow-xs",
+              "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground shadow-xs",
               isDarkVariant
-                ? "border border-primary/20 bg-brand-soft ring-1 ring-inset ring-primary/10"
-                : "bg-primary/10",
+                ? "border border-white/25 bg-card-muted ring-1 ring-inset ring-white/10"
+                : "bg-card-muted",
             )}
           >
             <CollectionIcon collection={collection} />
@@ -1039,12 +1039,12 @@ export function UserMediaCollection({
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {/* Aspect ratio view toggle */}
-          <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs">
+          <div className="flex items-center gap-1 rounded-[10px] border border-border/80 bg-card-muted/80 p-1 shadow-xs">
             <button
               type="button"
               onClick={() => setAspectRatioMode("9:16")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "9:16"
                   ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
@@ -1059,7 +1059,7 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("1:1")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "1:1"
                   ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
@@ -1074,7 +1074,7 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("16:9")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "16:9"
                   ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
@@ -1089,7 +1089,7 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("adaptive")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "adaptive"
                   ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
@@ -1108,7 +1108,7 @@ export function UserMediaCollection({
             disabled={isLoading || isUploading || isLoadingGroups}
             aria-label={`Refresh ${title}`}
             title={`Refresh ${title}`}
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={isLoading ? "size-3.5 animate-spin motion-reduce:animate-none" : "size-3.5"} aria-hidden="true" />
           </button>
@@ -1117,7 +1117,7 @@ export function UserMediaCollection({
               <button
                 type="button"
                 onClick={openAddAssetsDialog}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
+                className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
                 Add assets
@@ -1127,7 +1127,7 @@ export function UserMediaCollection({
                 onClick={openRenameGroupDialog}
                 aria-label={`Rename ${selectedGroup.name}`}
                 title={`Rename ${selectedGroup.name}`}
-                className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95"
+                className="inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95"
               >
                 <Pencil className="size-3.5" aria-hidden="true" />
               </button>
@@ -1136,7 +1136,7 @@ export function UserMediaCollection({
                 onClick={() => setPendingDeleteGroup(selectedGroup)}
                 aria-label={`Delete ${selectedGroup.name}`}
                 title={`Delete ${selectedGroup.name}`}
-                className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-error/40 hover:bg-error/10 hover:text-error active:scale-95"
+                className="inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-error/40 hover:bg-error/10 hover:text-error active:scale-95"
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
               </button>
@@ -1155,7 +1155,7 @@ export function UserMediaCollection({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={isUploading}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading ? (
               <Loader2
@@ -1172,11 +1172,11 @@ export function UserMediaCollection({
 
       {/* Upload Progress Banner */}
       {uploadTasks.length > 0 ? (
-        <div className="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-primary/30 bg-card p-3.5 shadow-card">
+        <div className="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card p-3.5 shadow-card">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               {isUploading ? (
-                <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+                <Loader2 className="size-4 animate-spin text-foreground motion-reduce:animate-none" aria-hidden="true" />
               ) : (
                 <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
               )}
@@ -1301,15 +1301,15 @@ export function UserMediaCollection({
             onClick={() => !selectedGroup && inputRef.current?.click()}
             className={cn(
               "group relative flex min-h-[260px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/80 bg-card-muted/20 px-6 py-12 text-center transition-all duration-200",
-              !selectedGroup && "cursor-pointer hover:border-primary/50 hover:bg-card-muted/40",
+              !selectedGroup && "cursor-pointer hover:border-white/50 hover:bg-card-muted/40",
             )}
           >
             <span
               className={cn(
                 "inline-flex size-12 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105",
                 isDarkVariant
-                  ? "border-primary/20 bg-brand-soft text-primary ring-4 ring-primary/10 shadow-xs"
-                  : "border-primary/20 bg-brand-soft text-primary ring-4 ring-primary/10 shadow-xs",
+                  ? "border-white/25 bg-card-muted text-foreground ring-4 ring-white/10 shadow-xs"
+                  : "border-white/25 bg-card-muted text-foreground ring-4 ring-white/10 shadow-xs",
               )}
             >
               {selectedGroup ? (
@@ -1329,7 +1329,7 @@ export function UserMediaCollection({
             {selectedGroup && allAssets.length > 0 ? (
               <button
                 type="button"
-                className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
+                className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   openAddAssetsDialog();
@@ -1339,8 +1339,8 @@ export function UserMediaCollection({
                 Add existing assets
               </button>
             ) : !selectedGroup ? (
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-xs font-medium text-muted shadow-xs transition-colors group-hover:border-primary/40 group-hover:text-foreground">
-                <UploadCloud className="size-3.5 text-primary" aria-hidden="true" />
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-xs font-medium text-muted shadow-xs transition-colors group-hover:border-white/40 group-hover:text-foreground">
+                <UploadCloud className="size-3.5 text-foreground" aria-hidden="true" />
                 <span>Drag & drop files here, or click to browse</span>
               </div>
             ) : null}
@@ -1376,7 +1376,7 @@ export function UserMediaCollection({
               <span
                 className={cn(
                   "inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] ring-1 ring-border",
-                  isDarkVariant ? "bg-card text-primary" : "bg-card text-muted",
+                  isDarkVariant ? "bg-card text-foreground" : "bg-card text-muted",
                 )}
               >
                 <CollectionIcon collection={pendingDeleteAsset.collection} />
@@ -1831,7 +1831,7 @@ function MediaAssetCard({
               type="button"
               onClick={togglePlayback}
               aria-label={`${isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"} ${asset.title}`}
-              className="col-span-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="col-span-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               {isPlaying ? <Pause className="size-3.5" aria-hidden="true" /> : <Play className="size-3.5 fill-current" aria-hidden="true" />}
               {isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"}
@@ -1840,7 +1840,7 @@ function MediaAssetCard({
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-full border border-border/80 bg-card-muted/80 px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[10px] border border-border/80 bg-card-muted/80 px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Edit video
             </Link>
@@ -2049,7 +2049,7 @@ function getUploadLabel(collection: MediaCollection) {
 function getSourceLabel(asset: MediaAsset) {
   const labels: Record<MediaAsset["sourceType"], string> = {
     demo_upload: "Uploaded demo",
-    catalog_influencer: "UGC Pilot influencer",
+    catalog_influencer: "Vidmake influencer",
     combined_render: "Combined render",
     edit_export: "Edit export",
     generated_image: "Generated image",
@@ -2064,7 +2064,7 @@ function getSourceLabel(asset: MediaAsset) {
 
 function getRemovalDescription(asset: MediaAsset) {
   if (asset.sourceType === "catalog_influencer") {
-    return "This removes the influencer from your Creative Assets only. The shared UGC Pilot influencer stays protected and remains available in the catalog.";
+    return "This removes the influencer from your Creative Assets only. The shared Vidmake influencer stays protected and remains available in the catalog.";
   }
 
   return "This hides the asset from Creative Assets and its editor. The stored file is retained for recovery, so it is not permanently erased.";
@@ -2072,7 +2072,7 @@ function getRemovalDescription(asset: MediaAsset) {
 
 function getRemovalSuccessMessage(asset: MediaAsset) {
   return asset.sourceType === "catalog_influencer"
-    ? `${asset.title} was removed from your personal library. The UGC Pilot catalog was not changed.`
+    ? `${asset.title} was removed from your personal library. The Vidmake catalog was not changed.`
     : `${asset.title} was removed from your library. Its stored file remains recoverable.`;
 }
 

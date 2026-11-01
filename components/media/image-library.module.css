@@ -21,8 +21,8 @@
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:.7rem; }
 .tile { position:relative; text-align:left; border:1px solid var(--border); border-radius:.65rem; overflow:hidden; background:var(--card); min-width:0; cursor:pointer; }
 .tile img { display:block; width:100%; aspect-ratio:4/5; object-fit:cover; background:var(--background); }
-.tile[aria-pressed=true] { outline:2px solid var(--primary); outline-offset:1px; }
-.tile:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+.tile[aria-pressed=true] { outline:2px solid var(--foreground); outline-offset:1px; }
+.tile:focus-visible { outline:3px solid var(--foreground); outline-offset:2px; }
 .tile:disabled { opacity:.55; cursor:default; }
 .check { position:absolute; top:.4rem; right:.4rem; min-width:1.5rem; height:1.5rem; display:grid; place-items:center; background:var(--background); border:1px solid var(--border); border-radius:50%; font-size:.7rem; }
 .check:empty { display:none; }
@@ -60,9 +60,9 @@
 .scope { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; font-size:.8rem; }
 .scope legend { float:left; margin-right:.75rem; padding-block:.7rem; color:var(--muted-foreground); }
 .scope label { display:flex; align-items:center; gap:.45rem; padding:.55rem .8rem; min-height:40px; border:1px solid var(--border); border-radius:.5rem; cursor:pointer; }
-.scope label:has(input:checked) { border-color:var(--primary); background:var(--card-muted); }
+.scope label:has(input:checked) { border-color:var(--foreground); background:var(--card-muted); }
 .scope span { font-size:.7rem; color:var(--muted-foreground); }
-.scope input { accent-color:var(--primary); }
+.scope input { accent-color:var(--foreground); }
 .pickerFooter { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-shrink:0; padding-top:.85rem; border-top:1px solid var(--border); background:var(--popover); }
 .pickerFooter strong { font-size:.85rem; }
 .pickerFooter p { margin-top:.2rem; font-size:.75rem; color:var(--muted-foreground); max-width:34rem; }

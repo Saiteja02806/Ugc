@@ -24,11 +24,11 @@ const faqs = [
   },
   {
     question: "Do I need to hire human UGC creators to run SaaS video ads?",
-    answer: "No. While real customer testimonials remain valuable, early ad testing is much faster with AI UGC tools like UGC Pilot. You can generate and test 10 creator hook variations in the time it takes to negotiate a contract with a single human creator.",
+    answer: "No. While real customer testimonials remain valuable, early ad testing is much faster with AI UGC tools like Vidmake. You can generate and test 10 creator hook variations in the time it takes to negotiate a contract with a single human creator.",
   },
   {
     question: "How do I upload generated ads to Meta and TikTok Ads Manager?",
-    answer: "After reviewing your video in UGC Pilot, download the finished MP4 file directly from your library. You can then upload it straight into Meta Ads Manager, TikTok Ads Manager, or Google Ads.",
+    answer: "After reviewing your video in Vidmake, download the finished MP4 file directly from your library. You can then upload it straight into Meta Ads Manager, TikTok Ads Manager, or Google Ads.",
   },
   {
     question: "Do I need to disclose that the avatar is AI-generated in my ads?",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function HowToMakeUgcAdsForSaasPage() {
           If you open TikTok Ads Manager or Meta Ads Manager and upload a slick corporate video with stock animation, your cost-per-click will be painfully high. In 2026, user feeds are dominated by raw, authentic creator videos.
         </p>
         <p>
-          For SaaS companies, <strong className="font-semibold text-foreground-strong">UGC (User-Generated Content) style ads</strong> out-convert traditional corporate commercials because they look native to the platform. By following this guide, you can build and launch a full battery of SaaS UGC ads in an afternoon with <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>.
+          For SaaS companies, <strong className="font-semibold text-foreground-strong">UGC (User-Generated Content) style ads</strong> out-convert traditional corporate commercials because they look native to the platform. By following this guide, you can build and launch a full battery of SaaS UGC ads in an afternoon with <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>.
         </p>
 
         <ArticleH2>The 5-Step SaaS UGC Ad Production Workflow</ArticleH2>
@@ -94,9 +94,9 @@ export default function HowToMakeUgcAdsForSaasPage() {
           </li>
         </ul>
 
-        <ArticleH3>Step 2: Generate the Creator Avatar in UGC Pilot</ArticleH3>
+        <ArticleH3>Step 2: Generate the Creator Avatar in Vidmake</ArticleH3>
         <p>
-          Open the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink>. Select a persona that matches your target customer (e.g., an indie developer or marketing specialist) and input your hook line. UGC Pilot renders the avatar with realistic facial motion, natural lip-sync, and high-energy delivery.
+          Open the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink>. Select a persona that matches your target customer (e.g., an indie developer or marketing specialist) and input your hook line. Vidmake renders the avatar with realistic facial motion, natural lip-sync, and high-energy delivery.
         </p>
 
         <ArticleH3>Step 3: Capture Clean Screen Demo Footage</ArticleH3>
@@ -111,7 +111,7 @@ export default function HowToMakeUgcAdsForSaasPage() {
 
         <ArticleH3>Step 5: Export and Launch in Ad Managers</ArticleH3>
         <p>
-          Download your high-definition MP4 from your UGC Pilot library. In TikTok Ads Manager or Meta Ads Manager:
+          Download your high-definition MP4 from your Vidmake library. In TikTok Ads Manager or Meta Ads Manager:
         </p>
         <ol className="list-decimal space-y-2 pl-5">
           <li>Select the <strong>9:16 vertical placement</strong> (TikTok feed, Instagram Reels, Facebook Reels).</li>

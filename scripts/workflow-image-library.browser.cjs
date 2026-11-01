@@ -52,7 +52,7 @@ async function main() {
       await page.screenshot({path:path.join(out,(modern?'hook':'talking-head')+'-multiple-'+viewport.width+'.png')});
       await firstButton().click();await page.waitForFunction(expected=>document.querySelector('output').textContent===expected,second.id);
       assert.equal(await firstButton().getAttribute('aria-pressed'),'false');
-      await page.getByRole('button',{name:'UGC Pilot images',exact:true}).click();
+      await page.getByRole('button',{name:'Vidmake images',exact:true}).click();
       const catalog=()=>page.getByRole('button',{name:'Use creator 1',exact:true});await catalog().click();await catalog().filter({has:page.locator('svg')}).waitFor();
       assert.match(await page.locator('output[aria-label="Selected images"]').innerText(),/creator-reference-01.png/);
       await catalog().click();await page.waitForFunction(expected=>document.querySelector('output').textContent===expected,second.id);

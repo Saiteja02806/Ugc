@@ -135,9 +135,9 @@ export async function getTrendingPlanEntitlement(
   const freeTrialAccess = await assertFreeTrialContentAccess(userId, options);
   const effectivePlanKey =
     freeTrialAccess.paid
-      ? freeTrialAccess.planKey === "growth"
-        ? "creator"
-        : "pro"
+      ? freeTrialAccess.planKey === "starter"
+        ? "pro"
+        : "creator"
       : "free";
   const { data: entitlement, error: entitlementError } = await getClient()
     .from(ENTITLEMENTS_TABLE)
@@ -161,7 +161,13 @@ export async function getTrendingPlanEntitlement(
             entitlement.daily_trending_limit > 0
         ? Math.trunc(entitlement.daily_trending_limit)
         : fallback.dailyLimit,
-    displayName: fallback.displayName,
+    displayName: freeTrialAccess.paid
+      ? freeTrialAccess.planKey === "startup"
+        ? "Startup"
+        : freeTrialAccess.planKey === "growth"
+          ? "Growth"
+          : "Starter"
+      : fallback.displayName,
     planKey: effectivePlanKey,
   };
 }

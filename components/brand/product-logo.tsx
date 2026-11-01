@@ -2,34 +2,43 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
-const LOGO_SRC = "/brand/ugc-pilot-logo.png";
+const MARK_SRC = "/brand/vidmake-mark.png";
 
 export function ProductLogoMark({
   className,
-  imageClassName,
-  sizes = "56px",
+  sizes = "28px",
 }: {
   className?: string;
-  imageClassName?: string;
   sizes?: string;
+  theme?: "auto" | "light" | "dark";
 }) {
   return (
     <span
       aria-hidden="true"
+      className={cn("inline-block size-7 shrink-0", className)}
+    >
+      <Image
+        src={MARK_SRC}
+        alt=""
+        width={737}
+        height={798}
+        sizes={sizes}
+        unoptimized
+        className="size-full object-contain"
+      />
+    </span>
+  );
+}
+
+export function ProductWordmark({ className }: { className?: string }) {
+  return (
+    <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden",
+        "font-[family-name:var(--font-brand-serif)] font-normal leading-none tracking-[-0.03em]",
         className,
       )}
     >
-      <Image
-        src={LOGO_SRC}
-        alt=""
-        width={500}
-        height={500}
-        sizes={sizes}
-        unoptimized
-        className={cn("h-full w-full object-contain dark:brightness-0 dark:invert", imageClassName)}
-      />
+      Vidmake
     </span>
   );
 }

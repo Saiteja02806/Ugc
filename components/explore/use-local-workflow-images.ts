@@ -5,6 +5,7 @@ import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow
 import type { WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import type { MediaAsset } from "@/lib/media/types";
 import { fetchFormatReferenceImage } from "@/lib/explore/format-reference-images";
+import { resolveInfluencerPhoto } from "@/lib/characters/photo-library-client";
 
 export type WorkflowImageAttachment = WorkflowAttachment & {
   assets: LocalWorkflowMedia[];
@@ -12,6 +13,7 @@ export type WorkflowImageAttachment = WorkflowAttachment & {
   chooseFiles: (files: File[]) => Promise<boolean>;
   removeImage: (url: string) => void;
   chooseSavedImage?: (asset: MediaAsset, ownerId: string) => Promise<boolean>;
+  chooseInfluencerImage?: (assetId: string, ownerId: string) => Promise<boolean>;
 };
 
 /** Ordered local references. Files upload only when the user generates. */
@@ -79,20 +81,23 @@ export function useLocalWorkflowImages(maxImages = 6): WorkflowImageAttachment {
     }
   }
   const chooseFiles = (files: File[]) => selectFiles(files);
-  async function chooseSavedImage(saved: MediaAsset, ownerId: string) {
+  async function chooseOwnedImage(assetId: string, resolve: () => Promise<MediaAsset>) {
     if (reading.current) return false;
-    if (current.current.some(image => image.assetId === saved.id)) return true;
+    if (current.current.some(image => image.assetId === assetId)) return true;
     if (current.current.length >= maxImages) { setError(`This model accepts up to ${maxImages} image references. Remove an image before adding more.`); return false; }
     const request = ++revision.current;
     reading.current = true; setLoading(true); setError(null);
     try {
-      const asset = await fetchFormatReferenceImage(saved.id, ownerId);
+      const asset = await resolve();
       if (request !== revision.current) return false;
+      if (asset.id !== assetId || (asset.fileSizeBytes != null && asset.fileSizeBytes > 20 * 1024 ** 2)) throw new Error("This image is unavailable or exceeds 20 MB.");
       update([...current.current, { name: asset.fileName ?? asset.title, url: asset.url, duration: null, assetId: asset.id }]);
       return true;
     } catch (cause) { if (request === revision.current) setError(cause instanceof Error ? cause.message : "Could not use this image. Refresh and try again."); return false; }
     finally { if (request === revision.current) { reading.current = false; setLoading(false); } }
   }
+  const chooseSavedImage = (saved: MediaAsset, ownerId: string) => chooseOwnedImage(saved.id, () => fetchFormatReferenceImage(saved.id, ownerId));
+  const chooseInfluencerImage = (assetId: string, ownerId: string) => chooseOwnedImage(assetId, () => resolveInfluencerPhoto(ownerId, assetId));
   function removeImage(url: string) {
     revision.current += 1; reading.current = false;
     update(current.current.filter(asset => asset.url !== url)); setError(null); setLoading(false);
@@ -111,6 +116,6 @@ export function useLocalWorkflowImages(maxImages = 6): WorkflowImageAttachment {
   const chooseRemote: WorkflowAttachment["chooseRemote"] = async (loadFile, options, acceptFile) => {
     return selectFiles(async () => [await loadFile()], options, acceptFile);
   };
-  return { assets, asset: assets[0] ?? null, maxImages, chooseFiles, chooseSavedImage, choose, chooseRemote, chooseLibraryImage, removeImage, remove,
+  return { assets, asset: assets[0] ?? null, maxImages, chooseFiles, chooseSavedImage, chooseInfluencerImage, choose, chooseRemote, chooseLibraryImage, removeImage, remove,
     error, loading, clearError: () => setError(null) };
 }

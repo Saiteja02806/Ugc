@@ -19,7 +19,7 @@ export function AppShell({
   focusNavigation?: boolean;
 }) {
   return (
-    <WorkspaceNavigationFeedback><WorkflowNavigationProvider enabled={focusNavigation}><main className="instagram-theme flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground md:flex-row">
+    <WorkspaceNavigationFeedback><WorkflowNavigationProvider enabled={focusNavigation}><main className="app-canvas instagram-theme flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground md:flex-row">
       <AppSidebar
         activeKey={activeKey}
         defaultCollapsed={defaultSidebarCollapsed}

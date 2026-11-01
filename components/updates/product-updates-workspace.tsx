@@ -35,7 +35,7 @@ export function ProductUpdatesWorkspace() {
             Product updates
           </p>
           <h1 className="mt-3 text-4xl font-black tracking-[-0.055em] text-foreground-strong sm:text-5xl lg:text-6xl">
-            What’s new in UGC Pilot
+            What’s new in Vidmake
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">
             A clear record of the improvements, fixes, and new tools that make

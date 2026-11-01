@@ -205,8 +205,8 @@ test("Talking Head Recreate approves only the current draft, preserves Demo/scri
   nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
   current = render(); prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame, frame);
-  const sound = nodes(current.composer.startingFrameSoundControl).find(node => node.type === "input" && node.props.type === "checkbox");
-  sound.props.onChange({ target: { checked: true } }); current = render();
+  const sound = nodes(current.composer.startingFrameSoundControl).find(node => node.props.role === "switch" && node.props["aria-label"] === "Generate sound");
+  sound.props.onClick(); current = render();
   assert.equal(current.generationDraft.startingFrame.generateAudio, true);
   const faceControl = () => nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props;
   const photos = [{ asset: { id: "face-a", title: "Face A", url: "https://owned.test/a.png" } }, { asset: { id: "face-b", title: "Face B", url: "https://owned.test/b.png" } }];
@@ -455,4 +455,20 @@ test("Talking Head scopes restored identity photos to the selected frame and sup
   state = h.render(props); assert.deepEqual(Array.from(state.generationDraft.startingFramePhotos, p => p.assetId), ["face-b"]);
   state.composer.onGenerationSettingsChange({ model: "wan_3_0" }); state = h.render(props);
   assert.equal(state.generationDraft.startingFramePhotos.length, 0, "unsupported models receive no appearance photos");
+});
+
+
+test("Talking Head stored-frame choice keeps ownership, full source duration, script and Demo", () => {
+  const actual=layout("hook");
+  const render=()=>actual.render({generationEnabled:true,startingFrameEnabled:true,draftEntry:{id:"draft"}});
+  let current=render();current.composer.onInstructionsChange("Keep my spoken script");current=render();
+  const frame={ownerId:"owner",draftId:"stored-draft",referenceId:"stored-source",assetId:"stored-frame",jobId:"stored-job",url:"https://owned.test/frame.png",width:720,height:1280,durationSeconds:6,sourceDurationSeconds:5,motionInstructions:"Frozen source directions",generateAudio:false};
+  assert.equal(current.composer.onStartingFrameSelect({...frame,ownerId:"foreign"}),false);
+  assert.equal(actual.frameSelection.frame,null);assert.equal(actual.references[0].removed,0);
+  assert.equal(current.composer.onStartingFrameSelect(frame),true);current=render();
+  assert.equal(current.generationDraft.startingFrame,frame);
+  assert.equal(current.composer.generationSettings.duration,5);
+  assert.equal(current.composer.instructions,"Keep my spoken script");
+  assert.equal(actual.references[0].removed,1);assert.equal(actual.references[1].removed,1);
+  assert.equal(actual.references[2].removed,0);assert.equal(actual.demo.removed,0);assert.equal(actual.audio.removed,0);
 });

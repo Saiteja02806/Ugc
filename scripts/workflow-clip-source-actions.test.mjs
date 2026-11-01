@@ -23,6 +23,7 @@ function harness(disabled = false, presentation = "menu", triggerLabel, library)
 test("one hover trigger exposes source choices and upload preserves the native gesture and cancel behavior", () => {
   const h = harness(), tree = h.render(), trigger = nodes(tree).find(n => n.type === "trigger");
   assert.equal(nodes(tree).filter(n => n.type === "trigger").length, 1); assert.equal(trigger.props.openOnHover, true);
+  assert.equal(trigger.props.render.props.variant, "default", "Empty clip upload uses the primary button");
   h.option("Upload hook video").props.onClick(); assert.deepEqual(h.clicks, ["upload"]);
   const empty = { files: [], value: "" }; h.input().props.onChange({ currentTarget: empty }); assert.deepEqual(h.uploads, []);
   const file = { name: "opening.mp4" }, selected = { files: [file], value: "opening.mp4" };
@@ -52,6 +53,7 @@ test("Change opens by click and dismisses before starting the chosen replacement
   let tree = h.render();
   const trigger = nodes(tree).find(n => n.type === "trigger");
   assert.equal(trigger.props.openOnHover, false);
+  assert.equal(trigger.props.render.props.variant, "outline");
   assert.equal(trigger.props.render.props["aria-label"], "Change hook video");
   assert.deepEqual(h.clicks, []);
   nodes(tree).find(n => n.type === "popover").props.onOpenChange(true);

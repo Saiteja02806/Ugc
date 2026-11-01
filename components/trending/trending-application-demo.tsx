@@ -18,7 +18,7 @@ export function TrendingApplicationDemo() {
       >
         <div className="aspect-video w-full overflow-hidden rounded-[18px] border border-white/[0.08] bg-black">
           <video
-            aria-label="UGCPilot application demo"
+            aria-label="Vidmake application demo"
             autoPlay
             className="block size-full object-contain"
             controls

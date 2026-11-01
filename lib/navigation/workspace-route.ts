@@ -36,6 +36,14 @@ const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
 export function getWorkspaceRouteConfig(
   pathname: string,
 ): WorkspaceRouteConfig | null {
+  if (pathname.replace(/\/$/, "") === "/explore") {
+    return {
+      access: "none",
+      activeKey: "explore",
+      defaultSidebarCollapsed: false,
+    };
+  }
+
   const route = workspaceRoutes.find(({ prefix }) =>
     matchesRoutePrefix(pathname, prefix),
   );
@@ -56,7 +64,7 @@ function matchesRoutePrefix(pathname: string, prefix: string) {
 }
 
 export function isFocusedVideoWorkflowRoute(pathname: string) {
-  return ["/explore/hook-video", "/explore/wall-of-text", "/explore/create-hook", "/explore/slideshows"].includes(pathname.replace(/\/$/, ""));
+  return ["/explore/hook-video", "/explore/wall-of-text", "/explore/create-hook", "/explore/slideshows", "/explore/build-character"].includes(pathname.replace(/\/$/, ""));
 }
 
 function shouldDefaultSidebarToCollapsed(pathname: string) {

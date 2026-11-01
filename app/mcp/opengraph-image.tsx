@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot MCP",
+    kicker: "Vidmake MCP",
     title: "UGC video MCP server for your agent.",
     subtitle: "78 tools. OAuth sign-in. One hosted URL for Claude, Codex, and ChatGPT.",
   });

@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot",
+    kicker: "Vidmake",
     title: "Talking head hook generator for SaaS.",
     subtitle: "Stop the scroll on TikTok and Reels in under three seconds.",
   });

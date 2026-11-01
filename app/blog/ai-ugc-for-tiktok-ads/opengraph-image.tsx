@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot",
+    kicker: "Vidmake",
     title: "AI UGC for TikTok ads.",
     subtitle: "Briefs, hooks, captions, and a way to test variants.",
   });

@@ -24,7 +24,7 @@ export function ComposerSettingsRail({ children }: { children: ReactNode }) {
     <div ref={rail} id={id} role="group" aria-label="Generation settings" className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overscroll-x-contain py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
       {children}
     </div>
-    {position.overflow ? <Button type="button" variant="ghost" size="icon-sm" className="size-7 shrink-0 rounded-full" aria-controls={id} aria-label={position.end ? "Previous settings" : "More settings"}
+    {position.overflow ? <Button type="button" variant="ghost" size="icon-sm" className="size-7 shrink-0 rounded-[10px]" aria-controls={id} aria-label={position.end ? "Previous settings" : "More settings"}
       onClick={() => rail.current?.scrollBy({ left: position.end ? -rail.current.scrollLeft : Math.max(100, rail.current.clientWidth * 0.8), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })}>
       {position.end ? <ChevronLeft className="size-3.5" aria-hidden="true" /> : <ChevronRight className="size-3.5" aria-hidden="true" />}
     </Button> : null}

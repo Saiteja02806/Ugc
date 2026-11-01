@@ -8,7 +8,7 @@ import { publicOrigin } from "@/lib/marketing/public-pages";
 
 const path = "/hookvideos";
 const title = "Hook Videos: Preview AI UGC Opening Clips";
-const description = "Browse 128 silent AI hook videos from UGC Pilot. Filter by reaction, preview an opening clip, and see how a first shot can stop the scroll.";
+const description = "Browse 128 silent AI hook videos from Vidmake. Filter by reaction, preview an opening clip, and see how a first shot can stop the scroll.";
 
 export const metadata: Metadata = {
   title,
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -32,7 +32,7 @@ export default function HookVideosPage() {
           <p className="mb-3 text-sm font-medium text-primary">The Trending collection</p>
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">A hook for every reaction.</h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
-            {bundle.videos.length} AI-generated hook videos from UGC Pilot’s Trending library. Browse reactions and preview a clip for your next video.
+            {bundle.videos.length} AI-generated hook videos from Vidmake’s Trending library. Browse reactions and preview a clip for your next video.
           </p>
           <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
             <VolumeX className="size-4" aria-hidden="true" />

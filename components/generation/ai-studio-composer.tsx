@@ -192,7 +192,7 @@ export function AiStudioComposer({
   if (layout === "workflow") {
     const actions = <div className={cn("space-y-2", !actionsTarget && "shrink-0 border-t border-border bg-card p-5")}>
       <Popover key={active ? "visible-controls" : "hidden-controls"}>
-        <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Change generation settings" className="h-9 w-full min-w-0 justify-start gap-2 rounded-lg px-3 text-xs" />}>
+        <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Change generation settings" className="h-9 w-full min-w-0 justify-start gap-2 rounded-[10px] px-3 text-xs" />}>
           <SlidersHorizontal className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate text-left tabular-nums" aria-label="Current generation settings">{settingsSummary ?? "Generation settings"}</span>
           <ChevronDown className="size-3 shrink-0 text-muted" aria-hidden="true" />
@@ -203,7 +203,7 @@ export function AiStudioComposer({
         </PopoverContent>
       </Popover>
       {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
-      <Button type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className="h-11 w-full rounded-lg">{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className="h-11 w-full rounded-[10px]">{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
       <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
     </div>;
     const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">
@@ -214,7 +214,7 @@ export function AiStudioComposer({
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId}
-          placeholder={placeholder} className="h-[72px] min-h-[72px] w-full resize-y rounded-lg border border-border/60 bg-card-muted/40 px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-focus" />
+          placeholder={placeholder} className="h-[72px] min-h-[72px] w-full resize-y rounded-lg border border-border/60 bg-card-muted/40 px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-white focus-visible:ring-2 focus-visible:ring-focus" />
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className="text-xs leading-5 text-muted">{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
       {referenceControls}
@@ -237,9 +237,9 @@ export function AiStudioComposer({
           layout === "unified"
             ? cn(
                 unifiedMaxWidthClassName ?? "max-w-[944px]",
-                "rounded-[20px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
+                "rounded-[20px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-white/70 focus-within:ring-2 focus-within:ring-white/20",
               )
-            : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
+            : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-white/70 focus-within:ring-2 focus-within:ring-white/20 sm:p-3",
           compact && "rounded-[28px] shadow-none",
           quiet && "shadow-none focus-within:border-border-strong focus-within:ring-0",
         )}
@@ -374,11 +374,11 @@ export function AiStudioComposer({
                   disabled={generateDisabled || promptTooLong}
                   title={generationLocked ? accessMessage ?? undefined : undefined}
                   className={cn(
-                    "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
+                    "min-w-0 flex-1 h-10 rounded-[10px] px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && !quiet && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     quiet && "shadow-none",
                     layout === "unified" && "w-full",
-                    compact && "h-8 rounded-full px-3 text-xs font-medium shadow-none sm:min-w-0",
+                    compact && "h-8 rounded-[10px] px-3 text-xs font-medium shadow-none sm:min-w-0",
                   )}
                 >
                   {isGenerating ? (
@@ -411,7 +411,7 @@ export function AiStudioSetting({
   label: string;
 }) {
   return (
-    <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70">
+    <span className="inline-flex h-8 items-center gap-1.5 rounded-[10px] bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70">
       {icon}
       {label}
     </span>
@@ -442,6 +442,9 @@ export function AiStudioSettingSelect<TValue extends string>({
     label: string;
     triggerLabel?: string;
     value: TValue;
+    icon?: ReactNode;
+    badge?: "NEW" | "PREMIUM" | string;
+    description?: string;
   }[];
   size?: "default" | "sm";
   value: TValue;
@@ -501,14 +504,18 @@ export function AiStudioSettingSelect<TValue extends string>({
             aria-haspopup="listbox"
             aria-expanded={open}
             className={cn(
-              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-[10px] bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
               fieldLayout === "classic" && creation.settingButton,
             )}
           />
         }
       >
-        {icon ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
+        {(currentOption.icon ?? icon) ? (
+          <span className="inline-flex shrink-0 items-center">
+            {currentOption.icon ?? icon}
+          </span>
+        ) : null}
         <span className="truncate">
           {currentOption.triggerLabel ?? currentOption.label}
         </span>
@@ -525,7 +532,10 @@ export function AiStudioSettingSelect<TValue extends string>({
         side="top"
         align="start"
         sideOffset={6}
-        className="w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5"
+        className={cn(
+          "w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5",
+          options.some((o) => o.description || o.icon) && "min-w-64 max-w-[min(26rem,calc(100vw-1rem))]"
+        )}
       >
         <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
           {options.map((option) => {
@@ -549,11 +559,40 @@ export function AiStudioSettingSelect<TValue extends string>({
                   isSelected
                     ? "bg-brand-soft font-semibold text-primary"
                     : "text-foreground hover:bg-card-muted",
+                  (option.description || option.icon) && "items-start py-2.5",
                 )}
               >
-                <span>{option.label}</span>
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                  {option.icon ? (
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.08] border border-white/10 text-foreground">
+                      {option.icon}
+                    </span>
+                  ) : null}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate font-medium">{option.label}</span>
+                      {option.badge ? (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider border",
+                            option.badge === "NEW"
+                              ? "bg-[#0078d4]/15 text-[#0078d4] border-[#0078d4]/40"
+                              : "bg-amber-400/15 text-amber-300 border-amber-400/40"
+                          )}
+                        >
+                          {option.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                    {option.description ? (
+                      <span className="text-[11px] font-normal text-muted-foreground line-clamp-1 mt-0.5">
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
                 {isSelected ? (
-                  <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                  <Check className="size-3.5 shrink-0 text-primary mt-0.5" aria-hidden="true" />
                 ) : null}
               </button>
             );
@@ -638,7 +677,7 @@ export function AiStudioRatioPicker({
             disabled={disabled}
             aria-label={`Aspect ratio, currently ${currentOption.label}`}
             className={cn(
-              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[10px] bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
               fieldLayout === "classic" && creation.settingButton,
             )}
@@ -694,7 +733,7 @@ export function AiStudioRatioPicker({
                       aria-hidden="true"
                       className={cn(
                         "inline-block rounded-[3px] border-2",
-                        isSelected ? "border-primary" : "border-muted-foreground",
+                        isSelected ? "border-white" : "border-muted-foreground",
                         option.iconClassName,
                       )}
                     />

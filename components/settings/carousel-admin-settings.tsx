@@ -206,7 +206,7 @@ export function CarouselAdminSettings() {
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-primary/25 bg-card shadow-card">
+    <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
       <span
         className="absolute inset-y-0 left-0 w-1 bg-primary"
         aria-hidden="true"

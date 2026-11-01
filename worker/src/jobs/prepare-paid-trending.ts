@@ -61,8 +61,8 @@ function getRecord(value: Json | undefined) {
 
 function getPlanKey(
   value: Json | undefined,
-): "starter" | "growth" | null {
-  return value === "starter" || value === "growth" ? value : null;
+): "starter" | "growth" | "startup" | null {
+  return value === "starter" || value === "growth" || value === "startup" ? value : null;
 }
 
 function getString(value: Json | undefined) {

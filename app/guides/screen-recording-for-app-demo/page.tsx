@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { articleJsonLd } from "@/lib/marketing/brand-videos";
+import { articleJsonLd, publicOrigin } from "@/lib/marketing/brand-videos";
 import { faqJsonLd } from "@/lib/marketing/mcp-public";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { ArticleBody, ArticleH2, ArticleH3, ArticleLink, ArticleExternalLink, ArticleCommand, FaqList } from "@/components/marketing/seo-article";
@@ -7,7 +7,7 @@ import { ArticleBody, ArticleH2, ArticleH3, ArticleLink, ArticleExternalLink, Ar
 const path = "/guides/screen-recording-for-app-demo";
 const title = "How to Record an App Demo for Vertical Video";
 const description = "Capture readable SaaS or mobile-app footage for Reels, TikTok and Shorts. Use a preparation worksheet, framing test and record-review checklist before editing.";
-export const metadata: Metadata = { title, description, alternates: { canonical: path }, openGraph: { type: "article", title, description, url: path, siteName: "UGC Pilot" }, twitter: { card: "summary", title, description } };
+export const metadata: Metadata = { title, description, alternates: { canonical: path }, openGraph: { type: "article", title, description, url: path, siteName: "Vidmake" }, twitter: { card: "summary", title, description } };
 
 const faqs = [
         { question: "Should I record vertically or crop later?", answer: "For a portrait mobile app, test a portrait capture first. For a wide desktop interface, test an overview plus readable close-ups. Choose the method that preserves the necessary controls and result; do not crop away the proof just to fill the canvas." },
@@ -16,7 +16,7 @@ const faqs = [
       ];
 
 export default function ScreenRecordingForAppDemoPage() {
-  return <VideoMarketingPage eyebrow="Record your app demo" h1="Record app footage people can actually follow." lede="Capture one task with readable controls and a visible result. Test the framing before recording the full sequence, especially when a wide SaaS interface needs to fit a vertical social video." jsonLd={{ "@context": "https://schema.org", "@graph": [articleJsonLd({ path, headline: "Record app footage people can actually follow.", description, imagePath: "/guides/opengraph-image" }), { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Guides", item: "https://getugcpilot.com/guides" }, { "@type": "ListItem", position: 2, name: title, item: `https://getugcpilot.com${path}` }] }, faqJsonLd(faqs.map(faq => ({ question: faq.question, answer: typeof faq.answer === "string" ? faq.answer : faq.schemaAnswer! })))] }}>
+  return <VideoMarketingPage eyebrow="Record your app demo" h1="Record app footage people can actually follow." lede="Capture one task with readable controls and a visible result. Test the framing before recording the full sequence, especially when a wide SaaS interface needs to fit a vertical social video." jsonLd={{ "@context": "https://schema.org", "@graph": [articleJsonLd({ path, headline: "Record app footage people can actually follow.", description, imagePath: "/guides/opengraph-image" }), { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Guides", item: `${publicOrigin}/guides` }, { "@type": "ListItem", position: 2, name: title, item: `${publicOrigin}${path}` }] }, faqJsonLd(faqs.map(faq => ({ question: faq.question, answer: typeof faq.answer === "string" ? faq.answer : faq.schemaAnswer! })))] }}>
     <ArticleBody>
       <p>For an app demo, the recording is the proof. The viewer should be able to tell where the task starts, which action you take and what changes. A clean capture of one useful feature is a better starting point than a long tour you hope to rescue in the edit.</p>
       <p>This guide prepares source footage for a social video. It does not promise a particular export specification, store approval or better engagement. Store preview videos have separate requirements; check the destination before making one file serve every channel.</p>
@@ -57,7 +57,7 @@ Retake needed and why:`}</ArticleCommand>
       <p>If any answer is no, fix the capture while the demo account is ready. A new recording may be simpler and more accurate than trying to hide the problem with animated overlays.</p>
       <ArticleH2>Turn the source clip into a short video</ArticleH2>
       <p>Keep an original copy of the recording. Then trim the sequence, add an opening that matches the task and check the final export. Follow the <ArticleLink href="/guides/product-demo-to-short-video">product-demo editing guide</ArticleLink> for that stage. The <ArticleLink href="/guides/readable-video-text">text readability guide</ArticleLink> helps when labels, narration captions and product UI compete for space.</p>
-      <p>UGC Pilot can fit into the creative and editing workflow where its current capabilities support your media. This page does not claim it records your screen or repairs an unreadable capture automatically. Generated footage may introduce a question; a genuine recording should demonstrate the software.</p>
+      <p>Vidmake can fit into the creative and editing workflow where its current capabilities support your media. This page does not claim it records your screen or repairs an unreadable capture automatically. Generated footage may introduce a question; a genuine recording should demonstrate the software.</p>
       <FaqList items={faqs} />
     </ArticleBody>
     <VideoRelatedLinks links={[{ href: "/guides/saas-demo-video-script", title: "Write the words first", description: "Tie a short SaaS script to observable screen actions." }, { href: "/guides/product-demo-to-short-video", title: "Edit the captured sequence", description: "Combine a relevant opening with a genuine demonstration." }, { href: "/guides/mobile-app-marketing", title: "Plan the app-marketing context", description: "Choose where this demonstration belongs in your launch routine." }]} />

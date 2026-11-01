@@ -18,16 +18,17 @@ import {
 } from "@/lib/billing/generation-credit-policy";
 import {
   emptyFreeGenerationCredits,
-  ONE_TIME_FREE_GENERATION_CREDITS,
   type FreeGenerationCredits,
 } from "@/lib/billing/free-generation-credit-policy";
 import {
   getBillingUsageRetryDelayMs,
   getSubscriptionEntitlementPlanKey,
   MAX_BILLING_USAGE_ATTEMPTS,
+  PAID_PLAN_MONTHLY_CREDITS,
   resolveDailyContentPieces,
   resolveInstagramAccountLimit,
   type BillingPlanKey,
+  type PaidBillingPlanKey,
 } from "@/lib/billing/policy";
 
 export type { BillingPlanKey } from "@/lib/billing/policy";
@@ -52,7 +53,7 @@ export type UserSubscriptionInfo = {
   currentPeriodEnd: string | null;
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
-  displayName: "Free" | "Starter" | "Growth";
+  displayName: "Free" | "Starter" | "Growth" | "Startup";
   freeGenerationCredits: FreeGenerationCredits;
   instagramAccounts: number;
   imageGenerationCreditCost: number;
@@ -79,7 +80,7 @@ export type DodoSubscriptionEventInput = {
   payload: Record<string, unknown>;
   periodEnd: string | null;
   periodStart: string | null;
-  planKey: "starter" | "growth";
+  planKey: PaidBillingPlanKey;
   productId: string;
   status: Exclude<BillingSubscriptionStatus, "free">;
   subscriptionId: string;
@@ -128,6 +129,8 @@ export function normalizeSubscriptionPlanKey(
   if (!rawKey) return "free";
   const normalized = rawKey.trim().toLowerCase();
 
+  if (normalized === "startup") return "startup";
+
   if (
     normalized === "growth" ||
     normalized === "creator" ||
@@ -154,11 +157,7 @@ export function resolveSubscriptionEntitlements(
 ): UserSubscriptionInfo {
   const paidPlan = planKey;
   const sharedMonthlyCredits =
-    isActive && paidPlan === "growth"
-      ? 600
-      : isActive && paidPlan === "starter"
-        ? 200
-        : 0;
+    isActive && paidPlan !== "free" ? PAID_PLAN_MONTHLY_CREDITS[paidPlan] : 0;
 
   return {
     accessSource,
@@ -176,11 +175,13 @@ export function resolveSubscriptionEntitlements(
       configuredDailyContentPieces,
     ),
     displayName:
-      paidPlan === "growth"
-        ? "Growth"
-        : paidPlan === "starter"
-          ? "Starter"
-          : "Free",
+      paidPlan === "startup"
+        ? "Startup"
+        : paidPlan === "growth"
+          ? "Growth"
+          : paidPlan === "starter"
+            ? "Starter"
+            : "Free",
     instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
     freeGenerationCredits: emptyFreeGenerationCredits(),
     imageGenerationCreditCost: getGenerationCreditCost("image"),
@@ -408,15 +409,17 @@ export async function getUserSubscription(
         }
       : freeResult.data as FreeGenerationCredits | null;
     const missingReadOnlyBalance = readOnlyFreeCredits && !freeResult.error && freeResult.data === null;
-    const valid = freeBalance?.granted === ONE_TIME_FREE_GENERATION_CREDITS &&
-      [freeBalance.remaining, freeBalance.reserved, freeBalance.used].every(
+    const valid = Boolean(freeBalance) &&
+      [freeBalance!.granted, freeBalance!.remaining, freeBalance!.reserved, freeBalance!.used].every(
         (amount) => Number.isInteger(amount) && amount >= 0,
-      ) && freeBalance.remaining + freeBalance.reserved + freeBalance.used === freeBalance.granted;
+      ) && freeBalance!.remaining + freeBalance!.reserved + freeBalance!.used === freeBalance!.granted;
     if (freeResult.error || (!valid && !missingReadOnlyBalance)) {
       if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
       console.warn("Could not load one-time generation credits.");
     } else if (freeBalance) {
-      freeGenerationCredits = freeBalance!;
+      // Free accounts have no spendable AI credits. Keep reserved and used
+      // amounts so an in-flight job can still settle.
+      freeGenerationCredits = { ...freeBalance, remaining: 0 };
     }
   }
 
@@ -527,6 +530,14 @@ export async function reserveBillingCredits(params: {
   jobType: string;
   userId: string;
 }) {
+  const subscription = await getUserSubscription(params.userId, {
+    strict: true,
+    initializeFreeCredits: false,
+    refreshCredits: false,
+  });
+  if (!subscription.isActive) {
+    throw new BillingAccessError("You do not have enough AI credits for this generation.");
+  }
   const { data, error } = await getClient().rpc("reserve_billing_credits", {
     p_amount: params.amount,
     p_idempotency_key: params.idempotencyKey,

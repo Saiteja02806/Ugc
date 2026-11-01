@@ -1,12 +1,26 @@
-export type BillingPlanKey = "free" | "starter" | "growth";
+export type BillingPlanKey = "free" | "starter" | "growth" | "startup";
+export type PaidBillingPlanKey = Exclude<BillingPlanKey, "free">;
 
 export const MAX_BILLING_USAGE_ATTEMPTS = 10;
+
+export const PAID_PLAN_MONTHLY_CREDITS: Record<PaidBillingPlanKey, number> = {
+  starter: 360,
+  growth: 720,
+  startup: 1800,
+};
 
 export const INSTAGRAM_ACCOUNT_LIMITS: Record<BillingPlanKey, number> = {
   free: 1,
   growth: 5,
   starter: 3,
+  startup: 5,
 };
+
+export function isPaidBillingPlan(
+  planKey: string | null | undefined,
+): planKey is PaidBillingPlanKey {
+  return planKey === "starter" || planKey === "growth" || planKey === "startup";
+}
 
 const MIN_BILLING_USAGE_RETRY_DELAY_MS = 5 * 60 * 1000;
 const MAX_BILLING_USAGE_RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
@@ -14,7 +28,7 @@ const MAX_BILLING_USAGE_RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 export function getSubscriptionEntitlementPlanKey(
   planKey: BillingPlanKey,
 ): "creator" | "free" | "pro" {
-  if (planKey === "growth") return "creator";
+  if (planKey === "growth" || planKey === "startup") return "creator";
   if (planKey === "starter") return "pro";
   return "free";
 }
@@ -25,7 +39,7 @@ export function resolveDailyContentPieces(
   configuredValue?: number | null,
 ) {
   const fallback =
-    isActive && planKey === "growth"
+    isActive && (planKey === "growth" || planKey === "startup")
       ? 50
       : isActive && planKey === "starter"
         ? 20

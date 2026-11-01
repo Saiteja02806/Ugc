@@ -24,15 +24,15 @@ const faqs = [
   },
   {
     question: "Can I generate SaaS videos from a website URL or brief?",
-    answer: "Yes. UGC Pilot takes your website context, product brief, or target customer problem and generates matching creator video hooks, text overlays, and multi-slide carousel drafts.",
+    answer: "Yes. Vidmake takes your website context, product brief, or target customer problem and generates matching creator video hooks, text overlays, and multi-slide carousel drafts.",
   },
   {
-    question: "Do I need to be on camera to use UGC Pilot?",
-    answer: "No. UGC Pilot provides photorealistic AI creator avatars who deliver your hook lines and problem statements directly to the camera, so technical founders never need to film themselves.",
+    question: "Do I need to be on camera to use Vidmake?",
+    answer: "No. Vidmake provides photorealistic AI creator avatars who deliver your hook lines and problem statements directly to the camera, so technical founders never need to film themselves.",
   },
   {
     question: "Can I trigger video generation through Claude or Codex?",
-    answer: "Yes. UGC Pilot features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with MCP tools to research hooks, generate creator videos, and inspect job status directly from your AI agent.",
+    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with MCP tools to research hooks, generate creator videos, and inspect job status directly from your AI agent.",
   },
   {
     question: "How long does it take to render an AI UGC video?",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function AiVideoGeneratorForSaasPage() {
           Video is now the primary discovery format on TikTok, Instagram Reels, YouTube Shorts, and X. Yet for software companies, producing video content has historically been painful: you either hire an agency for thousands of dollars or spend hours in complicated timeline editors.
         </p>
         <p>
-          An <strong className="font-semibold text-foreground-strong">AI video generator for SaaS</strong> eliminates the production bottleneck. By providing a short product brief or website URL, you can generate studio-quality creator hook videos, speech, and captions in minutes with <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>.
+          An <strong className="font-semibold text-foreground-strong">AI video generator for SaaS</strong> eliminates the production bottleneck. By providing a short product brief or website URL, you can generate studio-quality creator hook videos, speech, and captions in minutes with <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>.
         </p>
 
         <ArticleH2>Why Generic Video Tools Fail for Software Products</ArticleH2>
@@ -92,14 +92,14 @@ export default function AiVideoGeneratorForSaasPage() {
           </li>
         </ul>
 
-        <ArticleH2>The Brief-to-Video Workflow in UGC Pilot</ArticleH2>
+        <ArticleH2>The Brief-to-Video Workflow in Vidmake</ArticleH2>
         <p>
-          Creating high-performing software videos with UGC Pilot follows a streamlined 4-step workflow:
+          Creating high-performing software videos with Vidmake follows a streamlined 4-step workflow:
         </p>
 
         <ArticleH3>Step 1: Define Your Business Context &amp; Audience</ArticleH3>
         <p>
-          You enter your product URL and key value proposition once. UGC Pilot maps your target buyer (e.g., frontend developers, sales leaders, indie hackers) and the core frustration your software eliminates.
+          You enter your product URL and key value proposition once. Vidmake maps your target buyer (e.g., frontend developers, sales leaders, indie hackers) and the core frustration your software eliminates.
         </p>
 
         <ArticleH3>Step 2: Generate Photorealistic Creator Hooks</ArticleH3>
@@ -154,7 +154,7 @@ export default function AiVideoGeneratorForSaasPage() {
 
         <ArticleH2>Automate Video Creation with Claude &amp; Codex MCP</ArticleH2>
         <p>
-          For developers and technical teams, UGC Pilot is not limited to a web UI. Our hosted Streamable HTTP <ArticleLink href="/mcp">Model Context Protocol (MCP) server</ArticleLink> allows coding agents in Claude Desktop, Codex CLI, or ChatGPT to generate videos programmatically.
+          For developers and technical teams, Vidmake is not limited to a web UI. Our hosted Streamable HTTP <ArticleLink href="/mcp">Model Context Protocol (MCP) server</ArticleLink> allows coding agents in Claude Desktop, Codex CLI, or ChatGPT to generate videos programmatically.
         </p>
         <p>
           Connect in one line with your terminal:
@@ -185,7 +185,7 @@ export default function AiVideoGeneratorForSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Render times average 2-4 minutes. Start testing with 2 free credits on our{" "}
+                  Render times average 2-4 minutes. Start with our{" "}
                   <ArticleLink href="/pricing">free trial</ArticleLink>.
                 </>
               ),
@@ -198,7 +198,7 @@ export default function AiVideoGeneratorForSaasPage() {
           { href: "/ai-ugc-video-generator", title: "AI UGC Video Generator", description: "Create short-form creator hooks from your software brief." },
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/blog/ugc-video-generator-examples", title: "UGC Video Examples", description: "Real public YouTube, Instagram Reel, and TikTok outputs." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to generate videos from prompts." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to generate videos from prompts." },
           { href: "/free-hook-lines", title: "Free UGC Hook Lines", description: "110 tested opening lines for short-form software videos." },
           { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
         ]}

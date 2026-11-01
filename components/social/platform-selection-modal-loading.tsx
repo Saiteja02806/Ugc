@@ -7,7 +7,7 @@ export function PlatformSelectionModalLoading() {
     >
       <div className="flex w-full max-w-sm items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
         <span
-          className="size-5 shrink-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none"
+          className="size-5 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-white motion-reduce:animate-none"
           aria-hidden="true"
         />
         Opening scheduling…

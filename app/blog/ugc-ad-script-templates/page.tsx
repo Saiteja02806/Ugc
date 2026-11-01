@@ -15,7 +15,7 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/ugc-ad-script-templates";
 const title = "UGC Ad Script Templates: 8 Fill-in-the-Blank Formats That Work";
-const description = "Eight UGC ad script templates with hooks, beats and timings you can copy, plus how to turn each one into an AI UGC video with UGC Pilot.";
+const description = "Eight UGC ad script templates with hooks, beats and timings you can copy, plus how to turn each one into an AI UGC video with Vidmake.";
 const datePublished = "2026-10-25";
 
 const faqs = [
@@ -33,10 +33,10 @@ const faqs = [
   },
   {
     question: "Can Claude or Codex write the script and make the video?",
-    answer: "Yes, with the UGC Pilot MCP server connected. They can write hooks, generate the video and voiceover, and export the edit for your review.",
+    answer: "Yes, with the Vidmake MCP server connected. They can write hooks, generate the video and voiceover, and export the edit for your review.",
   },
   {
-    question: "Does UGC Pilot publish the ad for me?",
+    question: "Does Vidmake publish the ad for me?",
     answer: "No. You download the approved video and upload it to your ad account or channel yourself.",
   },
   {
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -103,7 +103,7 @@ export default function UgcAdScriptTemplatesPage() {
     >
       <ArticleBody>
         <p>
-          Below are eight <strong className="font-semibold text-foreground-strong">UGC ad script templates</strong> you can copy. Each has a hook, the beats in order, a rough timing for a 15 to 30 second vertical video, and a filled-in example for a made-up SaaS product. At the end, you&apos;ll see how to turn any of them into a video with <ArticleLink href="/ai-ugc-video-generator">UGC Pilot&apos;s AI UGC video generator</ArticleLink> or from a chat with Claude or Codex.
+          Below are eight <strong className="font-semibold text-foreground-strong">UGC ad script templates</strong> you can copy. Each has a hook, the beats in order, a rough timing for a 15 to 30 second vertical video, and a filled-in example for a made-up SaaS product. At the end, you&apos;ll see how to turn any of them into a video with <ArticleLink href="/ai-ugc-video-generator">Vidmake&apos;s AI UGC video generator</ArticleLink> or from a chat with Claude or Codex.
         </p>
         <p>The examples are illustrations, not real customer stories. When you fill them in, use only claims you can prove.</p>
 
@@ -118,7 +118,7 @@ export default function UgcAdScriptTemplatesPage() {
           </li>
         </ul>
         <p>
-          If you can&apos;t write those two lines, no template will save the script. UGC Pilot&apos;s guide on <ArticleLink href="/guides/how-to-create-ugc-videos-with-ai">how to create UGC videos with AI</ArticleLink> covers this step in more detail.
+          If you can&apos;t write those two lines, no template will save the script. Vidmake&apos;s guide on <ArticleLink href="/guides/how-to-create-ugc-videos-with-ai">how to create UGC videos with AI</ArticleLink> covers this step in more detail.
         </p>
 
         <ArticleH2>1. Problem → Agitate → Fix</ArticleH2>
@@ -233,24 +233,24 @@ export default function UgcAdScriptTemplatesPage() {
 
         <ArticleH2>Hooks: where most scripts win or lose</ArticleH2>
         <p>
-          The first three seconds decide whether anyone hears the rest. Write five hooks per script and keep the best. Good hooks are short (under 10 words), specific and about the viewer, not you. UGC Pilot&apos;s <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page has a list to adapt, and the <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> post shows hooks in finished videos. <ArticleLink href="/blog/ugc-hooks">UGC hooks that stop the scroll</ArticleLink> groups 20 real lines by type.
+          The first three seconds decide whether anyone hears the rest. Write five hooks per script and keep the best. Good hooks are short (under 10 words), specific and about the viewer, not you. Vidmake&apos;s <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page has a list to adapt, and the <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> post shows hooks in finished videos. <ArticleLink href="/blog/ugc-hooks">UGC hooks that stop the scroll</ArticleLink> groups 20 real lines by type.
         </p>
 
         <ArticleH2>Turning a template into an AI UGC video</ArticleH2>
         <p>Once the script is ready, you have two routes.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">In the browser.</strong> Open AI Studio in UGC Pilot, paste the script as your brief, choose the model, vertical format and length, and generate. Add a voiceover, adjust text, then export. Review every draft and download only the version you approve.
+          <strong className="font-semibold text-foreground-strong">In the browser.</strong> Open AI Studio in Vidmake, paste the script as your brief, choose the model, vertical format and length, and generate. Add a voiceover, adjust text, then export. Review every draft and download only the version you approve.
         </p>
         <p>
-          <strong className="font-semibold text-foreground-strong">From an AI assistant.</strong> Connect Claude or Codex to the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and ask it to fill a template and make the video in one go:
+          <strong className="font-semibold text-foreground-strong">From an AI assistant.</strong> Connect Claude or Codex to the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and ask it to fill a template and make the video in one go:
         </p>
-        <ArticlePrompt>Use the &quot;Objection buster&quot; template for solo SaaS founders. Write 3 hook options, pick the strongest, then use UGC Pilot to generate a 20-second vertical UGC-style video and a casual voiceover. Show me the credit cost first.</ArticlePrompt>
+        <ArticlePrompt>Use the &quot;Objection buster&quot; template for solo SaaS founders. Write 3 hook options, pick the strongest, then use Vidmake to generate a 20-second vertical UGC-style video and a casual voiceover. Show me the credit cost first.</ArticlePrompt>
         <p>
           Setup guides: <ArticleLink href="/mcp/claude">Claude</ArticleLink> and <ArticleLink href="/mcp/codex">Codex</ArticleLink>. Our post on <ArticleLink href="/blog/ugc-videos-with-codex-mcp">making UGC videos with Codex</ArticleLink> walks through it step by step.
         </p>
 
         <ArticleH2>Real examples to study</ArticleH2>
-        <p>Watch how these UGC Pilot videos structure their first seconds:</p>
+        <p>Watch how these Vidmake videos structure their first seconds:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <ArticleExternalLink href="https://www.youtube.com/shorts/2P1whMHDqi8">YouTube Short</ArticleExternalLink> and the longer <ArticleExternalLink href="https://www.youtube.com/watch?v=9bIweHdRdVw">walkthrough</ArticleExternalLink> on <ArticleExternalLink href="https://www.youtube.com/@Teja.Chundu">@Teja.Chundu</ArticleExternalLink>
@@ -289,7 +289,7 @@ export default function UgcAdScriptTemplatesPage() {
               question: faqs[5].question,
               answer: (
                 <>
-                  Sometimes. For physical products and real testimonials, human creators are often the better choice. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">UGC Pilot vs hiring UGC creators</ArticleLink>.
+                  Sometimes. For physical products and real testimonials, human creators are often the better choice. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink>.
                 </>
               ),
             },

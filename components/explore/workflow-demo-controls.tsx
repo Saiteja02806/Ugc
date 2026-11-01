@@ -186,7 +186,7 @@ export function DemoFramingEditor({ asset, value, outputAspect, onSave, onCancel
             onPause={() => { if (!video.current?.paused) return; cancelAnimationFrame(animation.current); if (mounted.current && recorder.current) finishRecording(); }} onEnded={finishRecording} onSeeked={draw}
             onError={() => fail("This demo could not be played. Close the editor and choose it again.")} />
           {frame && ready ? <button ref={selection} type="button" aria-label="Move visible demo frame" aria-describedby="demo-frame-instructions" disabled={mode === "review"}
-            className="absolute touch-none cursor-grab border-2 border-primary bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-focus active:cursor-grabbing disabled:cursor-default"
+            className="absolute touch-none cursor-grab border-2 border-white bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-white active:cursor-grabbing disabled:cursor-default"
             style={{ left: `${visiblePosition.x * 100}%`, top: `${visiblePosition.y * 100}%`, width: `${frame.width * 100}%`, height: `${frame.height * 100}%` }}
             onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }} onKeyDown={keyboard} /> : null}
         </div>

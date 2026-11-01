@@ -13,6 +13,7 @@ export type WorkflowImageSource = { name: string; url: string; file?: File; asse
 export type WorkflowTimedSource = { url: string; name?: string; duration?: number | null; file?: File };
 export type WorkflowGenerationDraft = {
   kind: WorkflowKind;
+  workflow?: "talking_head" | "hook" | "phone" | "wall_text";
   instructions: string;
   /** Editable reference directions shown beside the user's own instructions. */
   referenceInstructions?: string;
@@ -228,6 +229,7 @@ export function createWorkflowGenerationClient(dependencies: {
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),
             idempotencyKey: submission.key,
             ...(dependencies.recovery ? { workflowKind: draft.kind } : {}),
+            workflow: draft.workflow ?? (draft.kind === "hook" ? "talking_head" : "phone"),
           });
         }
         const token = await withReadDeadline(() => dependencies.getOwnerToken(), undefined, dependencies.requestTimeoutMs ?? WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS);

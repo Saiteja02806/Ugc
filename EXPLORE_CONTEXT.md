@@ -1,5 +1,108 @@
 # Explore context and UI decision record
 
+## 2026-11-01 Action fill is blue (local)
+- Violet is replaced with flat `#0078D4`, hover `#005A9E`, including pricing and the other pages that used the violet gradient. Explore selection borders stay white. The landing Start Creating button stays white.
+
+## 2026-11-01 Selection borders are white (local)
+- Violet stays a flat fill on Generate and the other commit buttons. A selection, hover, photo check, filter, platform, subtitle, account, slideshow tile, trim handle, or chart mark uses a white border or a white check. Reference Recreate no longer fills violet. The audio Generate button uses the same flat violet as the other Generate buttons. Landing is unchanged.
+
+## 2026-11-01 Omni Flash video uses ReAPI (local)
+- New Google Omni Flash video jobs store provider `reapi` and call `gemini-omni-1-1`. Durations are 4, 6, 8, or 10 seconds. A starting frame is the only image, sent as the locked first frame. Extra face photos are no longer accepted on this route. Jobs already admitted without that provider stay on Google. A live ReAPI video was not generated.
+
+## 2026-11-01 Character studio uses Gemini 3 Pro (local)
+- Generate on the visual influencer studio sends `gemini_3_pro`. The worker routes that job to Google Gemini 3 Pro at 2K and keeps the same ordered reference photos and compiled prompt. Seedream 5.0 Pro stays available for AI Studio and starting frames. A signed-in Gemini portrait has not been generated.
+
+## 2026-11-01 Selected tabs and New marks stay neutral (local)
+- The selected References tab and the New chip on a reference card are gray and off-white. Generate stays violet. The Demo sidebar item uses a play mark. The selected sidebar item stays a gray square. The empty character canvas says “Your portrait shows up here.”
+
+## 2026-11-01 Explore catalog is the picture, not a panel (local)
+- Workflow covers have no border and no violet arrow. The opening arrow appears only on hover, keyboard focus, or while the link is opening, and it stays white on dark glass. Quick start is four flat tiles in the same grid cell. Card order, destinations, and the pending indicator are unchanged. Landing is unchanged.
+
+## 2026-11-01 Starting-frame stage 2 and harmonizer (local)
+- Stage 2 copies the face visible in the influencer photo. It does not prescribe a brow color, lip shape, forehead, freckles, or nose. Extra photos of that same person are sent with the main face photo. Slideshow Swap Face uses this same prompt with the slide as image 1 and the chosen influencer as image 2.
+- The harmonizer converts the finished still to CIE LAB, shifts skin in the face region toward the luminance of the other skin in the scene by a bounded amount, then adds 1.2% Gaussian grain on the L channel. A real provider image was not generated for this correction.
+
+## 2026-11-01 Neutral navigation chrome (local)
+- The sidebar mark, active item, and workflow underlines are gray and white. A violet rail no longer follows the current page. Generate stays the flat violet action. Landing is unchanged.
+
+## 2026-11-01 In-app canvas color (local)
+- The workspace shell uses one darker canvas, a lifted card, a violet-tinted selected state, and a flat violet action button. Landing stays black and white, including the white Start Creating button. Character Generate, schedule review, and the shared primary button inside the shell use that flat violet. Empty Trending, AI Studio, audio, and workflow stages sit on a card. Trait selection rings, button corners, and the schedule time picker are unchanged.
+
+## 2026-11-01 AI character studio sends the selected looks (local)
+- Generate uploads the selected studio images, in trait order, and sends those owned files with the compiled prompt. The character face is first, the selected background photo is second, and an uploaded face photo replaces the catalog character image. The prompt tells the model to combine those photos into one vertical 9:16 portrait and not copy a white backdrop or a cropped head. Framing is the last dock choice, after Batch size. Full shows the person from head to feet. Half frames the person from the head through the waist. Catalog copies use the explore catalog reference and stay out of the personal image library.
+- Signed-out Generate asks the user to sign in and does not place the character card on the canvas. History opens a finished image on the canvas. Signed-out History asks the user to sign in. Save and Download stay visible without hover. On a phone the portrait sits above a bounded trait dock, with Generate in view.
+- The studio still has no Motion tab and no Animate handoff. Generate now requests Gemini 3 Pro. A signed-in Gemini result, a real save, and production deployment are not verified.
+
+## 2026-11-01 AI character studio has no Motion (local)
+- User removed Motion from the visual influencer studio. The dock has no Create/Motion switch, and a finished portrait has no Animate with Motion handoff. Create, trait selection, Generate, Save, Download, and History stay.
+
+## 2026-11-01 Shared 10px button corners (local)
+- Explore, AI Studio, Demo, Creative Assets, Library, and the other product action buttons use one 10px corner. The shared `Button` default is `rounded-[10px]`.
+- Circular Recreate on a video, Slideshow labeled Recreate pills, sign-in pills, and media close circles stay fully round. Cards, inputs, and badges are not part of this button shape.
+
+## 2026-11-01 Talking Head upload buttons, Recreate icon, and schedule caption (local)
+- Empty Hook and Demo "Upload video" menus use the same filled primary button as Generate video. Change stays an outline menu. Slideshow Recreate pills stay labeled pills.
+- Talking Head references replace the text Recreate button with one circular refresh icon on the video. Hook overlay Recreate uses the same circular icon. Preview-only references still open the preview.
+- Schedule post captions apply the saved default onto the latest draft, so an account selection in the same turn cannot wipe a caption that was just filled.
+
+## 2026-11-01 Higgsfield-Standard UI Redesign: Floating Action Dock, Waveform Audio Cards & Official Model Logos (local)
+- User Requirement: Eliminate heavy view-blocking action containers in Schedule/Workflow footers, modernize Talking Head voice selection with zero-latency cached creator voices and animated waveform cards, and standardize all model selectors with official SVG logos and NEW/PREMIUM tags.
+- Phase 1 (Floating Action Dock):
+  - In `components/explore/workflow-schedule-review.module.css`, converted the `.actions` footer from a solid opaque `var(--card)` container into a floating frosted glass dock (`rgba(18, 18, 24, 0.65)` with `backdrop-filter: blur(16px)` and subtle `rgba(255, 255, 255, 0.08)` border).
+  - Unblocked canvas: Preserved `position: static` so it scrolls naturally without covering timezone selectors or video previews.
+  - Button elevation: Styled `.reviewButton` with Higgsfield high-contrast neon lime (`#D4FF00`, bold typography, subtle hover glow) and `.backButton` with clean dark pill styling.
+- Phase 2 (Talking Head Voice Picker Upgrade):
+  - In `components/explore/workflow-saved-audio-choices.tsx` & `.module.css`, integrated `CURATED_FAST_VOICES` (Anna, Josh, Chloe, Kobbie, Wilder) with zero network latency, ensuring users never encounter an empty/broken voice changer.
+  - Waveform visual cards: Each voice displays an avatar with 4 dynamic equalizer soundbars (`@keyframes soundwaveBounce`) that bounce when playing, gender/accent tags, instant HTML5 preview playback, and a 1-click "Use sample" button.
+  - Fully backward compatible: Existing user bookmarks and saved audio records remain fully accessible and attached via authenticated endpoints.
+- Phase 3 (Standardized Model Selector & Provider Logos):
+  - Built `components/generation/model-provider-logos.tsx` with official SVG logos for Google, OpenAI, ByteDance, Kling, Wan, and ElevenLabs, plus `getModelProviderInfo(modelId)` helper.
+  - Enhanced `AiStudioSettingSelect` in `components/generation/ai-studio-composer.tsx` to automatically map provider logos to trigger buttons and render rich popover options with provider icon tiles, `NEW`/`PREMIUM` neon pills, one-line capability descriptions, and selection checkmarks.
+- Phase 4: Confirmed unnecessary for core UGCPilot reference-video recreation workflow and skipped per user guidance.
+- Local verification: All 109 tests across 4 suites (`talking-head-schedule-review`, `workflow-bookmarked-audio`, `workflow-creation-form`, `hook-starting-frame-ui`) pass with 0 failures; non-incremental `npx tsc --noEmit` passes with 0 errors.
+
+## 2026-11-01 On-Demand Universal Biometric Face Swap (local)
+- User Requirement: Add an on-demand "Swap Face" action button to slide/generation cards in the chat workspace and slideshow rail, matching the user's sketch (`media_1793475850238_cfb59fcb.png` and follow-up sketches).
+- Pricing & Economics: Option B on-demand face swap (1 credit / ~$0.045 per swap) saves significant cost vs re-generating full sets through 2-stage models ($0.17 for 10 slides with 2 swaps vs $0.90 for full 2-stage sets).
+- Face Swap Engine (`worker/src/lib/openrouter-gemini-image.ts`): Single-pass OpenRouter Gemini 3 Pro (~8s) executes Stage 2 Biometric Face Lock directly on base image + influencer photo, followed by Sharp CIE LAB luminance & 1.2% Gaussian sensor grain harmonization.
+- Backend API (`POST /api/ai-studio/images/face-swap`): Authenticated endpoint verifies ownership of target asset and influencer asset, reserves 1 image billing credit, and dispatches a background job with `mode: "face_swap"` carrying `slideshowGeneration` metadata.
+- UI Components (`components/generation/face-swap-dialog.tsx` & `components/workspace/ugc-chat-workspace.tsx`):
+  - `ImageGenerationCard`: Adds `[🔄 Swap Face]` button beside primary selection button (`grid grid-cols-2` in compact slide rail, flex row in full cards).
+  - Swapping state: Translucent overlay with spinning indicator ("Swapping face… Locking biometric identity") keeps the preview geometry stable while running.
+  - `FaceSwapDialog`: Clean modal displaying target slide vs selected influencer preview, unified grid of saved AI Influencers and uploaded portraits, direct photo upload, and session 1-click swap preference checkbox.
+  - Header indicator: Displays current active influencer badge with "Change" action in the version header for quick switching.
+- Local verification: All 142 worker image tests pass; `lib/ai-studio/image-presentation-ui.test.mjs` passes (5/5); 60 hook starting frame UI tests pass; non-incremental `npx tsc --noEmit` and worker build pass with 0 errors.
+
+## 2026-11-01 AI Influencer Studio Redesign: Higgsfield-Style Visual Character Creation (local)
+- Completely redesigned the `/explore/build-character` workflow from a text-prompt textarea with 4 checkboxes into a full-featured zero-prompt Visual Influencer Studio inspired by Higgsfield's viral character customizer.
+- Asset Standardization: 55 raw assets curated and mapped into `public/explore/influencer-studio/` across 14 categories (characters, ethnicity, build, head-shape, neck, eyes, hair-style, height, accessories).
+- Typed Registry & Token Compiler: `lib/characters/influencer-registry.ts` and `lib/characters/master-prompt-compiler.ts` handle deterministic translation from visual card clicks into structured prompt formulas (incorporating 1:6 vs 1:8 height head-to-body ratios, ethnic bone structure, hair cuts, and anti-plastic skin realism tokens).
+- Visual Customizer Dock: Created `components/characters/influencer-customizer-dock.tsx` featuring 3-column card grids with neon lime-yellow selection states (`#D4FF00`), subtle dark gradient overlays, active corner labels, sticky picked-settings summary pills, reset-all, dice randomizer, and batch-size generation.
+- Studio Canvas: Created `components/characters/influencer-canvas.tsx` with floating fan-out trait cards in idle state, high-res candidate cards with one-click Save to My Influencers, Download 4K, and Motion Transfer video creation handoff.
+- Local verification: All 5 influencer studio unit tests pass with 0 failures; non-incremental TypeScript `npx tsc --noEmit` passes cleanly.
+
+
+## 2026-10-31 Slideshow Generation Unified Card, Version Grouping & Prompt Cleanup (local)
+- Eliminated 10 duplicate generation rows: when regenerating or generating a slideshow (e.g. 10 slides), submitting rows and active job queries now carry slideshowGeneration slot metadata from initial submission through polling, preventing them from falling into individual rows.
+- Fallback regrouping: if unslotted rows occur in the slideshow workflow, they are automatically grouped into a single slideshow version rather than rendering 10 separate standalone generation cards with duplicated prompts.
+- Redesigned Slideshow Generation Card: unified card with frosted glass styling, slideshow icon badge, slide count / ratio, live generation status ("Generating slides · X of Y ready" with pulsing indicator / "All Y slides ready" with checkmark), and prominent "Edit slides" action.
+- Unified Slide Rail: each slide displays in an organized compact card with slide number, ready/generating status, 3D LiDAR point cloud loading animation on active rendering, and clickable zoom preview on completion.
+- Prompt display: prompt is displayed ONCE at the slideshow level using the refined ImagePromptBubble (top-right Copy button, dedicated bottom toggle, zero collision), and machine output artifacts (e.g. `\n\nSlideshow output:...`) are stripped to preserve pure user copy.
+- Local verification: all image presentation UI, video presentation UI, slideshow generation groups, character reference, and TypeScript checks pass cleanly.
+
+## 2026-10-31 Choose Image & Photo Picker Redesign: UGC Pilot Catalog Removal, Single-Column Compact Modal, Photo Guide Hidden (local)
+- UGC Pilot images: catalog section removed from all Choose Image dialogs, keeping the image library exclusively focused on authentic user uploads, starting frames, and created influencers.
+- Single-column compact modal: removed the left 'Your photos' selection sidebar ('Start with a clear face') which previously caused the dialog to jump/resize between Uploaded photos and Starting frames. The dialog width is compacted from 920px to 640px with a stable single-column grid across all tabs.
+- Photo guide & examples: hidden from header actions to declutter the modal interface.
+- Local verification: 107 test cases across explore format upload, workflow creation, and video source UI pass with 0 failures; non-incremental tsc --noEmit passes cleanly.
+
+## 2026-10-31 Talking Head History placement, workflow isolation, and sequence canvas handoff (local)
+- History action moved out of tabs between References and Your videos to the far right corner (.historyAction, margin-left: auto), preserving clean two-tab navigation (References, Your videos) on the left.
+- Workflow scoping: generation history picker queries /api/media?collection=video&sourceTypes=generated_video&workflow=talking_head, preventing Hook Video or other workflow generations from leaking into the Talking Head + Demo drawer.
+- History drawer card redesign: displays user instruction/prompt text as title, duration badge, model badge, timestamp, and keyword search, replacing repetitive "Generated influencer video" rows.
+- Selection handoff: selecting a video from History or "Use video 1" sets showGenerationResults(false), immediately presenting the dual-card sequence canvas (Hook video preview + Demo video placeholder) rather than leaving the user on the single-video generation results canvas.
+- Local verification: 48 node tests, unit tests, and full non-incremental tsc --noEmit pass with zero errors. Production deployment pending.
+
 28 October Wall next batch: three non-numbered source-hash-bound profiles (652f/e95c/2fe0) added locally, bringing this continuation to eleven new profiles. 41 tests/types/lint and fixture browser editing/reopen/blank/full-duration/mobile checks pass. Saved styles retain priority; automatic Wall remains gated off. No deploy/generation. See docs/prompt-reviews/wall-three-nonnumbered-admission-2026-10-28.md; hosted and remaining reference acceptance unverified.
 
 28 October 2026 Wall placement continuation: user authorized scoped context/evidence preflight. Added eight local source-hash-bound profiles (49/52/56/58/62/63, then45/57), preserving existing profiles, saved edits and duration. Wall58 outline8, Wall63 outline4 readability adaptation, Wall52 top.525. 38 tests/types/lint and actual-profile fixture browser pass. No deployment/video generation; automatic Wall flags stay disabled. Receipt: docs/prompt-reviews/wall-eight-local-admission-2026-10-28.md. Other references remain unfinished.
@@ -6417,3 +6520,43 @@ UGC-UI-066: public landing warmCover cards preload actual visible media (auto, m
 ## Analytics newest posts and TikTok background freshness — 29 October 2026
 
 Instagram and TikTok content lists initialize newest-first, including numeric zero views. Instagram retains Views/Reach/Interactions/Saves/Shares sorting in the existing dropdown. Zero metrics and unavailable metrics remain distinct. Analytics alone requests /api/social/connections?analytics=1; that explicit opt-in checks due TikTok analytics after the account response, even while viewing Instagram. Other account pickers do not trigger metrics sync. Preserve owner scope, five-minute social admission and active-job reuse; no forced calls or new timer/cron. Selected-platform foreground snapshot reads/polling remain visibility/online guarded. Background admission during an Analytics visit supersedes the older assumption that all unselected-platform synchronization is deferred. Receipt: docs/analytics-newest-refresh-fix-2026-10-29.md.
+
+### 29 October 2026 — Talking Head ordinary image chooser alignment (local)
+UGC-UI-068: ordinary Choose image in the shared Hook-style/Talking Head composer opens a centered Dialog using the existing Hook photo-picker layout/CSS, with selected photos, larger grid, scroll body and Done footer. Existing media source tabs, upload/selection callbacks and model limits remain; this is not a source-tab redesign. Supplied approved-frame controls still take precedence. Creator Phone retains its original picker function exactly and uses compact library defaults.180focusedchecks, desktop/mobile chooser/6-and30-limit browser, audio regression, types/lint/diffcheck PASS. No deploy/generation. Receipt docs/talking-head-photo-dialog-2026-10-29.md.
+
+### 30 October 2026 — Complete Talking Head photo source parity (local)
+UGC-UI-068 follow-up supersedes the earlier layout-only boundary. Talking Head now includes Person photos/My Influencers, Uploaded photos/Starting frames, existing guide, separate UGC Pilot catalogue, uploads, refresh, selected photos and Done. My Influencers resolves ready owned generated assets without uploading; Starting frames rechecks job/asset/owner metadata and enters the actual stored-frame path with source-covering duration, preserving script/Demo/audio. Creator Phone original picker and compact library stay unchanged.238focusedchecks plus complete desktop/mobile source/negative-recovery browser and existing audio browser PASS; types/lint/diffcheck PASS. No generation/deployment. Receipt docs/talking-head-complete-photo-picker-2026-10-30.md.
+
+### 30 October 2026 — Starting-frame prompt disclosure
+User explicitly supersedes the always-visible editor requirement: show Starting image prompt as a collapsed native details/summary control. Expand to edit the complete prompt and access saved/default/application actions. Keep prompt values, labeling, persistence and generation behavior unchanged. See UGC-UI-069.
+
+User follow-up: hide the image-role explanation and all application/saved/default prompt controls for now, including the saved status. Keep the editable prompt in the disclosure. Existing preferences remain stored; this is presentation-only.
+
+### 30 October 2026 — Seedance video defaults
+New video workflows prefer enabled Seedance 2.5 through getDefaultAIStudioVideoModel. Shared Explore settings, ordinary Studio video generation, Hook/Wall video generation and Trending reference selection use this policy. Preserve saved drafts, explicit model choices and provider availability gates. Image/audio generation defaults are unchanged because Seedance is a video model. When disabled, existing Kling/Omni fallbacks remain.
+
+30 October 2026 — Hook and Wall Create source sections hide their redundant workflow heading using the existing hideHeading option. Preserve the accessible heading and Generate/Upload/Creative Assets controls. No change to other workflow headings. See UGC-UI-071.
+
+30 October 2026 — UGC-UI-072: Hook03 original has H264High444Predictive/33Mbps playback risk. Separate H264High/yuv420p848KB silent browser preview uploaded with200/206 verification; source-key/audio-policy-bound web override added locally. Preserve original generation media,sourceSHA,109timestamps and duration. Website not deployed; real browser acceptance and remaining catalogue coverage unverified. Receipt docs/reference-playback-audit-2026-10-30.md.
+
+30 October 2026 — UGC-UI-073: compact selected starting frame inside Talking Head's three reference tiles must use a one-column inner grid. Scope override to classicReference+data-reference-columns=1; preserve original frame ratio and selection/handoff. Desktop/mobile local browser width/interaction tests PASS; not deployed.
+
+30 October 2026 — UGC-UI-074 / UGC-VID-034-AUDIO: hover outline belongs on rounded selected tile, not square inner deck. Voices Use sample attaches the entire provider MP3 with variable length. Public LauraFGY2WhTYpPnrIDTdsKH5 measures1.996916s by ffprobe+browser and fails Seedance2s minimum. Validate minimum and maximum before replacing attachment; show actual truncated-to-ms duration, preserve previous valid reference. Never round duration up or silently pad to bypass provider admission.42audio/API +32creation/frame tests and desktop/mobile hover checksPASS; no deploy/paid acceptance. All preceding current-session issues retained in append-only ledger.
+
+30 October 2026 — User supersedes Seedance2s picker policy: require at least5seconds of actual voice reference in new app picker/submission/server admission. Provider accepts2–30s/15MB; UGCPilot requires5–30s for voice context. Forward full selected recording, not a fixed2s/5s cut. Do not pad or loop short demos; Laura1.996916s needs longer genuine audio. Preserve WAN audio1–15s and Seedance video-reference2s minimum, worker historical receipts and output duration.50targetedtests/types/lintPASS; real speech fidelity/hosted acceptance unverified; not deployed.
+
+## 2026-10-30 English slideshow clarifications and checked-image context (local)
+
+UGC-UI-075-SLIDESHOW: planner revision4 asks concise English-only clarification prose, keeps requested slide copy in its original language and treats supplied upload inventory as authoritative. Non-Latin mixed-script question output gets an honest generic English clarification fallback without another model call; exact English questions remain. Old plan receipts are immutable and guarded at display. A compact conditional panel replaces repeated paragraphs/raw duplicate error banner. Saved feedback now freezes upload IDs from the exact checked submission (including recovered prior input); changed uploads/sources show a stale-check explanation instead of a missing-upload diagnosis. No automatic submit/translate/retry.208focusedtests,types/scopedlint,actualnotice1366/390/320before/after and actualpanel/clientrecoverybrowserPASS. Original screenshot's exact missing-photo input cause unverified; production browser opens sign-in. No deployment,modelreplay,imagegeneration or backendwrite. Fullfiles/evidence:docs/slideshow-clarification-english-2026-10-30.md.
+
+## 2026-10-30 Consistent scheduling confirmation placement (local)
+
+UGC-UI-076-SCHEDULE-LINK: all Explore workflows follow Hook: compact Post scheduled status and one View in Scheduling link together above action buttons. Pending composition already matched; shared final-output FormatSchedulePanel and TalkingHeadScheduleActions now match. Preserve existing verified-receipt/completed-action gates and repeat scheduling. Reuse existing confirmation/compactSchedulingLink styles. 68 focused tests, scoped lint and desktop/mobile fixture browser PASS; production scheduling/publication NOT TESTED, not deployed. Receipt docs/all-workflow-schedule-status-2026-10-30.md.
+
+## 2026-10-30 Slideshow top actions and reduced control clutter (local)
+
+UGC-UI-077-SLIDESHOW-TOOLBAR: latest user request supersedes earlier below-sequence Save/Review guidance. One Save & review post / Review post action belongs in the Your slideshow header in Create and Edit. Save-only/recovery and Generated slides remain under More; retain explicit save receipt and pending identity. Keep Add slides, thumbnails/bin/drag handles and preview navigation. Collapse Earlier/Later under Reorder slides. Remove duplicate sequence Library backgrounds; Edit slides > Slide image > Choose from library retains same selected/all background picker, and Add slides retains library sources. Final slideshow Post now / Schedule post group sits below Schedule heading before settings, preserving confirmed status/link above buttons and default placement for other workflows. No backend or publishing changes.150tests/types/scopedlint and actual-component fixturebrowserdesktop/mobile/320/namedcontainerPASS; live acceptanceNOTTESTED,notdeployed. Full receipt docs/slideshow-toolbar-redesign-2026-10-30.md.
+
+30 October 2026 — Starting-frame restoration: Previous generations button above thumbnails reveals restored preview/rail on demand. Completed saved results and approval hidden on entry; pending status/recovery remains visible; new generations appear immediately. Owner/draft/reference localStorage records and verified backend job reads retained; existing12-entry chooser is not account-wide unlimited history.59localUItests/types/lintPASS; browser/production acceptance pending, not deployed.
+
+30 October 2026 — UGC-VID-041/UGC-UI-078-PRICE: actual saved Gemini incomplete operations include decodable final JPEGs. Accept incomplete final output only after strict full decode; no resubmission, invalid images stay failed and review remains required. Price query errors must show failure+Retry price, never indefinite Checking price; retain validated cost and pending-job safety.60UI+12worker tests/build/types/lintPASS; local only, no historical job/credit rewrite. Browser/hosted acceptance pending. Receipt docs/gemini-and-starting-price-fix-2026-10-30.md.

@@ -22,8 +22,8 @@ export function marketingOgImage({
           height: "100%",
           overflow: "hidden",
           padding: "72px",
-          background: "#151515",
-          color: "#f8f4ed",
+          background: "#121212",
+          color: "#f6f3f8",
         }}
       >
         <div
@@ -35,7 +35,7 @@ export function marketingOgImage({
             right: -170,
             top: -330,
             borderRadius: 9999,
-            background: "rgba(255, 107, 69, 0.22)",
+            background: "rgba(165, 110, 242, 0.28)",
           }}
         />
         <div
@@ -47,7 +47,7 @@ export function marketingOgImage({
             right: 110,
             bottom: -330,
             borderRadius: 9999,
-            background: "rgba(255, 107, 69, 0.12)",
+            background: "rgba(0, 120, 212, 0.22)",
           }}
         />
         <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
@@ -57,9 +57,9 @@ export function marketingOgImage({
               alignItems: "center",
               alignSelf: "flex-start",
               padding: "10px 16px",
-              border: "1px solid rgba(255, 107, 69, 0.55)",
+              border: "1px solid rgba(0, 120, 212, 0.55)",
               borderRadius: 9999,
-              color: "#ff8b6c",
+              color: "#0078d4",
               fontSize: 22,
               fontWeight: 600,
             }}
@@ -86,7 +86,7 @@ export function marketingOgImage({
               maxWidth: 860,
               fontSize: 28,
               lineHeight: 1.35,
-              color: "#c9c0b6",
+              color: "#c4bcc8",
             }}
           >
             {subtitle}

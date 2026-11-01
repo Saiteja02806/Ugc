@@ -1,10 +1,16 @@
 import publicPaths from "../marketing/public-page-paths.json" with { type: "json" };
+import { publicOrigin } from "../marketing/public-origin";
 
 export const ANALYTICS_CONSENT_KEY = "ugc-pilot.analytics-consent.v1";
 export const ANALYTICS_CONSENT_EVENT = "ugc-pilot:analytics-consent";
 export type AnalyticsConsent = "granted" | "denied";
 const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "";
-const origin = "https://getugcpilot.com";
+const analyticsHostnames = new Set([
+  "vidmake.io",
+  "www.vidmake.io",
+  "getugcpilot.com",
+  "www.getugcpilot.com",
+]);
 const publicPages = new Set([...publicPaths, "/sign-in", "/connect-ai", "/cookies", "/privacy", "/terms"]);
 type AnalyticsWindow = Window & {
   dataLayer?: unknown[];
@@ -15,7 +21,7 @@ type AnalyticsWindow = Window & {
 
 export function analyticsEnabled() {
   return typeof window !== "undefined" && /^G-[A-Z0-9]+$/.test(measurementId) &&
-    ["getugcpilot.com", "www.getugcpilot.com"].includes(window.location.hostname);
+    analyticsHostnames.has(window.location.hostname);
 }
 
 export function readAnalyticsConsent(): AnalyticsConsent | null {
@@ -39,8 +45,8 @@ export function safePageParameters(pathname: string, referrer = "") {
     if (url.protocol === "https:" || url.protocol === "http:") safeReferrer = url.origin;
   } catch { /* Direct visit. */ }
   return {
-    page_location: `${origin}${safePath}`,
-    page_title: safePath === "/" ? "UGC Pilot" : `UGC Pilot ${safePath}`,
+    page_location: `${publicOrigin}${safePath}`,
+    page_title: safePath === "/" ? "Vidmake" : `Vidmake ${safePath}`,
     page_referrer: safeReferrer,
   };
 }
@@ -62,7 +68,7 @@ export function setAnalyticsConsent(value: AnalyticsConsent) {
     for (const part of document.cookie.split(";")) {
       const name = part.trim().split("=")[0];
       if (name !== "_ga" && !name.startsWith("_ga_")) continue;
-      for (const domain of ["", "; domain=getugcpilot.com", "; domain=.getugcpilot.com", `; domain=${window.location.hostname}`]) {
+      for (const domain of ["", "; domain=vidmake.io", "; domain=.vidmake.io", "; domain=getugcpilot.com", "; domain=.getugcpilot.com", `; domain=${window.location.hostname}`]) {
         document.cookie = `${name}=; max-age=0; path=/${domain}; SameSite=Lax; Secure`;
       }
     }

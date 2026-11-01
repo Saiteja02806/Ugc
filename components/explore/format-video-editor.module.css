@@ -5,7 +5,7 @@
 .editorRoot .controlGrid > .textControlSection,
 .editorRoot .controlGrid > .utilityControlSection,
 .editorRoot .controlGrid > [data-editor-section="trim"] { grid-column: auto; grid-row: auto; min-width: 0; }
-.trimSection { padding: 14px 16px; border-color: color-mix(in srgb, var(--border) 86%, var(--primary)); background: var(--card-muted); }
+.trimSection { padding: 14px 16px; border-color: var(--border); background: var(--card-muted); }
 .trimBody { display: grid; min-width: 0; gap: 14px; margin-top: 14px; }
 .trimTimingFields { display: grid; width: fit-content; max-width: 100%; grid-template-columns: repeat(2, minmax(0, 88px)); gap: 10px; }
 .trimTimingFields label { display: grid; min-width: 0; gap: 5px; color: var(--foreground); font-size: 12px; font-weight: 500; }

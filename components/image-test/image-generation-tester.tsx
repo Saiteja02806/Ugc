@@ -218,7 +218,7 @@ export function ImageGenerationTester() {
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            className="min-h-36 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+            className="min-h-36 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-white focus:ring-4 focus:ring-primary/15"
             placeholder="Describe the UGC creator image you want to generate."
           />
         </label>

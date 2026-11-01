@@ -58,6 +58,23 @@ mock.module(new URL("../../dist/lib/openrouter-seedream-image.js", import.meta.u
     return { buffer: image, model: "bytedance-seed/seedream-5-0-pro", requestId: undefined, costUsd: 0.054 };
   },
 } });
+mock.module(new URL("../../dist/lib/openrouter-gemini-image.js", import.meta.url), { namedExports: {
+  generateOpenRouterGeminiImage: async params => {
+    openrouterCalls.push(params);
+    if (openrouterError) throw openrouterError;
+    return { buffer: image, model: "google/gemini-3-pro-image", requestId: undefined };
+  },
+  generateOpenRouterGeminiHookKeyframe: async params => {
+    openrouterCalls.push(params);
+    if (openrouterError) throw openrouterError;
+    return { buffer: image, model: "google/gemini-3-pro-image", requestId: undefined };
+  },
+  performOpenRouterFaceSwap: async params => {
+    openrouterCalls.push(params);
+    if (openrouterError) throw openrouterError;
+    return { buffer: image, model: "google/gemini-3-pro-image", requestId: "swap-test-id" };
+  },
+} });
 mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
   AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["4:5", "1:1", "9:16", "16:9"],
   getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
@@ -609,9 +626,53 @@ test("legacy Seedream reservations keep their original fingerprint and cannot us
   await runGenerateImageJob(explicit.imageJob, explicit.context);
   assert.equal(legacy.events[0].operationKey, "runway-image");
   assert.notEqual(legacy.events[0].requestFingerprint, explicit.events[0].requestFingerprint);
-  for (const [model, route] of [["seedream_5_pro", "unknown"], ["gemini_3_pro", "openrouter"]]) {
+  for (const [model, route] of [["seedream_5_pro", "unknown"], ["gemini_3_pro", "unknown"], ["gemini_3_pro", "runway"]]) {
     const invalid = job(model, "An adult portrait");
     invalid.input_json.provider = route;
     await assert.rejects(runGenerateImageJob(invalid, context), /unsupported provider route/);
   }
+});
+
+test("Gemini 3 Pro hook starting frame with openrouter provider routes to openrouter-gemini-image", async () => {
+  const selected = curatedFrames.frames[0], originalBytes = sceneBytes;
+  try {
+    sceneBytes = readFileSync(new URL(`../../../public${selected.publicPath}`, import.meta.url));
+    const f = seedreamFixture(), prompt = "Photograph my influencer in the selected scene.";
+    const partial = { version: 3, imageModel: "gemini_3_pro", ownerId: "fixture-user", draftId: "00000000-0000-4000-8000-000000000001",
+      referenceId: selected.referenceId, sourceSha256: selected.sourceSha256,
+      sourceFrame: { index: selected.index, timeSeconds: selected.timeSeconds, width: selected.width, height: selected.height, sha256: selected.sha256 },
+      personImageAssetIds: ["00000000-0000-4000-8000-000000000002"], instructions: "" };
+    const receipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 4, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: createHash("sha256").update(prompt).digest("hex") };
+    const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${selected.sourceSha256}/${selected.sha256}.png`, "https://media.example.test/person.png"];
+    f.imageJob.input_json = { generationId: "fixture-generation", model: "gemini_3_pro", provider: "openrouter",
+      prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt };
+    const before = openrouterCalls.length;
+    const result = await runGenerateImageJob(f.imageJob, f.context);
+    assert.deepEqual(result.hookKeyframe, receipt);
+    assert.equal(result.provider, "openrouter");
+    assert.equal(openrouterCalls.length, before + 1);
+  } finally { sceneBytes = originalBytes; }
+});
+
+
+test("face_swap mode routes base and influencer images to performOpenRouterFaceSwap", async () => {
+  const f = seedreamFixture();
+  const refs = ["https://media.example.test/slide-1.png", "https://media.example.test/influencer.png"];
+  f.imageJob.input_json = {
+    generationId: "fixture-face-swap-gen",
+    model: "gemini_3_pro",
+    provider: "openrouter",
+    mode: "face_swap",
+    prompt: "Lock identity carefully.",
+    aspectRatio: "4:5",
+    referenceImageUrl: refs[0],
+    referenceImageUrls: refs,
+  };
+  const before = openrouterCalls.length;
+  const result = await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(result.provider, "openrouter");
+  assert.equal(openrouterCalls.length, before + 1);
+  assert(openrouterCalls.at(-1).baseImage);
+  assert(openrouterCalls.at(-1).influencerImage);
+  assert.equal(openrouterCalls.at(-1).aspectRatio, "4:5");
 });

@@ -24,6 +24,18 @@ test("approved first-frame animation uses the explicit frame role, adaptive shap
   assert.equal("generate_audio" in audible && audible.generate_audio, true);
 });
 
+test("Omni Flash uses ReAPI's locked first frame, discrete durations and no extra photos", () => {
+  const request = buildReapiVideoRequest({ ...input, model: "google_omni", durationSeconds: 4, startingFrameImageUrl: "https://storage.example.com/approved-frame.png" });
+  assert.deepEqual(request, {
+    model: "gemini-omni-1-1", prompt: input.prompt, duration: 4, resolution: "720p", aspect_ratio: "9:16",
+    generation_type: "frame", image_urls: ["https://storage.example.com/approved-frame.png"],
+  });
+  const edited = buildReapiVideoRequest({ ...input, model: "google_omni", durationSeconds: 7, referenceVideoMode: "edit", referenceVideoUrl: "https://storage.example.com/source.mp4" });
+  assert.equal("duration" in edited, false);
+  assert.deepEqual(edited.video_urls, ["https://storage.example.com/source.mp4"]);
+  assert.equal("generation_type" in edited, false);
+});
+
 test("WAN starting frames use the literal frame family, not general reference mode", () => {
   const request = buildReapiVideoRequest({ ...input, model: "wan_3_0", durationSeconds: 3, startingFrameImageUrl: "https://storage.example.com/frame.png" });
   assert.equal(request.model, "wan3.0-video"); assert.equal(request.size, "adaptive");
@@ -35,7 +47,7 @@ test("WAN starting frames use the literal frame family, not general reference mo
 
 test("first-frame conflicts and unsupported models or durations reject before any paid request", async () => {
   for (const patch of [
-    { model: "google_omni" }, { durationSeconds: -1 }, { durationSeconds: 16 }, { durationSeconds: 3.5 },
+    { durationSeconds: -1 }, { durationSeconds: 16 }, { durationSeconds: 3.5 },
     { startingFrameImageUrl: "http://storage.example.com/frame.png" },
     { referenceImageUrl: "https://storage.example.com/portrait.png" },
     { referenceImageUrls: ["https://storage.example.com/portrait.png"] },

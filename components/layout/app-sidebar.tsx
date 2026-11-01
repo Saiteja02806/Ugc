@@ -24,7 +24,7 @@ import {
   SidebarIcon,
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
@@ -62,12 +62,6 @@ const primaryNavigationItems: SidebarItem[] = [
     icon: "audio",
   },
   {
-    key: "trending",
-    label: "Trending",
-    href: "/dashboard",
-    icon: "trending",
-  },
-  {
     key: "ai-studio",
     label: "AI Studio",
     href: "/ai-studio?mode=images",
@@ -92,7 +86,7 @@ const libraryNavigationItems: SidebarItem[] = [
     key: "library",
     label: "Demo",
     href: "/library?tab=posts",
-    icon: "library",
+    icon: "play",
   },
   {
     key: "scheduling",
@@ -106,7 +100,7 @@ const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
 
 export function AppSidebar({
-  activeKey = "trending",
+  activeKey = "explore",
   defaultCollapsed = false,
 }: {
   activeKey?: AppSidebarActiveKey;
@@ -127,7 +121,7 @@ export function AppSidebar({
     () => getServerSidebarPreference(defaultCollapsed),
   );
   const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "UGC Pilot user";
+    user?.displayName || user?.email?.split("@")[0] || "Vidmake user";
   const initials = getInitials(displayName);
 
   useEffect(() => {
@@ -233,15 +227,17 @@ export function AppSidebar({
           collapsed={collapsed}
         />
 
-        {collapsed ? null : <SidebarPlanCreditsWidget />}
+        {user && !collapsed ? <SidebarPlanCreditsWidget /> : null}
 
-        <AccountSection
-          active={activeKey === "settings"}
-          collapsed={collapsed}
-          displayName={displayName}
-          initials={initials}
-          photoUrl={user?.photoURL ?? null}
-        />
+        {user ? (
+          <AccountSection
+            active={activeKey === "settings"}
+            collapsed={collapsed}
+            displayName={displayName}
+            initials={initials}
+            photoUrl={user.photoURL ?? null}
+          />
+        ) : null}
       </aside>
 
       {isMobileNavigationOpen ? (
@@ -282,14 +278,16 @@ export function AppSidebar({
               onNavigate={() => setIsMobileNavigationOpen(false)}
             />
 
-            <SidebarPlanCreditsWidget />
+            {user ? <SidebarPlanCreditsWidget /> : null}
 
-            <AccountSection
-              active={activeKey === "settings"}
-              displayName={displayName}
-              initials={initials}
-              photoUrl={user?.photoURL ?? null}
-            />
+            {user ? (
+              <AccountSection
+                active={activeKey === "settings"}
+                displayName={displayName}
+                initials={initials}
+                photoUrl={user.photoURL ?? null}
+              />
+            ) : null}
           </aside>
         </div>
       ) : null}
@@ -300,19 +298,13 @@ export function AppSidebar({
 function Brand() {
   return (
     <Link
-      href="/dashboard"
-      className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      href="/explore"
+      className="flex shrink-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-small bg-brand">
-        <ProductLogoMark
-          className="size-6"
-          imageClassName="brightness-0 invert"
-          sizes="24px"
-        />
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-small">
+        <ProductLogoMark className="size-6" sizes="24px" />
       </span>
-      <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground-strong">
-        UGCPilot
-      </span>
+      <ProductWordmark className="text-[17px] text-foreground-strong" />
     </Link>
   );
 }
@@ -333,12 +325,8 @@ function CollapsedBrandToggle({
       className="group/logo-toggle inline-flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       <span className="relative size-8 overflow-hidden rounded-small">
-        <span className="absolute inset-0 flex items-center justify-center bg-brand opacity-100 transition-opacity duration-150 group-hover/logo-toggle:opacity-0 group-focus-visible/logo-toggle:opacity-0 motion-reduce:transition-none">
-          <ProductLogoMark
-            className="size-6"
-            imageClassName="brightness-0 invert"
-            sizes="24px"
-          />
+        <span className="absolute inset-0 flex items-center justify-center opacity-100 transition-opacity duration-150 group-hover/logo-toggle:opacity-0 group-focus-visible/logo-toggle:opacity-0 motion-reduce:transition-none">
+          <ProductLogoMark className="size-6" sizes="24px" />
         </span>
         <span className="absolute inset-0 flex items-center justify-center bg-deep-contrast text-white opacity-0 transition-opacity duration-150 group-hover/logo-toggle:opacity-100 group-focus-visible/logo-toggle:opacity-100 motion-reduce:transition-none">
           <SidebarIcon name="expand" className="size-[18px]" />
@@ -451,21 +439,15 @@ function SidebarLink({
       className={cn(
         "group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
         active
-          ? "bg-selected text-primary"
+          ? "bg-selected text-foreground-strong"
           : "text-muted hover:bg-card-muted hover:text-foreground-strong",
       )}
     >
-      {active ? (
-        <span
-          aria-hidden="true"
-          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-brand"
-        />
-      ) : null}
       <SidebarIcon
         name={item.icon}
         className={cn(
           "size-[19px] transition-colors",
-          active ? "text-brand" : "text-muted-subtle group-hover:text-foreground-strong",
+          active ? "text-foreground-strong" : "text-muted-subtle group-hover:text-foreground-strong",
         )}
       />
       <span className="truncate">{item.label}</span>
@@ -525,18 +507,12 @@ function CollapsedMagneticNavItem({
       aria-label={item.label}
       className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      {active ? (
-        <span
-          aria-hidden="true"
-          className="absolute -left-[10px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
-        />
-      ) : null}
       <span
         ref={surfaceRef}
         className={cn(
           "flex size-10 items-center justify-center rounded-control transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none",
           active
-            ? "bg-selected text-brand"
+            ? "bg-selected text-foreground-strong"
             : "text-muted-subtle group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)]",
         )}
       >
@@ -585,7 +561,7 @@ function SidebarPlanCreditsWidget() {
         </div>
         <Link
           href={billingHref}
-          className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+          className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground-strong transition-colors hover:bg-card"
         >
           {actionLabel}
         </Link>
@@ -630,7 +606,7 @@ function AccountSection({
             ? "size-10 justify-center"
             : "gap-2 px-2 py-2",
           active
-            ? "bg-selected text-primary"
+            ? "bg-selected text-foreground-strong"
             : "text-muted hover:bg-card-muted hover:text-foreground-strong",
         )}
       >
@@ -666,7 +642,7 @@ function AccountSection({
             <Settings
               className={cn(
                 "size-4 shrink-0",
-                active ? "text-brand" : "text-muted-subtle",
+                active ? "text-foreground-strong" : "text-muted-subtle",
               )}
               aria-hidden="true"
             />

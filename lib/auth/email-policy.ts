@@ -20,7 +20,7 @@ export class AuthEmailError extends Error {
 export function getEmailAuthAppUrl(env = process.env) {
   const url = new URL(
     env.EMAIL_AUTH_APP_URL?.trim() || env.UGC_INTERNAL_APP_URL?.trim() ||
-      "https://getugcpilot.com",
+      "https://vidmake.io",
   );
   const isLocal = env.NODE_ENV !== "production" &&
     ["localhost", "127.0.0.1"].includes(url.hostname);

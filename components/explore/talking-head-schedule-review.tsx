@@ -41,11 +41,10 @@ export function TalkingHeadScheduleActions({ action, preparation, enabled, onBac
     <div className={reviewStyles.actionRow}>
       <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button>
       <div className={reviewStyles.reviewAction}>
-        <p className={reviewStyles.actionHelp} role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>
+        <div className={`${reviewStyles.actionHelp} ${reviewStyles.confirmation}`}><p role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>{action?.completed ? <a href="/scheduling" className={`${reviewStyles.schedulingLink} ${reviewStyles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></a> : null}</div>
         <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Scheduling…" : action?.label ?? (action?.error ? "Try again" : "Schedule post")}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {action?.completed ? <a href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></a> : null}
     {current && needsPreparation && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
   </div>;
 }

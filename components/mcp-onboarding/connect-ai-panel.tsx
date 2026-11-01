@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 const endpoint = "https://mcp.getugcpilot.com/mcp";
-const firstPrompt = "Use UGC Pilot to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
+const firstPrompt = "Use Vidmake to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
 const clients = [
   {
     name: "Codex", label: "Desktop and CLI",
     steps: [
       "Open Settings → MCP servers → Add server. Name it ugc-pilot, choose Streamable HTTP, and paste the connection URL below.",
-      "Save and restart the connection. Select Authenticate, sign into your UGC Pilot account, and approve the requested permissions.",
+      "Save and restart the connection. Select Authenticate, sign into your Vidmake account, and approve the requested permissions.",
       "Start a new chat if the tools have not appeared, then try the connection-check prompt below. Install the beta plugin through your trusted plugin source to add its workflow skills.",
     ],
     docs: "https://learn.chatgpt.com/docs/extend/mcp",
@@ -19,8 +19,8 @@ const clients = [
   {
     name: "ChatGPT", label: "Web and desktop",
     steps: [
-      "If you received a private UGC Pilot plugin link, open it and install the plugin. A public directory listing is not available yet.",
-      "Connect when prompted, sign into your UGC Pilot account, and approve access. Start a new conversation and select UGC Pilot.",
+      "If you received a private Vidmake plugin link, open it and install the plugin. A public directory listing is not available yet.",
+      "Connect when prompted, sign into your Vidmake account, and approve access. Start a new conversation and select Vidmake.",
       "For eligible developer accounts, enable Developer mode under Settings → Security and login, then use Plugins → plus to add the connection URL below. Workspace policies may limit access.",
     ],
     docs: "https://developers.openai.com/plugins/quickstart", command: null,
@@ -28,8 +28,8 @@ const clients = [
   {
     name: "Claude", label: "Web and desktop",
     steps: [
-      "Open Customize → Connectors → Add custom connector. Enter UGC Pilot and paste the connection URL below.",
-      "Follow the detected OAuth setup, sign into your UGC Pilot account, and approve access. Your organization may require an administrator to add the connector first.",
+      "Open Customize → Connectors → Add custom connector. Enter Vidmake and paste the connection URL below.",
+      "Follow the detected OAuth setup, sign into your Vidmake account, and approve access. Your organization may require an administrator to add the connector first.",
       "Enable the connector in your conversation and try the connection-check prompt below. You can connect to the hosted server without downloading the bundle.",
     ],
     docs: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp", command: null,
@@ -38,7 +38,7 @@ const clients = [
     name: "Claude Code", label: "Desktop and CLI",
     steps: [
       "Download and extract the plugin bundle. Load the ugc-pilot folder with Claude Code’s --plugin-dir option, or install it from a trusted plugin marketplace.",
-      "Open /mcp, sign into your UGC Pilot account, and approve the OAuth permissions. Each person connects their own account.",
+      "Open /mcp, sign into your Vidmake account, and approve the OAuth permissions. Each person connects their own account.",
       "Try the connection-check prompt below. If you use the direct command instead of the plugin, it connects the MCP without installing the bundled workflow skills.",
     ],
     docs: "https://code.claude.com/docs/en/plugins",
@@ -77,7 +77,7 @@ export function ConnectAiPanel() {
     <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
       <div className="grid grid-cols-2 gap-2 border-b border-border bg-card-muted p-3 sm:grid-cols-4" aria-label="Choose your AI app">
         {clients.map((item, index) => (
-          <button key={item.name} type="button" aria-pressed={selected === index} aria-controls="client-instructions" onClick={() => setSelected(index)} className={`rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${selected === index ? "border-primary bg-card shadow-sm" : "border-transparent hover:bg-card"}`}>
+          <button key={item.name} type="button" aria-pressed={selected === index} aria-controls="client-instructions" onClick={() => setSelected(index)} className={`rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${selected === index ? "border-white bg-card shadow-sm" : "border-transparent hover:bg-card"}`}>
             <span className={`block text-sm font-semibold ${selected === index ? "text-primary" : "text-foreground"}`}>{item.name}</span>
             <span className="mt-1 block text-xs text-muted">{item.label}</span>
           </button>
@@ -92,7 +92,7 @@ export function ConnectAiPanel() {
             ))}
           </ol>
           <a href={client.docs} target="_blank" rel="noopener noreferrer" className="mt-5 inline-block text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Official {client.name} setup guide ↗</a>
-          <p className="mt-4 text-xs leading-5 text-muted">Sign in on the UGC Pilot consent page. Never paste passwords or access tokens into the chat.</p>
+          <p className="mt-4 text-xs leading-5 text-muted">Sign in on the Vidmake consent page. Never paste passwords or access tokens into the chat.</p>
         </div>
         <div key={client.name} className="space-y-4">
           <CopyBlock label="Connection URL" value={endpoint} />

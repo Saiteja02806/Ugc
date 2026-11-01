@@ -1,6 +1,6 @@
-import type { BillingPlanKey } from "./policy";
+import type { BillingPlanKey, PaidBillingPlanKey } from "./policy";
 
-export type PaidBillingPlanKey = Exclude<BillingPlanKey, "free">;
+export type { PaidBillingPlanKey };
 export type BillingAccessSource = "complimentary" | "dodo" | "free";
 
 export type BillingAccess = {
@@ -31,11 +31,17 @@ export function resolveBillingAccess(params: {
     return { accessSource: "dodo", planKey: params.dodoPlanKey };
   }
 
-  if (
-    params.complimentaryPlanKey === "growth" &&
-    params.dodoPlanKey === "starter"
-  ) {
-    return { accessSource: "complimentary", planKey: "growth" };
+  const rank: Record<PaidBillingPlanKey, number> = {
+    starter: 1,
+    growth: 2,
+    startup: 3,
+  };
+
+  if (rank[params.complimentaryPlanKey] > rank[params.dodoPlanKey]) {
+    return {
+      accessSource: "complimentary",
+      planKey: params.complimentaryPlanKey,
+    };
   }
 
   return { accessSource: "dodo", planKey: params.dodoPlanKey };

@@ -260,7 +260,8 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
-  if (input.startingFrameImageUrl && selectedProvider !== hookStartingFrameVideoProvider(input.model)) {
+  const legacyGoogleOmni = input.model === "google_omni" && selectedProvider === "gemini";
+  if (input.startingFrameImageUrl && !legacyGoogleOmni && selectedProvider !== hookStartingFrameVideoProvider(input.model)) {
     throw new ProviderRequestNotSubmittedError("Starting-frame animation cannot change its saved model/provider route.");
   }
   if (input.model === "wan_3_0" && selectedProvider !== "runway" && selectedProvider !== "reapi" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
@@ -524,7 +525,7 @@ async function generateProviderBuffer(
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
   if (provider === "reapi") {
-    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0") throw new ProviderRequestNotSubmittedError("Choose Seedance 2.5 or WAN 3.0 for ReAPI.");
+    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0" && params.model !== "google_omni") throw new ProviderRequestNotSubmittedError("Choose Omni Flash, Seedance 2.5, or WAN 3.0 for ReAPI.");
     return generateReapiVideoBuffer({ ...params, model: params.model, onOperationSucceeded });
   }
   if (provider === "openrouter") {
@@ -661,17 +662,21 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       Array.isArray(roles.supportingImageUrls) && roles.supportingImageUrls.length === photos.length - 1 &&
       roles.supportingImageUrls.every((url, index) => url === photos[index + 1]) &&
       Object.keys(roles).every(key => ["version", "mainImageUrl", "supportingImageUrls"].includes(key)) : roles === undefined;
-    if (promptMode !== "direct" || !isHookStartingFrameVideoModel(model) || provider !== hookStartingFrameVideoProvider(model) ||
+    const legacyGoogleOmni = model === "google_omni" && provider === "gemini";
+    const durationAllowed = legacyGoogleOmni
+      ? Number.isInteger(sharedInput.durationSeconds) && sharedInput.durationSeconds >= 3 && sharedInput.durationSeconds <= 10
+      : hookStartingFrameVideoDurations(model).includes(sharedInput.durationSeconds);
+    if (promptMode !== "direct" || !isHookStartingFrameVideoModel(model) || (!legacyGoogleOmni && provider !== hookStartingFrameVideoProvider(model)) ||
       (job.input_json.exploreFormat !== "hook" && job.input_json.exploreFormat !== "wall_text") || job.input_json.generationIntent !== "animate_starting_frame" ||
       !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || typeof imageJobId !== "string" || !uuid.test(imageJobId) ||
       !receipt || receipt.ownerId !== sharedInput.userId || (job.user_id && job.user_id !== sharedInput.userId) ||
       receipt.referenceId !== job.input_json.referenceId || sharedInput.avatarImageUrl || !faceRolesValid ||
       (photos.length > 0 && job.user_id !== sharedInput.userId) ||
-      photos.length > hookStartingFrameFaceReferenceLimit(model) || photos.includes(imageUrl ?? "") ||
+      photos.length > (legacyGoogleOmni ? 5 : hookStartingFrameFaceReferenceLimit(model)) || photos.includes(imageUrl ?? "") ||
       sharedInput.referenceAudioUrls.length || sharedInput.referenceAudioDurationSeconds.length || sharedInput.referenceVideoUrl ||
       job.input_json.referenceVideoDurationSeconds != null || job.input_json.referenceVideoMode !== undefined ||
-      !hookStartingFrameVideoDurations(model).includes(sharedInput.durationSeconds)) {
-      throw new ProviderRequestNotSubmittedError("Starting-frame animation requires its owned image receipt and a supported model/duration. Only Omni supports up to 5 separately labeled face references; source video and audio references cannot be mixed into this request.");
+      !durationAllowed) {
+      throw new ProviderRequestNotSubmittedError("Starting-frame animation requires its owned image receipt and a supported model/duration. New Omni jobs use the starting image alone; source video and audio references cannot be mixed into this request.");
     }
     Object.assign(sharedInput, {
       startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId, startingFrameJobId: imageJobId,

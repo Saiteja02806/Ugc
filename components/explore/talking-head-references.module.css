@@ -1,11 +1,59 @@
 .gallery { display: flex; min-width: 0; flex-direction: column; gap: 20px; padding: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 20px 16px; }
-.card { min-width: 0; }
-.referenceAction { width: 100%; min-height: 36px; margin-top: 10px; border-radius: 10px; font-size: 12px; }
+.card { position: relative; min-width: 0; }
+.recreateIcon {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+.recreateIcon svg { width: 16px; height: 16px; }
+.recreateIcon:hover:not(:disabled) { background: rgba(0, 0, 0, 0.72); }
+.recreateIcon:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.recreateIcon[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff, 0 2px 8px rgba(0, 0, 0, 0.45); }
+.recreateIcon:disabled { cursor: not-allowed; opacity: 0.55; }
+@media (pointer: coarse) { .recreateIcon { width: 44px; height: 44px; } }
 .tabs { display: flex; flex: none; align-items: center; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--border); }
 .tabs[hidden] { display: none; }
 .tabs button { padding-block: 18px; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 500; }
-.tabs button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
+.tabs button[aria-pressed="true"] { border-color: var(--foreground); color: var(--foreground-strong); }
 .tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; border-radius: 6px; }
+.tabs .historyAction {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid var(--border);
+  padding-block: 6px;
+}
+.tabs .historyAction:hover:not(:disabled) {
+  background: var(--card-muted);
+  border-color: var(--border-strong, var(--border));
+}
+.tabs .historyAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .overviewHeader { display: flex; justify-content: flex-end; padding: 16px 20px 0; }
 @media (max-width: 480px) { .gallery { padding: 14px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }

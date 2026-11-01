@@ -31,12 +31,12 @@ const faqs = [
     answer: "Aim for 3 to 5 videos per week across channels. Because short-form video algorithms test each video with a fresh cohort, consistency and hook variation matter more than high production budgets.",
   },
   {
-    question: "Can I automate short-form video creation with UGC Pilot?",
-    answer: "Yes. UGC Pilot turns your product brief into creator hook videos, dynamic text overlays, and multi-slide carousels you can review and download—or generate directly from Claude and Codex via our hosted MCP server.",
+    question: "Can I automate short-form video creation with Vidmake?",
+    answer: "Yes. Vidmake turns your product brief into creator hook videos, dynamic text overlays, and multi-slide carousels you can review and download—or generate directly from Claude and Codex via our hosted MCP server.",
   },
   {
     question: "Do I need professional video editing software?",
-    answer: "No. UGC Pilot renders complete vertical videos with synchronized speech and captions, cutting the production cycle from hours in video editors down to minutes.",
+    answer: "No. Vidmake renders complete vertical videos with synchronized speech and captions, cutting the production cycle from hours in video editors down to minutes.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -76,7 +76,7 @@ export default function ShortFormVideoMarketingSaasPage() {
           Platforms like TikTok, Instagram Reels, and YouTube Shorts use recommendation engines based on <strong className="font-semibold text-foreground-strong">content interest graphs</strong> rather than social following. Even if your brand account has zero followers, a video that addresses a relatable software pain point can reach 50,000 targeted developers or founders overnight.
         </p>
         <p>
-          This playbook breaks down how to build an efficient short-form video marketing engine with <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>.
+          This playbook breaks down how to build an efficient short-form video marketing engine with <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>.
         </p>
 
         <ArticleH2>Platform Breakdown: TikTok vs Reels vs Shorts</ArticleH2>
@@ -143,7 +143,7 @@ export default function ShortFormVideoMarketingSaasPage() {
             <strong className="font-semibold text-foreground-strong">Tuesday:</strong> Record one 15-second screen recording of your software solving that problem.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Wednesday:</strong> Render 3 hook variations in UGC Pilot. Review fonts, audio, and captions in your library.
+            <strong className="font-semibold text-foreground-strong">Wednesday:</strong> Render 3 hook variations in Vidmake. Review fonts, audio, and captions in your library.
           </li>
           <li>
             <strong className="font-semibold text-foreground-strong">Thursday–Sunday:</strong> Post one variation per day across TikTok, Reels, and Shorts.
@@ -152,7 +152,7 @@ export default function ShortFormVideoMarketingSaasPage() {
 
         <ArticleH2>Real Social Examples in Action</ArticleH2>
         <p>
-          Inspect real public videos generated with UGC Pilot on active social accounts:
+          Inspect real public videos generated with Vidmake on active social accounts:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
@@ -175,7 +175,7 @@ export default function ShortFormVideoMarketingSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and our{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and our{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),
@@ -184,7 +184,7 @@ export default function ShortFormVideoMarketingSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  No timeline editing skills required. Start with 2 free credits on our{" "}
+                  No timeline editing skills required. Start with our{" "}
                   <ArticleLink href="/pricing">free trial</ArticleLink>.
                 </>
               ),

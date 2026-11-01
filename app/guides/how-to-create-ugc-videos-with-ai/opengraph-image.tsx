@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot guide",
+    kicker: "Vidmake guide",
     title: "Create a UGC video with AI.",
     subtitle: "Brief, generate, review, and download the file you approve.",
   });

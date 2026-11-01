@@ -196,7 +196,7 @@ const initialManualDraft: ManualProfileDraft = {
 
 const countFormatter = new Intl.NumberFormat("en");
 const profileControlClassName =
-  "h-12 w-full rounded-xl border border-border bg-card-muted/60 px-3.5 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow,transform] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
+  "h-12 w-full rounded-xl border border-border bg-card-muted/60 px-3.5 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow,transform] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-white focus-visible:ring-2 focus-visible:ring-white/25 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
 
 export function BusinessProfileOnboarding() {
   const router = useRouter();
@@ -853,7 +853,7 @@ export function BusinessInformationStep({
                   className={cn(
                     "relative flex min-h-36 touch-manipulation cursor-pointer flex-col rounded-2xl border p-4.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:min-h-[7.25rem] lg:p-3.5",
                     selected
-                      ? "border-primary/60 bg-selected/90 shadow-[0_8px_24px_rgba(201,71,22,0.1)] ring-1 ring-primary/20"
+                      ? "border-white bg-card ring-1 ring-white/25"
                       : "border-border/80 bg-card-muted/50 hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/80 shadow-xs",
                     isSaving && "cursor-not-allowed opacity-60",
                   )}
@@ -871,7 +871,7 @@ export function BusinessInformationStep({
                     <span className={cn(
                       "flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors shadow-xs lg:size-9",
                       selected
-                        ? "border-primary/25 bg-primary/10 text-primary"
+                        ? "border-white/40 text-foreground-strong"
                         : "border-border/80 bg-card text-muted",
                     )}>
                       <Icon className="size-4.5" aria-hidden="true" />
@@ -879,7 +879,7 @@ export function BusinessInformationStep({
                     <span className={cn(
                       "flex size-5.5 items-center justify-center rounded-full border transition-all lg:size-5",
                       selected
-                        ? "border-primary bg-primary text-primary-foreground shadow-xs scale-105"
+                        ? "border-white bg-white text-[#101014] shadow-xs scale-105"
                         : "border-border-strong bg-card text-transparent",
                     )} aria-hidden="true">
                       <Check className="size-3.5 stroke-[2.5]" />
@@ -942,7 +942,7 @@ export function BusinessInformationStep({
                     <StepNumber value="1" />
                     <h4 className="text-sm font-bold text-foreground">Copy the analysis prompt</h4>
                   </div>
-                  <Button type="button" variant="outline" size="lg" className="h-10 rounded-xl px-4 font-medium" onClick={onCopyPrompt} disabled={isSaving}>
+                  <Button type="button" variant="outline" size="lg" className="h-10 px-4 font-medium" onClick={onCopyPrompt} disabled={isSaving}>
                     {copied ? <Check data-icon="inline-start" className="text-success stroke-[2.5]" aria-hidden="true" /> : <Copy data-icon="inline-start" aria-hidden="true" />}
                     <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
                   </Button>
@@ -1008,7 +1008,7 @@ export function BusinessInformationStep({
           <p className="text-sm font-medium text-foreground">One profile grounds every personalized idea.</p>
           <p className="mt-1 text-xs leading-5 text-muted-subtle">Nothing is published until you review and approve it.</p>
         </div>
-        <Button type="submit" disabled={isSaving} size="lg" className="h-12 w-full rounded-xl px-6 font-semibold shadow-sm sm:w-auto">
+        <Button type="submit" disabled={isSaving} size="lg" className="h-12 w-full px-6 font-semibold shadow-sm sm:w-auto">
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           <span aria-live="polite">{backgroundMode ? (isSaving ? "Starting setup…" : "Continue") : isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
         </Button>
@@ -1079,7 +1079,7 @@ export function BusinessIdentityStep({
             aria-invalid={Boolean(error)}
             className={profileControlClassName}
           />
-          <FieldDescription id="business-name-help">Enter the name you want UGC Pilot to use in personalized content.</FieldDescription>
+          <FieldDescription id="business-name-help">Enter the name you want Vidmake to use in personalized content.</FieldDescription>
         </FormField>
 
         <FormField className="mt-6 lg:mt-5">
@@ -1097,7 +1097,7 @@ export function BusinessIdentityStep({
               <p className="mt-1 text-xs leading-5 text-muted lg:leading-4">PNG, JPEG, or WebP. Maximum 2 MB.</p>
               <div className="mt-3 flex flex-wrap gap-2.5 lg:mt-2">
                 <label htmlFor={logoInputId} className={cn(
-                  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border-strong bg-card px-4 text-sm font-medium text-foreground transition-all hover:bg-card-muted hover:border-foreground/30 shadow-xs focus-within:ring-2 focus-within:ring-focus",
+                  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border-strong bg-card px-4 text-sm font-medium text-foreground transition-all hover:bg-card-muted hover:border-foreground/30 shadow-xs focus-within:ring-2 focus-within:ring-focus",
                   isSaving && "pointer-events-none opacity-55",
                 )}>
                   <ImagePlus className="size-4" aria-hidden="true" />
@@ -1105,7 +1105,7 @@ export function BusinessIdentityStep({
                 </label>
                 <input id={logoInputId} type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving} onChange={onLogoChange} className="sr-only" />
                 {logoPreviewUrl ? (
-                  <Button type="button" variant="ghost" size="lg" className="rounded-xl h-10 px-3 font-medium text-muted hover:text-error" disabled={isSaving} onClick={onRemoveLogo}>
+                  <Button type="button" variant="ghost" size="lg" className="h-10 px-3 font-medium text-muted hover:text-error" disabled={isSaving} onClick={onRemoveLogo}>
                     <Trash2 data-icon="inline-start" className="size-4" aria-hidden="true" />Remove
                   </Button>
                 ) : null}
@@ -1118,10 +1118,10 @@ export function BusinessIdentityStep({
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row lg:sticky lg:bottom-0 lg:z-10 lg:mt-5 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-3 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
-        <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:w-auto hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
+        <Button type="button" variant="outline" size="lg" className="h-12 px-6 font-semibold sm:w-auto hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
-        <Button type="submit" size="lg" className="h-12 rounded-xl px-8 font-semibold shadow-sm transition-transform active:scale-[0.99] sm:ml-auto sm:min-w-60" disabled={isSaving || !businessName.trim()}>
+        <Button type="submit" size="lg" className="h-12 px-8 font-semibold shadow-sm transition-transform active:scale-[0.99] sm:ml-auto sm:min-w-60" disabled={isSaving || !businessName.trim()}>
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
           {isSaving ? "Saving identity…" : "Continue"}
         </Button>
@@ -1159,7 +1159,7 @@ export function PrimaryGoalStep({
           <span className={cn(
             "rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
             primaryGoals.length > 0
-              ? "bg-primary/10 text-primary border border-primary/20"
+              ? "border border-white/40 text-foreground-strong"
               : "bg-card-muted text-muted border border-border",
           )} aria-live="polite">
             {primaryGoals.length === 0
@@ -1175,7 +1175,7 @@ export function PrimaryGoalStep({
               <label key={option.value} className={cn(
                 "group relative flex min-h-[80px] cursor-pointer items-center gap-3.5 rounded-2xl border px-4.5 py-3.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none lg:min-h-[68px] lg:gap-3 lg:rounded-xl lg:px-3.5 lg:py-2.5",
                 selected
-                  ? "border-primary/60 bg-selected/90 shadow-[0_8px_24px_rgba(201,71,22,0.1)] ring-1 ring-primary/20"
+                  ? "border-white bg-card ring-1 ring-white/25"
                   : "border-border/80 bg-card hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/40 shadow-xs",
                 isSaving && "cursor-not-allowed opacity-60",
               )}>
@@ -1191,7 +1191,7 @@ export function PrimaryGoalStep({
                 <span className={cn(
                   "flex size-11 shrink-0 items-center justify-center rounded-xl border transition-colors shadow-xs lg:size-9 lg:rounded-lg",
                   selected
-                    ? "border-primary/25 bg-primary/10 text-primary"
+                    ? "border-white/40 text-foreground-strong"
                     : "border-border/70 bg-card-muted/70 text-muted group-hover:border-border-strong group-hover:text-foreground",
                 )}>
                   <Icon className="size-5 stroke-[1.85]" aria-hidden="true" />
@@ -1202,7 +1202,7 @@ export function PrimaryGoalStep({
                 <span className={cn(
                   "flex size-5.5 shrink-0 items-center justify-center rounded-lg border-2 transition-all lg:size-5",
                   selected
-                    ? "border-primary bg-primary text-primary-foreground shadow-xs scale-105"
+                    ? "border-white bg-white text-[#101014] shadow-xs scale-105"
                     : "border-border-strong/80 bg-card text-transparent group-hover:border-foreground/30",
                 )} aria-hidden="true">
                   <Check className="size-3.5 stroke-[2.5]" />
@@ -1216,10 +1216,10 @@ export function PrimaryGoalStep({
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between lg:sticky lg:bottom-0 lg:z-10 lg:mt-5 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-3 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
-        <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:min-w-28 hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
+        <Button type="button" variant="outline" size="lg" className="h-12 px-6 font-semibold sm:min-w-28 hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
-        <Button type="submit" size="lg" className="h-12 rounded-xl font-semibold sm:min-w-60 shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSaving || primaryGoals.length === 0}>
+        <Button type="submit" size="lg" className="h-12 font-semibold sm:min-w-60 shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSaving || primaryGoals.length === 0}>
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           {isSaving ? "Personalizing Trending…" : "Enter Trending"}
         </Button>
@@ -1259,11 +1259,9 @@ export function OnboardingFrame({
       <a href="#business-profile-content" className="sr-only rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus-visible:ring-2 focus-visible:ring-focus">Skip to business setup</a>
       <header className="relative border-b border-border/80 bg-background/80 backdrop-blur-xl">
         <div className={cn("mx-auto flex h-[68px] w-full items-center justify-between gap-4 px-5 sm:px-6 lg:px-8", shellWidth)}>
-          <div className="flex items-center gap-2.5" aria-label="UGC Pilot">
-            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
-              <ProductLogoMark className="size-full" imageClassName="brightness-0 invert" sizes="36px" />
-            </span>
-            <span className="text-base font-bold text-foreground-strong">UGC Pilot</span>
+          <div className="flex items-center gap-2.5" aria-label="Vidmake">
+            <ProductLogoMark className="size-8" sizes="32px" />
+            <span className="text-base font-bold text-foreground-strong">Vidmake</span>
           </div>
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Business setup</span>
         </div>

@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     question: "Why do SaaS startups switch from UGC agencies to AI video software?",
-    answer: "Agencies have slow feedback loops: briefing creators, waiting for shipping, and approving edits takes 2 to 3 weeks. AI video software like UGC Pilot allows founders to test new hooks in 3 minutes without waiting for external creator schedules.",
+    answer: "Agencies have slow feedback loops: briefing creators, waiting for shipping, and approving edits takes 2 to 3 weeks. AI video software like Vidmake allows founders to test new hooks in 3 minutes without waiting for external creator schedules.",
   },
   {
     question: "Can an AI UGC tool produce the same conversion rates as an agency?",
@@ -35,8 +35,8 @@ const faqs = [
     answer: "Agencies are valuable when you need high-production commercial shoots with multi-actor skits, complex physical sets, or hands-on influencer seeding campaigns.",
   },
   {
-    question: "How does UGC Pilot pricing compare to an agency retainer?",
-    answer: "UGC Pilot offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
+    question: "How does Vidmake pricing compare to an agency retainer?",
+    answer: "Vidmake offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -76,7 +76,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
           For a venture-backed growth stage company with a $50k monthly ad budget, an agency retainer may make sense. But for bootstrapped, seed-stage, and lean software startups, tying up 30% of your marketing budget in agency overhead slows experimentation down.
         </p>
         <p>
-          Here is how to compare a full-service UGC agency against self-serve <ArticleLink href="/ai-ugc-video-generator">AI UGC software like UGC Pilot</ArticleLink>.
+          Here is how to compare a full-service UGC agency against self-serve <ArticleLink href="/ai-ugc-video-generator">AI UGC software like Vidmake</ArticleLink>.
         </p>
 
         <ArticleH2>Operational &amp; Financial Comparison Matrix</ArticleH2>
@@ -87,7 +87,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
               <tr>
                 <th scope="col" className="p-4 font-semibold">Evaluation Criteria</th>
                 <th scope="col" className="p-4 font-semibold">UGC Video Agency</th>
-                <th scope="col" className="p-4 font-semibold">AI UGC Software (UGC Pilot)</th>
+                <th scope="col" className="p-4 font-semibold">AI UGC Software (Vidmake)</th>
               </tr>
             </thead>
             <tbody>
@@ -135,7 +135,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
           <li><strong>1 ad</strong> will break out, achieving a 3x higher conversion rate and driving 80% of your new trials.</li>
         </ul>
         <p>
-          If an agency only delivers 8 videos per month, you might only test 2 or 3 distinct hook angles. With UGC Pilot, you can test 20 different opening lines for the cost of a single dinner, drastically increasing your odds of finding that breakout hook. Explore our library of <ArticleLink href="/free-hook-lines">110 free hook lines</ArticleLink>.
+          If an agency only delivers 8 videos per month, you might only test 2 or 3 distinct hook angles. With Vidmake, you can test 20 different opening lines for the cost of a single dinner, drastically increasing your odds of finding that breakout hook. Explore our library of <ArticleLink href="/free-hook-lines">110 free hook lines</ArticleLink>.
         </p>
 
         <ArticleH2>The Smart Hybrid Strategy</ArticleH2>
@@ -147,7 +147,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
             <strong className="font-semibold text-foreground-strong">Use Human Agencies For:</strong> Flagship customer testimonials, in-depth user case study interviews, and annual brand campaigns.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Use UGC Pilot For:</strong> Weekly organic TikTok/Reels posting, rapid paid ad hook iterations, feature changelog announcements, and multi-slide educational carousels.
+            <strong className="font-semibold text-foreground-strong">Use Vidmake For:</strong> Weekly organic TikTok/Reels posting, rapid paid ad hook iterations, feature changelog announcements, and multi-slide educational carousels.
           </li>
         </ol>
 
@@ -161,7 +161,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start testing with 2 free credits on our 7-day trial. View full details on{" "}
+                  Start with our 7-day trial. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -173,9 +173,9 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
         links={[
           { href: "/ai-ugc-video-generator", title: "AI UGC Video Generator", description: "Generate short-form creator hooks from your software brief." },
           { href: "/blog/cost-of-ugc-video-for-saas", title: "Cost of UGC Video for SaaS", description: "Creators vs agencies vs AI software unit economics." },
-          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
           { href: "/blog/best-ai-ugc-tools-for-saas", title: "Best AI UGC Tools for SaaS", description: "The definitive 2026 buyer's guide and platform comparison." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video generation." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
           { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
         ]}
       />

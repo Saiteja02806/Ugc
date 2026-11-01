@@ -8,7 +8,7 @@ import { OAuthConsent } from "./oauth-consent";
 
 export const metadata: Metadata = {
   title: "Connect an app",
-  description: "Review and approve access to your UGC Pilot account.",
+  description: "Review and approve access to your Vidmake account.",
 };
 
 export default async function OAuthAuthorizePage({
@@ -39,7 +39,7 @@ export default async function OAuthAuthorizePage({
             This connection link is invalid
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Return to your MCP client and start the UGC Pilot connection again.
+            Return to your MCP client and start the Vidmake connection again.
           </p>
         </section>
       </main>

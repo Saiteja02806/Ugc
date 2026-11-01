@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot examples",
+    kicker: "Vidmake examples",
     title: "Real UGC video generator examples.",
     subtitle: "YouTube, Instagram reels, and Clara TikTok videos.",
   });

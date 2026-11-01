@@ -1,0 +1,9 @@
+# Starting-frame previous generations
+
+Implemented locally: Previous generations appears above the thumbnail rail in the results column when saved request records were restored. Completed restored previews, thumbnails, count and approval stay hidden until clicked. The control toggles to Hide previous generations. Requests still load/reconcile in the background, with pending/error status and Refresh status preserved. Fresh generations appear immediately. Reveal/hide does not submit jobs or mutate stored provenance.
+
+Source of restoration: localStorage records scoped by owner, draft ID and reference ID. Media/status comes from verified job reads, not solely cached image bytes. The existing local chooser retains up to12 request entries; this change does not provide unlimited account-wide history or fetch older evicted entries. Other drafts/devices do not share this local chooser. The account media inventory is separate.
+
+Files changed: components/explore/hook-starting-frame-workspace.tsx; scripts/hook-starting-frame-ui.test.mjs; EXPLORE_CONTEXT.md; docs/ai-context/clear.md; this receipt. Existing unrelated work preserved. Same-session context-memory, immutable-contracts, UI-clarity, starting-frame and regression procedures applied; preflight PASS.
+
+Verification:59actual-component UI harness tests PASS, including restored legacy result hidden/reveal/hide/reveal/approve, unchanged storage on disclosure, zero submissions during disclosure, retry/loading states and per-frame photo handoff. Scoped ESLint and TypeScript PASS. Browser desktop/mobile screenshot acceptance NOT TESTED; no claim of hosted acceptance. No backend, prompt/model, generation limit, request-recovery or scheduling changes. UGC-UI-075 history portion implemented; its separate ambiguous-request and reported eight-image concerns remain open. No deployment or paid generation. Rollback: disclosure state and display conditions only.

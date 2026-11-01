@@ -188,7 +188,7 @@ test("saved images load only when the image picker opens and stay scoped to its 
   assert.equal(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, true);
   assert.equal(JSON.stringify(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).queryKey), JSON.stringify(["explore-reference-images", "expected-owner", "explore-only-v2"]));
   assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "Uploaded photos").length, 1);
-  assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "UGC Pilot images").length, 1);
+  assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "Vidmake images").length, 1);
   for (const options of [{ preview: true }, { ownerId: null }]) {
     const isolated = harness(async () => {}, options); isolated.openImage();
     assert.equal(isolated.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, false);

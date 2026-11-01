@@ -12,14 +12,18 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { resolvePricingPlanAction } from "@/lib/pricing/plan-action";
 import {
+  formatPlanAllowance,
   formatPricingAmount,
   getPlanPricing,
+  getPlanVideoAllowance,
   type BillingInterval,
+  type PlanAllowanceView,
   type PricingPlan,
 } from "@/lib/pricing/plans";
 import { cn } from "@/lib/utils";
 
 type PricingCardProps = {
+  allowanceView: PlanAllowanceView;
   billingInterval: BillingInterval;
   isSubscriptionError?: boolean;
   isSubscriptionLoading: boolean;
@@ -28,6 +32,7 @@ type PricingCardProps = {
 };
 
 export function PricingCard({
+  allowanceView = "hooks",
   billingInterval,
   isSubscriptionError = false,
   isSubscriptionLoading,
@@ -39,6 +44,7 @@ export function PricingCard({
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const pricing = getPlanPricing(plan, billingInterval);
+  const videoAllowance = getPlanVideoAllowance(plan.sharedMonthlyCredits);
   const isFree = plan.slug === "free";
   const isGrowth = plan.highlighted;
   const ctaHref = `/sign-in?plan=${plan.slug}&billing=${billingInterval}`;
@@ -124,7 +130,7 @@ export function PricingCard({
       {/* Plan capacity badge */}
       {plan.badgeLabel ? (
         <div className="absolute -top-3 right-6 z-10">
-          <span className="inline-flex items-center rounded-full bg-primary px-3 py-0.5 text-[11px] font-semibold text-[#1f1f1f] shadow-xs">
+          <span className="inline-flex items-center rounded-full bg-primary px-3 py-0.5 text-[11px] font-semibold text-primary-foreground shadow-xs">
             {plan.badgeLabel}
           </span>
         </div>
@@ -242,7 +248,28 @@ export function PricingCard({
       </div>
 
       {/* 4. Deliverable Callout Pill */}
-      {plan.capacityLabel ? (
+      {plan.sharedMonthlyCredits > 0 ? (
+        <div className="mt-4 rounded-xl border border-border bg-card-muted/60 px-3 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+            What you can make every month
+          </p>
+          <p className="mt-2 text-sm font-semibold text-foreground-strong">
+            {allowanceView === "hooks"
+              ? `${videoAllowance.hookVideos} video hooks, 3 seconds each`
+              : allowanceView === "full"
+                ? `${videoAllowance.fullVideos} full videos, 6 seconds each`
+                : formatPlanAllowance(plan.sharedMonthlyCredits, "credits")}
+          </p>
+          <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
+            <li>{videoAllowance.hookVideos} three-second hooks</li>
+            <li>or {videoAllowance.fullVideos} six-second videos</li>
+            <li className="flex items-center gap-1.5">
+              <CreditIcon className="size-4" />
+              <span>{formatPlanAllowance(plan.sharedMonthlyCredits, "credits")}</span>
+            </li>
+          </ul>
+        </div>
+      ) : plan.capacityLabel ? (
         <div className="mt-4">
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card-muted/60 px-3 py-2 text-xs font-medium text-foreground-strong">
             <CreditIcon className="size-5" />

@@ -44,7 +44,7 @@ export const registeredMcpTools: readonly string[] = [
 
 export const mcpHandler = createMcpHandler(
   () => {
-    const server = new McpServer({ name: "UGC Pilot", version: "0.1.0" }, { maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS });
+    const server = new McpServer({ name: "Vidmake", version: "0.1.0" }, { maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS });
     registerReadMcpTools(server);
     registerMutationMcpTools(server);
     registerGenerationMcpTools(server);

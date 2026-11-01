@@ -156,7 +156,7 @@ export function AiStudioResults({
         </div>
       ) : status?.tone === "progress" ? (
         <Empty
-          className="min-h-0 flex-1 px-5 py-8"
+          className="min-h-0 flex-1 border border-border bg-card px-5 py-8"
           role="status"
           aria-live="polite"
         >
@@ -177,7 +177,7 @@ export function AiStudioResults({
       ) : emptyContent ? (
         <div className={cn("flex min-h-0 flex-1 items-center px-1 py-5", emptyContentClassName)}>{emptyContent}</div>
       ) : (
-        <Empty className="min-h-0 flex-1 px-5 py-8">
+        <Empty className="min-h-0 flex-1 border border-border bg-card px-5 py-8">
           <EmptyHeader>
             <EmptyTitle>{emptyTitle ?? "No generations yet"}</EmptyTitle>
             <EmptyDescription>

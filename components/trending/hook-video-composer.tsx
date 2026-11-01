@@ -884,7 +884,7 @@ function HookTextStage({
         <button
           type="button"
           onClick={onOpenSuggestions}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           aria-label="Open AI hook suggestions"
           title="AI hook suggestions"
         >
@@ -1008,7 +1008,7 @@ function SuggestionDrawer({
             type="button"
             autoFocus
             onClick={onClose}
-            className="inline-flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="inline-flex size-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             aria-label="Close AI hook suggestions"
             title="Close"
           >
@@ -1058,9 +1058,9 @@ function SuggestionDrawer({
                   key={suggestion.id}
                   type="button"
                   onClick={() => onChoose(suggestion)}
-                  className="group flex w-full items-start gap-3 border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary hover:bg-brand-soft/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className="group flex w-full items-start gap-3 border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-white hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card-muted text-xs font-bold text-muted group-hover:bg-primary group-hover:text-white">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card-muted text-xs font-bold text-muted group-hover:bg-primary group-hover:text-primary-foreground">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold leading-5 text-foreground-strong">
@@ -1263,7 +1263,7 @@ function DemoPickerDialog({
                     key={demo.id}
                     type="button"
                     onClick={() => onChoose(demo)}
-                    className="group min-w-0 overflow-hidden rounded-[14px] border border-border bg-transparent text-left transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    className="group min-w-0 overflow-hidden rounded-[14px] border border-border bg-transparent text-left transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <span className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-card-muted text-muted">
                       {demo.thumbnailUrl ? (
@@ -1465,7 +1465,7 @@ function ReviewComposition({
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <label className="text-xs font-semibold text-muted">
                   Start
-                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-white focus-within:ring-1 focus-within:ring-white">
                     <input
                       type="number"
                       name="opening-trim-start"
@@ -1493,7 +1493,7 @@ function ReviewComposition({
                 </label>
                 <label className="text-xs font-semibold text-muted">
                   End
-                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-white focus-within:ring-1 focus-within:ring-white">
                     <input
                       type="number"
                       name="opening-trim-end"
@@ -1700,9 +1700,9 @@ function ComposerSteps({
             className={cn(
               "flex size-5 items-center justify-center rounded-full border text-[10px] font-bold",
               index < currentIndex
-                ? "border-primary bg-primary text-primary-foreground"
+                ? "border-white bg-white text-[#101014]"
                 : index === currentIndex
-                  ? "border-primary text-primary"
+                  ? "border-white text-foreground-strong"
                   : "border-border text-muted",
             )}
           >

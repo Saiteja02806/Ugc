@@ -13,12 +13,12 @@
 .width { width: 158px; height: 34px; accent-color: var(--primary); }
 .segment { display: flex; border: 1px solid var(--input); border-radius: 6px; overflow: hidden; }
 .segment button { display: grid; place-items: center; width: 34px; height: 32px; background: #202020; color: #bcbcbc; cursor: pointer; }
-.segment button[aria-pressed="true"] { background: #3a302b; color: #ff7044; }
+.segment button[aria-pressed="true"] { background: #333333; color: #f5f3f0; }
 .segment button:hover { background: #383838; }
 .segment button:focus-visible { outline-offset: -3px; }
 .check { display: flex; align-items: center; gap: 7px; min-height: 34px; font-size: 12px; }
 .check input { accent-color: var(--primary); }
-.panel :is(button, select, input, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.panel :is(button, select, input, summary):focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
 .position summary { width: fit-content; cursor: pointer; font-size: 12px; color: var(--muted-foreground); }
 .position[open] summary { margin-bottom: 10px; }
 @media (max-width: 480px) { .toolbar { gap: 10px; } .field { font-size: 10px; } .panel select { width: 100px; } .panel select.font, .width { width: 140px; } }

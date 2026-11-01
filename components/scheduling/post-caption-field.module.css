@@ -7,19 +7,19 @@
 .actions .libraryTrigger { margin-left: auto; }
 .field button, .drawer button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 36px; padding: .25rem .35rem; font-size: .75rem; font-weight: 500; border-radius: .4rem; color: var(--foreground); cursor: pointer; touch-action: manipulation; }
 .field button:hover, .drawer button:hover { background: var(--surface-subtle); }
-.field button:focus-visible, .drawer button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.field button:focus-visible, .drawer button:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
 .field button:disabled, .drawer button:disabled { opacity: .45; cursor: default; }
 .field button svg, .drawer button svg { width: 14px; height: 14px; flex-shrink: 0; }
 .help, .empty { color: var(--muted-foreground); font-size: .75rem; line-height: 1.6; margin-top: .35rem; }
 .input { position: relative; margin-top: .75rem; }
 .input textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid var(--border); border-radius: .65rem; padding: .8rem 2.75rem .8rem .85rem; background: var(--card-muted, var(--card)); color: var(--foreground); font-size: .875rem; line-height: 1.65; }
-.input textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.input textarea:focus { outline: 2px solid var(--foreground); outline-offset: 1px; }
 .input .clear { position: absolute; right: .4rem; top: .35rem; width: 32px; min-height: 32px; background: var(--card); }
 .meta { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; color: var(--muted-foreground); font-size: .7rem; line-height: 1.5; margin-top: .3rem; }
 .meta > :last-child { flex-shrink: 0; }
 .backdrop { position: fixed; inset: 0; z-index: 70; background: var(--overlay, rgb(0 0 0 / .4)); }
 .drawer { position: fixed; z-index: 71; inset: 0 0 0 auto; width: min(440px, 100%); height: 100dvh; display: flex; flex-direction: column; min-height: 0; background: var(--card); color: var(--foreground); border-left: 1px solid var(--border); box-shadow: -12px 0 40px rgb(0 0 0 / .18); }
-.drawer:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.drawer:focus-visible { outline: 2px solid var(--foreground); outline-offset: -2px; }
 .drawerHeader { display: flex; align-items: flex-start; gap: 16px; padding: max(20px, env(safe-area-inset-top)) 20px 18px; border-bottom: 1px solid var(--border); }
 .drawerHeader > div { min-width: 0; flex: 1; }
 .drawerTitle { margin: 0; font-size: 1rem; line-height: 1.5; font-weight: 600; }

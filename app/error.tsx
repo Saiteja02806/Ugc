@@ -21,11 +21,7 @@ export default function ErrorPage({
   return (
     <main className="instagram-theme flex min-h-dvh items-center justify-center bg-background px-5 py-12 text-foreground">
       <section className="w-full max-w-lg rounded-[var(--radius-modal)] border border-border bg-card p-7 text-center shadow-floating sm:p-10">
-        <ProductLogoMark
-          className="mx-auto size-12 rounded-card bg-primary p-3"
-          imageClassName="brightness-0 invert"
-          sizes="48px"
-        />
+        <ProductLogoMark className="mx-auto size-12" sizes="48px" />
         <span className="mx-auto mt-6 flex size-11 items-center justify-center rounded-card bg-error/10 text-error">
           <AlertTriangle className="size-5" aria-hidden="true" />
         </span>

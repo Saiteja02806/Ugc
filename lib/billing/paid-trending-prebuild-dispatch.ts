@@ -6,7 +6,7 @@ import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-jo
 
 export type PaidTrendingPrebuildDispatchParams = {
   periodStart: string | null;
-  planKey: "starter" | "growth";
+  planKey: "starter" | "growth" | "startup";
   subscriptionId: string;
   userId: string;
 };

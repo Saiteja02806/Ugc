@@ -30,6 +30,17 @@ function json(res, value) { res.setHeader('Content-Type','application/json');res
 const css = ['workflow-creation.module.css','workflow-schedule-review.module.css'].map(name=>fs.readFileSync(path.join(root,'components/explore',name),'utf8')).join('\n') + `
 :root{--background:#202020;--card:#282828;--border:#414141;--foreground:#eee;--foreground-strong:#fff;--muted:#aaa}*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font:14px Arial}main{max-width:760px;margin:24px auto;padding:12px}button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;padding:10px;border:1px solid var(--border);border-radius:8px;background:#303030;display:inline-flex;align-items:center;justify-content:center}button:disabled{opacity:.5}button[aria-pressed=true]{border-color:#ff7043}.reviewButton{background:#ff7043;color:#111}input,textarea{width:100%;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:10px}p{margin:0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}svg{width:18px;height:18px}.text-xs{font-size:12px}.text-muted{color:var(--muted)}`;
 async function pickTime(page,time){await page.getByRole('button',{name:/^Choose publish time, currently/}).click();await page.getByLabel('Hour',{exact:true}).selectOption(time.slice(0,2));await page.getByLabel('Minute',{exact:true}).selectOption(time.slice(3));await page.getByRole('button',{name:'Done',exact:true}).click();}
+async function checkConfirmationPlacement(page) {
+  const link=page.getByRole('link',{name:'View in Scheduling',exact:true});
+  assert.equal(await link.count(),1);
+  const row=link.locator('..');
+  assert.equal(await row.getByRole('status').count(),1,'Confirmed status and link share the same row');
+  assert.match(await row.getByRole('status').innerText(),/Post scheduled/);
+  assert.equal(await link.evaluate(node=>getComputedStyle(node).fontSize),'12px');
+  const linkBox=await link.boundingBox(),rowBox=await row.boundingBox(),actionBox=await page.getByRole('button',{name:/^(Post now|Schedule post)$/}).last().boundingBox();
+  assert.ok(rowBox.y+rowBox.height<=actionBox.y+1,'Status and link sit above the action buttons');
+  assert.ok(linkBox.x>=0&&linkBox.x+linkBox.width<=page.viewportSize().width,'The compact link stays within the viewport');
+}
 async function main(){
   const globalCss = (await require('postcss')([require('@tailwindcss/postcss')()]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);')+'\n@source "../components";', {from:path.join(root,'app/globals.css')})).css;
   await new Promise((resolve,reject)=>{const compiler=webpack({mode:'development',devtool:false,context:root,plugins:[new webpack.NormalModuleReplacementPlugin(/(?:^|[\\/])firebase[\\/]auth$/,resource=>{resource.request=path.join(out,'auth.ts');})],entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:{'@/contexts/auth-context':path.join(out,'auth.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/components/providers/account-timezone-provider':path.join(out,'timezone.ts'),'next/link':path.join(out,'link.tsx'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||new Error(stats.toString({all:false,errors:true}))):resolve()));});
@@ -72,6 +83,12 @@ async function main(){
       // A lost acknowledgement is resolved with a read, without another POST.
       await page.getByRole('button',{name:'Post now',exact:true}).last().click();
       await page.getByRole('link',{name:'View in Scheduling',exact:true}).waitFor();
+      await checkConfirmationPlacement(page);
+      if(mode==='slideshow'){
+        const submit=await page.getByRole('button',{name:'Post now',exact:true}).boundingBox();
+        const caption=await page.getByRole('textbox',{name:/^Post caption/}).boundingBox();
+        assert.ok(submit.y+submit.height<caption.y,'Slideshow submission stays above settings');
+      }
       assert.match(await page.locator('body').innerText(),/Post scheduled/);
       assert.equal(await page.getByRole('link',{name:'View in Scheduling',exact:true}).getAttribute('href'),'/scheduling');
       const linkStyle=await page.getByRole('link',{name:'View in Scheduling',exact:true}).evaluate(link=>({color:getComputedStyle(link).color,underline:getComputedStyle(link).textDecorationLine,parentColor:getComputedStyle(link.parentElement).color}));
@@ -109,6 +126,7 @@ async function main(){
       const page=await browser.newPage({locale:"en-GB",viewport:mobile?{width:390,height:844}:{width:1440,height:1000}});
       await page.goto(`http://127.0.0.1:${server.address().port}/fixture?mode=talking`);
       const link=page.getByRole('link',{name:'View in Scheduling',exact:true});await link.waitFor();
+      await checkConfirmationPlacement(page);
       assert.equal(await link.evaluate(node=>getComputedStyle(node).color),'rgb(255, 112, 69)');
       assert.match(await link.evaluate(node=>getComputedStyle(node).textDecorationLine),/underline/);
       await page.screenshot({path:path.join(out,`talking-${mobile?'mobile':'desktop'}.png`),fullPage:true});await page.close();

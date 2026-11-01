@@ -19,6 +19,16 @@
 .imageActions, .emptyInspector { display: grid; gap: 12px; padding-bottom: 12px; }
 .editorPreview { display: flex; min-width: 0; min-height: 100%; flex-direction: column; gap: 16px; }
 .previewHeading button { flex: none; min-height: 36px; font-size: 12px; }
+.headerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.moreActions { position: relative; }
+.moreActions > summary { display: flex; min-height: 40px; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 12px; cursor: pointer; list-style: none; }
+.moreActions > summary::-webkit-details-marker { display: none; }
+.moreActions > summary::after { content: "..."; font-weight: 600; }
+.moreActions > summary:hover { color: var(--foreground); background: var(--card-muted); }
+.moreActions > summary:focus-visible, .arrangement > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.moreActions > div { position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); display: grid; gap: 4px; min-width: 168px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px #0003; }
+.moreActions > div button { width: 100%; justify-content: flex-start; border: 0; background: transparent; }
+.saveFeedback { display: grid; gap: 6px; grid-column: 1 / -1; }
 .previewCanvas { display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .previewNavigation { display: flex; align-items: center; gap: 12px; }
 .previewNavigation button { min-height: 32px; font-size: 12px; }
@@ -33,9 +43,9 @@
 .filmstrip { display: flex; min-width: 0; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 20%, transparent) transparent; scroll-snap-type: x proximity; }
 .filmstrip[data-reordering] { scroll-snap-type: none; user-select: none; }
 .thumbnail { position: relative; width: 72px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); scroll-snap-align: start; }
-.thumbnail[data-selected] { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.thumbnail[data-selected] { border-color: var(--foreground); box-shadow: 0 0 0 1px var(--foreground); }
 .thumbnail[data-dragging] { opacity: .45; }
-.thumbnail[data-drop]::after { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--primary); content: ""; pointer-events: none; }
+.thumbnail[data-drop]::after { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--foreground); content: ""; pointer-events: none; }
 .thumbnail[data-drop="before"]::after { left: -7px; }
 .thumbnail[data-drop="after"]::after { right: -7px; }
 .thumbnailPreview { display: block; width: 100%; overflow: hidden; border-radius: 6px; background: transparent; cursor: pointer; }
@@ -55,6 +65,8 @@
 .arrangement p { color: var(--muted); font-size: 11px; }
 .arrangement > div { display: flex; flex-wrap: wrap; gap: 4px; }
 .arrangement button { min-height: 32px; padding-inline: 8px; font-size: 11px; }
+.arrangement { display: block; }
+.arrangement > summary { width: fit-content; padding-block: 6px; color: var(--muted); font-size: 11px; cursor: pointer; }
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .field { display: flex; min-width: 0; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 500; }
 .field > textarea, .field > select, .field > input { width: 100%; min-width: 0; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 13px; font-weight: 400; }
@@ -63,9 +75,6 @@
 .field > input[type="range"] { accent-color: var(--primary); }
 .field > input[type="color"] { width: 44px; padding: 4px; cursor: pointer; }
 .saveActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
-.saveActions > p { flex: 1 1 180px; order: -1; }
-.saveActions > [role="alert"] { flex-basis: 100%; }
-.overviewActions { flex: none; grid-column: 1 / -1; padding-block: 14px 4px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .field > textarea:focus-visible, .field > select:focus-visible, .field > input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .field > :disabled { opacity: .6; }
 :global(.dark) .field > select { color-scheme: dark; }
@@ -80,6 +89,8 @@
   .thumbnail img, .thumbnail .unavailable { height: 72px; }
   .previewNavigation button, .sequenceHeading button, .arrangement button { min-height: 44px; }
   .previewHeading { flex-wrap: wrap; }
+  .headerActions { justify-content: flex-start; }
+  .saveActions { gap: 8px; }
   .previewHeading button { min-height: 40px; }
 }
 @media (max-height: 520px) { .preview > img:first-child { max-height: 65dvh; } }
@@ -89,9 +100,9 @@
   .previewHeading h2 { font-size: 15px; line-height: 22px; }
   .previewHeading p, .previewNavigation { display: none; }
   .previewHeading button { min-height: 36px; padding-inline: 8px; }
-  .previewCanvas { grid-column: 1; grid-row: 2; }
+  .previewCanvas { grid-column: 1; grid-row: 3; }
   .preview > img:first-child { max-height: 24dvh; }
-  .sequence { grid-column: 2; grid-row: 2; align-content: center; padding: 0; border: 0; gap: 6px; }
+  .sequence { grid-column: 2; grid-row: 3; align-content: center; padding: 0; border: 0; gap: 6px; }
   .sequenceHeading { gap: 4px; }
   .sequenceHeading > div { flex-wrap: wrap; gap: 4px; }
   .sequenceHeading button, .arrangement button { min-height: 36px; padding-inline: 6px; font-size: 11px; }

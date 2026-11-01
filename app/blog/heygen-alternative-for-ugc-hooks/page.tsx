@@ -14,7 +14,7 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/heygen-alternative-for-ugc-hooks";
 const title = "HeyGen Alternative for Social UGC Hooks: Social Video vs Corporate Presenters";
-const description = "Compare HeyGen and UGC Pilot for social video marketing: corporate presentation avatars vs fast-paced, scroll-stopping UGC hooks for TikTok and Reels.";
+const description = "Compare HeyGen and Vidmake for social video marketing: corporate presentation avatars vs fast-paced, scroll-stopping UGC hooks for TikTok and Reels.";
 const datePublished = "2026-10-29";
 
 const faqs = [
@@ -27,16 +27,16 @@ const faqs = [
     answer: "Social media feeds reward authentic, casual peer recommendations. Avatars dressed in formal corporate attire looking like newscasters trigger ad blindness, causing users to swipe past within the first two seconds.",
   },
   {
-    question: "How does UGC Pilot differ from HeyGen for software startups?",
-    answer: "UGC Pilot focuses specifically on high-retention 9:16 vertical social video: 3-second scroll-stopping hooks, casual developer and operator personas, built-in cutaways to software screen recordings, and a multi-tool OAuth MCP server for Claude and Codex.",
+    question: "How does Vidmake differ from HeyGen for software startups?",
+    answer: "Vidmake focuses specifically on high-retention 9:16 vertical social video: 3-second scroll-stopping hooks, casual developer and operator personas, built-in cutaways to software screen recordings, and a multi-tool OAuth MCP server for Claude and Codex.",
   },
   {
     question: "Does HeyGen support Model Context Protocol (MCP) workflows?",
     answer: "HeyGen provides standard developer APIs, but does not provide an official Model Context Protocol (MCP) server for direct agent orchestration inside Claude Desktop or Codex CLI.",
   },
   {
-    question: "How does pricing compare between HeyGen and UGC Pilot?",
-    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. UGC Pilot offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month.",
+    question: "How does pricing compare between HeyGen and Vidmake?",
+    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. Vidmake offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -76,18 +76,18 @@ export default function HeyGenAlternativeForUgcHooksPage() {
           However, corporate video and social video advertising are polar opposites. What makes an avatar successful in an enterprise training portal (formal posture, neutral emotion, steady teleprompter cadence) is exactly what causes an ad to fail on TikTok and Instagram Reels.
         </p>
         <p>
-          If you are marketing software or tech products on social media, here is an in-depth comparison between HeyGen and <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>.
+          If you are marketing software or tech products on social media, here is an in-depth comparison between HeyGen and <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>.
         </p>
 
-        <ArticleH2>Direct Feature Comparison: HeyGen vs UGC Pilot</ArticleH2>
+        <ArticleH2>Direct Feature Comparison: HeyGen vs Vidmake</ArticleH2>
         <div className="overflow-x-auto rounded-[22px] border border-border">
           <table className="w-full min-w-[500px] border-collapse text-left text-sm leading-6">
-            <caption className="sr-only">HeyGen vs UGC Pilot comparison for short-form social marketing</caption>
+            <caption className="sr-only">HeyGen vs Vidmake comparison for short-form social marketing</caption>
             <thead className="bg-card-muted/60 text-foreground-strong">
               <tr>
                 <th scope="col" className="p-4 font-semibold">Evaluation Criteria</th>
                 <th scope="col" className="p-4 font-semibold">HeyGen</th>
-                <th scope="col" className="p-4 font-semibold">UGC Pilot</th>
+                <th scope="col" className="p-4 font-semibold">Vidmake</th>
               </tr>
             </thead>
             <tbody>
@@ -129,12 +129,12 @@ export default function HeyGenAlternativeForUgcHooksPage() {
 
         <ArticleH3>1. The First Three Seconds (The Retention Cliff)</ArticleH3>
         <p>
-          In an enterprise training video, the audience is captive: an employee has to watch the compliance video to finish onboarding. On TikTok or Instagram Reels, the user is swiping at lightning speed. A presenter saying &quot;Hello and welcome to our company overview&quot; loses 85% of viewers immediately. UGC Pilot opens with visceral, contrarian problem hooks designed to stop thumb momentum.
+          In an enterprise training video, the audience is captive: an employee has to watch the compliance video to finish onboarding. On TikTok or Instagram Reels, the user is swiping at lightning speed. A presenter saying &quot;Hello and welcome to our company overview&quot; loses 85% of viewers immediately. Vidmake opens with visceral, contrarian problem hooks designed to stop thumb momentum.
         </p>
 
         <ArticleH3>2. Casual Tech Credibility vs Corporate Distance</ArticleH3>
         <p>
-          Developers and technical operators gravitate toward builders who look like them. A creator in a casual hoodie sitting at a dual-monitor workstation creates instant peer rapport. UGC Pilot specializes in tech creator personas rather than corporate spokespeople. Learn more in our guide on <ArticleLink href="/blog/ai-creator-avatars-tech-products">AI creator avatars for tech products</ArticleLink>.
+          Developers and technical operators gravitate toward builders who look like them. A creator in a casual hoodie sitting at a dual-monitor workstation creates instant peer rapport. Vidmake specializes in tech creator personas rather than corporate spokespeople. Learn more in our guide on <ArticleLink href="/blog/ai-creator-avatars-tech-products">AI creator avatars for tech products</ArticleLink>.
         </p>
 
         <ArticleH3>3. Software UI Cutaways Ground the Video in Reality</ArticleH3>
@@ -152,9 +152,9 @@ export default function HeyGenAlternativeForUgcHooksPage() {
           <li>You want an exact digital twin of your CEO delivering an annual keynote address.</li>
         </ul>
 
-        <ArticleH2>When Should You Choose UGC Pilot?</ArticleH2>
+        <ArticleH2>When Should You Choose Vidmake?</ArticleH2>
         <p>
-          UGC Pilot is built for you if:
+          Vidmake is built for you if:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>You are marketing a SaaS startup, software tool, or digital platform on social media.</li>
@@ -181,7 +181,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  UGC Pilot offers self-serve monthly plans from $19/mo. Explore{" "}
+                  Vidmake offers self-serve monthly plans from $19/mo. Explore{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -195,7 +195,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
           { href: "/blog/talking-head-hook-generator-saas", title: "Talking Head Hook Generator for SaaS", description: "Stop the scroll in under 3 seconds." },
           { href: "/blog/arcads-alternative-for-saas", title: "Arcads Alternative for SaaS", description: "Physical e-commerce ads vs software video workflows." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video generation." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
           { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
         ]}
       />

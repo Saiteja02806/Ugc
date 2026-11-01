@@ -1,6 +1,6 @@
 import { marketingOgImage, ogContentType, ogSize } from "@/lib/marketing/og-card";
 
-export const alt = "Connect Claude, Codex, or ChatGPT to UGC Pilot";
+export const alt = "Connect Claude, Codex, or ChatGPT to Vidmake";
 export const size = ogSize;
 export const contentType = ogContentType;
 

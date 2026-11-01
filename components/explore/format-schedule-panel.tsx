@@ -11,7 +11,7 @@ import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-for
 import { displayScheduleTime } from "@/lib/scheduling/time-display";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, workflowAccountSelectionError, selectWorkflowAccount } from "@/lib/explore/workflow-scheduling-draft";
+import { resolveWorkflowScheduleDraft, workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, workflowAccountSelectionError, selectWorkflowAccount, type WorkflowScheduleDraftUpdate } from "@/lib/explore/workflow-scheduling-draft";
 import type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from "@/lib/explore/format-schedule-draft";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
@@ -43,6 +43,8 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const [storedDraft, setStoredDraft] = useState<{ key: string | null; draft: WorkflowScheduleDraft }>({ key: null, draft: EMPTY_SCHEDULE_DRAFT });
   const hydratedDraftKey = useRef<string | null>(null);
   const draft = storedDraft.key === draftKey ? storedDraft.draft : EMPTY_SCHEDULE_DRAFT;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const timezone = draft.timezone ?? accountTimezone;
   useEffect(() => {
     if (!draftKey) return;
@@ -55,7 +57,9 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     }, 0);
     return () => clearTimeout(timer);
   }, [draftKey]);
-  function setDraft(next: WorkflowScheduleDraft) {
+  function setDraft(update: WorkflowScheduleDraftUpdate) {
+    const next = resolveWorkflowScheduleDraft(draftRef.current, update);
+    draftRef.current = next;
     hydratedDraftKey.current = draftKey;
     setStoredDraft({ key: draftKey, draft: next });
     if (draftKey) try {
@@ -172,18 +176,17 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const selectedAccountCount = new Set(Object.values(selectedAccounts).flat()).size;
   const actions = <div hidden={!active} className={reviewStyles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {message ? <p role="status" className="text-xs leading-5 text-muted">{message}</p> : null}
+    {message && !receipt?.scheduleId ? <p role="status" className="text-xs leading-5 text-muted">{message}</p> : null}
     <div className={reviewStyles.actionRow}>
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
-        <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
+        <div className={`${reviewStyles.actionHelp} ${reviewStyles.confirmation}`}><p role="status">{receipt?.scheduleId ? message ?? "Post scheduled" : actionHelp}</p>{receipt?.scheduleId ? <Link href="/scheduling" className={`${reviewStyles.schedulingLink} ${reviewStyles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link> : null}</div>
         <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {receipt?.scheduleId ? <Link href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
   if (pendingComposition && user && !localPreview && !imageOnly) return <PendingExploreSchedulePanel key={`${format}:${draftScopeId}`} owner={user.uid} scope={`${format}:${draftScopeId ?? "workflow"}`} composition={pendingComposition} draft={draft} onChange={setDraft} timezone={timezone} active={active} onBackToEdit={onBackToEdit} />;
-  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} /></div>
+  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} actionsPosition={format === "slideshow" ? "top" : undefined} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform, id) => setDraft(current => selectWorkflowAccount(current, platform, id))} />} /></div>
     <section aria-label="Schedule summary" className={reviewStyles.summary}>
       <h3 className="sr-only">Schedule summary</h3>
       <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>

@@ -156,7 +156,20 @@ test("a confirmed schedule shows the repeat action and Scheduling link with no r
   assert.match(text(tree), /Post scheduled/);
   assert.ok(nodes(tree).find(node => node.type === "button" && text(node) === "Schedule post"));
   assert.equal(nodes(tree).find(node => node.type === "a" && text(node) === "View in Scheduling").props.href, "/scheduling");
+  const confirmation = nodes(tree).find(node => node.props?.className?.includes("confirmation"));
+  assert.ok(confirmation);
+  assert.equal(nodes(confirmation).filter(node => node.type === "a").length, 1);
+  assert.match(nodes(confirmation).find(node => node.type === "a").props.className, /compactSchedulingLink/);
+  assert.equal(nodes(tree).filter(node => node.type === "a").length, 1);
+  assert.match(text(confirmation), /Post scheduled.*View in Scheduling/);
   assert.doesNotMatch(text(tree), /Check saved|Confirm the same|Resume|Refresh status/);
+});
+
+test("unconfirmed, busy and failed Talking Head schedules never show a success link", () => {
+  for (const action of [undefined, { busy: true, disabled: true, message: "Scheduling…" }, { busy: false, disabled: false, error: "Could not confirm", message: "Try again" }]) {
+    const tree = exported.TalkingHeadScheduleActions({ enabled: true, action, onBackToEdit() {} });
+    assert.equal(nodes(tree).some(node => node.type === "a"), false);
+  }
 });
 
 test("schedule actions scroll with the form rather than covering timezone content", () => {

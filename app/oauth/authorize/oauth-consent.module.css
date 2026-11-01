@@ -5,8 +5,8 @@
   --consent-ink: #20252b;
   --consent-muted: #52606e;
   --consent-line: #dde2e8;
-  --consent-brand: #ff764b;
-  --consent-accent: #b83e16;
+  --consent-brand: #0078d4;
+  --consent-accent: #005a9e;
   --consent-error: #b42318;
   min-height: 100dvh;
   display: grid;
@@ -21,13 +21,13 @@
 }
 
 :global(.dark) .page {
-  --consent-canvas: #17191b;
-  --consent-surface: #202326;
-  --consent-soft: #282c30;
-  --consent-ink: #f5f6f7;
-  --consent-muted: #a8afb8;
-  --consent-line: #363b42;
-  --consent-accent: #ffa07e;
+  --consent-canvas: #121212;
+  --consent-surface: #292929;
+  --consent-soft: #242424;
+  --consent-ink: #f6f3f8;
+  --consent-muted: #c4bcc8;
+  --consent-line: #3f3f3f;
+  --consent-accent: #0078d4;
   --consent-error: #ffaaa3;
 }
 
@@ -72,11 +72,11 @@
 .actions { display: grid; grid-template-columns: 1fr 1.7fr; gap: 10px; }
 .cancelButton, .allowButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; line-height: 1.4; touch-action: manipulation; transition: background-color .15s ease, border-color .15s ease; }
 .cancelButton { border: 1px solid var(--consent-line); background: var(--consent-surface); color: var(--consent-ink); }
-.allowButton { border: 1px solid transparent; background: var(--consent-brand); color: #1b1a18; }
+.allowButton { border: 1px solid transparent; background-color: #0078d4; background-image: none; color: #ffffff; }
 .cancelButton:hover:not(:disabled), .switchAccount:hover:not(:disabled) { background: var(--consent-soft); border-color: var(--consent-muted); }
-.allowButton:hover:not(:disabled) { background: #ff8b67; }
+.allowButton:hover:not(:disabled) { background-color: #005a9e; background-image: none; }
 .page button { cursor: pointer; }
-.page :is(button, a, summary) { touch-action: manipulation; -webkit-tap-highlight-color: rgb(255 118 75 / 18%); }
+.page :is(button, a, summary) { touch-action: manipulation; -webkit-tap-highlight-color: rgb(0 120 212 / 18%); }
 .page button:disabled { cursor: wait; opacity: .55; }
 .page :is(button, a, summary):focus-visible { outline: 2px solid var(--consent-accent); outline-offset: 4px; }
 .returnInfo { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin-top: 13px; color: var(--consent-muted); font-size: 11px; }

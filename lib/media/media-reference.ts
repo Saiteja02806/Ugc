@@ -1,4 +1,6 @@
 import "server-only";
+
+import { isLegacyPublicHostname, publicOrigin } from "@/lib/marketing/public-origin";
 import * as mediaStore from "@/lib/media/media-storage";
 import { isPrivateUserMedia } from "@/lib/media/media-delivery";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
@@ -22,6 +24,18 @@ export function isTrustedMediaReferenceUrl(value: string) {
   catch { return false; }
 }
 
+function isOwnedDeliveryOrigin(url: URL) {
+  if (url.origin === publicOrigin || url.origin === "https://www.vidmake.io") return true;
+  if (isLegacyPublicHostname(url.hostname)) return true;
+  for (const value of [process.env.APP_BASE_URL, process.env.NEXT_PUBLIC_APP_URL, process.env.PRIMARY_APP_URL]) {
+    if (!value?.trim()) continue;
+    try {
+      if (new URL(value).origin === url.origin) return true;
+    } catch {}
+  }
+  return false;
+}
+
 /** Resolve browser links to durable owned IDs/keys before freezing a job's input.
  * Never enqueue a five-minute bearer URL. Authentication is checked by the caller.
  */
@@ -35,9 +49,8 @@ export async function canonicalMediaReference(value: unknown, owner: string) {
     return slide.canonicalUrl;
   }
   const url = new URL(value);
-  const app = new URL(process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://getugcpilot.com");
   const delivery = /^\/api\/media\/delivery\/([0-9a-f-]{36})$/i.exec(url.pathname);
-  if (url.origin === app.origin && delivery && !url.username && !url.password) {
+  if (isOwnedDeliveryOrigin(url) && delivery && !url.username && !url.password) {
     if (url.searchParams.has("variant") && url.searchParams.get("variant") !== "original") {
       throw new Error("Choose the original reference, not its thumbnail.");
     }

@@ -54,7 +54,7 @@ try {
   const pdfPromise=page.waitForEvent('download');await page.getByRole('link',{name:'Download 110 free hooks',exact:true}).click();const pdf=await pdfPromise;await pdf.saveAs(path.join(out,'resource.pdf'));assert.equal(await pdf.failure(),null);
   const expectedPdf=await readFile(new URL('../public/resources/ugc-pilot-110-hooks.pdf',import.meta.url));assert.equal(hash(await readFile(path.join(out,'resource.pdf'))),hash(expectedPdf));
   assert.equal((await bundleStatus(store,bundleHash)).count,0,'PDF is unlimited and separate from video counter');
-  const zipPromise=page.waitForEvent('download');await videoButton().focus();await page.keyboard.press('Enter');const zip=await zipPromise;await zip.saveAs(path.join(out,'fixture-videos.zip'));assert.equal(await zip.failure(),null);assert.equal(zip.suggestedFilename(),'UGCPilot-Hook-Video-Bundle.zip');
+  const zipPromise=page.waitForEvent('download');await videoButton().focus();await page.keyboard.press('Enter');const zip=await zipPromise;await zip.saveAs(path.join(out,'fixture-videos.zip'));assert.equal(await zip.failure(),null);assert.equal(zip.suggestedFilename(),'Vidmake-Hook-Video-Bundle.zip');
   await page.getByRole('button',{name:'Download started',exact:true}).waitFor();assert.equal(posts,1);assert.equal((await bundleStatus(store,bundleHash)).count,1);
   state=null;generation=0;for(let i=0;i<99;i++)await claimBundleDownload(store,bundleHash,randomUUID());
   await available();const lastPromise=page.waitForEvent('download');await videoButton().click();await (await lastPromise).path();

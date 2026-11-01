@@ -10,9 +10,11 @@ import { getPostSignInDestination } from "../lib/billing/purchase-intent.ts";
 test("duration presets stay compact and within each model's existing contract", () => {
   assert.deepEqual(workflowDurationPresets("seedance_2_5"), [5, 10, 15, 20, 30]);
   assert.deepEqual(workflowDurationPresets("kling_3_0"), [3, 5, 10, 15]);
-  assert.deepEqual(workflowDurationPresets("google_omni"), [3, 5, 10]);
+  assert.deepEqual(workflowDurationPresets("google_omni"), [4, 6, 8, 10]);
   for (const model of ["seedance_2_5", "kling_3_0", "google_omni"]) for (const raw of ["", "0", "-1", "5.5", "31", "NaN", "5e0", " 5 "]) assert.equal(customWorkflowDuration(model, raw), null);
   for (let seconds = 4; seconds <= 30; seconds++) assert.equal(customWorkflowDuration("seedance_2_5", String(seconds)), seconds);
+  assert.equal(customWorkflowDuration("google_omni", "5"), null);
+  assert.equal(customWorkflowDuration("google_omni", "6"), 6);
   assert.equal(customWorkflowDuration("google_omni", "11"), null);
   // Kling accepts every whole-second duration from 3 through 15. The picker
   // stays compact, while Custom must preserve valid values such as 11 seconds.

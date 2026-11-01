@@ -210,7 +210,7 @@ export function registerSchedulingMcpTools(server: McpServer) {
   }));
 
   server.registerTool("list_social_connections", {
-    description: "List social accounts owned by the connected UGC Pilot account. Returns connection health and public account labels only; it never returns OAuth tokens, provider credentials, or hidden scheduler data.",
+    description: "List social accounts owned by the connected Vidmake account. Returns connection health and public account labels only; it never returns OAuth tokens, provider credentials, or hidden scheduler data.",
     inputSchema: z.strictObject({}),
     outputSchema: z.strictObject({ connections: z.array(connection).max(50) }),
     annotations: readOnly,

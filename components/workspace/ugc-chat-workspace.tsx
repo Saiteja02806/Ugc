@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronDown, ChevronUp, History, ImageIcon, Loader2, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, History, ImageIcon, Images, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
+import { LidarPointCloudCanvas } from "@/components/video/lidar-point-cloud-canvas";
+import { FaceSwapDialog, type FaceSwapInfluencerCandidate } from "@/components/generation/face-swap-dialog";
 
 import {
   AiStudioComposer,
@@ -26,6 +28,7 @@ import type { RecreateGenerationView } from "@/components/explore/recreate-gener
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
 import { useSlideshowPromptImprover } from "@/components/explore/slideshow-prompt-improver";
 import { useSlideshowComposerDraft } from "@/components/explore/use-slideshow-composer-draft";
+import { SlideshowClarificationNotice } from "@/components/explore/slideshow-clarification-notice";
 import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
 import { readSlideshowClarification, slideshowClarificationKey, type SlideshowClarification } from "@/lib/explore/slideshow-generation-recovery";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
@@ -142,7 +145,7 @@ function getImageJobOutput(output: Json | null) {
 
 function persistImageJobs(
   userId: string,
-  jobs: readonly { jobId: string }[],
+  jobs: readonly { jobId: string; slideshowGeneration?: SlideshowGenerationSlot }[],
   metadata: { aspectRatio: AIStudioImageAspectRatio; prompt: string },
   merge = false,
 ) {
@@ -153,10 +156,13 @@ function persistImageJobs(
       storageKey,
       JSON.stringify(jobIds),
     );
-    for (const { jobId } of jobs) {
+    for (const job of jobs) {
       window.localStorage.setItem(
-        `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
-        JSON.stringify(metadata),
+        `${IMAGE_JOB_METADATA_PREFIX}${userId}.${job.jobId}`,
+        JSON.stringify({
+          ...metadata,
+          ...(job.slideshowGeneration ? { slideshowGeneration: job.slideshowGeneration } : {}),
+        }),
       );
     }
     return true;
@@ -164,6 +170,27 @@ function persistImageJobs(
     // The owner-scoped URL remains the resume fallback when storage is blocked.
     return false;
   }
+}
+
+function getImageJobSlideshowSlot(userId: string, jobId: string): SlideshowGenerationSlot | undefined {
+  try {
+    const rawValue = window.localStorage.getItem(
+      `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+    );
+    const value = rawValue ? (JSON.parse(rawValue) as unknown) : null;
+    return value && typeof value === "object" && "slideshowGeneration" in value && value.slideshowGeneration
+      ? readSlideshowGenerationSlot(value.slideshowGeneration) ?? undefined
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function cleanSlideshowPrompt(prompt: string): string {
+  const marker = "\n\nSlideshow output:";
+  const index = prompt.indexOf(marker);
+  const cleaned = index !== -1 ? prompt.slice(0, index).trim() : prompt;
+  return cleaned || prompt;
 }
 
 function getImageJobPrompt(userId: string, jobId: string) {
@@ -287,6 +314,12 @@ export function ImageGenerationStudioPanel({
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [faceSwapTargetAsset, setFaceSwapTargetAsset] = useState<AIStudioImageResult | null>(null);
+  const [faceSwapDialogOpen, setFaceSwapDialogOpen] = useState(false);
+  const [activeInfluencer, setActiveInfluencer] = useState<{ id: string; url: string; title?: string } | null>(null);
+  const [rememberFaceSwapInfluencer, setRememberFaceSwapInfluencer] = useState(true);
+  const [swappingAssetIds, setSwappingAssetIds] = useState<string[]>([]);
+  const [isSubmittingFaceSwap, setIsSubmittingFaceSwap] = useState(false);
   const [planningQuestions, setPlanningQuestions] = useState<SlideshowClarification | null>(null);
   const storedJobIds = useStoredBackgroundJobIds(user ? `${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
@@ -304,6 +337,7 @@ export function ImageGenerationStudioPanel({
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const autoAssembledSlideshowVersionsRef = useRef(new Set<string>());
+  const submittedSlideshowSlotsRef = useRef(new Map<string, SlideshowGenerationSlot>());
   const blockedAutoSlideshowVersionsRef = useRef(new Set<string>());
   const pendingOwnerId = user?.uid;
   const restoredPresentationRef = useRef(false);
@@ -648,6 +682,7 @@ export function ImageGenerationStudioPanel({
             setActionNotice(null);
             setActionError(null);
           }
+          setSwappingAssetIds((current) => current.filter((id) => id !== nextResult.id && id !== nextResult.mediaAssetId));
         }
       } catch (error) {
         resolvedJobIdsRef.current.delete(completedJob.id);
@@ -686,6 +721,7 @@ export function ImageGenerationStudioPanel({
     setActionNotice(null);
     setActionError(null);
 
+    let checkedInput: PendingGeneration["input"] | null = null;
     try {
       workflow?.onGenerationStart();
       const token = await withReadDeadline(() => getCurrentUserIdToken(user?.uid));
@@ -697,7 +733,7 @@ export function ImageGenerationStudioPanel({
       if (!navigator.locks) throw new Error("Use a browser with Web Locks support to recover generation safely.");
       const admitted = await submitPendingGeneration({ ownerId: user.uid, kind: "image", scope: workflowFormat ?? "studio", token, storage: localStorage, locks: navigator.locks,
         fetch, uuid: () => crypto.randomUUID(), assertActive() { if (activeUserIdRef.current !== user.uid) throw new Error("This account's generation is no longer active."); },
-        onStored(saved) { setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; },
+        onStored(saved) { checkedInput = saved.input; setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; },
         input: {
           aspectRatio,
           exploreFormat: workflow?.format,
@@ -729,6 +765,10 @@ export function ImageGenerationStudioPanel({
       persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
         submittedPromptsRef.current.set(job.jobId, submittedPrompt);
+        const jobSlot = (job as { jobId: string; slideshowGeneration?: SlideshowGenerationSlot }).slideshowGeneration;
+        if (jobSlot) {
+          submittedSlideshowSlotsRef.current.set(job.jobId, jobSlot);
+        }
         resolvedJobIdsRef.current.delete(job.jobId);
         if (submissionEpoch === foregroundEpochRef.current) {
           foregroundJobIdsRef.current.add(job.jobId);
@@ -747,13 +787,18 @@ export function ImageGenerationStudioPanel({
     } catch (error) {
       console.error("Image generation failed:", error);
       if (error instanceof GenerationClarificationError && user && activeUserIdRef.current === user.uid) {
-        const feedback: SlideshowClarification = { version: 1, owner: user.uid, scope: legacyComposerScope, prompt: trimmedPrompt, items: error.clarifications };
+        const checked = checkedInput as PendingGeneration["input"] | null;
+        const feedback: SlideshowClarification = { version: 1, owner: user.uid,
+          scope: checked ? JSON.stringify({ references: checked.referenceImageUrls ?? [checked.referenceImageUrl ?? null], regeneration: checked.regenerationImageAssetId ?? null }) : legacyComposerScope,
+          prompt: checked ? String(checked.prompt) : trimmedPrompt, items: error.clarifications,
+          imageIds: checked && Array.isArray(checked.referenceImageAssetIds) ? checked.referenceImageAssetIds as string[] : [],
+        };
         setPlanningQuestions(feedback);
         try { localStorage.setItem(slideshowClarificationKey(user.uid), JSON.stringify(feedback)); } catch { /* Keep the explanation in this mounted tab. */ }
+        setActionError(null);
+      } else {
+        setActionError(getErrorMessage(error, "Image generation failed. Try again."));
       }
-      setActionError(
-        getErrorMessage(error, "Image generation failed. Try again."),
-      );
     } finally {
       submittingRef.current = false;
       if (user && activeUserIdRef.current === user.uid) {
@@ -833,6 +878,83 @@ export function ImageGenerationStudioPanel({
     }
   }
 
+  async function handleFaceSwapClick(targetAsset: AIStudioImageResult) {
+    if (activeInfluencer && rememberFaceSwapInfluencer) {
+      await executeFaceSwap(targetAsset, activeInfluencer.id);
+    } else {
+      setFaceSwapTargetAsset(targetAsset);
+      setFaceSwapDialogOpen(true);
+    }
+  }
+
+  async function executeFaceSwap(targetAsset: AIStudioImageResult, influencerAssetId: string) {
+    if (!user) {
+      setActionError("Please sign in before starting a face swap.");
+      return;
+    }
+    const targetAssetId = targetAsset.mediaAssetId || targetAsset.id;
+    if (!targetAssetId) {
+      setActionError("Target image asset is unavailable.");
+      return;
+    }
+
+    setIsSubmittingFaceSwap(true);
+    setSwappingAssetIds((prev) => [...prev, targetAsset.id]);
+    setActionError(null);
+    try {
+      const token = await getCurrentUserIdToken(user.uid);
+      if (!token) throw new Error("Could not verify your session. Please sign in again.");
+
+      const response = await fetch("/api/ai-studio/images/face-swap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetAssetId,
+          influencerAssetId,
+          aspectRatio: targetAsset.aspectRatio,
+          slideshowGeneration: targetAsset.slideshowGeneration,
+        }),
+      });
+
+      const data = (await response.json()) as { ok?: boolean; jobId?: string; message?: string };
+      if (!response.ok || !data.ok || !data.jobId) {
+        throw new Error(data.message || "Failed to start face swap.");
+      }
+
+      const newJobId = data.jobId;
+      setSubmittedJobIds((current) => [newJobId, ...current]);
+      foregroundJobIdsRef.current.add(newJobId);
+      if (targetAsset.slideshowGeneration) {
+        submittedSlideshowSlotsRef.current.set(newJobId, targetAsset.slideshowGeneration);
+      }
+
+      if (metadataOwnerId) {
+        persistImageJobs(
+          metadataOwnerId,
+          [{ jobId: newJobId, slideshowGeneration: targetAsset.slideshowGeneration }],
+          {
+            aspectRatio: targetAsset.aspectRatio,
+            prompt: `Biometric face swap · ${targetAsset.slideshowGeneration ? `Slide ${targetAsset.slideshowGeneration.slideIndex}` : "Image"}`,
+          },
+          true,
+        );
+      }
+
+      setActionNotice("Face swap started. Your newly biometrically harmonized image will be ready in ~8-10s.");
+      void queryClient.invalidateQueries({
+        queryKey: ["billing-subscription", user.uid],
+      });
+    } catch (err) {
+      setSwappingAssetIds((prev) => prev.filter((id) => id !== targetAsset.id));
+      setActionError(getErrorMessage(err, "Could not start face swap."));
+    } finally {
+      setIsSubmittingFaceSwap(false);
+    }
+  }
+
   function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     void generateFromPrompt(prompt);
@@ -898,9 +1020,10 @@ export function ImageGenerationStudioPanel({
       const asset = visibleImages.find((image) => image.id === resultId);
       const query = activeJobQueries[index];
       const job = query?.data;
+      const slot = asset?.slideshowGeneration ?? job?.slideshowGeneration ?? submittedSlideshowSlotsRef.current.get(jobId) ?? (metadataOwnerId ? getImageJobSlideshowSlot(metadataOwnerId, jobId) : undefined);
       if (asset) {
         renderedImageIds.add(asset.id);
-        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: asset.slideshowGeneration ?? job?.slideshowGeneration });
+        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: slot });
       } else if (
         query?.isPending ||
         job?.jobType === "image_generation" && (
@@ -914,7 +1037,7 @@ export function ImageGenerationStudioPanel({
           createdAt: job?.createdAt ?? activeSubmittedAt,
           prompt: submittedPrompts[jobId] ?? (metadataOwnerId ? getImageJobPrompt(metadataOwnerId, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
           asset: null,
-          slideshowGeneration: job?.slideshowGeneration,
+          slideshowGeneration: slot,
         });
       }
     }
@@ -922,13 +1045,22 @@ export function ImageGenerationStudioPanel({
 
   for (const asset of visibleImages) {
     if (!renderedImageIds.has(asset.id)) {
-      imageRows.push({ key: asset.id, aspectRatio: asset.aspectRatio, createdAt: asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: asset.slideshowGeneration });
+      imageRows.push({ key: asset.id, aspectRatio: asset.aspectRatio, createdAt: asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: asset.slideshowGeneration ?? submittedSlideshowSlotsRef.current.get(asset.id) ?? (metadataOwnerId ? getImageJobSlideshowSlot(metadataOwnerId, asset.id) : undefined) });
     }
   }
 
   if (!selectedHistoryImageId && isSubmitting) {
+    const slideCount = slideshowSlideCount ?? outputCount;
     for (let index = 0; index < outputCount; index += 1) {
-      imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null });
+      const slot: SlideshowGenerationSlot | undefined = workflowFormat === "slideshow" ? {
+        version: 1,
+        batchKey: "submitting",
+        slideIndex: (index % slideCount) + 1,
+        slideCount,
+        versionIndex: Math.floor(index / slideCount) + 1,
+        versionCount: quantity,
+      } : undefined;
+      imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null, slideshowGeneration: slot });
     }
   }
   imageRows.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
@@ -968,6 +1100,27 @@ export function ImageGenerationStudioPanel({
   const slideshowResults = workflowFormat === "slideshow"
     ? groupSlideshowResultRows(imageRows)
     : { versions: [], individual: imageRows };
+
+  let effectiveSlideshowResults = slideshowResults;
+  if (workflowFormat === "slideshow" && slideshowResults.individual.length > 0) {
+    const slideCount = slideshowSlideCount ?? slideshowResults.individual.length;
+    const synthesizedRows = slideshowResults.individual.map((row, index) => ({
+      ...row,
+      slideshowGeneration: row.slideshowGeneration ?? {
+        version: 1 as const,
+        batchKey: "slideshow-active-batch",
+        slideIndex: (index % slideCount) + 1,
+        slideCount,
+        versionIndex: Math.floor(index / slideCount) + 1,
+        versionCount: Math.ceil(slideshowResults.individual.length / slideCount),
+      },
+    }));
+    const regrouped = groupSlideshowResultRows(synthesizedRows);
+    effectiveSlideshowResults = {
+      versions: [...slideshowResults.versions, ...regrouped.versions],
+      individual: regrouped.individual,
+    };
+  }
 
   async function selectSlideshowVersion(images: AIStudioImageResult[]) {
     if (!workflow?.onSelectSlideshow || selectingImageRef.current || !user) return;
@@ -1070,53 +1223,138 @@ export function ImageGenerationStudioPanel({
           </div>
         }
       >
-        {slideshowResults.versions.map((group) => {
+        {effectiveSlideshowResults.versions.map((group) => {
           const images = group.rows.flatMap(row => row.asset ? [row.asset] : []);
           const complete = images.length === group.slot.slideCount;
           return (
-            <section key={group.key} aria-label={`Generated slideshow version ${group.slot.versionIndex}`} className="min-w-0 rounded-2xl border border-border bg-card/30 p-3 sm:p-4">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold">Version {group.slot.versionIndex}</h3>
-                  <p className="mt-1 text-xs text-muted">{images.length} of {group.slot.slideCount} slides ready</p>
+            <section
+              key={group.key}
+              aria-label={`Generated slideshow version ${group.slot.versionIndex}`}
+              className="min-w-0 rounded-2xl border border-border/80 bg-card/65 backdrop-blur-md p-4 sm:p-5 shadow-sm space-y-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/30 pb-3.5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-foreground-strong border border-white/40">
+                      <Images className="size-3.5" aria-hidden="true" />
+                      {group.slot.versionCount > 1 ? `Slideshow Version ${group.slot.versionIndex}` : "Slideshow"}
+                    </span>
+                    <span className="text-xs text-muted font-medium">
+                      {group.slot.slideCount} slides · 4:5
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    {complete ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                        <Check className="size-3.5" aria-hidden="true" />
+                        All {group.slot.slideCount} slides ready
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                        <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+                        Generating slides · {images.length} of {group.slot.slideCount} ready
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <Button type="button" disabled={!images.length || selectingImage || isGenerating} onClick={() => void selectSlideshowVersion(images)}>
-                  Edit {images.length === 1 ? "this slide" : `these ${images.length} slides`}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {activeInfluencer ? (
+                    <div className="flex items-center gap-1.5 text-xs text-muted border border-border/50 rounded-full px-2.5 py-1 bg-card/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={activeInfluencer.url} alt="" className="size-4 rounded-full object-cover" />
+                      <span className="text-[11px] font-medium text-foreground">Face: {activeInfluencer.title || "Influencer"}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFaceSwapTargetAsset(group.rows[0]?.asset ?? null);
+                          setFaceSwapDialogOpen(true);
+                        }}
+                        className="ml-1 text-[11px] text-amber-400 hover:underline font-semibold"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant={complete ? "default" : "outline"}
+                    disabled={!images.length || selectingImage || isGenerating}
+                    onClick={() => void selectSlideshowVersion(images)}
+                  >
+                    Edit {images.length === 1 ? "this slide" : `these ${images.length} slides`}
+                  </Button>
+                </div>
               </div>
-              {!complete && !isGenerating ? <p className="mb-3 text-xs text-muted">Some slides are not ready. You can edit the ready slides and add others later.</p> : null}
-              <div className="flex gap-4 overflow-x-auto overscroll-x-contain pb-3" tabIndex={0} aria-label={`Slides in version ${group.slot.versionIndex}`}>
+              {!complete && !isGenerating ? (
+                <p className="text-xs text-muted">Some slides are not ready. You can edit the ready slides and add others later.</p>
+              ) : null}
+              <div
+                className="flex gap-4 overflow-x-auto overscroll-x-contain pb-3"
+                tabIndex={0}
+                aria-label={`Slides in version ${group.slot.versionIndex}`}
+              >
                 {group.rows.map(row => (
-                  <div key={row.key} className="w-[min(220px,65vw)] shrink-0">
-                    <p className="mb-2 text-xs font-medium text-muted">Slide {row.slideshowGeneration!.slideIndex}</p>
+                  <div key={row.key} className="w-[min(200px,60vw)] shrink-0 rounded-xl border border-border/70 bg-card-muted/30 p-2.5 transition-colors hover:border-border-strong">
+                    <div className="mb-2 flex items-center justify-between px-0.5 text-xs font-semibold">
+                      <span className="text-foreground/90">Slide {row.slideshowGeneration!.slideIndex}</span>
+                      {row.asset ? (
+                        <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5">
+                          <Check className="size-3" aria-hidden="true" /> Ready
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-amber-400 font-medium">Generating</span>
+                      )}
+                    </div>
                     <ImageGenerationCard
-                      asset={row.asset} aspectRatio={row.aspectRatio} prompt={row.prompt} createdAt={row.createdAt}
-                      referenceImageUrl={referenceImage?.asset.url ?? null} isNew={row.asset?.id === latestCompletedId}
+                      asset={row.asset}
+                      aspectRatio={row.aspectRatio}
+                      prompt={row.prompt}
+                      createdAt={row.createdAt}
+                      referenceImageUrl={referenceImage?.asset.url ?? null}
+                      isNew={row.asset?.id === latestCompletedId}
                       onOpenPreview={setPreviewImage}
                       onSelect={!complete && row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
-                      selectionDisabled={selectingImage || isGenerating} compact selectionLabel={workflow?.imageSelectionLabel ?? "Add to slideshow"}
+                      selectionDisabled={selectingImage || isGenerating}
+                      compact
+                      selectionLabel={workflow?.imageSelectionLabel ?? "Add to slideshow"}
+                      onFaceSwap={row.asset ? () => void handleFaceSwapClick(row.asset!) : undefined}
+                      isSwappingFace={row.asset ? swappingAssetIds.includes(row.asset.id) : false}
                     />
                   </div>
                 ))}
               </div>
-              <div className="mt-3 max-w-2xl"><ImagePromptBubble createdAt={group.rows[0].createdAt} prompt={group.rows[0].prompt} /></div>
+              <div className="mt-3 w-full">
+                <ImagePromptBubble
+                  createdAt={group.rows[0].createdAt}
+                  prompt={cleanSlideshowPrompt(group.rows[0].prompt)}
+                />
+              </div>
             </section>
           );
         })}
-        {slideshowResults.individual.map((row) => (
-          <div key={row.key}>{row.slideshowGeneration ? <p className="mb-2 text-xs font-semibold text-muted">Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}</p> : null}<ImageGenerationCard
-            key={row.key}
-            asset={row.asset}
-            aspectRatio={row.aspectRatio}
-            prompt={row.prompt}
-            createdAt={row.createdAt}
-            referenceImageUrl={referenceImage?.asset.url ?? null}
-            isNew={row.asset?.id === latestCompletedId}
-            onOpenPreview={setPreviewImage}
-            onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
-            selectionDisabled={selectingImage || isGenerating}
-            selectionLabel={workflowFormat === "slideshow" ? workflow?.imageSelectionLabel ?? "Add to slideshow" : undefined}
-          /></div>
+        {effectiveSlideshowResults.individual.map((row) => (
+          <div key={row.key}>
+            {row.slideshowGeneration ? (
+              <p className="mb-2 text-xs font-semibold text-muted">
+                Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}
+              </p>
+            ) : null}
+            <ImageGenerationCard
+              key={row.key}
+              asset={row.asset}
+              aspectRatio={row.aspectRatio}
+              prompt={row.prompt}
+              createdAt={row.createdAt}
+              referenceImageUrl={referenceImage?.asset.url ?? null}
+              isNew={row.asset?.id === latestCompletedId}
+              onOpenPreview={setPreviewImage}
+              onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
+              selectionDisabled={selectingImage || isGenerating}
+              selectionLabel={workflowFormat === "slideshow" ? workflow?.imageSelectionLabel ?? "Add to slideshow" : undefined}
+              onFaceSwap={row.asset ? () => void handleFaceSwapClick(row.asset!) : undefined}
+              isSwappingFace={row.asset ? swappingAssetIds.includes(row.asset.id) : false}
+            />
+          </div>
         ))}
       </AiStudioResults>
 
@@ -1131,6 +1369,23 @@ export function ImageGenerationStudioPanel({
       />
 
       <ImagePreviewDialog image={active ? previewImage : null} onClose={() => setPreviewImage(null)} />
+
+      <FaceSwapDialog
+        open={faceSwapDialogOpen}
+        onOpenChange={setFaceSwapDialogOpen}
+        targetAsset={faceSwapTargetAsset}
+        ownerId={user?.uid}
+        activeInfluencer={activeInfluencer}
+        isSubmitting={isSubmittingFaceSwap}
+        onConfirmSwap={async (candidate, remember) => {
+          setActiveInfluencer(candidate);
+          setRememberFaceSwapInfluencer(remember);
+          setFaceSwapDialogOpen(false);
+          if (faceSwapTargetAsset) {
+            await executeFaceSwap(faceSwapTargetAsset, candidate.id);
+          }
+        }}
+      />
 
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
@@ -1192,7 +1447,7 @@ export function ImageGenerationStudioPanel({
         }
         name="imagePrompt"
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <div role="status" className="text-xs leading-5 text-muted"><p>No images were started. Your previous slideshow request needs clarification.</p>{planningQuestions.scope !== legacyComposerScope ? <p className="break-words">Previous instructions: {planningQuestions.prompt}</p> : <p>Clarify in the instructions above, then generate again:</p>}{planningQuestions.items.map(question => <p key={question}>{question}</p>)}</div> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
@@ -1295,6 +1550,8 @@ function ImageGenerationCard({
   selectionDisabled = false,
   selectionLabel = "Use image in slide",
   compact = false,
+  onFaceSwap,
+  isSwappingFace = false,
 }: {
   asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
@@ -1307,6 +1564,8 @@ function ImageGenerationCard({
   selectionDisabled?: boolean;
   selectionLabel?: string;
   compact?: boolean;
+  onFaceSwap?: (image: AIStudioImageResult) => void;
+  isSwappingFace?: boolean;
 }) {
   return (
     <article
@@ -1319,31 +1578,43 @@ function ImageGenerationCard({
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:gap-6">
         <div data-image-preview className={cn("w-full shrink-0", !compact && "sm:mt-12", !compact && getImagePreviewWidthClassName(aspectRatio))}>
           <div
-            className={cn("relative overflow-hidden rounded-2xl border bg-card-muted/70", asset ? "border-border" : "border-primary/20")}
+            className={cn("relative overflow-hidden rounded-2xl border bg-card-muted/70", asset ? "border-border" : "border-white/30")}
             style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
           >
             {asset ? (
-              <button
-                type="button"
-                onClick={() => onOpenPreview(asset)}
-                aria-label="Enlarge generated image"
-                aria-haspopup="dialog"
-                className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={asset.url} alt={asset.title} width={1200} height={getGeneratedImageHeight(aspectRatio)} loading="lazy" decoding="async" className="size-full object-contain" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOpenPreview(asset)}
+                  aria-label="Enlarge generated image"
+                  aria-haspopup="dialog"
+                  className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={asset.url} alt={asset.title} width={1200} height={getGeneratedImageHeight(aspectRatio)} loading="lazy" decoding="async" className="size-full object-contain" />
+                </button>
+                {isSwappingFace ? (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/65 backdrop-blur-xs p-3 text-center" role="status" aria-live="polite">
+                    <span className="inline-flex size-9 items-center justify-center rounded-xl border border-amber-500/30 bg-black/60 text-amber-400 shadow-md mb-2">
+                      <RefreshCw className="size-4 animate-spin text-amber-400" aria-hidden="true" />
+                    </span>
+                    <p className="text-xs font-semibold text-amber-300">Swapping face…</p>
+                    <p className="mt-0.5 text-[10px] text-muted">Locking biometric identity</p>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <>
                 {referenceImageUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={referenceImageUrl} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-xl" />
                 ) : null}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center" role="status" aria-live="polite">
-                  <span className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card/90">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center pointer-events-none" role="status" aria-live="polite">
+                  <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" />
+                  <span className="relative z-10 inline-flex size-9 items-center justify-center rounded-xl border border-white/15 bg-black/45 backdrop-blur-sm text-amber-400 shadow-md">
                     <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
                   </span>
-                  <div>
+                  <div className="relative z-10">
                     <p className="text-xs font-medium text-foreground">Creating your image</p>
                     <p className="mt-1 text-[11px] leading-4 text-muted">It will appear here when ready.</p>
                   </div>
@@ -1356,7 +1627,46 @@ function ImageGenerationCard({
               <span>{aspectRatio}</span>
               {asset ? <span className="text-foreground">Ready</span> : null}
             </div>
-            {onSelect ? <Button type="button" variant={compact ? "outline" : "default"} disabled={selectionDisabled} onClick={onSelect}>{selectionLabel}</Button> : null}
+            <div className={cn("flex flex-wrap items-center gap-2", compact && "grid grid-cols-2 gap-1.5")}>
+              {onSelect ? (
+                <Button
+                  type="button"
+                  variant={compact ? "outline" : "default"}
+                  size={compact ? "sm" : "default"}
+                  disabled={selectionDisabled || isSwappingFace}
+                  onClick={onSelect}
+                  className={compact ? "w-full text-[11px] px-1.5 py-1 h-7" : undefined}
+                >
+                  {selectionLabel}
+                </Button>
+              ) : null}
+              {onFaceSwap && asset ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size={compact ? "sm" : "default"}
+                  disabled={selectionDisabled || isSwappingFace}
+                  onClick={() => onFaceSwap(asset)}
+                  className={cn(
+                    "text-amber-400 border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10",
+                    compact && "w-full text-[11px] px-1.5 py-1 h-7",
+                  )}
+                  title="Swap face with your influencer reference (1 credit)"
+                >
+                  {isSwappingFace ? (
+                    <>
+                      <Loader2 className="size-3 animate-spin mr-1" aria-hidden="true" />
+                      Swapping…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="size-3 mr-1" aria-hidden="true" />
+                      Swap Face
+                    </>
+                  )}
+                </Button>
+              ) : null}
+            </div>
             {asset ? (
               <AiStudioResultActions kind="image" title={asset.title} url={asset.url} />
             ) : null}
@@ -1370,29 +1680,45 @@ function ImageGenerationCard({
   );
 }
 
-function ImagePromptBubble({ createdAt, prompt }: { createdAt: string; prompt: string }) {
+function ImagePromptBubble({ createdAt: _createdAt, prompt }: { createdAt?: string; prompt: string }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="w-full min-w-0">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted">
-        <span className="text-foreground-strong">Prompt</span>
-        <span>{formatGeneratedAt(createdAt)}</span>
-      </div>
+    <div className="relative w-full min-w-0 rounded-[16px] border border-border/80 bg-card/75 backdrop-blur-sm shadow-xs transition-colors hover:border-border-strong overflow-hidden group">
+      {prompt !== MISSING_IMAGE_PROMPT ? (
+        <div className="absolute top-3 right-3 z-10">
+          <AiStudioCopyButton kind="prompt" value={prompt} />
+        </div>
+      ) : null}
       <button
         type="button"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse image prompt" : "Show full image prompt"}
         onClick={() => setExpanded((current) => !current)}
-        className="flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none"
+        className={cn(
+          "group/btn flex w-full flex-col text-left transition-colors hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none p-4 pb-3.5",
+          expanded && "bg-muted/10",
+        )}
       >
-        <span className={cn("min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]", expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3")}>
+        <span
+          data-expanded={expanded}
+          className={cn(
+            "min-w-0 w-full pr-16 whitespace-pre-wrap text-xs md:text-sm font-normal leading-relaxed text-foreground/90 [overflow-wrap:anywhere]",
+            expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
+          )}
+        >
           {prompt}
         </span>
-        {expanded ? <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" /> : <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />}
+        <div className="mt-2.5 flex w-full items-center justify-end border-t border-border/30 pt-1.5 text-[11px] font-medium text-muted transition-colors group-hover/btn:text-foreground">
+          <span className="flex items-center gap-1">
+            <span>{expanded ? "Show less" : "Show full"}</span>
+            {expanded ? (
+              <ChevronUp className="size-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-3.5 transition-transform group-hover/btn:translate-y-0.5" aria-hidden="true" />
+            )}
+          </span>
+        </div>
       </button>
-      {prompt !== MISSING_IMAGE_PROMPT ? (
-        <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
-      ) : null}
     </div>
   );
 }

@@ -27,16 +27,16 @@ const faqs = [
     answer: "Yes, when paired with real software screen recordings. The AI creator avatar delivers the relatable frustration hook in the first 3 seconds, and the video immediately transitions to your application performing the solution.",
   },
   {
-    question: "How does UGC Pilot compare to hiring human UGC creators?",
-    answer: "Human creators take 7 to 14 days to deliver a single video and rarely understand software workflows. UGC Pilot generates studio-ready video hooks in minutes from a text brief, letting you review, edit captions, and download exports from your library.",
+    question: "How does Vidmake compare to hiring human UGC creators?",
+    answer: "Human creators take 7 to 14 days to deliver a single video and rarely understand software workflows. Vidmake generates studio-ready video hooks in minutes from a text brief, letting you review, edit captions, and download exports from your library.",
   },
   {
     question: "Can SaaS founders generate UGC videos through Claude or Codex?",
-    answer: "Yes. UGC Pilot includes a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for drafting hooks, rendering clips, and managing media directly inside AI agents.",
+    answer: "Yes. Vidmake includes a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for drafting hooks, rendering clips, and managing media directly inside AI agents.",
   },
   {
     question: "What is the cost of AI UGC for startups?",
-    answer: "UGC Pilot provides a seven-day free trial with no credit card required, followed by self-serve plans starting at $19 and $49 per month for monthly generation credits.",
+    answer: "Vidmake provides a seven-day free trial with no credit card required, followed by self-serve plans starting at $19 and $49 per month for monthly generation credits.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -145,7 +145,7 @@ export default function AiUgcForSaasStartupsPage() {
             <strong className="font-semibold text-foreground-strong">Draft 5 Contrasting Hooks:</strong> Use the <ArticleLink href="/free-hook-lines">free hook lines library</ArticleLink> to test different emotional angles: contrarian (&quot;Stop doing X&quot;), curiosity (&quot;The hidden tool for Y&quot;), or urgency.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Generate Creator Clips in UGC Pilot:</strong> Enter your product brief in the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink> to render realistic talking-head hooks.
+            <strong className="font-semibold text-foreground-strong">Generate Creator Clips in Vidmake:</strong> Enter your product brief in the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink> to render realistic talking-head hooks.
           </li>
           <li>
             <strong className="font-semibold text-foreground-strong">Pair and Publish:</strong> Combine each hook with your 12-second demo footage. Post one per day across TikTok, Reels, and YouTube Shorts.
@@ -180,7 +180,7 @@ export default function AiUgcForSaasStartupsPage() {
               answer: (
                 <>
                   Human creators take weeks and cost hundreds per video. Learn more in our breakdown of{" "}
-                  <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">UGC Pilot vs hiring UGC creators</ArticleLink>.
+                  <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink>.
                 </>
               ),
             },
@@ -188,7 +188,7 @@ export default function AiUgcForSaasStartupsPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and our guide to{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and our guide to{" "}
                   <ArticleLink href="/blog/ugc-videos-with-codex-mcp">generating videos with Codex MCP</ArticleLink>.
                 </>
               ),
@@ -197,7 +197,7 @@ export default function AiUgcForSaasStartupsPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with a 7-day trial and 2 free credits. See full details on <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  Start with a 7-day trial. See full details on <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },

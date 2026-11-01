@@ -1,0 +1,49 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Isolated actual-component visual and interaction verification. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const { webpack } = require('next/dist/compiled/webpack/webpack');
+let playwright;
+try { playwright = require('playwright'); }
+catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
+const root = path.resolve(__dirname, '..'), out = path.join(root, '.tmp/slideshow-clarification-20261030');
+fs.mkdirSync(out, { recursive: true });
+const write = (name, text) => fs.writeFileSync(path.join(out, name), text);
+write('loader.cjs', `const ts=require(${JSON.stringify(require.resolve('typescript'))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+// Optional task-start component capture is used only for the before screenshot.
+const beforePath = path.join(out, 'panel-before.tsx');
+const beforeSource = fs.existsSync(beforePath) ? fs.readFileSync(beforePath, 'utf8') : '';
+const beforeStart = beforeSource.indexOf('<div role="status" className="text-xs leading-5 text-muted"><p>No images were started.');
+const beforeEnd = beforeStart < 0 ? -1 : beforeSource.indexOf('</div>', beforeStart) + 6;
+const oldMarkup = beforeStart >= 0 && beforeEnd > beforeStart ? beforeSource.slice(beforeStart, beforeEnd) : '<p>Before baseline unavailable</p>';
+write('entry.tsx', `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {SlideshowClarificationNotice} from '@/components/explore/slideshow-clarification-notice';
+const ids=['00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002'];
+const english='Your instructions mention Source slide 2, but only Source slide 1 is selected. Select Source slide 2 or update your instructions to use Source slide 1.';
+const mixed='No uploaded face-reference images were provided. Please upload the image or images you want used for the face-only replacement on Source slide 1 and/or Source slide 2. The source slides contain people only on Source slide 1, so the face edit applies there; Source slide 2 is a text-based infographic with no person to edit. Please also confirm whether the same uploaded face reference should be used for Source slide 1 only, while preserving the existing clothing, pose, sunglasses, framing, and背景.';
+function Old({planningQuestions,legacyComposerScope}){return ${oldMarkup};}
+function App(){const [mode,setMode]=useState(new URLSearchParams(location.search).get('case')??'mixed'),[mounted,setMounted]=useState(true),[prompt,setPrompt]=useState('Use Source slide 2 and change only the face naturally.'),[submitted,setSubmitted]=useState(0);const [record,setRecord]=useState(()=>{try{return JSON.parse(localStorage.getItem('fixture-feedback'))}catch{return null}});const feedback=record??{version:1,owner:'owner',scope:'source-one',prompt,items:[mode==='english'?english:mixed],imageIds:ids};const shown=mode==='long'?{...feedback,items:[english,'Choose which uploaded photo should guide the face replacement on Source slide 1.','A'.repeat(500)]}:feedback;const imageIds=mode==='stale'?[ids[1]]:ids;const before=new URLSearchParams(location.search).has('before');
+return <main className='min-h-screen bg-background p-4 text-foreground'><aside className='mx-auto w-full max-w-[440px] rounded-[24px] border border-border bg-card'><nav className='flex justify-around border-b border-border p-5 text-sm font-semibold'><span>Create</span><span>Edit slides</span><span>Schedule</span></nav><div className='space-y-4 p-4'><label className='block text-sm'>Your instructions<textarea className='mt-2 block min-h-32 w-full rounded-2xl border border-border bg-background p-3' value={prompt} onChange={e=>setPrompt(e.target.value)}/></label><p className='text-xs text-muted'>Upload A · Upload B — 2 images</p>{mounted?(before?<Old planningQuestions={shown} legacyComposerScope='source-one'/>:<SlideshowClarificationNotice feedback={shown} scope='source-one' imageIds={imageIds}/>):null}<label className='block text-sm'>Model<select className='mt-2 block w-full rounded-xl border border-border bg-background p-3'><option>GPT Image 2.5 Flare</option></select></label><div className='flex gap-4 text-sm'><span>Ratio: 4:5</span><span>Versions: 1</span></div></div><footer className='border-t border-border p-4'><p className='mb-4 text-xs text-muted'>Generation starts only when you select Generate.</p><button className='ml-auto block rounded-full bg-primary px-5 py-3 text-primary-foreground' onClick={()=>setSubmitted(n=>n+1)}>Generate 2 slides</button></footer></aside><div className='mx-auto mt-4 flex max-w-[440px] flex-wrap gap-2 text-xs'><button onClick={()=>setMode('stale')}>Change uploaded images</button><button onClick={()=>{localStorage.setItem('fixture-feedback',JSON.stringify(feedback));setRecord(feedback);}}>Save feedback</button><button onClick={()=>setMounted(v=>!v)}>Toggle notice</button><span data-testid='submissions'>{submitted}</span></div></main>}
+createRoot(document.getElementById('root')).render(<App/>);`);
+async function main(){
+  await new Promise((resolve,reject)=>{const compiler=webpack({mode:'development',devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'notice.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:{'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')}]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve()));});
+  const globals=fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/explore/slideshow-clarification-notice.tsx";\n@source "../.tmp/slideshow-clarification-20261030/entry.tsx";');
+  const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(globals,{from:path.join(root,'app/globals.css')})).css;
+  const server=http.createServer((req,res)=>{if(req.url==='/notice.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,'notice.js')));}res.setHeader('Content-Type','text/html');res.end('<!doctype html><html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'body{margin:0;font-family:Arial}</style></head><body><div id="root"></div><script src="/notice.js"></script></body></html>');});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));const base='http://127.0.0.1:'+server.address().port;
+  try {
+    for(const width of [1366,390,320]){
+      await page.setViewportSize({width,height:900});await page.goto(base+'/?before=1');await page.getByText(/No images were started/).waitFor();await page.screenshot({path:path.join(out,'before-'+width+'.png'),fullPage:true});
+      await page.goto(base+'/?case=mixed');const notice=page.getByRole('status',{name:'Slideshow clarification'});await notice.waitFor();
+      assert.equal(await notice.getByRole('listitem').count(),1);assert.doesNotMatch(await notice.innerText(),/[\u3040-\u30ff\u3400-\u9fff]/u);assert.match(await notice.innerText(),/Please specify which source slides/);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:path.join(out,'after-'+width+'.png'),fullPage:true});
+      await page.getByRole('button',{name:'Change uploaded images',exact:true}).click();await notice.getByText('Your images have changed since this check',{exact:true}).waitFor();assert.equal(await notice.getByRole('listitem').count(),0);assert.doesNotMatch(await notice.innerText(),/No uploaded face-reference/);assert.equal(await page.getByTestId('submissions').textContent(),'0');
+      await page.getByRole('button',{name:'Toggle notice',exact:true}).click();await page.getByRole('button',{name:'Toggle notice',exact:true}).click();await notice.waitFor();
+    }
+    await page.goto(base+'/?case=english');await page.getByRole('status').getByText(/Your instructions mention Source slide 2/).waitFor();await page.getByRole('button',{name:'Save feedback',exact:true}).click();await page.reload();await page.getByRole('status').getByText(/Your instructions mention Source slide 2/).waitFor();assert.equal(await page.getByTestId('submissions').textContent(),'0');await page.getByRole('button',{name:'Generate 2 slides',exact:true}).click();assert.equal(await page.getByTestId('submissions').textContent(),'1');
+    await page.evaluate(()=>localStorage.clear());await page.goto(base+'/?case=long');assert.equal(await page.getByRole('status').getByRole('listitem').count(),3);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.getByRole('button',{name:'Generate 2 slides',exact:true}).scrollIntoViewIfNeeded();assert.equal(await page.getByRole('button',{name:'Generate 2 slides',exact:true}).isVisible(),true);
+    assert.deepEqual(errors,[]);console.log('PASS actual clarification notice: English fallback, exact actionable English question, stale upload context, reload/remount, long questions, readable desktop/mobile320/390, explicit Generate only. No network API/model calls.');
+  } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

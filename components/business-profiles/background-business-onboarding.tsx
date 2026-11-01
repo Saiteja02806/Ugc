@@ -489,7 +489,7 @@ export function StreamlinedSourceStep({
       <form className="mt-5" onSubmit={onSubmit}>
         {!isManual ? (
           <>
-            <div className="flex h-12 items-center gap-2.5 rounded-xl border border-border-strong bg-card px-3.5 text-left transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+            <div className="flex h-12 items-center gap-2.5 rounded-xl border border-border-strong bg-card px-3.5 text-left transition-colors focus-within:border-white focus-within:ring-2 focus-within:ring-white/25">
               <Link2 className="size-4.5 shrink-0 text-muted" aria-hidden="true" />
               <div className="relative min-w-0 flex-1 self-stretch">
                 {isUrlDemoActive && !websiteUrl ? (
@@ -536,7 +536,7 @@ export function StreamlinedSourceStep({
               onChange={(event) => onBusinessNameChange(event.target.value)}
               placeholder="Your business or product name"
               aria-label="Business or product name"
-              className="h-12 w-full rounded-xl border border-border-strong bg-card px-3.5 text-sm text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              className="h-12 w-full rounded-xl border border-border-strong bg-card px-3.5 text-sm text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-white focus-visible:ring-2 focus-visible:ring-white/25"
             />
             <textarea
               id="streamlined-business-description"
@@ -549,14 +549,14 @@ export function StreamlinedSourceStep({
               placeholder="Describe what it does and who it helps."
               aria-label="Product description"
               rows={4}
-              className="w-full resize-y rounded-xl border border-border-strong bg-card px-3.5 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              className="w-full resize-y rounded-xl border border-border-strong bg-card px-3.5 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-white focus-visible:ring-2 focus-visible:ring-white/25"
             />
           </div>
         )}
 
         {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
 
-        <Button type="submit" size="lg" disabled={isSaving} className="mt-8 h-11 min-w-48 rounded-xl px-5 text-sm font-semibold">
+        <Button type="submit" size="lg" disabled={isSaving} className="mt-8 h-11 min-w-48 px-5 text-sm font-semibold">
           {isSaving ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
           {isSaving ? "Starting…" : "Continue"}
         </Button>
@@ -629,8 +629,8 @@ export function StreamlinedProgressStep({
 
       {failed ? (
         <div className="mt-8 flex flex-wrap gap-3">
-          {onRetry ? <Button type="button" size="lg" disabled={isSaving} onClick={onRetry} className="h-11 rounded-xl px-5"><RotateCcw data-icon="inline-start" aria-hidden="true" />Retry setup</Button> : null}
-          <Button type="button" variant="outline" size="lg" disabled={isSaving} onClick={onChangeSource} className="h-11 rounded-xl px-5">Use a different source</Button>
+          {onRetry ? <Button type="button" size="lg" disabled={isSaving} onClick={onRetry} className="h-11 px-5"><RotateCcw data-icon="inline-start" aria-hidden="true" />Retry setup</Button> : null}
+          <Button type="button" variant="outline" size="lg" disabled={isSaving} onClick={onChangeSource} className="h-11 px-5">Use a different source</Button>
         </div>
       ) : null}
 
@@ -810,7 +810,7 @@ function StreamlinedSetupTimeline({
           </p>
         </div>
         {completed && onContinue ? (
-          <Button type="button" size="lg" onClick={onContinue} className="h-10 min-w-28 rounded-lg px-4 text-sm">
+          <Button type="button" size="lg" onClick={onContinue} className="h-10 min-w-28 px-4 text-sm">
             Continue
           </Button>
         ) : null}

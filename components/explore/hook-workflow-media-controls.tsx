@@ -39,7 +39,7 @@ export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel,
 }
 
 export function RemoveMediaButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-label={`Remove ${label}`} onClick={onClick}>
+  return <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${label}`} onClick={onClick}>
     <X className="size-3.5" aria-hidden="true" />
   </Button>;
 }
@@ -79,7 +79,7 @@ export function ReferenceChip({ attachment, kind, label, icon }: {
   if (!asset) return null;
   return <div className="inline-flex max-w-52 shrink-0 items-center rounded-full bg-card-muted ring-1 ring-inset ring-border/60">
     <Popover>
-      <PopoverTrigger render={<Button type="button" variant="ghost" className="h-8 min-w-0 gap-1.5 rounded-full px-2.5 text-xs" aria-label={`Inspect ${label.toLowerCase()}`} title={asset.name} />}>
+      <PopoverTrigger render={<Button type="button" variant="ghost" className="h-8 min-w-0 gap-1.5 px-2.5 text-xs" aria-label={`Inspect ${label.toLowerCase()}`} title={asset.name} />}>
         {icon}<span className="truncate">{label}</span>
       </PopoverTrigger>
       <PopoverContent side="top" align="start" className={cn(studio.floating, "w-[min(20rem,calc(100vw-2rem))] rounded-[24px] border-border/60 p-4")}>

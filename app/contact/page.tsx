@@ -8,14 +8,14 @@ import {
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contact UGC Pilot for support, privacy, platform review, and admin requests.",
+  description: "Contact Vidmake for support, privacy, platform review, and admin requests.",
 };
 
 export default function ContactPage() {
   return (
     <LegalPageShell
       eyebrow="Contact"
-      title="Contact UGC Pilot"
+      title="Contact Vidmake"
       description="Use these contacts for product support, privacy requests, platform review, and account questions."
     >
       <div className="space-y-8">

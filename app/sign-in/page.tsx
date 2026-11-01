@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { AuthMethodPicker } from "@/components/auth/auth-method-picker";
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
@@ -15,7 +15,7 @@ import { formatPricingAmount, getPlanPricing, parseBillingInterval, pricingPlans
 export default function SignInPage() {
   const [hasStartedEmailAuth, setHasStartedEmailAuth] = useState(false);
   return (
-    <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
+    <main className="sign-in-screen instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <Suspense fallback={null}>
         <SignInPostAuthRedirect skipRedirect={hasStartedEmailAuth} />
       </Suspense>
@@ -24,12 +24,8 @@ export default function SignInPage() {
           href="/"
           className="flex items-center gap-3 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <ProductLogoMark
-            className="size-9 rounded-control bg-primary p-2"
-            imageClassName="brightness-0 invert"
-            sizes="36px"
-          />
-          <span>UGC Pilot</span>
+          <ProductLogoMark className="size-8" sizes="32px" />
+          <ProductWordmark className="text-[18px] text-foreground-strong" />
         </Link>
 
         <Link
@@ -41,17 +37,13 @@ export default function SignInPage() {
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="relative w-full max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card/95 p-7 shadow-floating backdrop-blur sm:p-8">
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet),transparent)]"
-          />
+        <div className="w-full max-w-[420px] rounded-3xl border border-border bg-card/95 p-7 shadow-floating backdrop-blur sm:p-8">
           <div className="mb-8 text-center">
             <Suspense fallback={<DefaultSignInContext />}>
               <SelectedPlanContext />
             </Suspense>
             <h1 className="text-balance text-3xl font-bold tracking-normal text-foreground">
-              Welcome to UGC Pilot
+              Welcome to Vidmake
             </h1>
             <p className="mt-3 text-pretty text-sm leading-6 text-muted">
               Choose how you&apos;d like to continue to your content workspace.
@@ -64,11 +56,11 @@ export default function SignInPage() {
 
           <p className="mt-6 text-center text-xs leading-5 text-muted-subtle">
             By continuing, you agree to the{" "}
-            <Link className="font-bold text-primary" href="/terms">
+            <Link className="font-bold text-foreground-strong" href="/terms">
               Terms
             </Link>{" "}
             and{" "}
-            <Link className="font-bold text-primary" href="/privacy">
+            <Link className="font-bold text-foreground-strong" href="/privacy">
               Privacy Policy
             </Link>
             .
@@ -125,7 +117,7 @@ function SelectedPlanContext() {
     <div className="mb-3">
       <Badge
         variant="secondary"
-        className="px-3 py-1 font-bold text-primary"
+        className="px-3 py-1 font-bold text-foreground-strong"
       >
         Selected: {planLabel}
       </Badge>
@@ -137,7 +129,7 @@ function SelectedPlanContext() {
 
 function DefaultSignInContext() {
   return (
-    <p className="mb-3 text-sm font-bold text-primary">
+    <p className="mb-3 text-sm font-bold text-foreground-strong">
       Your content workspace
     </p>
   );

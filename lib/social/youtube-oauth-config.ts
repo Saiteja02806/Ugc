@@ -41,7 +41,7 @@ export function buildYouTubeOAuthAuthorizationUrl(params: {
   url.searchParams.set("code_challenge_method", "S256");
   // Scheduled publishing requires a refresh token. Google may otherwise reuse
   // an earlier grant and omit a new refresh token, leaving a connection that
-  // cannot publish after the user leaves UGC Pilot.
+  // cannot publish after the user leaves Vidmake.
   url.searchParams.set("prompt", "consent");
 
   return url;

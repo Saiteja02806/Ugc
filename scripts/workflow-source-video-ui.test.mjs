@@ -297,6 +297,28 @@ test("Generation history lists only ready generations, requires an explicit choi
   assert.equal(query.queryKey[1], null); rt.unmount();
 });
 
+test("Generation history scopes to workflow when specified", async () => {
+  const rt = runtime(), calls = [];
+  let query;
+  const policy = load("lib/explore/workflow-source-video.ts", {});
+  const talkingHeadVideo = { id: "th-1", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/th.mp4", title: "Talking head", metadata: { workflow: "talking_head" } };
+  const hookVideo = { id: "hook-1", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/hook.mp4", title: "Hook video", metadata: { workflow: "hook" } };
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", {
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    "@tanstack/react-query": { useQuery: input => { query = input; return { data: input.enabled ? [talkingHeadVideo, hookVideo].filter(a => a.metadata?.workflow === input.queryKey[3]) : [], isPending: false }; } },
+    "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
+    "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
+    "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "token" },
+  }, { fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [talkingHeadVideo, hookVideo] }); } });
+  const props = { open: true, library: "generation_history", workflow: "talking_head", ownerId: "owner", onSelect() { return true; }, onOpenChange() {} };
+  const tree = rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.deepEqual(Array.from(query.queryKey), ["explore-source-videos", "owner", "generation_history", "talking_head"]);
+  await query.queryFn({ signal: new AbortController().signal });
+  assert.equal(calls[0].url, "/api/media?collection=video&sourceTypes=generated_video&workflow=talking_head");
+  assert.equal(nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 1);
+  rt.unmount();
+});
+
 test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
   const client = new QueryClient();

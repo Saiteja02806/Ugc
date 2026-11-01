@@ -4,7 +4,7 @@ const reply = (body: object, status = 200) => Response.json(body, { status, head
 
 export function createBatchNotificationHandler(save: Save) {
   return async function POST(request: Request) {
-    if (request.headers.get("origin") !== new URL(request.url).origin) return reply({ error: "Please use the form on UGC Pilot." }, 403);
+    if (request.headers.get("origin") !== new URL(request.url).origin) return reply({ error: "Please use the form on Vidmake." }, 403);
     if (request.headers.get("content-type")?.split(";")[0] !== "application/json" || Number(request.headers.get("content-length") ?? 0) > 2048) return reply({ error: "Invalid request." }, 400);
     try {
       const reader = request.body?.getReader();

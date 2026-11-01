@@ -10,7 +10,7 @@ import { startingFramePhotoKey } from "@/lib/explore/starting-frame-photo-select
 import { useHookComposerSelection } from "./use-hook-composer-selection";
 import type { TalkingHeadReference } from "@/lib/explore/talking-head-reference";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
-import { hookStartingFrameDefaultDuration, hookStartingFrameFaceReferenceLimit, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
+import { hookStartingFrameSourceDuration, hookStartingFrameDefaultDuration, hookStartingFrameFaceReferenceLimit, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
 import referenceStyles from "./talking-head-references.module.css";
 import { Tabs } from "@base-ui/react/tabs";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ import { WorkflowCreationPanel, type WorkflowSection } from "@/components/explor
 import { WorkflowEditWorkspace, WorkflowScheduleWorkspace } from "@/components/explore/workflow-edit-workspace";
 import { WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
-import { selectWorkflowAccount, workflowSelectedAccountIds, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
+import { resolveWorkflowScheduleDraft, selectWorkflowAccount, workflowSelectedAccountIds, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { WorkflowPreviewCanvas } from "@/components/explore/workflow-preview-canvas";
 import { WorkflowSectionNavigation, useWorkflowSectionOrientation } from "@/components/explore/workflow-section-navigation";
 import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source-video";
@@ -80,6 +80,8 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
   const [section, setSection] = useState<WorkflowSection>(initialSection);
   const orientation = useWorkflowSectionOrientation();
   const [scheduleDraft, setLocalScheduleDraft] = useState(recovery.session.scheduleDraft);
+  const scheduleDraftRef = useRef(scheduleDraft);
+  scheduleDraftRef.current = scheduleDraft;
   const timezone = useAccountTimeZone();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [assetTarget, setAssetTarget] = useState<"opening" | "demo" | null>(null);
@@ -164,7 +166,12 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
   const dirty = Boolean(hasLocalReferences || localDemo.asset || localDemoAudio.asset || demoUpload.busy || audioUpload.busy ||
     !generationEnabled && (clipsDirty || selection.dirty || instructions.length || demo.asset || demoAudio.asset || Object.values(scheduleDraft).some(Boolean)));
 
-  const setScheduleDraft: typeof setLocalScheduleDraft = value => { const next = typeof value === "function" ? value(scheduleDraft) : value; setLocalScheduleDraft(next); recovery.update(previous => ({ ...previous, scheduleDraft: next })); };
+  const setScheduleDraft: typeof setLocalScheduleDraft = value => {
+    const next = resolveWorkflowScheduleDraft(scheduleDraftRef.current, value);
+    scheduleDraftRef.current = next;
+    setLocalScheduleDraft(next);
+    recovery.update(previous => ({ ...previous, scheduleDraft: next }));
+  };
   function setInstructions(value: string) { setLocalInstructions(value); recovery.update(previous => ({ ...previous, instructions: value })); }
   function setDemoAudioPlayback(value: ExploreBackgroundPlayback) { setLocalDemoAudioPlayback(value); recovery.update(previous => ({ ...previous, demoAudioPlayback: value })); }
   function setDemoFraming(value: typeof demoFraming) { setLocalDemoFraming(value); recovery.update(previous => ({ ...previous, demoFraming: value })); }
@@ -298,10 +305,10 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draftId={draftId} restoredSelection={selection.mode === "generate" ? { assetId: recovery.session.generatedAssetId, asset: recovery.assets.source, ready: recovery.loaded && !recovery.session.pendingSource, allowAutomaticSelection: !recovery.session.generatedSelectionCleared } : undefined} onSelectionChange={rememberGenerated} draft={{ kind: "hook", instructions, referenceInstructions: startingFrame?.motionInstructions ?? references.instructions, settings: generation.settings, startingFrame, startingFramePhotos: activeFacePhotos.map(photo => ({ name: photo.asset.title, url: photo.asset.url, assetId: photo.asset.id })), creator: creator.asset, referenceImages: creator.assets, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: framePhotos.pending || facePending || Boolean(preparation) || !frameSelection.ready || creator.loading || videoReference.loading || hookAudio.loading, referencesError: framePhotos.error || faceError || frameSelection.error || creator.error || videoReference.error || hookAudio.error || (referenceReview ? "Review your generation references. Browser files must be chosen again after returning to this workflow." : null) }}>{(run) => {
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draftId={draftId} restoredSelection={selection.mode === "generate" ? { assetId: recovery.session.generatedAssetId, asset: recovery.assets.source, ready: recovery.loaded && !recovery.session.pendingSource, allowAutomaticSelection: !recovery.session.generatedSelectionCleared } : undefined} onSelectionChange={rememberGenerated} draft={{ kind: "hook", workflow: "talking_head", instructions, referenceInstructions: startingFrame?.motionInstructions ?? references.instructions, settings: generation.settings, startingFrame, startingFramePhotos: activeFacePhotos.map(photo => ({ name: photo.asset.title, url: photo.asset.url, assetId: photo.asset.id })), creator: creator.asset, referenceImages: creator.assets, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: framePhotos.pending || facePending || Boolean(preparation) || !frameSelection.ready || creator.loading || videoReference.loading || hookAudio.loading, referencesError: framePhotos.error || faceError || frameSelection.error || creator.error || videoReference.error || hookAudio.error || (referenceReview ? "Review your generation references. Browser files must be chosen again after returning to this workflow." : null) }}>{(run) => {
     const source = selection.mode === "generate" ? run?.selected ?? null : videoSelection.source;
     const sourcePreview = selection.mode === "generate" ? previewAsset(source) : videoSelection.preview;
-    const generationView = run ? { ...run, onGenerate: () => { setCreateView("videos"); setShowGenerationResults(true); run.onGenerate(); } } : null;
+    const generationView = run ? { ...run, onGenerate: () => { setCreateView("videos"); setShowGenerationResults(true); run.onGenerate(); }, selectResult: (id: string) => { run.selectResult(id); setShowGenerationResults(false); } } : null;
     const outputAspect = source?.width && source.height ? source.width / source.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
     const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
     const demoSelectionError = openingReplacementPending ? "Wait for your replacement hook to finish uploading." : videoSelection.error ?? (demo.loading || demoAudio.loading ? "Wait for your selected demo media to finish loading." : demo.error || demoAudio.error || null);
@@ -335,7 +342,13 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="hook" label="Talking head video" hideHeading selection={videoSelection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
-            <HookWorkflowComposer ownerId={ownerId} startingFrameMode={Boolean(startingFrame)} startingFrameControl={startingFrame || !frameSelection.ready || frameSelection.error ? <>
+            <HookWorkflowComposer onStartingFrameSelect={startingFrameEnabled ? frame => {
+              if (frame.ownerId !== ownerId || !frameSelection.setFrame(frame)) return false;
+              setFaceError(null); videoReference.remove(); creator.remove(); setReferenceReview(false); videoSelection.setMode("generate");
+              const model = isHookStartingFrameVideoModel(generation.settings.model) ? generation.settings.model : "google_omni";
+              generation.changeSettings({ model, duration: hookStartingFrameSourceDuration(model, frame.sourceDurationSeconds, frame.durationSeconds) as WorkflowGenerationSettings["duration"], aspectRatio: frame.width > frame.height ? "16:9" : "9:16" });
+              return true;
+            } : undefined} ownerId={ownerId} startingFrameMode={Boolean(startingFrame)} startingFrameControl={startingFrame || !frameSelection.ready || frameSelection.error ? <>
               {!frameSelection.ready || frameSelection.error ? <div className="space-y-2" role={frameSelection.error ? "alert" : "status"}><p>{frameSelection.error ?? "Restoring your starting frame…"}</p>{frameSelection.error ? <><Button type="button" variant="outline" onClick={frameSelection.retry}>Retry</Button><Button type="button" variant="ghost" onClick={() => frameSelection.setFrame(null)}>Clear saved starting frame</Button></> : null}</div> : null}
               {startingFrame ? <StartingFrameAnimationReferences compact frame={startingFrame} model={generation.settings.model} photos={facePhotos} onPhotosChange={photos => { framePhotos.remember(photos); setFacePhotoSelection({ key: photoKey, photos }); setFaceError(null); }} ownerId={ownerId ?? undefined} preview={!generationEnabled} active={section === "create"} disabled={Boolean(run?.busy || !frameSelection.ready)} onPendingChange={setFacePending} onErrorChange={setFaceError}
                 onSelectFrame={frame => { if (frameSelection.setFrame(frame)) setFaceError(null); }} onClearFrame={() => { frameSelection.setFrame(null); setFacePhotoSelection({ key: null, photos: [] }); setFaceError(null); }}
@@ -375,8 +388,15 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
         <section id="hook-workflow-preview" aria-label="Hook creation workspace" className={cn(creation.main, sections.preview)} hidden={!previewVisible}>
           <nav className={referenceStyles.tabs} aria-label="Creation views" hidden={section !== "create" || clips.editing}>
             <button type="button" aria-pressed={createView === "references"} onClick={() => setCreateView("references")}>References</button>
-            <button type="button" disabled={!generationEnabled || Boolean(run?.busy)} onClick={() => { workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause()); setHistoryOpen(true); }}>History</button>
             <button type="button" aria-pressed={createView === "videos"} onClick={() => { setCreateView("videos"); setShowGenerationResults(false); }}>Your videos</button>
+            <button type="button" className={referenceStyles.historyAction} disabled={!generationEnabled || Boolean(run?.busy)} onClick={() => { workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause()); setHistoryOpen(true); }}>
+              <svg className="size-3.5 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M12 7v5l4 2" />
+              </svg>
+              <span>History</span>
+            </button>
           </nav>
           <div hidden={section !== "create" || createView !== "references"}>
             <TalkingHeadReferences startingFrameEnabled={startingFrameEnabled} items={references.query.data ?? []} loading={references.query.isPending && generationEnabled} failed={references.query.isError} selectedId={startingFrame?.referenceId ?? references.selectedId} model={generationSettings.model} disabled={Boolean(run?.busy || videoReference.loading || !frameSelection.ready)} onChoose={id => {
@@ -396,14 +416,14 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
             {clips.preview}<div hidden={clips.editing}><WorkflowEditWorkspace kind="hook" rawComposition openingPreview={clips.openingPreview} demoSegmentPreview={clips.demoPreview} demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={demoAudio} generatedVideo={clips.source} sourcePreview={clips.source ? { name: clips.source.title, url: clips.source.url, duration: clips.source.durationSeconds } : sourcePreview} onChangeSource={() => changeSection("create")} sourceActions={<><WorkflowClipSourceActions label="hook video" triggerLabel={sourcePreview ? "Change" : undefined} disabled={openingReplacementPending || selection.busy || finish.edit.busy || clips.busy || Boolean(run?.busy)} onUpload={replaceOpening} onChooseAssets={() => { setReplacementError(null); setAssetTarget("opening"); }} onGenerate={() => { videoSelection.setMode("generate"); setCreateView("references"); changeSection("create"); }} />{replacementError ? <p role="alert" className="w-full text-xs text-destructive">{replacementError}</p> : null}</>} demoSourceActions={<WorkflowClipSourceActions library="content" label="demo video" triggerLabel={demo.asset || clips.demoSource ? "Change" : undefined} disabled={finish.edit.busy || clips.busy} onUpload={chooseDemo} onChooseAssets={() => setAssetTarget("demo")} />} finishedVideo={finish.output} demoFraming={clips.demoFraming} demoPreview={clips.demoSource ? { name: clips.demoSource.title, url: clips.demoSource.url, duration: clips.demoSource.durationSeconds } : undefined} onEditSource={clips.openOpening ? () => { changeSection("edit"); clips.openOpening?.(); } : undefined} onEditDemo={clips.openDemo ? () => { changeSection("edit"); void clips.openDemo?.(); } : undefined} editingBusy={finish.edit.busy || clips.busy} compositionPreview={finish.options.backgroundMusic || finish.options.subtitles || demoAudio.asset ? <WorkflowScheduleWorkspace editingPreview rawComposition draft={scheduleDraft} source={clips.source} sourcePreview={sourcePreview} demoSource={clips.demoSource} demo={demo.asset} demoAudio={demoAudio.asset} demoAudioPlayback={demoAudioPlayback} openingPreview={clips.openingPreview} demoPreview={clips.demoPreview} demoFraming={clips.demoFraming} rawDemoFraming={currentFraming} options={finish.options} backgroundSource={finish.options.backgroundMusic ? finish.music.source : null} backgroundPlayback={finish.music.playback} captions={finish.captions.transcript} ownerId={ownerId} enabled={generationEnabled} previewDisabledReason={framingError ?? demoSelectionError ?? finish.music.selectionError} previewWarning={clips.error} /> : null} /></div>
           </div>
           {section === "schedule" ? <WorkflowScheduleWorkspace rawComposition draft={scheduleDraft} finishedVideo={finish.output} source={clips.source} sourcePreview={sourcePreview} demoSource={clips.demoSource} demo={demo.asset} demoAudio={demoAudio.asset} demoAudioPlayback={demoAudioPlayback} openingPreview={clips.openingPreview} demoPreview={clips.demoPreview} demoFraming={clips.demoFraming} rawDemoFraming={currentFraming} options={finish.options} backgroundSource={finish.options.backgroundMusic ? finish.music.source : null} backgroundPlayback={finish.music.playback} captions={finish.captions.transcript} ownerId={ownerId} enabled={generationEnabled} previewDisabledReason={framingError ?? demoSelectionError ?? finish.music.selectionError} previewWarning={clips.error} active={section === "schedule"} /> : null}
-          {section === "create" && selection.mode === "generate" && source ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" className="h-11 rounded-xl font-semibold shadow-sm hover:shadow transition-shadow" onClick={() => changeSection("edit")}>Continue</Button></div> : section === "edit" && (finish.output || finish.pendingComposition && !finish.pendingComposition.error) && !clips.editing ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" className="h-11 rounded-xl font-semibold shadow-sm hover:shadow transition-shadow" onClick={() => changeSection("schedule")}>Schedule video</Button></div> : null}
+          {section === "create" && selection.mode === "generate" && source ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" className="h-11 font-semibold shadow-sm hover:shadow transition-shadow" onClick={() => changeSection("edit")}>Continue</Button></div> : section === "edit" && (finish.output || finish.pendingComposition && !finish.pendingComposition.error) && !clips.editing ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" className="h-11 font-semibold shadow-sm hover:shadow transition-shadow" onClick={() => changeSection("schedule")}>Schedule video</Button></div> : null}
         </section>
         </div>
 
       </div>
     </Tabs.Root>
     {preparation ? <HookStartingFrameWorkspace reference={preparation.reference} ownerId={generationEnabled ? ownerId : null} draftId={preparation.draftId} preparationFormat="talking_head" presentation="recreation" onClose={() => setPreparation(null)} onUseStartingFrame={approveStartingFrame} /> : null}
-    <WorkflowVideoAssetPicker library="generation_history" open={historyOpen} onOpenChange={setHistoryOpen} ownerId={ownerId} selectedId={source?.id} description="Choose an earlier generated video. Your Demo and script stay unchanged." onSelect={asset => { if (run?.busy || openingReplacementPending || selection.busy) return false; videoSelection.setMode("generate"); acceptAsset("source", asset, "generate"); setCreateView("videos"); setShowGenerationResults(true); return true; }} />
+    <WorkflowVideoAssetPicker library="generation_history" workflow="talking_head" open={historyOpen} onOpenChange={setHistoryOpen} ownerId={ownerId} selectedId={source?.id} description="Choose an earlier generated talking-head video. Your Demo and script stay unchanged." onSelect={asset => { if (run?.busy || openingReplacementPending || selection.busy) return false; videoSelection.setMode("generate"); acceptAsset("source", asset, "generate"); setCreateView("videos"); setShowGenerationResults(false); return true; }} />
     <WorkflowVideoAssetPicker library={assetTarget === "demo" ? "content" : "creative_assets"} open={Boolean(assetTarget)} onOpenChange={open => { if (!open) setAssetTarget(null); }} ownerId={ownerId} selectedId={assetTarget === "demo" ? recovery.assets.demo?.id : recovery.assets.source?.id} description={assetTarget === "demo" ? "Choose a previously uploaded video from the Demo screen." : "Choose your talking head video from Creative Assets."} onSelect={asset => { if (openingReplacementPending || selection.busy || demo.loading) return false; const accepted = assetTarget === "demo" ? chooseDemoAsset(asset) : selection.selectAsset(asset); if (accepted && assetTarget === "opening") selection.setMode("assets"); return accepted; }} />
 
   </section>}</WorkflowFinishingBoundary>}</TalkingHeadClipEditing>;

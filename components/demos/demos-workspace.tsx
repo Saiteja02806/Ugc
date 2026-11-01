@@ -67,9 +67,9 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, DemoContentType> = {
   webm: "video/webm",
 };
 const demoPrimaryActionClassName =
-  "inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoIconActionClassName =
-  "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoMetricChipClassName =
   "inline-flex h-8 items-center rounded-full border border-border/70 bg-card-muted/80 px-3.5 text-xs font-mono font-medium text-muted";
 const demoLibraryGridClassName =
@@ -1114,7 +1114,7 @@ function EmbeddedDemoWorkspace({
             className={cn(
               "grid min-h-[220px] items-center gap-6 rounded-2xl border-2 border-dashed p-6 sm:p-8 transition-all sm:grid-cols-[minmax(0,1fr)_220px]",
               isDragActive
-                ? "border-primary bg-brand-soft/30"
+                ? "border-white bg-card"
                 : "border-border/80 bg-card-muted/40 hover:bg-card-muted/60",
             )}
           >
@@ -1154,7 +1154,7 @@ function EmbeddedDemoWorkspace({
         ) : null}
 
         {demos.length > 0 && isDragActive ? (
-          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary bg-card/95 text-sm font-semibold text-primary shadow-floating sm:inset-6">
+          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-white bg-card/95 text-sm font-semibold text-foreground shadow-floating sm:inset-6">
             Drop your video files to upload
           </div>
         ) : null}
@@ -1225,7 +1225,7 @@ export function DemoUploadPanel({
       }}
       className={cn(
         "relative rounded-panel border bg-card p-4 transition-colors sm:p-5",
-        isDragActive ? "border-primary bg-brand-soft/35" : "border-border",
+        isDragActive ? "border-white bg-card" : "border-border",
       )}
     >
       <div
@@ -1370,7 +1370,7 @@ function UploadProgress({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover"
             >
               <RotateCcw className="size-3.5" aria-hidden="true" />
               Retry
@@ -1380,7 +1380,7 @@ function UploadProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border bg-card-muted px-3 text-xs font-bold text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-card-muted px-3 text-xs font-bold text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground"
             >
               <X className="size-3.5" aria-hidden="true" />
               Cancel
@@ -1467,7 +1467,7 @@ function BatchUploadQueuePanel({
                     <button
                       type="button"
                       onClick={() => onRetryItem(item.id)}
-                      className="inline-flex size-6 items-center justify-center rounded bg-primary text-white hover:bg-primary-hover"
+                      className="inline-flex size-6 items-center justify-center rounded bg-primary text-primary-foreground hover:bg-primary-hover"
                       title="Retry upload"
                     >
                       <RotateCcw className="size-3" />
@@ -1652,7 +1652,7 @@ export function DemoCard({
       className={cn(
         "group min-w-0 overflow-hidden rounded-2xl border bg-card shadow-xs transition-all duration-200",
         isSelected
-          ? "border-primary ring-2 ring-primary/20 shadow-md"
+          ? "border-white ring-2 ring-white/25 shadow-md"
           : "border-border/80 hover:border-border-strong hover:shadow-md hover:-translate-y-0.5",
       )}
     >
@@ -1670,7 +1670,7 @@ export function DemoCard({
             className={cn(
               "flex size-6 items-center justify-center rounded-lg bg-black/60 backdrop-blur-md transition-opacity cursor-pointer border border-white/20",
               isSelected
-                ? "opacity-100 bg-primary border-primary"
+                ? "opacity-100 border-white bg-white text-[#101014]"
                 : "opacity-0 group-hover:opacity-100",
             )}
           >
@@ -1713,7 +1713,7 @@ export function DemoCard({
             disabled={!playable}
             aria-label={`${playbackLabel} ${demo.title}`}
             title={`${playbackLabel} preview`}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-md transition-all hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-md transition-all hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPlaying ? (
               <Pause className="size-4" strokeWidth={2.5} aria-hidden="true" />
@@ -1742,7 +1742,7 @@ export function DemoCard({
               title="Delete demo"
               onClick={onDelete}
               disabled={deleting}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deleting ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
@@ -1871,7 +1871,7 @@ function InlineTitleEditor({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => void handleCommit()}
-          className="h-7 min-w-0 flex-1 rounded border border-primary bg-card px-1.5 text-xs font-semibold text-foreground focus:outline-none"
+          className="h-7 min-w-0 flex-1 rounded border border-white bg-card px-1.5 text-xs font-semibold text-foreground focus:outline-none"
           maxLength={140}
         />
         <button
@@ -1881,7 +1881,7 @@ function InlineTitleEditor({
             void handleCommit();
           }}
           disabled={isSaving}
-          className="inline-flex size-6 shrink-0 items-center justify-center rounded bg-primary text-white hover:bg-primary-hover"
+          className="inline-flex size-6 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground hover:bg-primary-hover"
           title="Save title"
         >
           {isSaving ? (
@@ -2025,7 +2025,7 @@ function DemoTagBadges({
             e.stopPropagation();
             setIsOpen((prev) => !prev);
           }}
-          className="inline-flex items-center gap-0.5 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-subtle transition-colors hover:border-primary hover:text-primary hover:bg-brand-soft"
+          className="inline-flex items-center gap-0.5 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-subtle transition-colors hover:border-white hover:text-foreground hover:bg-card"
           title="Add tag"
         >
           <Plus className="size-2.5" />
@@ -2053,13 +2053,13 @@ function DemoTagBadges({
                   }
                 }}
                 autoFocus
-                className="h-6 w-full rounded border border-border px-1.5 text-xs font-medium text-foreground placeholder:text-muted-subtle focus:border-primary focus:outline-none"
+                className="h-6 w-full rounded border border-border px-1.5 text-xs font-medium text-foreground placeholder:text-muted-subtle focus:border-white focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => handleAdd(customTag)}
                 disabled={!customTag.trim()}
-                className="h-6 px-2 rounded bg-primary text-white text-xs font-semibold hover:bg-primary-hover disabled:opacity-50"
+                className="h-6 px-2 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary-hover disabled:opacity-50"
               >
                 Add
               </button>
@@ -2295,7 +2295,7 @@ function DemoVideoPreviewModal({
               <button
                 type="button"
                 onClick={togglePlay}
-                className="inline-flex size-8 items-center justify-center rounded-control bg-primary text-white hover:bg-primary-hover transition-colors"
+                className="inline-flex size-8 items-center justify-center rounded-control bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
                 title={isPlaying ? "Pause (Space)" : "Play (Space)"}
               >
                 {isPlaying ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4 fill-current" />}
@@ -2325,7 +2325,7 @@ function DemoVideoPreviewModal({
                   className={cn(
                     "rounded px-2 py-0.5 text-xs font-semibold transition-colors",
                     playbackRate === speed
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted hover:bg-card-muted hover:text-foreground",
                   )}
                 >
@@ -2388,7 +2388,7 @@ function DemoVideoPreviewModal({
 
           <Link
             href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Pencil className="size-3.5" />
             <span>Edit in Studio</span>
@@ -2419,7 +2419,7 @@ function BulkActionBar({
   return (
     <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-3 rounded-full border border-border bg-card/95 px-5 py-2.5 shadow-floating backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground">
-        <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
+        <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
           {selectedCount}
         </span>
         <span>selected</span>
@@ -2451,7 +2451,7 @@ function BulkActionBar({
         type="button"
         onClick={onDeleteSelected}
         disabled={isDeleting}
-        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-error px-3 text-xs font-bold text-white transition-colors hover:bg-error/90 disabled:opacity-50"
+        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-error px-3 text-xs font-bold text-white transition-colors hover:bg-error/90 disabled:opacity-50"
       >
         {isDeleting ? (
           <Loader2 className="size-3.5 animate-spin" />
@@ -2715,7 +2715,7 @@ function uploadFileToStorage({
       );
       finish(
         new Error(
-          "Storage blocked the upload before it reached UGC Pilot. Check the storage connection and try again.",
+          "Storage blocked the upload before it reached Vidmake. Check the storage connection and try again.",
         ),
       );
     };

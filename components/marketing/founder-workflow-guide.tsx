@@ -20,7 +20,7 @@ export function workflowGuideMetadata(guide: Guide): Metadata {
     title: guide.title,
     description: guide.description,
     alternates: { canonical: path },
-    openGraph: { type: "article", title: guide.title, description: guide.description, url: path, siteName: "UGC Pilot" },
+    openGraph: { type: "article", title: guide.title, description: guide.description, url: path, siteName: "Vidmake" },
     twitter: { card: "summary", title: guide.title, description: guide.description },
   };
 }

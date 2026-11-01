@@ -106,7 +106,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
               <CopyTextButton label="First prompt" value={connectionCheckPrompt} wrap />
             </div>
             <p className="text-xs leading-5 text-muted">
-              Sign in on the UGC Pilot consent page. Generation uses the connected account&apos;s plan and credits.
+              Sign in on the Vidmake consent page. Generation uses the connected account&apos;s plan and credits.
             </p>
           </div>
         </div>
@@ -153,8 +153,8 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             <ol className="mt-6 space-y-4">
               {[
                 "The client requests the Streamable HTTP server and receives the protected-resource metadata.",
-                "It starts an authorization-code flow with a S256 code challenge. UGC Pilot advertises dynamic client registration and client ID metadata documents.",
-                "You sign in to UGC Pilot and approve the scopes on the consent screen. The token stays in the client.",
+                "It starts an authorization-code flow with a S256 code challenge. Vidmake advertises dynamic client registration and client ID metadata documents.",
+                "You sign in to Vidmake and approve the scopes on the consent screen. The token stays in the client.",
                 "Later calls use that grant. account:write is a separate consent for account-default updates and is left out of the default setup.",
               ].map((step, index) => (
                 <li key={step} className="flex gap-3 text-sm leading-6">
@@ -294,8 +294,8 @@ function ClaudeSetup() {
       <ol className="mt-5 space-y-4">
         {[
           "Open Customize → Connectors → Add custom connector.",
-          "Enter UGC Pilot and paste the server URL.",
-          "Finish the detected OAuth setup, sign in to your UGC Pilot account, and approve the scopes. An organization may require an admin to add the connector first.",
+          "Enter Vidmake and paste the server URL.",
+          "Finish the detected OAuth setup, sign in to your Vidmake account, and approve the scopes. An organization may require an admin to add the connector first.",
           "Enable the connector in the conversation and send the connection-check prompt.",
         ].map((step, index) => (
           <li key={step} className="flex gap-3 text-sm leading-6">

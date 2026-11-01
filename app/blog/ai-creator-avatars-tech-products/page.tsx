@@ -31,8 +31,8 @@ const faqs = [
     answer: "Yes. Testing different creator demographics (e.g., a junior developer vs a senior engineering lead vs a product marketer) reveals which persona resonates best with specific customer segments.",
   },
   {
-    question: "Does UGC Pilot allow selecting different creator avatars?",
-    answer: "Yes. UGC Pilot features a library of realistic creator avatars tailored specifically for technical products, SaaS founders, and digital tools.",
+    question: "Does Vidmake allow selecting different creator avatars?",
+    answer: "Yes. Vidmake features a library of realistic creator avatars tailored specifically for technical products, SaaS founders, and digital tools.",
   },
   {
     question: "Can I generate creator avatars through Claude or Codex MCP?",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function AiCreatorAvatarsTechProductsPage() {
           If an AI creator in a video looks like a 3D mannequin wearing an overly crisp business suit in front of a fake stock-photo office, technical buyers will scroll past in disgust. Developers, founders, and product managers despise traditional corporate advertising.
         </p>
         <p>
-          To win attention on TikTok, Instagram Reels, and YouTube Shorts, you need <strong className="font-semibold text-foreground-strong">AI creator avatars that match your audience</strong>. With <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>, you can select and deploy relatable avatars who look and sound like real builders sharing an honest software discovery.
+          To win attention on TikTok, Instagram Reels, and YouTube Shorts, you need <strong className="font-semibold text-foreground-strong">AI creator avatars that match your audience</strong>. With <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>, you can select and deploy relatable avatars who look and sound like real builders sharing an honest software discovery.
         </p>
 
         <ArticleH2>The 3 Tech Persona Archetypes</ArticleH2>
@@ -113,7 +113,7 @@ export default function AiCreatorAvatarsTechProductsPage() {
 
         <ArticleH2>Avoiding the &quot;Uncanny Valley&quot; Trap</ArticleH2>
         <p>
-          Viewers reject synthetic avatars when micro-expressions look unnatural or robotic. Here is how to maintain realism when creating video hooks in UGC Pilot:
+          Viewers reject synthetic avatars when micro-expressions look unnatural or robotic. Here is how to maintain realism when creating video hooks in Vidmake:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
@@ -175,8 +175,8 @@ export default function AiCreatorAvatarsTechProductsPage() {
           { href: "/ai-ugc-video-generator", title: "AI UGC Video Generator", description: "Create talking-head video hooks from your software brief." },
           { href: "/blog/talking-head-hook-generator-saas", title: "Talking Head Hook Generator for SaaS", description: "Stop the scroll in under 3 seconds." },
           { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to Choose a UGC Video Maker", description: "A 10-point checklist for output, avatar quality, and voice." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Generate creator videos directly from Claude and Codex." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating tech creator videos with 2 free credits." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Generate creator videos directly from Claude and Codex." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating tech creator videos on the 7-day trial." },
         ]}
       />
     </VideoMarketingPage>

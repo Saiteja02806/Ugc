@@ -81,7 +81,7 @@ export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
   const Heading = compact ? "h2" : "h1";
   return <Container className={compact ? "flex min-w-0 flex-col rounded-[28px] border border-border bg-card p-6 sm:p-8" : "min-h-dvh bg-background text-foreground"}>
     {!compact ? <header className="mx-auto flex max-w-4xl items-center justify-between border-b border-border px-6 py-6">
-      <Link href="/" className="text-xl font-semibold text-foreground-strong">UGC Pilot</Link>
+      <Link href="/" className="text-xl font-semibold text-foreground-strong">Vidmake</Link>
       <Link href="/free-tools" className="inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4">Free tools</Link>
     </header> : <div className="mb-7 flex items-center justify-between gap-3 text-xs font-medium text-muted"><span>VIDEO LIBRARY · ZIP</span><span className="rounded-full border border-border px-3 py-1.5">Batch 1 · 100 downloads</span></div>}
     <section className={compact ? "flex flex-1 flex-col" : "mx-auto max-w-2xl px-6 py-16 sm:py-24"} aria-labelledby="bundle-title">

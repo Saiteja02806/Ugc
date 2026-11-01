@@ -89,7 +89,7 @@ export function SavedCreativeAssetsTab() {
             }
           }}
           spacing={1}
-          className="inline-flex w-full rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs sm:w-auto"
+          className="inline-flex w-full rounded-[10px] border border-border/80 bg-card-muted/80 p-1 shadow-xs sm:w-auto"
         >
           {savedCreativeFilters.map((filter) => {
             const Icon = filter.icon;
@@ -100,7 +100,7 @@ export function SavedCreativeAssetsTab() {
                 key={filter.value}
                 value={filter.value}
                 aria-current={isActive ? "page" : undefined}
-                className="h-8 flex-1 gap-1.5 rounded-full px-3.5 text-xs font-medium text-muted transition-all hover:text-foreground aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] aria-pressed:ring-1 aria-pressed:ring-border/60 sm:flex-none"
+                className="h-8 flex-1 gap-1.5 rounded-[10px] px-3.5 text-xs font-medium text-muted transition-all hover:text-foreground aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] aria-pressed:ring-1 aria-pressed:ring-border/60 sm:flex-none"
               >
                 <Icon className="size-3.5" aria-hidden="true" />
                 {filter.label}
@@ -142,7 +142,7 @@ export function SavedCreativeAssetsTab() {
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                   <Link
                     href="/dashboard"
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95"
                   >
                     <Sparkles className="size-3.5" aria-hidden="true" />
                     Explore Trending

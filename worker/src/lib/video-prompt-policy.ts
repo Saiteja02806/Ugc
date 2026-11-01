@@ -15,6 +15,7 @@ export function getVideoPromptCharacterLimit({
   referenceVideoMode?: "edit";
   provider?: string;
 }) {
+  if (model === "google_omni" && provider === "reapi") return 2_000;
   if (
     (!hasReferenceVideo || referenceVideoMode === "edit") &&
     (model === "google_omni" || (!model && provider === "gemini"))

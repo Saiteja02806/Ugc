@@ -154,7 +154,7 @@ export function CreatorReferencePicker({
             aria-haspopup="dialog"
             aria-expanded={open}
             className={cn(
-              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-[10px] bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               iconOnly && "h-7 gap-1 px-2.5",
               iconOnly && hasImageReference && "text-primary ring-primary/40",
             )}
@@ -230,7 +230,7 @@ export function CreatorReferencePicker({
             className={cn(
               "flex aspect-[3/4] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               !hasImageReference
-                ? "border-primary/45 bg-primary/8 text-primary"
+                ? "border-white text-foreground-strong"
                 : "border-border/80 bg-card-muted/70 text-muted hover:border-border hover:bg-card",
             )}
           >
@@ -246,8 +246,8 @@ export function CreatorReferencePicker({
             className={cn(
               "relative flex aspect-[3/4] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               hasCustomImageReference
-                ? "border-primary/45 bg-primary/8 text-primary"
-                : "border-border/80 bg-card-muted/55 text-muted hover:border-primary/35 hover:bg-primary/5 hover:text-primary",
+                ? "border-white text-foreground-strong"
+                : "border-border/80 bg-card-muted/55 text-muted hover:border-white/35 hover:bg-primary/5 hover:text-primary",
             )}
           >
             <ImagePlus className="size-3.5" aria-hidden="true" />
@@ -275,8 +275,8 @@ export function CreatorReferencePicker({
                 className={cn(
                   "group relative aspect-[3/4] min-w-0 overflow-hidden rounded-lg border bg-card-muted/70 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
                   selected
-                    ? "border-primary ring-2 ring-primary/35"
-                    : "border-border/80 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-sm",
+                    ? "border-white ring-2 ring-white/25"
+                    : "border-border/80 hover:-translate-y-0.5 hover:border-white/50 hover:shadow-sm",
                 )}
               >
                 <Image

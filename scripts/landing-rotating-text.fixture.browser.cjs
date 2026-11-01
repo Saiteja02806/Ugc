@@ -30,7 +30,7 @@ async function main() {
       else assert(/Post right away/.test(await page.locator('#badge').innerText()),'Desktop retains leading label');
       assert.equal(await page.locator('[data-fixed]').evaluate(el=>getComputedStyle(el).fontWeight),'400');
       assert.equal(await page.locator('[data-fixed]').evaluate(el=>getComputedStyle(el).fontSize),await page.locator('[data-hero-rotating-text] [aria-hidden="true"]').evaluate(el=>getComputedStyle(el).fontSize),'Both headline lines use same font size');
-      assert(await page.evaluate(()=>document.fonts.check('italic 36px "UGCPilot Instrument Serif"')));
+      assert(await page.evaluate(()=>document.fonts.check('italic 36px "Vidmake Instrument Serif"')));
       for(let index=0;index<3;index++){
         if(index) await page.waitForFunction(i=>document.querySelectorAll('[data-hero-rotating-text] [data-active]')[i].dataset.active==='true',index);
         await page.waitForTimeout(1250);assert.deepEqual(await geometry(),initial,'Surrounding geometry stationary across messages');

@@ -1,13 +1,13 @@
 .page {
-  --ink: #f5f3f0;
-  --orange: #ff7045;
-  --muted: #b9b5af;
+  --ink: #f6f3f8;
+  --orange: #0078d4;
+  --muted: #c4bcc8;
   --line: #3f3f3f;
   --wash: #242424;
   --surface: #292929;
-  --soft-orange: #3a2721;
+  --soft-orange: #2a2a2a;
   color-scheme: dark;
-  background: #1f1f1f;
+  background: #121212;
   color: var(--ink);
   font-family: var(--font-geist-sans), Arial, sans-serif;
   min-height: 100vh;
@@ -25,8 +25,8 @@
 .heroCount { font-kerning: none; font-variant-numeric: lining-nums; letter-spacing: .015em; margin-inline-end: .08em; }
 .heroAccent, .sectionHeading h2 span { color: var(--orange); }
 .heroDescription { margin: 24px 0 31px; color: var(--muted); font-size: 21px; line-height: 1.5; max-width: 490px; letter-spacing: -.025em; }
-.download { display: inline-flex; max-width: 100%; min-height: 64px; padding: 18px 34px; gap: 15px; align-items: center; justify-content: center; border: 1px solid var(--orange); border-radius: 12px; background: var(--orange); color: #1f1f1f; font-size: 19px; font-weight: 700; letter-spacing: -.025em; box-shadow: 0 9px 25px #00000026; transition: background .15s, transform .15s; }
-.download:hover { background: #ff825f; transform: translateY(-1px); }
+.download { display: inline-flex; max-width: 100%; min-height: 64px; padding: 18px 34px; gap: 15px; align-items: center; justify-content: center; border: 1px solid var(--orange); border-radius: 12px; background-color: #0078d4; background-image: none; color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -.025em; box-shadow: none; transition: background .15s, transform .15s; }
+.download:hover { background-color: #005a9e; background-image: none; transform: translateY(-1px); }
 .benefits { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; list-style: none; margin: 25px 0 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .benefits li { display: inline-flex; align-items: center; gap: 8px; }
 .benefits svg { color: var(--muted); }
@@ -72,14 +72,14 @@
 .textLink { color: var(--orange); font-size: 14px; font-weight: 600; display: inline-flex; gap: 8px; align-items: center; min-height: 44px; margin-top: 10px; }
 .textLink:hover { text-decoration: underline; text-underline-offset: 4px; }
 .example { padding: 28px; background: var(--wash); border-radius: 14px; border: 1px solid var(--line); }
-.exampleLabel { color: #ff9a76; font-size: 12px; }
+.exampleLabel { color: var(--orange); font-size: 12px; }
 .example blockquote { margin: 20px 0; font-size: 27px; letter-spacing: -.045em; font-weight: 600; line-height: 1.22; }
 .example .note { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.6; }
 .finalCta { text-align: center; padding: 58px 24px 64px; border-top: 1px solid var(--line); }
 .finalCta h2 { font-size: clamp(29px, 3.3vw, 40px); font-weight: 750; letter-spacing: -.05em; margin: 0; line-height: 1.15; }
 .finalCta > p { font-size: 16px; color: var(--muted); margin: 14px auto 25px; line-height: 1.6; }
-.downloadCompact { background: var(--orange); min-height: 52px; font-size: 15px; padding: 14px 25px; gap: 11px; border-radius: 10px; }
-.downloadCompact:hover { background: #ff825f; }
+.downloadCompact { background-color: #0078d4; background-image: none; color: #ffffff; min-height: 52px; font-size: 15px; padding: 14px 25px; gap: 11px; border-radius: 10px; }
+.downloadCompact:hover { background-color: #005a9e; background-image: none; }
 .benefitsSmall { justify-content: center; font-size: 12px; gap: 16px; margin-top: 17px; }
 .benefitsSmall svg { display: none; }
 .footer { max-width: 1120px; margin: 0 auto; padding: 24px 0 32px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 13px; }

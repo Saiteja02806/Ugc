@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     question: "Where can I find more video hook ideas?",
-    answer: "Our free Reaction Hook Library at https://getugcpilot.com/free-hook-lines has 110 hook lines in 11 collections. You can copy any line or download the PDF without signing up.",
+    answer: "Our free Reaction Hook Library at https://vidmake.io/free-hook-lines has 110 hook lines in 11 collections. You can copy any line or download the PDF without signing up.",
   },
   {
     question: "Can I use these hooks in paid ads?",
@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     question: "Can AI make hook videos?",
-    answer: "Yes. UGC Pilot generates AI UGC videos, including reaction-style hook clips, which you can create with the Hook video tool at https://getugcpilot.com/hookvideos.",
+    answer: "Yes. Vidmake generates AI UGC videos, including reaction-style hook clips, which you can create with the Hook video tool at https://vidmake.io/hookvideos.",
   },
 ] as const;
 
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function UgcHooksPage() {
     >
       <ArticleBody>
         <p>
-          This guide covers 20 UGC hooks taken word for word from our free <ArticleLink href="/free-hook-lines">Reaction Hook Library</ArticleLink>, a set of 110 short, casual openings in 11 collections. For each type, we explain why it works and when to use it. To turn a hook into a video, try the <ArticleLink href="/hookvideos">Hook video tool</ArticleLink>, where UGC Pilot recreates a hook as a video.
+          This guide covers 20 UGC hooks taken word for word from our free <ArticleLink href="/free-hook-lines">Reaction Hook Library</ArticleLink>, a set of 110 short, casual openings in 11 collections. For each type, we explain why it works and when to use it. To turn a hook into a video, try the <ArticleLink href="/hookvideos">Hook video tool</ArticleLink>, where Vidmake recreates a hook as a video.
         </p>
 
         <ArticleH2>What makes a good UGC hook?</ArticleH2>
@@ -200,11 +200,11 @@ export default function UgcHooksPage() {
           </li>
         </ol>
         <p>
-          UGC Pilot can help with steps 3 to 5. You can generate AI UGC videos with consistent characters and test hook variants from Claude or Codex through our MCP server. See <ArticleLink href="/blog/ai-ugc-video-generator-how-it-works">how it works</ArticleLink>, or follow the guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>. For platform tips on vertical format, captions and AI disclosure, read <ArticleLink href="/blog/ai-ugc-for-tiktok-ads">AI UGC for TikTok ads</ArticleLink>.
+          Vidmake can help with steps 3 to 5. You can generate AI UGC videos with consistent characters and test hook variants from Claude or Codex through our MCP server. See <ArticleLink href="/blog/ai-ugc-video-generator-how-it-works">how it works</ArticleLink>, or follow the guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>. For platform tips on vertical format, captions and AI disclosure, read <ArticleLink href="/blog/ai-ugc-for-tiktok-ads">AI UGC for TikTok ads</ArticleLink>.
         </p>
 
         <ArticleH2>See these hooks in real videos</ArticleH2>
-        <p>Reading hooks helps, but watching them helps more. These accounts post AI UGC made with UGC Pilot:</p>
+        <p>Reading hooks helps, but watching them helps more. These accounts post AI UGC made with Vidmake:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             Instagram: <ArticleExternalLink href="https://www.instagram.com/mira_handles/">@mira_handles</ArticleExternalLink>, <ArticleExternalLink href="https://www.instagram.com/juliarose.daily/">@juliarose.daily</ArticleExternalLink> and <ArticleExternalLink href="https://www.instagram.com/clara_iamm/">@clara_iamm</ArticleExternalLink>
@@ -257,7 +257,7 @@ export default function UgcHooksPage() {
               question: faqs[5].question,
               answer: (
                 <>
-                  Yes. UGC Pilot generates AI UGC videos, including reaction-style hook clips, which you can create with the <ArticleLink href="/hookvideos">Hook video tool</ArticleLink>.
+                  Yes. Vidmake generates AI UGC videos, including reaction-style hook clips, which you can create with the <ArticleLink href="/hookvideos">Hook video tool</ArticleLink>.
                 </>
               ),
             },

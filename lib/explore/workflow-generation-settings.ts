@@ -1,5 +1,6 @@
 import {
   AI_STUDIO_VIDEO_MODELS,
+  getDefaultAIStudioVideoModel,
   getAIStudioVideoDurations,
   getAIStudioVideoModelLabel,
   getAIStudioVideoResolutions,
@@ -40,15 +41,16 @@ export function normalizeWorkflowGenerationSettings(
   seedanceEnabled = seedanceIsEnabled(),
   wanEnabled = wanIsEnabled(),
 ): WorkflowGenerationSettings {
-  const requestedModel = draft.model ?? (seedanceEnabled ? "seedance_2_5" : "kling_3_0");
+  const requestedModel = draft.model ?? getDefaultAIStudioVideoModel(seedanceEnabled);
   const parsedModel = parseAIStudioVideoModel(requestedModel);
   const model = isAIStudioVideoModelAvailable(parsedModel, seedanceEnabled, wanEnabled) ? parsedModel : "kling_3_0";
   const duration = parseAIStudioVideoDuration(draft.duration);
   const resolution = parseAIStudioVideoResolution(draft.resolution);
+  const supportedDurations = getAIStudioVideoDurations(model);
 
   return {
     model,
-    duration: getAIStudioVideoDurations(model).includes(duration) ? duration : 5,
+    duration: supportedDurations.includes(duration) ? duration : supportedDurations.includes(5) ? 5 : supportedDurations[0],
     resolution: getAIStudioVideoResolutions(model).includes(resolution) ? resolution : "720p",
     quantity: parseAIStudioGenerationQuantity(draft.quantity),
     aspectRatio: parseAIStudioVideoAspectRatio(draft.aspectRatio),

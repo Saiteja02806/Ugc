@@ -33,13 +33,30 @@ test("monthly pricing has no annual savings", () => {
   }
 });
 
-test("plans expose credit balances for Free, Starter, and Growth", () => {
+test("plans expose credit balances for Free, Starter, Growth, and Startup", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.sharedMonthlyCredits]),
     [
       ["free", 0],
-      ["starter", 200],
-      ["growth", 600],
+      ["starter", 360],
+      ["growth", 720],
+      ["startup", 1800],
+    ],
+  );
+});
+
+test("paid plans show hook and full-video counts from four credits per second", () => {
+  assert.deepEqual(
+    pricingPlans.filter((plan) => plan.slug !== "free").map((plan) => [
+      plan.slug,
+      plan.features[0],
+      plan.features[1],
+      plan.features[2],
+    ]),
+    [
+      ["starter", "30 three-second hook videos each month", "15 six-second videos each month", "360 AI credits each month"],
+      ["growth", "60 three-second hook videos each month", "30 six-second videos each month", "720 AI credits each month"],
+      ["startup", "150 three-second hook videos each month", "75 six-second videos each month", "1,800 AI credits each month"],
     ],
   );
 });
@@ -51,6 +68,7 @@ test("plans expose the complete daily content allowance", () => {
       ["free", "20/day for 7 days"],
       ["starter", 20],
       ["growth", 50],
+      ["startup", 50],
     ],
   );
 });
@@ -60,7 +78,8 @@ test("Free pricing consistently advertises the seven-day trial", () => {
   for (const interval of ["monthly", "yearly"] as const) {
     assert.equal(getPlanPricing(free, interval).billingSummary, "7-day free trial");
   }
-  assert.equal(free.capacityLabel, "2 free credits · once per account");
+  assert.equal(free.capacityLabel, "No AI credits");
+  assert.equal(free.features.some((feature) => /free credits/i.test(feature)), false);
   assert.ok(free.features.includes("20 daily concepts for 7 days"));
   assert.ok(free.features.includes("Download finished carousels and videos"));
 });
@@ -72,6 +91,7 @@ test("Free allows one Instagram account, Starter three, and Growth five", () => 
       ["free", 1],
       ["starter", 3],
       ["growth", 5],
+      ["startup", 5],
     ],
   );
 });
@@ -87,6 +107,7 @@ test("plan feature lists describe all three supported connection platforms witho
       "Connect Instagram, TikTok & YouTube",
       "Connect Instagram, TikTok & YouTube",
       "Connect Instagram, TikTok & YouTube",
+      "Connect Instagram, TikTok & YouTube",
     ],
   );
 });
@@ -98,6 +119,7 @@ test("plans map slug to proper display name", () => {
       ["free", "Free trial"],
       ["starter", "Starter"],
       ["growth", "Growth"],
+      ["startup", "Startup"],
     ],
   );
 });
@@ -111,8 +133,9 @@ test("display prices match the configured Dodo catalog", () => {
     ]),
     [
       ["free", 0, 0],
-      ["starter", 19, 190],
+      ["starter", 29, 290],
       ["growth", 49, 490],
+      ["startup", 99, 990],
     ],
   );
 });

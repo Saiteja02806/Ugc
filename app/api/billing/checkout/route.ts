@@ -18,7 +18,7 @@ export const runtime = "nodejs";
 
 const checkoutInputSchema = z.object({
   billingInterval: z.enum(["monthly", "yearly"]).default("monthly"),
-  planSlug: z.enum(["starter", "growth"]),
+  planSlug: z.enum(["starter", "growth", "startup"]),
 }).strict();
 
 export async function POST(request: NextRequest) {

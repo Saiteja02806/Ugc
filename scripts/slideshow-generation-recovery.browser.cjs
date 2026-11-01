@@ -40,7 +40,7 @@ async function main(){
     if(url.pathname==='/api/ai-studio/generation-requests')return json({...receipt(),requestKey:lastKey,outcome:'accepted'});
     if(url.pathname==='/api/ai-studio/images/generate'){
       let raw='';for await(const part of req)raw+=part;const input=JSON.parse(raw);submitted.push(input);lastKey=req.headers['idempotency-key'];
-      if(responseMode==='clarify')return json({ok:false,message:'Clarify the screen destination',clarifications:['Should Upload B appear on Source slide 1 or 2?']},422);
+      if(responseMode==='clarify')return json({ok:false,message:'Clarify the screen destination',clarifications:['Should Upload B appear on Source slide 1 or 2, preserving the 背景?']},422);
       jobs=[1,2].map(n=>({id:id(submitted.length*10+n),owner,jobType:'image_generation',exploreFormat:'slideshow',status:'processing',createdAt:now(),updatedAt:now(),progress:20,stage:'generating',output:null,error:null,slideshowGeneration:{version:1,batchKey:lastKey,slideIndex:n,slideCount:2,versionIndex:1,versionCount:1}}));
       return responseMode==='lost'?json({ok:false,message:'Acknowledgement interrupted'},503):json(receipt(),202);
     }
@@ -67,15 +67,20 @@ async function main(){
     await page.getByRole('button',{name:'Switch account',exact:true}).click();await page.getByRole('button',{name:'Generated slides',exact:true}).click();await page.getByText('No generated images',{exact:true}).waitFor();
     assert.equal(await page.locator('img[src="https://fixture.test/slide-1.webp"]').count(),0,'Foreign account sees no previous image');
     await page.getByRole('button',{name:'Switch account',exact:true}).click();
-    responseMode='clarify';await generate();await page.getByText('No images were started. Your previous slideshow request needs clarification.',{exact:true}).waitFor();
+    responseMode='clarify';await generate();await page.getByText('No images were generated for that request.',{exact:true}).waitFor();
     await page.getByRole('button',{name:'Leave workflow',exact:true}).click();await page.getByRole('button',{name:'Return to Slideshows',exact:true}).click();
-    await page.getByText('Should Upload B appear on Source slide 1 or 2?',{exact:true}).waitFor();await page.reload();await page.getByText('Should Upload B appear on Source slide 1 or 2?',{exact:true}).waitFor();
-    assert.equal(submitted.length,2);await page.setViewportSize({width:390,height:844});await page.getByText('Should Upload B appear on Source slide 1 or 2?',{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,'clarification-mobile.png')});
+    await page.getByText('Please specify which source slides and uploaded images to use, and what should change on each slide.',{exact:true}).waitFor();await page.reload();await page.getByText('Please specify which source slides and uploaded images to use, and what should change on each slide.',{exact:true}).waitFor();
+    assert.doesNotMatch(await page.getByRole('status',{name:'Slideshow clarification'}).innerText(),/[\u3040-\u30ff\u3400-\u9fff]/u);
+    await page.evaluate(()=>{const key='ugc-explore:slideshow-clarification:v1:owner-a',saved=JSON.parse(localStorage.getItem(key));saved.imageIds=['00000000-0000-4000-8000-000000000001'];localStorage.setItem(key,JSON.stringify(saved));});
+    await page.reload();await page.getByText('Your images have changed since this check',{exact:true}).waitFor();assert.equal(submitted.length,2);
+    await page.evaluate(()=>{const key='ugc-explore:slideshow-clarification:v1:owner-a',saved=JSON.parse(localStorage.getItem(key));saved.imageIds=[];localStorage.setItem(key,JSON.stringify(saved));});
+    await page.reload();await page.getByText('Please specify which source slides and uploaded images to use, and what should change on each slide.',{exact:true}).waitFor();
+    assert.equal(submitted.length,2);await page.setViewportSize({width:390,height:844});await page.getByText('Please specify which source slides and uploaded images to use, and what should change on each slide.',{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,'clarification-mobile.png')});
     responseMode='lost';await generate();await page.getByRole('button',{name:'Recover saved request',exact:true}).waitFor();
     await page.getByRole('button',{name:'Leave workflow',exact:true}).click();complete();await page.getByRole('button',{name:'Return to Slideshows',exact:true}).click();
     await page.getByRole('button',{name:'Recover saved request',exact:true}).click();await page.getByRole('button',{name:'Generate 2 slides',exact:true}).waitFor();
     assert.equal(submitted.length,3,'Lost response recovery must use GET without generating again');
-    assert.equal(await page.getByText('Should Upload B appear on Source slide 1 or 2?',{exact:true}).count(),0,'Accepted request clears stale clarification');
+    assert.equal(await page.getByText('Please specify which source slides and uploaded images to use, and what should change on each slide.',{exact:true}).count(),0,'Accepted request clears stale clarification');
     await page.evaluate(()=>localStorage.setItem('ugc-ai-studio.latest-image-job.v2.owner-a','["studio-history-hint"]'));
     await page.getByRole('button',{name:'New session',exact:true}).click();
     assert.equal(await page.evaluate(()=>localStorage.getItem('ugc-ai-studio.latest-image-job.v2.owner-a.slideshow')),null);

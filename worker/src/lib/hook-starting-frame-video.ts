@@ -4,25 +4,24 @@ export function isHookStartingFrameVideoModel(model: unknown): model is "google_
 }
 
 export function hookStartingFrameVideoProvider(model: unknown) {
-  return model === "google_omni" ? "gemini" as const
-    : model === "seedance_2_5" || model === "wan_3_0" ? "reapi" as const : null;
+  return isHookStartingFrameVideoModel(model) ? "reapi" as const : null;
 }
 
 export function hookStartingFrameVideoDurations(model: unknown): number[] {
+  if (model === "google_omni") return [4, 6, 8, 10];
   const minimum = model === "seedance_2_5" ? 4 : 3;
   return isHookStartingFrameVideoModel(model)
-    ? Array.from({ length: (model === "google_omni" ? 10 : 15) - minimum + 1 }, (_, index) => index + minimum) : [];
+    ? Array.from({ length: 15 - minimum + 1 }, (_, index) => index + minimum) : [];
 }
 
 /** Initial choice only; explicit duration selections remain editable. */
 export function hookStartingFrameDefaultDuration(model: unknown): 3 | 4 {
-  return model === "seedance_2_5" ? 4 : 3;
+  return model === "wan_3_0" ? 3 : 4;
 }
 
-/** Only Omni's connected route documents literal first-frame + appearance roles.
- * Five optional photos keeps the total under its ten-image family limit. */
-export function hookStartingFrameFaceReferenceLimit(model: unknown): number {
-  return model === "google_omni" ? 5 : 0;
+/** ReAPI Omni Flash locks one starting image. Extra face photos are rejected. */
+export function hookStartingFrameFaceReferenceLimit(_model: unknown): number {
+  return 0;
 }
 export function supportsHookStartingFrameFaceReferences(model: unknown): boolean {
   return hookStartingFrameFaceReferenceLimit(model) > 0;

@@ -15,7 +15,7 @@ write('auth.ts', `export const useAuth=()=>({user:{uid:'fixture-owner'},loading:
 write('next.tsx', `export const useSearchParams=()=>new URLSearchParams();export default function Element({href,children,src,alt,...props}){return src?<img src={src} alt={alt}/>:<a href={href} {...props}>{children}</a>;}`);
 write('entry.tsx', `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import {useTalkingHeadReference} from '@/components/explore/use-talking-head-reference';import {TalkingHeadReferences} from '@/components/explore/talking-head-references';import {WorkflowCreationForm} from '@/components/explore/workflow-creation-form';import {useLocalWorkflowMedia} from '@/components/explore/use-local-workflow-media';import {useLocalWorkflowImages} from '@/components/explore/use-local-workflow-images';import {createWorkflowSession} from '@/lib/explore/workflow-session';import {normalizeWorkflowGenerationSettings} from '@/lib/explore/workflow-generation-settings';import {workflowGenerationPrompt} from '@/lib/explore/workflow-generation-client';import sections from '@/components/explore/workflow-section-layout.module.css';import creation from '@/components/explore/workflow-creation.module.css';
 const initial=()=>JSON.parse(localStorage.getItem('fixture-session')||'null')??{...createWorkflowSession('fixture-owner'),instructions:'Keep my own product message',generationSettings:normalizeWorkflowGenerationSettings({model:'seedance_2_5'})};
-function App(){const [session,setSession]=useState(initial),[access,setAccess]=useState('free'),[requests,setRequests]=useState(0);window.testAccess=access;const update=next=>setSession(previous=>{const value=next(previous);localStorage.setItem('fixture-session',JSON.stringify(value));return value;});const settings=session.generationSettings;const change=patch=>update(p=>({...p,generationSettings:normalizeWorkflowGenerationSettings({...p.generationSettings,...patch})}));const refs=useTalkingHeadReference({ownerId:'fixture-owner',enabled:true,session,updateSession:update,settings,onSettingsChange:change});const audio=useLocalWorkflowMedia('audio'),images=useLocalWorkflowImages(6);return <main className={sections.workspace} data-hook-first-screen><header><h1>Talking Head + Demo</h1><button onClick={()=>setAccess(access==='free'?'pro':'free')}>Toggle account</button><span data-testid='requests'>{requests}</span></header><div className={'layout '+sections.stage} data-focused-workflow data-stage='create' data-preview-visible='true'><aside><WorkflowCreationForm kind='hook' ownerId='fixture-owner' creator={images} imageReferences={images} videoReference={refs.videoReference} audio={audio} audioLabel='Talking head audio' audioMode='voice' onAudioModeChange={()=>{}} instructions={session.instructions} onInstructionsChange={instructions=>update(p=>({...p,instructions}))} referenceInstructions={refs.selectedId?{value:refs.instructions,onChange:refs.changeInstructions}:undefined} generationSettings={settings} onGenerationSettingsChange={change}/><button disabled={refs.videoReference.loading||!!refs.videoReference.error||!refs.videoReference.asset} onClick={()=>{window.fixturePayload={prompt:workflowGenerationPrompt({instructions:session.instructions,referenceInstructions:refs.instructions}),file:refs.videoReference.asset.file.name,duration:settings.duration};setRequests(n=>n+1);}}>Generate fixture</button>{refs.videoReference.error?<p role='alert'>{refs.videoReference.error}</p>:null}<p data-testid='selected'>{refs.selectedId}</p></aside><section className={'right '+creation.main+' '+sections.preview}><TalkingHeadReferences items={refs.query.data??[]} loading={refs.query.isPending} failed={refs.query.isError} selectedId={refs.selectedId} model={settings.model} disabled={refs.videoReference.loading} onChoose={id=>void refs.choose(id)} onRetry={()=>void refs.query.refetch()}/></section></div></main>};createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
+function App(){const [session,setSession]=useState(initial),[access,setAccess]=useState('free'),[requests,setRequests]=useState(0);window.testAccess=access;const update=next=>setSession(previous=>{const value=next(previous);localStorage.setItem('fixture-session',JSON.stringify(value));return value;});const settings=session.generationSettings;const change=patch=>update(p=>({...p,generationSettings:normalizeWorkflowGenerationSettings({...p.generationSettings,...patch})}));const refs=useTalkingHeadReference({ownerId:'fixture-owner',enabled:true,session,updateSession:update,settings,onSettingsChange:change});const audio=useLocalWorkflowMedia('audio'),images=useLocalWorkflowImages(Number(new URLSearchParams(location.search).get('limit'))||6);return <main className={sections.workspace} data-hook-first-screen><header><h1>Talking Head + Demo</h1><button onClick={()=>setAccess(access==='free'?'pro':'free')}>Toggle account</button><span data-testid='requests'>{requests}</span></header><div className={'layout '+sections.stage} data-focused-workflow data-stage='create' data-preview-visible='true'><aside><WorkflowCreationForm kind='hook' ownerId='fixture-owner' onStartingFrameSelect={frame=>{window.selectedStartingFrame=frame;return true;}} creator={images} imageReferences={images} videoReference={refs.videoReference} audio={audio} audioLabel='Talking head audio' audioMode='voice' onAudioModeChange={()=>{}} instructions={session.instructions} onInstructionsChange={instructions=>update(p=>({...p,instructions}))} referenceInstructions={refs.selectedId?{value:refs.instructions,onChange:refs.changeInstructions}:undefined} generationSettings={settings} onGenerationSettingsChange={change}/><button disabled={refs.videoReference.loading||!!refs.videoReference.error||!refs.videoReference.asset} onClick={()=>{window.fixturePayload={prompt:workflowGenerationPrompt({instructions:session.instructions,referenceInstructions:refs.instructions}),file:refs.videoReference.asset.file.name,duration:settings.duration};setRequests(n=>n+1);}}>Generate fixture</button>{refs.videoReference.error?<p role='alert'>{refs.videoReference.error}</p>:null}<p data-testid='selected'>{refs.selectedId}</p></aside><section className={'right '+creation.main+' '+sections.preview}><TalkingHeadReferences items={refs.query.data??[]} loading={refs.query.isPending} failed={refs.query.isError} selectedId={refs.selectedId} model={settings.model} disabled={refs.videoReference.loading} onChoose={id=>void refs.choose(id)} onRetry={()=>void refs.query.refetch()}/></section></div></main>};createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
 
 // Exercise the production caller's exact Sound markup in the real shared form.
 const workflowSource=fs.readFileSync(path.join(root,'components/explore/hook-workflow-preview.tsx'),'utf8');
@@ -27,17 +27,31 @@ write('entry.tsx', "import {Volume2,VolumeX} from 'lucide-react';import {cn} fro
   .replace('generationSettings={settings}', 'startingFrameSoundControl={'+soundMarkup+'} generationSettings={settings}'));
 const audioTestName='Founder voice delivery - selected recording with a long filename.mp3';
 if(process.argv.includes('--audio-name-only'))write('entry.tsx',fs.readFileSync(path.join(out,'entry.tsx'),'utf8').replace("const audio=useLocalWorkflowMedia('audio')", "const [selectedAudio,setSelectedAudio]=useState({name:"+JSON.stringify(audioTestName)+",url:'/fixture-audio.mp3',duration:5});const audio={asset:selectedAudio,loading:false,error:null,remove:()=>setSelectedAudio(null),choose:async()=>true}"));
+const imagePickerOnly=process.argv.includes('--image-picker-only');
+const imagePickerBaseline=process.argv.includes('--image-picker-baseline');
+if(imagePickerBaseline)write('baseline-form.tsx',require('node:child_process').execFileSync('git',['show','HEAD:components/explore/workflow-creation-form.tsx'],{encoding:'utf8'}));
 const scopedUi=process.argv.includes('--sound-only')||process.argv.includes('--audio-name-only');
 
 async function main() {
   const aliases = { '../firebase/auth':path.join(out,'auth.ts'), '@/contexts/auth-context':path.join(out,'auth.ts'), '@/lib/firebase/auth':path.join(out,'auth.ts'), '@/components/generation/use-ai-studio-access':path.join(out,'auth.ts'), '@/components/billing/use-billing-subscription':path.join(out,'auth.ts'), 'next/link':path.join(out,'next.tsx'), 'next/image':path.join(out,'next.tsx'), 'next/navigation':path.join(out,'next.tsx'), '@':root };
+  if(imagePickerBaseline)aliases['@/components/explore/workflow-creation-form']=path.join(out,'baseline-form.tsx');
   await new Promise((resolve,reject)=>{const c=webpack({mode:'development',devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},plugins:[new webpack.DefinePlugin({'process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE':JSON.stringify('true'),'process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN':JSON.stringify('true')})],resolve:{extensions:['.tsx','.ts','.js'],alias:aliases},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/explore";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const items=JSON.parse(fs.readFileSync(path.join(root,'lib/explore/talking-head-reference-catalog.json'))).items.map(item=>({...item,format:'hook',slides:[]}));
   const visibleItems=items.filter(item=>!['talking-outdoor-discovery','talking-outdoor-reaction','talking-car-story','talking-room-explainer','talking-discovery'].includes(item.id));
   const attachment=visibleItems.find(item=>item.durationSeconds<=30);
   let failDownload=false;const reads=[];
+  const photoFile=path.join(root,'public/ai-studio/creator-references/creator-01.png');
+  const photoAssets=Array.from({length:8},(_,i)=>({id:'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),collection:'image',projectId:'explore-reference',sourceType:'upload',status:'ready',mimeType:'image/png',title:'Photo '+(i+1),fileName:'photo-'+(i+1)+'.png',url:'/fixture-photo.png?id='+i,thumbnailUrl:'/fixture-photo.png?id='+i,width:256,height:400,durationSeconds:null}));
+  const influencerAsset={...photoAssets[0],id:'00000000-0000-4000-8000-000000000011',sourceType:'generated_image',projectId:'character-generation',fileName:'my-influencer.png',url:'/fixture-photo.png?influencer=1'};
+  const startingFrame={assetId:'00000000-0000-4000-8000-000000000021',jobId:'00000000-0000-4000-8000-000000000022',draftId:'00000000-0000-4000-8000-000000000023',ownerId:'fixture-owner',referenceId:'owned-reference',sourceSha256:'a'.repeat(64),url:'https://fixture.invalid/starting.png',width:720,height:1280,durationSeconds:6,sourceDurationSeconds:5,motionInstructions:'Frozen original opening and timed motion',generateAudio:false};
+  let rejectFrame=false,failInfluencers=false;let influencerReads=0,frameReads=0;
+
   const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://fixture');
+    if(url.pathname==='/api/characters/history'){influencerReads++;res.setHeader('Content-Type','application/json');if(failInfluencers){res.writeHead(503);return res.end(JSON.stringify({ok:false,error:'Unavailable'}));}return res.end(JSON.stringify({ok:true,images:[{jobId:'influencer-job',generationId:'influencer-generation',mediaAssetId:influencerAsset.id,url:influencerAsset.url,model:'nano_banana_2',prompt:null,createdAt:new Date().toISOString(),saved:true}],nextCursor:null}));}
+    if(url.pathname==='/api/explore/hook-starting-frames'){frameReads++;res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,...(url.searchParams.has('jobId')?{frame:rejectFrame?{...startingFrame,assetId:'00000000-0000-4000-8000-000000000024'}:startingFrame}:{frames:[startingFrame]})}));}
+    if(url.pathname==='/fixture-photo.png'){res.setHeader('Content-Type','image/png');return res.end(fs.readFileSync(photoFile));}
+    if(url.pathname==='/api/media'||url.pathname.startsWith('/api/media/')){assert.equal(req.headers.authorization,'Bearer fixture-token');res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(url.pathname==='/api/media'?{ok:true,assets:photoAssets}:{ok:true,asset:[...photoAssets,influencerAsset].find(a=>url.pathname.endsWith(a.id))}));}
     if(url.pathname==='/bundle.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,'bundle.js')));}
     if(url.pathname==='/api/explore/talking-head-references'){assert.equal(req.headers.authorization,'Bearer fixture-token');res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,items}));}
     if(url.pathname.startsWith('/explore/talking-head-references/v1/')){reads.push(url.pathname);if(failDownload&&url.pathname.endsWith('.mp4')){res.writeHead(503);return res.end();}res.setHeader('Content-Type',url.pathname.endsWith('.mp4')?'video/mp4':'image/jpeg');return res.end(fs.readFileSync(path.join(root,'public',url.pathname)));}
@@ -45,7 +59,93 @@ async function main() {
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
   try {
-    browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});page.on('console',m=>{if(m.type()==='error')console.error(m.text());});const base='http://127.0.0.1:'+server.address().port;
+    browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});page.on('console',m=>{if(m.type()==='error')console.error(m.text());});const base='http://127.0.0.1:'+server.address().port;await page.route('https://fixture.invalid/**',route=>route.fulfill({contentType:'image/png',body:fs.readFileSync(photoFile)}));
+    if(imagePickerBaseline){
+      for(const size of [{width:1366,height:768},{width:390,height:844}]){
+        await page.setViewportSize(size);await page.goto(base);await page.getByRole('button',{name:/Choose image, currently/}).click();
+        await page.getByRole('button',{name:'Use your image photo-1.png',exact:true}).waitFor();
+        await page.screenshot({path:path.join(out,'photo-popover-before-'+size.width+'.png')});
+      }
+      assert.deepEqual(errors,[]);console.log('PASS captured original committed popover desktop/mobile baseline');return;
+    }
+    if(imagePickerOnly){
+      for(const size of [{width:1366,height:768},{width:390,height:844}]){
+        await page.setViewportSize(size);await page.goto(base);
+        const trigger=page.getByRole('button',{name:/Choose image, currently/});await trigger.click();
+        const dialog=page.getByRole('dialog',{name:'Choose person photos',exact:true});await dialog.waitFor();
+        await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).waitFor();
+        const box=await dialog.boundingBox();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1,JSON.stringify(box));
+        assert.ok(Math.abs(box.x+box.width/2-size.width/2)<2);assert.ok(box.width>=(size.width>640?900:size.width-20));
+        assert.equal(await page.locator('[data-slot="popover-content"]').count(),0,'no intermediate image popover');
+        await dialog.locator('img').evaluateAll(images=>Promise.all(images.map(img=>img.decode().catch(()=>{}))));
+        await page.screenshot({path:path.join(out,'photo-dialog-empty-'+size.width+'.png')});
+        await dialog.getByRole('button',{name:'Photo guide & examples',exact:true}).click();
+        const guide=page.getByRole('dialog',{name:'Which photos should I use?',exact:true});await guide.waitFor();
+        await guide.getByRole('button',{name:'Back to my photos',exact:true}).click();await guide.waitFor({state:'hidden'});
+
+        await dialog.getByRole('button',{name:'My Influencers',exact:true}).click();
+        await dialog.getByRole('button',{name:'Use saved influencer 1',exact:true}).click();
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        assert.equal(await dialog.getByRole('button',{name:'Use saved influencer 1',exact:true}).getAttribute('aria-pressed'),'true');
+        const beforeRefresh=influencerReads;await dialog.getByRole('button',{name:'Refresh my influencers',exact:true}).click();
+        await page.waitForTimeout(100);assert.ok(influencerReads>beforeRefresh);
+        failInfluencers=true;await dialog.getByRole('button',{name:'Refresh my influencers',exact:true}).click();
+        await dialog.getByRole('alert').filter({hasText:'Could not load your influencers'}).waitFor();
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        failInfluencers=false;await dialog.getByRole('button',{name:'Refresh my influencers',exact:true}).click();
+        await dialog.getByRole('button',{name:'Use saved influencer 1',exact:true}).waitFor();
+
+        await dialog.getByRole('button',{name:'Clear selected photos',exact:true}).click();
+        await dialog.getByRole('button',{name:'Person photos',exact:true}).click();
+
+        await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).click();
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        assert.equal(await dialog.getByRole('complementary',{name:'Selected reference images'}).locator('img').count(),1);
+        await dialog.getByRole('button',{name:'Done',exact:true}).click();await dialog.waitFor({state:'hidden'});
+        await trigger.click();await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).waitFor();
+        assert.equal(await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).getAttribute('aria-pressed'),'true');
+        for(let i=2;i<=6;i++)await dialog.getByRole('button',{name:'Use your image photo-'+i+'.png',exact:true}).click();
+        await dialog.getByRole('status').filter({hasText:'6 of 6 images selected'}).waitFor();
+        assert.equal(await dialog.getByRole('button',{name:'Use your image photo-7.png',exact:true}).isDisabled(),true);
+        await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).click();
+        await dialog.getByRole('status').filter({hasText:'5 of 6 images selected'}).waitFor();
+        assert.equal(await dialog.getByRole('button',{name:'Use your image photo-7.png',exact:true}).isDisabled(),false);
+        await dialog.getByRole('button',{name:'Clear selected photos',exact:true}).click();await dialog.getByRole('status').filter({hasText:'0 of 6 images selected'}).waitFor();
+        await page.getByLabel('Add reference images',{exact:true}).setInputFiles(photoFile);
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        await page.screenshot({path:path.join(out,'photo-dialog-selected-'+size.width+'.png')});
+        await dialog.getByRole('button',{name:/Remove selected image:/}).click();
+        await dialog.getByRole('status').filter({hasText:'0 of 6 images selected'}).waitFor();
+        await dialog.getByRole('button',{name:'Vidmake images',exact:true}).click();
+        await dialog.getByRole('button',{name:'Use creator 1',exact:true}).click();
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        await dialog.getByRole('button',{name:'Person photos',exact:true}).click();
+        await dialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).waitFor();
+        await dialog.getByRole('status').filter({hasText:'1 of 6 images selected'}).waitFor();
+        await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+        assert.equal(await trigger.evaluate(el=>el===document.activeElement),true);
+        assert.equal(await page.getByRole('textbox',{name:'Your instructions',exact:true}).inputValue(),'Keep my own product message');
+      }
+      await page.goto(base+'?limit=30');await page.getByRole('button',{name:/Choose image, currently/}).click();
+      const largeLimitDialog=page.getByRole('dialog',{name:'Choose person photos',exact:true});
+      await largeLimitDialog.getByRole('button',{name:'Use your image photo-1.png',exact:true}).waitFor();
+      for(let i=1;i<=8;i++)await largeLimitDialog.getByRole('button',{name:'Use your image photo-'+i+'.png',exact:true}).click();
+      await largeLimitDialog.getByRole('status').filter({hasText:'8 of 30 images selected'}).waitFor();
+      await page.getByLabel('Add reference images',{exact:true}).setInputFiles(Array.from({length:23},(_,i)=>({name:'extra-'+i+'.png',mimeType:'image/png',buffer:fs.readFileSync(photoFile)})));
+      await largeLimitDialog.getByRole('alert').filter({hasText:'This model accepts up to 30 image references'}).waitFor();
+      await largeLimitDialog.getByRole('status').filter({hasText:'8 of 30 images selected'}).waitFor();
+      await largeLimitDialog.getByRole('tab',{name:'Starting frames',exact:true}).click();
+      await largeLimitDialog.getByRole('button',{name:'Use starting frame 1',exact:true}).waitFor();
+      await page.screenshot({path:path.join(out,'photo-dialog-starting-390.png')});
+      rejectFrame=true;await largeLimitDialog.getByRole('button',{name:'Use starting frame 1',exact:true}).click();
+      await largeLimitDialog.getByRole('alert').filter({hasText:'selected starting frame changed'}).waitFor();
+      assert.equal(await page.evaluate(()=>window.selectedStartingFrame),undefined);
+      rejectFrame=false;await largeLimitDialog.getByRole('button',{name:'Use starting frame 1',exact:true}).click();
+      await largeLimitDialog.waitFor({state:'hidden'});
+      assert.deepEqual(await page.evaluate(()=>window.selectedStartingFrame),startingFrame);
+      assert.ok(frameReads>=3);
+      assert.deepEqual(errors,[]);console.log('PASS full photo dialog desktop/mobile: centered bounds, selected sidebar, Done/reopen/Escape/focus, all owned sources, influencer refresh/error recovery, verified starting-frame handoff/rejection, photo guide, upload, catalogue, selected-photo removal, multi-select, 6/30 limits and atomic over-limit rejection, clear, unchanged instructions; no generation');return;
+    }
     for(const size of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]){
       await page.setViewportSize(size);await page.goto(base);await page.getByRole('button',{name:'Use as reference',exact:true}).first().waitFor().catch(async e=>{console.error((await page.locator('body').innerText()).slice(0,2000));throw e;});
       assert.deepEqual(await page.locator('[data-reference-id]').evaluateAll(cards=>cards.map(card=>card.dataset.referenceId)),visibleItems.map(item=>item.id));
@@ -59,7 +159,7 @@ async function main() {
       if(process.argv.includes('--audio-name-only')){
         const name=page.locator('span[title]').filter({hasText:audioTestName});assert.equal(await name.isVisible(),true);assert.equal(await name.getAttribute('title'),audioTestName);
         const plus=page.getByRole('button',{name:'Select audio, talking head audio selected: '+audioTestName}),nb=await name.boundingBox(),pb=await plus.boundingBox();assert.ok(nb.y+nb.height<=pb.y||nb.x+nb.width<=pb.x,'Filename must not overlap the plus control '+JSON.stringify({size,nb,pb}));
-        assert.equal(await name.evaluate(e=>getComputedStyle(e).webkitLineClamp),'2');assert.equal(await name.evaluate(e=>getComputedStyle(e).whiteSpace),'normal');assert.ok(nb.height>16,'Long filenames should wrap rather than inherit button nowrap');await name.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,'selected-audio-name-'+size.width+'.png')});
+        assert.equal(await name.evaluate(e=>getComputedStyle(e).webkitLineClamp),'2');assert.equal(await name.evaluate(e=>getComputedStyle(e).whiteSpace),'normal');assert.ok(nb.height>16,'Long filenames should wrap rather than inherit button nowrap');await name.scrollIntoViewIfNeeded();const voicePreview=page.getByRole('button',{name:'Preview voice reference: '+audioTestName});await voicePreview.hover();const highlight=await voicePreview.evaluate(el=>({outer:getComputedStyle(el.closest('[class*=selectedMedia]').parentElement).boxShadow,inner:getComputedStyle(el.querySelector('[class*=deck]')).boxShadow}));assert.notEqual(highlight.outer,'none');assert.equal(highlight.inner,'none');await page.screenshot({path:path.join(out,'selected-audio-name-'+size.width+'.png')});
         await page.getByRole('button',{name:'Remove voice reference: '+audioTestName}).click();assert.equal(await name.count(),0);assert.equal(await page.getByRole('button',{name:'Select audio, talking head audio optional'}).count(),1);
       }
       continue;

@@ -3,6 +3,7 @@ import { getAIStudioVideoDurations, type AIStudioVideoDuration, type AIStudioVid
 const PRESETS = [3, 5, 10, 15, 20, 30] as const;
 
 export function workflowDurationPresets(model: AIStudioVideoModel) {
+  if (model === "google_omni") return [4, 6, 8, 10];
   const supported = getAIStudioVideoDurations(model);
   return PRESETS.filter((seconds) => supported.includes(seconds));
 }

@@ -1125,7 +1125,7 @@ export function ScheduleEditor({
                             ? "Write a caption for your selected accounts…"
                             : "Write your Instagram caption…"
                       }
-                      className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-white focus:ring-2 focus:ring-white/25"
                     />
                     <span className="mt-2 block text-xs font-semibold text-muted">
                       {hasAdditionalVideoPublishingPlatform
@@ -1249,7 +1249,7 @@ export function ScheduleEditor({
                         min={minimumScheduledDate}
                         value={scheduledDate}
                         onChange={(event) => { setFiveMinutesFromSubmit(false); setPostNow(false); setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(event.target.value); }}
-                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-white focus:ring-2 focus:ring-white/25"
                       />
                     </label>
                     <div className="block">
@@ -1284,7 +1284,7 @@ export function ScheduleEditor({
                       aria-invalid={Boolean(scheduleTimeValidation.error)}
                       value={timezone}
                       onChange={(event) => setTimezone(event.target.value)}
-                      className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-white focus:ring-2 focus:ring-white/25"
                     >
                       {getTimezoneOptions(timezone).map((option) => (
                         <option key={option} value={option}>
@@ -1300,7 +1300,7 @@ export function ScheduleEditor({
                     {scheduleTimeValidation.error && scheduleTimeValidation.scheduledFor ? <button
                       type="button"
                       disabled={saving}
-                      className="mt-1 min-h-9 rounded-control border border-border px-3 py-1 text-foreground hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      className="mt-1 min-h-9 rounded-control border border-border px-3 py-1 text-foreground hover:border-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                       onClick={() => {
                         const now = Date.now();
                         // Keep a further minute for confirmation and transport.
@@ -1477,7 +1477,7 @@ function ScheduleTimePicker({
               aria-label={`Choose publish time, currently ${timeLabel}`}
               aria-describedby={errorMessageId}
               className={cn(
-                "flex h-11 w-full items-center gap-3 rounded-control border bg-card-muted px-4 text-sm font-bold tabular-nums text-foreground outline-none transition hover:border-border-strong focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15",
+                "flex h-11 w-full items-center gap-3 rounded-control border bg-card-muted px-4 text-sm font-bold tabular-nums text-foreground outline-none transition hover:border-border-strong focus-visible:border-white focus-visible:ring-2 focus-visible:ring-white/25",
                 invalid && "border-error/60",
               )}
             />
@@ -1534,7 +1534,7 @@ function ScheduleTimePicker({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="inline-flex h-8 items-center justify-center rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="inline-flex h-8 items-center justify-center rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Done
             </button>
@@ -1600,7 +1600,7 @@ function ScheduleTimeRail({
               aria-pressed={selected}
               onClick={() => onSelect(option)}
               className={cn(
-                "flex h-9 w-11 shrink-0 snap-center items-center justify-center rounded-control text-sm font-bold tabular-nums transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+                "flex h-9 w-11 shrink-0 snap-center items-center justify-center rounded-control text-sm font-bold tabular-nums transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white",
                 selected
                   ? "bg-primary text-primary-foreground shadow-[0_6px_16px_rgb(225_101_64_/_0.2)]"
                   : "bg-card-muted text-foreground hover:bg-card",
@@ -1669,7 +1669,7 @@ function ScheduleVideoPicker({
             title="Refresh videos"
             disabled={refreshingMedia || uploadingVideo || disabled}
             onClick={onRefreshMedia}
-            className="flex size-9 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+            className="flex size-9 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
           >
             <RefreshCw className={cn("size-4", refreshingMedia && "animate-spin")} aria-hidden="true" />
           </button>
@@ -1710,9 +1710,9 @@ function ScheduleVideoPicker({
                       : "Choose a video"
                   }
                   className={cn(
-                    "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
                     selectedMedia
-                      ? "border-primary/45 ring-1 ring-primary/10"
+                      ? "border-white ring-1 ring-white/25"
                       : "border-dashed border-border",
                   )}
                 />
@@ -1815,9 +1815,9 @@ function SchedulePrimaryMediaCard({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "group relative min-w-0 overflow-hidden rounded-[var(--radius-card)] border bg-card-muted text-left transition duration-200 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "group relative min-w-0 overflow-hidden rounded-[var(--radius-card)] border bg-card-muted text-left transition duration-200 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
         selected
-          ? "border-primary shadow-[0_14px_36px_rgb(225_101_64_/_0.14)] ring-2 ring-primary/20"
+          ? "border-white ring-2 ring-white/25"
           : "border-border hover:-translate-y-0.5 hover:border-border-strong hover:bg-card motion-reduce:hover:translate-y-0",
         className,
       )}
@@ -1828,7 +1828,7 @@ function SchedulePrimaryMediaCard({
           className={cn(
             "absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full border shadow-sm backdrop-blur transition",
             selected
-              ? "border-primary bg-primary text-primary-foreground"
+              ? "border-white bg-white text-[#101014]"
               : "border-white/15 bg-black/55 text-white/70 group-hover:text-white",
           )}
           aria-hidden="true"
@@ -2063,7 +2063,7 @@ function ConnectedAccountSelector({
                 className={cn(
                   "rounded-control border bg-card-muted px-3 py-2.5 text-left transition hover:border-border-strong hover:bg-card",
                   selected
-                    ? "border-primary/60 ring-2 ring-primary/15"
+                    ? "border-white ring-2 ring-white/25"
                     : "border-border",
                 )}
               >
@@ -2226,7 +2226,7 @@ function PlatformAccountSettings({
               name={`youtubePrivacyStatus-${connection.id}`}
               value={getStringSetting(settings, "privacyStatus", "private")}
               onChange={(event) => onChange("privacyStatus", event.target.value)}
-              className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-white focus:ring-2 focus:ring-white/25"
             >
               <option value="private">Private</option>
               <option value="unlisted">Unlisted</option>
@@ -2330,7 +2330,7 @@ function TikTokAccountSettings({
         </p>
       ) : null}
       {!capabilities.directPostAudited ? (
-        <p className="rounded-control border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-semibold leading-5 text-foreground">
+        <p className="rounded-control border border-white/30 px-3 py-2 text-[11px] font-semibold leading-5 text-foreground">
           {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
         </p>
       ) : null}
@@ -2346,7 +2346,7 @@ function TikTokAccountSettings({
         <select
           value={privacyLevel}
           onChange={(event) => onChange("privacyLevel", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-white focus:ring-2 focus:ring-white/25"
         >
           <option value="">Select visibility</option>
           {capabilities.privacyLevels.map((level) => (

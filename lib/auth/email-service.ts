@@ -18,7 +18,7 @@ export function getAuthEmailConfiguration() {
   return {
     key, projectId,
     appUrl: getEmailAuthAppUrl(),
-    from: process.env.EMAIL_FROM?.trim() || "UGC Pilot <admin@getugcpilot.com>",
+    from: process.env.EMAIL_FROM?.trim() || "Vidmake <admin@getugcpilot.com>",
     verificationTemplate: process.env.RESEND_VERIFICATION_TEMPLATE_ID?.trim() || "email-verification",
     resetTemplate: process.env.RESEND_PASSWORD_RESET_TEMPLATE_ID?.trim() || "forgot-your-password",
   };
@@ -68,7 +68,7 @@ export async function deliverAuthEmail(
     body: JSON.stringify({
       from: config.from,
       to: [email],
-      subject: kind === "verification" ? "Verify your email for UGC Pilot" : "Reset your UGC Pilot password",
+      subject: kind === "verification" ? "Verify your email for Vidmake" : "Reset your Vidmake password",
       template: {
         id: kind === "verification" ? config.verificationTemplate : config.resetTemplate,
         variables: kind === "verification" ? { VERIFICATION_URL: link } : { RESET_URL: link },

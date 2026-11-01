@@ -33,7 +33,7 @@ export const PRODUCT_UPDATES: readonly ProductUpdate[] = [
       "We corrected an issue that stopped some people from completing the Instagram account connection flow.",
     highlights: [
       "Connect your Instagram account from Settings → Connected accounts.",
-      "The connection flow now returns you to UGC Pilot after you approve access.",
+      "The connection flow now returns you to Vidmake after you approve access.",
     ],
   },
 ];

@@ -25,7 +25,7 @@ const faqs = [
   },
   {
     question: "Is there a free UGC video maker?",
-    answer: "Many tools have free trials. UGC Pilot has a seven-day free trial with no credit card and two one-time AI Studio credits.",
+    answer: "Many tools have free trials. Vidmake has a seven-day free trial with no credit card and two one-time AI Studio credits.",
   },
   {
     question: "What's the difference between a UGC video creator and an AI UGC video generator?",
@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     question: "Can a UGC video maker work from Claude or Codex?",
-    answer: "Some can, through an MCP server. UGC Pilot connects to both with OAuth sign-in and exposes 78 public tools.",
+    answer: "Some can, through an MCP server. Vidmake connects to both with OAuth sign-in and exposes 78 public tools.",
   },
   {
     question: "Do I own the videos I make?",
@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     question: "Will the tool post my videos for me?",
-    answer: "UGC Pilot doesn't. You review, download and upload approved videos yourself.",
+    answer: "Vidmake doesn't. You review, download and upload approved videos yourself.",
   },
 ] as const;
 
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -81,7 +81,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
     >
       <ArticleBody>
         <p>
-          This checklist helps you compare any <strong className="font-semibold text-foreground-strong">UGC video maker</strong> or <strong className="font-semibold text-foreground-strong">AI UGC video creator</strong> on the things that matter once you&apos;re making videos every week. We use <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> as the worked example and point out where it fits and where it doesn&apos;t. Run every tool, including ours, through the same list.
+          This checklist helps you compare any <strong className="font-semibold text-foreground-strong">UGC video maker</strong> or <strong className="font-semibold text-foreground-strong">AI UGC video creator</strong> on the things that matter once you&apos;re making videos every week. We use <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> as the worked example and point out where it fits and where it doesn&apos;t. Run every tool, including ours, through the same list.
         </p>
 
         <ArticleH2>First: what kind of tool do you need?</ArticleH2>
@@ -115,13 +115,13 @@ export default function HowToChooseAUgcVideoMakerPage() {
         <ArticleH3>1. Does the output look native to the feed?</ArticleH3>
         <p>Generate a test clip and watch it on your phone among real posts. Does it look like someone talking to a phone camera, or like an ad? Look at faces, hands, lip sync and lighting. Reject tools whose best output still looks like a commercial.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> AI Studio lets you pick the model, format and length for each generation, so you can try different settings on the same brief. Judge the results yourself from the real examples linked below.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> AI Studio lets you pick the model, format and length for each generation, so you can try different settings on the same brief. Judge the results yourself from the real examples linked below.
         </p>
 
         <ArticleH3>2. Can you control the brief and inputs?</ArticleH3>
         <p>A good maker accepts a written brief plus reference media, such as a product photo or a screen recording you own. Tools that only take a URL and give you whatever comes out are harder to steer.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> you write the brief, add optional reference images or video, and choose generation settings.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> you write the brief, add optional reference images or video, and choose generation settings.
         </p>
 
         <ArticleH3>3. Can you show your real product?</ArticleH3>
@@ -129,19 +129,19 @@ export default function HowToChooseAUgcVideoMakerPage() {
           For software, invented UI is a problem: it misleads viewers. Check whether the tool lets you use real screen recordings. See <ArticleLink href="/guides/product-demo-to-short-video">product demo to short video</ArticleLink> for why this matters.
         </p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> you can use your own recordings as demo clips rather than relying on generated screens.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> you can use your own recordings as demo clips rather than relying on generated screens.
         </p>
 
         <ArticleH3>4. Is there a real editor?</ArticleH3>
         <p>You&apos;ll almost always want to fix a caption, trim a pause or swap audio. A tool that exports a single locked file forces you into a second app.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> video editing and export are included in the plans, with edit drafts you can change before export.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> video editing and export are included in the plans, with edit drafts you can change before export.
         </p>
 
         <ArticleH3>5. Voice and audio</ArticleH3>
         <p>Check the voice options, whether you can generate a voiceover from a script, and whether you can attach your own audio.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> speech generation from a script, a list of voices, and the option to attach audio to a video.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> speech generation from a script, a list of voices, and the option to attach audio to a video.
         </p>
 
         <ArticleH3>6. Captions you can actually read</ArticleH3>
@@ -152,7 +152,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
         <ArticleH3>7. Clear pricing</ArticleH3>
         <p>Look for public prices, what a &quot;credit&quot; buys, and what happens when you run out. Avoid tools that hide pricing behind a sales call if you&apos;re a small team.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> seven-day free trial with no card and two one-time AI Studio credits; Starter at $19 a month with 200 credits; Growth at $49 a month with 600 credits. Annual options are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> seven-day free trial with no card and two one-time AI Studio credits; Starter at $19 a month with 200 credits; Growth at $49 a month with 600 credits. Annual options are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
         </p>
 
         <ArticleH3>8. Rights and honesty</ArticleH3>
@@ -161,13 +161,13 @@ export default function HowToChooseAUgcVideoMakerPage() {
         <ArticleH3>9. Works with your AI assistant</ArticleH3>
         <p>If you already use Claude or Codex, a tool with an MCP server lets you write scripts and generate videos from the same chat or terminal. This is still rare among UGC video makers.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot:</strong> offers a hosted <ArticleLink href="/mcp">MCP server</ArticleLink> at <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode> with 78 public tools for account reads, images, video, speech, edit drafts and exports. Setup guides: <ArticleLink href="/mcp/claude">Claude</ArticleLink>, <ArticleLink href="/mcp/codex">Codex</ArticleLink>. Walkthroughs: <ArticleLink href="/blog/ugc-ads-with-claude-mcp">UGC ads with Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">UGC videos with Codex</ArticleLink>.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> offers a hosted <ArticleLink href="/mcp">MCP server</ArticleLink> at <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode> with 78 public tools for account reads, images, video, speech, edit drafts and exports. Setup guides: <ArticleLink href="/mcp/claude">Claude</ArticleLink>, <ArticleLink href="/mcp/codex">Codex</ArticleLink>. Walkthroughs: <ArticleLink href="/blog/ugc-ads-with-claude-mcp">UGC ads with Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">UGC videos with Codex</ArticleLink>.
         </p>
 
         <ArticleH3>10. Honest limits</ArticleH3>
         <p>Every tool has them. Ask: what is this tool bad at? A vendor that answers honestly is easier to trust.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">UGC Pilot&apos;s limits:</strong> AI footage can&apos;t replace a real customer&apos;s testimonial, and showing a physical product being used is hard to do honestly with generated video. It also doesn&apos;t upload or run ads for you; you download approved files and upload them yourself. For those cases, compare with <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">hiring UGC creators</ArticleLink>.
+          <strong className="font-semibold text-foreground-strong">Vidmake&apos;s limits:</strong> AI footage can&apos;t replace a real customer&apos;s testimonial, and showing a physical product being used is hard to do honestly with generated video. It also doesn&apos;t upload or run ads for you; you download approved files and upload them yourself. For those cases, compare with <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">hiring UGC creators</ArticleLink>.
         </p>
 
         <ArticleH2>How to run a fair trial</ArticleH2>
@@ -182,7 +182,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
         </ol>
 
         <ArticleH2>Real output to compare against</ArticleH2>
-        <p>Here are videos made with UGC Pilot, so you can judge output quality before signing up:</p>
+        <p>Here are videos made with Vidmake, so you can judge output quality before signing up:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             YouTube: the <ArticleExternalLink href="https://www.youtube.com/watch?v=9bIweHdRdVw">walkthrough video</ArticleExternalLink> and <ArticleExternalLink href="https://www.youtube.com/shorts/2P1whMHDqi8">Shorts</ArticleExternalLink> on <ArticleExternalLink href="https://www.youtube.com/@Teja.Chundu">@Teja.Chundu</ArticleExternalLink>.
@@ -204,7 +204,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
             <strong className="font-semibold text-foreground-strong">You film yourself and just need layouts:</strong> a template editor is enough.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">You need native-looking footage without filming, and you work in Claude or Codex:</strong> an AI UGC generator with MCP support, such as UGC Pilot.
+            <strong className="font-semibold text-foreground-strong">You need native-looking footage without filming, and you work in Claude or Codex:</strong> an AI UGC generator with MCP support, such as Vidmake.
           </li>
           <li>
             <strong className="font-semibold text-foreground-strong">You sell a physical product and need real testimonials:</strong> hire creators, and maybe use AI UGC for hook tests on the side.

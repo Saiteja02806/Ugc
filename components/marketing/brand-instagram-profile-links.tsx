@@ -5,7 +5,7 @@ const brandInstagramProfiles = brandInstagramProfileUrls.map((url) => {
   return { url, label: handle ? `@${handle}` : url };
 });
 
-/** Public Instagram profiles whose videos were made with UGC Pilot. */
+/** Public Instagram profiles whose videos were made with Vidmake. */
 export function BrandInstagramExampleAccounts({
   linkClassName = "font-semibold text-primary",
 }: {
@@ -13,7 +13,7 @@ export function BrandInstagramExampleAccounts({
 }) {
   return (
     <>
-      Instagram example accounts made with UGC Pilot are{" "}
+      Instagram example accounts made with Vidmake are{" "}
       {brandInstagramProfiles.map((profile, index) => (
         <span key={profile.url}>
           {index === 0 ? null : index === brandInstagramProfiles.length - 1 ? ", and " : ", "}

@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PricingCard } from "@/components/pricing/pricing-card";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import {
-  pricingPlans,
+  displayedPricingPlans,
   type BillingInterval,
+  type PlanAllowanceView,
   parseBillingInterval,
 } from "@/lib/pricing/plans";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,7 @@ export function PricingCatalog({
   initialBillingInterval,
 }: PricingCatalogProps) {
   const searchParams = useSearchParams();
+  const [allowanceView, setAllowanceView] = useState<PlanAllowanceView>("hooks");
   const billingInterval = searchParams
     ? parseBillingInterval(searchParams.get("billing"))
     : initialBillingInterval;
@@ -42,6 +45,11 @@ export function PricingCatalog({
   }
 
   const isYearly = billingInterval === "yearly";
+  const allowanceOptions: Array<{ label: string; value: PlanAllowanceView }> = [
+    { label: "3-second hooks", value: "hooks" },
+    { label: "6-second videos", value: "full" },
+    { label: "Credits", value: "credits" },
+  ];
 
   return (
     <>
@@ -94,6 +102,31 @@ export function PricingCatalog({
         <p className="text-center text-xs text-muted">
           {FREE_TRIAL_CONTENT_DAYS}-day trial · Change or cancel paid plans anytime
         </p>
+        <div
+          className="mt-3 inline-flex flex-wrap items-center justify-center gap-1 rounded-full border border-border bg-card p-1 shadow-xs"
+          role="group"
+          aria-label="Show plans as"
+        >
+          {allowanceOptions.map((option) => {
+            const selected = allowanceView === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setAllowanceView(option.value)}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer",
+                  selected
+                    ? "bg-foreground text-background shadow-xs"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {subscriptionQuery.isError ? (
@@ -119,9 +152,10 @@ export function PricingCatalog({
         aria-label="Pricing plans"
         className="mx-auto mt-8 grid max-w-5xl items-stretch gap-5 lg:grid-cols-3"
       >
-        {pricingPlans.map((plan) => (
+        {displayedPricingPlans.map((plan) => (
           <PricingCard
             key={plan.slug}
+            allowanceView={allowanceView}
             billingInterval={billingInterval}
             isSubscriptionError={subscriptionQuery.isError}
             isSubscriptionLoading={subscriptionQuery.isPending || subscriptionQuery.isFetching}

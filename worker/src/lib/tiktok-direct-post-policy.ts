@@ -7,7 +7,7 @@ export function resolveTikTokDirectPostAuditStatus(value: string | undefined) {
 }
 
 export const TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE =
-  "TikTok requires a private account and Only me post visibility while UGC Pilot's Direct Post app is unaudited. Set the selected TikTok account to private in TikTok, or choose a private connected account, then try again. Only me alone is not enough.";
+  "TikTok requires a private account and Only me post visibility while Vidmake's Direct Post app is unaudited. Set the selected TikTok account to private in TikTok, or choose a private connected account, then try again. Only me alone is not enough.";
 
 export const TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE =
   "TikTok did not confirm that this account is private. Refresh the account's publishing settings and try again. Private testing requires both a private TikTok account and Only me visibility.";
@@ -23,7 +23,7 @@ export function getTikTokDirectPostBlock(params: {
     return {
       code: "direct_post_audit_required",
       message:
-        "Public TikTok posting will be available after UGC Pilot's TikTok Direct Post audit is approved. For a private test, choose Only me and make the TikTok account private.",
+        "Public TikTok posting will be available after Vidmake's TikTok Direct Post audit is approved. For a private test, choose Only me and make the TikTok account private.",
     };
   }
 

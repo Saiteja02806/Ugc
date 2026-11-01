@@ -205,7 +205,7 @@ export function mergeInstagramContentMetrics(
 }
 
 /**
- * Keeps the normal Meta media feed and UGC Pilot's saved publish references in
+ * Keeps the normal Meta media feed and Vidmake's saved publish references in
  * one list. A post can briefly be absent from Meta's account media feed after
  * publishing, so a matching saved media ID must not create a duplicate row.
  */

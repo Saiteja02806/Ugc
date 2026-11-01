@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 const baseFlag = process.argv.indexOf("--base-url");
 assert(baseFlag >= 0 && process.argv[baseFlag + 1], "Supply --base-url for a running built site");
 const base = new URL(process.argv[baseFlag + 1]);
-const canonicalOrigin = "https://getugcpilot.com";
+const canonicalOrigin = "https://vidmake.io";
 const paths = JSON.parse(await fs.readFile(new URL("../lib/marketing/public-page-paths.json", import.meta.url), "utf8"));
 assert.equal(new Set(paths).size, paths.length, "Public page registry has duplicates");
 const decode = value => value.replaceAll("&amp;", "&").replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&#39;", "'");

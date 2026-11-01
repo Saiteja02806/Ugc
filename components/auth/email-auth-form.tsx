@@ -183,7 +183,7 @@ export function EmailAuthForm({
               type="button"
               onClick={handlePasswordReset}
               disabled={isResettingPassword || isSubmitting}
-              className="inline-flex items-center gap-2 text-sm font-bold text-primary transition hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 text-sm font-bold text-foreground-strong transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="size-4" aria-hidden="true" />
               {isResettingPassword ? "Sending…" : "Forgot password?"}

@@ -8,6 +8,7 @@ import {
   getAIStudioVideoResolutions,
   getAIStudioVideoDurations,
   getAIStudioVideoModelLabel,
+  getDefaultAIStudioVideoModel,
   isAIStudioVideoModelAvailable,
 
   getAIStudioRatioLabel,
@@ -20,6 +21,12 @@ import {
   parseAIStudioVideoModel,
   parseAIStudioVideoResolution,
 } from "./generation-settings.ts";
+
+test("new video defaults prefer enabled Seedance without selecting a disabled model", () => {
+  assert.equal(getDefaultAIStudioVideoModel(true), "seedance_2_5");
+  assert.equal(getDefaultAIStudioVideoModel(false), "kling_3_0");
+  assert.equal(parseAIStudioVideoModel("google_omni"), "google_omni");
+});
 
 test("slideshows default to Flare and preserve the existing Sunburst model identity", () => {
   assert.equal(DEFAULT_SLIDESHOW_IMAGE_MODEL, "gpt_image_2_5_flare");
@@ -59,7 +66,7 @@ test("Seedance uses its own capabilities and is gated until the provider is read
   assert.equal(isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"), false);
   assert.deepEqual(getAIStudioVideoDurations("seedance_2_5"), Array.from({ length: 27 }, (_, i) => i + 4));
   assert.deepEqual(getAIStudioVideoDurations("kling_3_0"), Array.from({ length: 13 }, (_, i) => i + 3));
-  assert.ok(getAIStudioVideoDurations("google_omni").every((seconds) => seconds <= 10));
+  assert.deepEqual(getAIStudioVideoDurations("google_omni"), [4, 6, 8, 10]);
   assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false), false);
   assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", true), true);
   assert.equal(isAIStudioVideoModelAvailable("kling_3_0", false), true);

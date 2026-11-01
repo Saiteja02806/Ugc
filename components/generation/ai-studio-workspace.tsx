@@ -69,7 +69,7 @@ export function AIStudioWorkspace({
               />
               <Link
                 href={hasBillingPlan ? "/settings#subscription-billing" : "/pricing"}
-                className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/40 text-foreground-strong px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
                 title="Manage AI generation credits"
               >
                 <CreditIcon />
@@ -150,7 +150,7 @@ function AIStudioModeToggle({
 
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs backdrop-blur-xs"
+      className="inline-flex items-center gap-1 rounded-[10px] border border-border/80 bg-card-muted/80 p-1 shadow-xs backdrop-blur-xs"
       role="tablist"
       aria-label="AI Studio mode"
     >
@@ -171,7 +171,7 @@ function AIStudioModeToggle({
             onClick={() => onChange(mode.value)}
             onKeyDown={handleKeyDown}
             className={cn(
-              "inline-flex h-8 min-w-[76px] items-center justify-center rounded-full px-4 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none sm:min-w-[86px] sm:text-sm",
+              "inline-flex h-8 min-w-[76px] items-center justify-center rounded-[10px] px-4 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none sm:min-w-[86px] sm:text-sm",
               selected
                 ? "bg-card text-foreground-strong shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]"
                 : "bg-transparent text-muted hover:text-foreground",

@@ -2,6 +2,7 @@ import { Check, Minus } from "lucide-react";
 
 import {
   formatPricingAmount,
+  getPlanVideoAllowance,
   type PricingPlan,
 } from "@/lib/pricing/plans";
 import { CreditIcon } from "@/components/icons/credit-icon";
@@ -28,8 +29,8 @@ const featureMatrix: FeatureRow[] = [
   { label: "Connect Instagram, TikTok & YouTube", free: true, starter: true, growth: true },
   { label: "Saved captions with the finished asset", free: true, starter: true, growth: true },
   { label: "Video editing and export", free: true, starter: true, growth: true },
-  { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
-  { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "AI Studio images & videos", free: "Not included", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "AI character generation", free: "Not included", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "Connected-account analytics", free: true, starter: true, growth: true },
 ];
 
@@ -59,7 +60,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
           <div role="region" aria-label="Plan comparison table" tabIndex={0} className="max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             <table className="w-full min-w-[620px] table-fixed border-collapse text-left">
               <caption className="sr-only">
-                Free, Starter, and Growth price, credit, and feature comparison
+                Starter, Growth, and Startup price, credit, video, and feature comparison
               </caption>
               <colgroup>
                 <col className="w-[34%]" />
@@ -146,8 +147,32 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                         plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
                       )}
                     >
-                      <span className="inline-flex items-center justify-center gap-1.5"><CreditIcon />{plan.oneTimeCredits || plan.sharedMonthlyCredits}</span>
-                      <span className="mt-1 block font-sans text-[11px] font-normal text-muted">{plan.oneTimeCredits > 0 ? "Once per account" : "Per month"}</span>
+                      {plan.oneTimeCredits > 0 || plan.sharedMonthlyCredits > 0 ? (
+                        <>
+                          <span className="inline-flex items-center justify-center gap-1.5"><CreditIcon />{plan.oneTimeCredits || plan.sharedMonthlyCredits}</span>
+                          <span className="mt-1 block font-sans text-[11px] font-normal text-muted">{plan.oneTimeCredits > 0 ? "Once per account" : "Per month"}</span>
+                        </>
+                      ) : "Not included"}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-card-muted/30 transition-colors">
+                  <th scope="row" className="px-5 py-3.5 text-xs font-normal text-muted">
+                    3-second hook videos
+                  </th>
+                  {plans.map((plan) => (
+                    <td key={plan.slug} className={cn("px-4 py-3.5 text-center text-xs font-semibold text-foreground-strong", plan.highlighted ? "bg-primary/[0.04] text-primary" : "")}>
+                      {plan.sharedMonthlyCredits > 0 ? `${getPlanVideoAllowance(plan.sharedMonthlyCredits).hookVideos} / month` : "Not included"}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-card-muted/30 transition-colors">
+                  <th scope="row" className="px-5 py-3.5 text-xs font-normal text-muted">
+                    6-second videos
+                  </th>
+                  {plans.map((plan) => (
+                    <td key={plan.slug} className={cn("px-4 py-3.5 text-center text-xs font-semibold text-foreground-strong", plan.highlighted ? "bg-primary/[0.04] text-primary" : "")}>
+                      {plan.sharedMonthlyCredits > 0 ? `${getPlanVideoAllowance(plan.sharedMonthlyCredits).fullVideos} / month` : "Not included"}
                     </td>
                   ))}
                 </tr>

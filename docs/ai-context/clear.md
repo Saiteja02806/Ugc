@@ -1,5 +1,125 @@
 # UGCPilot UI & Workflow Mistake Ledger (`clear.md`)
 
+### UGC-UI-091 — App logo loses the orange play triangle
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: CODE CONFIRMED. Landing shows the white P with an orange play triangle. Sign-in, pricing, the sidebar, and the other app marks load the black logo file and run a brightness/invert filter, so the triangle becomes white.
+- Expected: Every screen uses the theme icon. Dark surfaces show the white P and orange triangle. Light surfaces show the black P and orange triangle. No color filter and no violet tile behind the mark.
+- Root cause: CODE CONFIRMED. `ProductLogoMark` pointed at `ugc-pilot-logo.png`, and callers passed `brightness-0 invert`.
+- Regression: `lib/theme.test.ts` checks the mark uses both theme files and that sign-in, the sidebar, and pricing do not invert it.
+- Verification: local sign-in loads `ugc-pilot-icon-dark-theme.png` at 32px with no filter; sampled pixels include the orange triangle (550 orange, 4066 white). Pricing header is the same file at 32px on a transparent plate, 327 orange pixels, no violet tile. `lib/theme.test.ts` 10/10. Sidebar and the signed-in app shell were not opened. Production not checked.
+
+### UGC-UI-090 — Sign-in screen uses a violet gradient
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED. On the local sign-in screen, the logo sits on a violet gradient and a colored line runs across the top of the card.
+- Expected: The sign-in screen has no violet gradient. The logo is a white mark. The card has no colored hairline.
+- Root cause: CODE CONFIRMED. The logo uses `.bg-primary`, which outside the app shell is a violet linear gradient. The card hairline is a gradient through `--instagram-violet`.
+- Regression: `lib/theme.test.ts` checks the sign-in page does not use that logo fill or the violet hairline.
+- Verification: local sign-in has no element with a gradient background. The eyebrow is `rgb(245, 243, 240)`. Sign in with email is flat `rgb(124, 58, 237)` with `background-image: none`. Theme tests 9/9. Production at vidmake.io was not changed.
+
+### UGC-UI-089 — Violet borders and washes mark ordinary selections
+- Date: 2026-11-01. Status: OPEN. Production NOT VERIFIED.
+- Observed: USER REPORTED. Violet shows up on reference cards, photo checks, schedule choices, slideshow tiles, audio labels, and settings, library, and analytics decoration. The user said violet is only for a real action, and a border that needs to show selection must be white.
+- Expected: Recreate, filters, photo checks, platforms, subtitle styles, accounts, sound switches, trim handles, and slideshow tiles stay white or gray. Audio Generate uses the same flat violet as the other Generate buttons. Decorative icon tiles and chart bars are not violet.
+- Root cause: CODE CONFIRMED. Selection and hover styles used `border-primary`, `var(--primary)`, and violet washes. The audio commit button used the pale `--primary` token as its fill.
+- Regression: `lib/theme.test.ts` checks the reference Recreate control, slideshow tile, platform choice, photo check, and audio Generate button.
+- Verification: local Wall of text Recreate is dark glass with a white border at 25% and no violet fill. Generate video and Post now are flat `rgb(124, 58, 237)` with no gradient. Slideshows Generate image is the same flat violet, and the instruction sparkle is `rgb(245, 243, 240)`. Theme tests 9/9. Production not checked. Light theme not checked.
+
+### UGC-UI-088 — Selected tabs and New marks use violet
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED. On Talking Head, the selected References tab is violet. Reference cards mark New with a violet pill. The user asked for those marks to stay white or gray, and for violet to stay on Generate and the other real actions. The Demo sidebar icon is a plus in a square.
+- Expected: Selected tabs use a white or gray line and label. The New mark is an off-white chip. The Demo sidebar item uses a play mark. The selected sidebar item stays a gray square. Generate stays violet.
+- Root cause: CODE CONFIRMED. `talking-head-references.module.css` paints the pressed tab with `var(--primary)`. The New chip uses `bg-primary`. The Demo item uses the library plus icon.
+- Regression: `lib/theme.test.ts` checks the References tab and the New chip are not `primary`, and the Demo item uses the play icon.
+- Verification: local Wall of text New chip is `rgb(245, 243, 240)` with text `rgb(16, 16, 20)`. Talking Head References text and underline are `rgb(245, 243, 240)`. Generate stays `rgb(124, 58, 237)`. The Demo icon loads `/icons/sidebar/play.svg`. The selected Explore icon is `rgb(245, 243, 240)` on the gray square. Theme tests 9/9. Production not checked.
+
+### UGC-UI-087 — Explore catalog cards look like bordered panels
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED. On Explore, each workflow cover has a hairline border and a circular arrow that turns violet on hover. Quick start is four small bordered boxes inside one cell. The user asked for the simpler Higgsfield catalog, where the picture is the card and color stays off the chrome.
+- Expected: Covers are borderless. The arrow stays hidden until hover or while the link is opening, and it never turns violet. Quick start tiles are flat and quiet. Destinations, card order, and the pending indicator stay.
+- Root cause: CODE CONFIRMED. `explore-workflow-card.tsx` and `ai-character-card.tsx` use `group-hover:bg-primary`. `.cover` and `.toolCard` draw a 1px border.
+- Regression: `scripts/explore-navigation-ui.test.mjs` rejects `bg-primary` on those cards and checks the cover border is 0.
+- Verification: local Explore cover border is `0px`, radius `16px`, and the arrow chip opacity is `0` at rest. Quick start tiles have no border. Desktop grid is three columns. A 390px width stays one column with no horizontal overflow. Production not checked.
+
+### UGC-UI-086 — Sidebar and workflow chrome carry a violet tint
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED, screenshot of the collapsed Explore sidebar. The logo sits on a violet tile, and a violet rail appears beside the active item as the user moves between workflows. Workflow tabs use the same violet for the moving underline.
+- Expected: Navigation stays neutral, like the Higgsfield reference: a white mark, a gray active item, and a white underline. Violet stays on the action button only.
+- Root cause: CODE CONFIRMED. `bg-brand` paints the logo, `bg-brand` paints the active rail, and `--primary` paints workflow tab underlines.
+- Regression: `lib/theme.test.ts` checks the sidebar mark is not `bg-brand` and the workflow underline is not `var(--primary)`.
+- Verification: local Explore sidebar logo background is transparent and the active item is `rgb(44, 44, 49)` with off-white text. Create and Demo underlines are `rgb(245, 243, 240)`. Generate stays `rgb(124, 58, 237)`. Theme tests 9/9. Production not checked.
+
+### UGC-VID-044 — Stage 2 prompt and harmonizer did not match the recorded design
+- Date: 2026-11-01. Status: LOCALLY VERIFIED. A real Gemini starting frame and a real slideshow face swap were not generated. Linked to UGC-VID-042 and UGC-VID-043.
+- Observed: CODE CONFIRMED. Stage 2 demanded one fixed face: dark-brown eyebrows, a compact forehead, pillowy lips, and bridge freckles. Supporting face photos were left out of that second call. The harmonizer comment described CIE LAB luminance matching, but the function only overlaid uniform gray noise at 1.5%.
+- Expected: Stage 2 copies the features visible in the influencer photo and keeps the scene. Supporting views of that person are sent with the main face. The harmonizer shifts face-region skin luminance in CIE LAB toward the other skin in the scene and adds 1.2% Gaussian grain.
+- Root cause: CODE CONFIRMED. `buildHookKeyframeStage2Prompt` hardcoded one person's features. `harmonizeStartingFrameImage` never converted to LAB or sampled skin.
+- Regression: `worker/src/lib/openrouter-gemini-image.test.ts` rejects the fixed face and checks supporting photos. `worker/src/lib/image-harmonizer.test.ts` checks the face-region luminance move and 1.2% grain.
+- Verification: those worker tests passed 11/11, and `lib/explore/hook-keyframe-image-prompt.test.ts` passed 10/10, including the existing v4 prompt hash. No provider image was generated.
+
+### UGC-UI-085 — Character Generate showed the character card instead of a combined portrait
+- Date: 2026-11-01. Status: OPEN. Linked to UGC-UI-084. Signed-in Gemini output NOT VERIFIED.
+- 2026-11-01 update: the studio Generate request now uses `gemini_3_pro`. A signed-in portrait is still NOT VERIFIED.
+- Observed: CODE CONFIRMED and locally reproduced. With Bold, Curtains, Sleek Pixie, and Ultra Muscular selected, Generate painted `/explore/influencer-studio/characters/2.png` on the canvas. No generation request was sent. The background photo was last in the reference list, and the prompt did not say to combine the photos into one full-body portrait.
+- Expected: A signed-in Generate sends the face first and the selected background second, with the other look photos, and asks for one vertical full-body portrait in that room. Signed-out Generate asks for sign-in and does not show the character card as the result.
+- Root cause: The signed-out preview copied the character-type image onto the canvas. The background photo was attached after the other traits, and the order line did not forbid copying the white cropped head.
+- Regression: `lib/characters/studio-references.test.mjs` requires the background photo second and the full-body combination instruction.
+
+### UGC-UI-084 — Visual influencer studio did not send the selected looks
+- Date: 2026-11-01. Status: OPEN / LOCALLY VERIFIED. Signed-in Gemini output, a real save, and production deployment NOT VERIFIED.
+- 2026-11-01 update: the studio default model is `gemini_3_pro`. The reference order and prompt wiring are unchanged. A signed-in portrait is still NOT VERIFIED.
+- Observed: USER REPORTED. The local studio picker worked, but Generate sent only the compiled sentence. An uploaded photo stayed in the browser. Preview Generate showed one stock portrait. Signed-out History stayed on “Loading your images…”. Opening a history image only closed the drawer. Save and Download were invisible until hover. At 390px the trait dock was about 3,000px tall and the portrait sat below it. A failed job returned to the empty hero. The button always said Generate (1).
+- Expected: The selected character, trait images, and an uploaded face go with the generation in a stable order. Preview shows the selected character. History shows the sign-in state when signed out and opens an image on the canvas. Save and Download are visible. The phone portrait and Generate stay on screen. A failed job shows its error. The button uses the account credit cost when signed in.
+- Root cause: The visual studio compiled a prompt and dropped the trait image paths. History treated a disabled query as pending. Result actions used hover opacity. The phone dock was not height-bounded. Failed jobs were not rendered. Credit cost was fixed at 1.
+- Regression: `lib/characters/studio-references.test.mjs` checks reference order, the ten-image cap, rejection of a custom upload as a catalog image, and that the prompt with the order line stays within 4,000 characters. `lib/characters/generation.test.mjs` still passes for owned reference lists.
+- Local check: Preview Generate after choosing Bold showed `/explore/influencer-studio/characters/2.png`. History signed out showed “Sign in to see your character history”. Download and Save were visible at opacity 1. At 390px the dock was 439px, the canvas was above it, and Generate was in view. No Motion control. Production at getugcpilot.com was not redeployed.
+
+### UGC-UI-083 — Explore and AI Studio buttons mix rectangles and pills
+- Date: 2026-11-01. Status: OPEN / CODE CONFIRMED. Browser and production acceptance NOT VERIFIED.
+- Observed: USER REPORTED. Action buttons on Explore and AI Studio use different corners: fully rounded chips, 8px rectangles, and 12–14px rectangles.
+- Expected: Menus, settings, and the main action share a 10px corner. Circular Recreate, Slideshow Recreate pills, and sign-in pills stay fully round.
+- Root cause: The shared Button used `rounded-lg`, AI Studio setting triggers used `rounded-full`, and Explore CSS set 8px, 12px, and 14px on individual buttons.
+- Regression: `scripts/button-radius.test.mjs` checks the shared button, the AI Studio model chip, and that Slideshow Recreate stays `rounded-full`.
+
+### UGC-UI-082 — Talking Head upload buttons and Recreate control are visually inconsistent
+- Date: 2026-11-01. Status: OPEN / CODE CONFIRMED. Browser and production acceptance NOT VERIFIED.
+- Observed: On Explore → Talking Head + Demo → Your videos, the Hook and Demo "Upload video" menus are small outline controls inside the empty portrait cards. Recreate on reference videos is a full-width text button, while other reference cards use a refresh icon on the video. The user asked for those upload actions to follow the primary button style, and for Recreate to use the circular refresh icon.
+- Expected: Empty-card upload menus use the filled primary button. Recreate on Talking Head references is one circular refresh icon on the video, with the same accessible name. Slideshow labeled Recreate pills stay pills. Change stays an outline menu.
+- Root cause: `WorkflowClipSourceActions` rendered the empty upload menu as `variant="outline"`. Talking Head passed `hideRecreate` and rendered a separate text button.
+- Regression: `scripts/workflow-clip-source-actions.test.mjs` asserts the empty upload trigger is `variant="default"` and Change stays `outline`. Talking Head Recreate stays one icon button; pointer preparation does not select the reference. Slideshow labeled pills stay pills.
+
+### UGC-SCH-017 — Schedule post caption sometimes does not show the saved default
+- Date: 2026-11-01. Status: OPEN / CODE CONFIRMED. Browser and production acceptance NOT VERIFIED. Distinct from UGC-SCH-011.
+- Observed: In the Schedule post caption, the saved default caption sometimes appears and sometimes stays blank.
+- Expected: A new post with an empty, uninitialized caption shows the account's default saved caption. A caption the user cleared stays blank. Account selection in the same turn does not erase the caption that was just applied.
+- Root cause: `PostCaptionField` latched the first apply attempt, and schedule setters replaced the whole draft from a stale copy, so a caption write and an account write in the same turn could drop each other.
+- Regression: `scripts/post-caption-field.test.mjs` reapplies a default while the caption is still blank and does not refill a cleared caption. Caption and account updates compose in either order.
+
+### UGC-UI-081 — Higgsfield-Standard UI Redesign: Floating Action Bar, Fast Waveform Voice Picker, and Standardized Model Selector
+- Date: 2026-11-01. Status: VERIFIED (CODE & COMPONENT TESTS CONFIRMED).
+- Observed: Comparing with Higgsfield AI creative suite walkthrough (`C:\Users\chund\Videos\Captures\Higgsfield AI — AI-native creative suite - Comet 2026-11-01 01-54-26.mp4`), UGCPilot UI suffered from:
+  1. View-blocking bottom action containers: `.actions` in `format-schedule-panel` and workflow footers used heavy opaque cards (`var(--card)`) that obscured the lower viewport and video preview canvas.
+  2. Slow, broken Talking Head voice changer: `WorkflowSavedAudioChoices` relied on heavy `/api/audio/bootstrap` network loading, slow remote MP3 downloads, and basic text/orb buttons without instant waveform cards or responsive feedback.
+  3. Model selectors lacked standardized branding: model dropdowns lacked official provider SVG logos (Google, OpenAI, ByteDance, etc.), NEW/PREMIUM tags, and rich option descriptions.
+- Resolution:
+  - Phase 1 (Floating Action Dock): Redesigned `.actions` in `workflow-schedule-review.module.css` into a sleek translucent frosted glass dock (`backdrop-filter: blur(16px); background: rgba(18, 18, 24, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px`) that unblocks the video preview canvas. Upgraded `.reviewButton` to Higgsfield high-contrast neon lime (`#D4FF00`, bold typography, subtle hover glow) and `.backButton` to dark translucent pill button.
+  - Phase 2 (Fast Waveform Voice Picker): Integrated `CURATED_FAST_VOICES` (Anna, Josh, Chloe, Kobbie, Wilder) with zero network latency, animated 4-bar dynamic equalizer soundwave avatars (`@keyframes soundwaveBounce`), gender/style tag pills, instant HTML5 preview streaming, and fast 1-click selection. Preserved bookmarked voice attach contract.
+  - Phase 3 (Standardized Model Selector & Logos): Built `components/generation/model-provider-logos.tsx` with official SVG logos for Google, OpenAI, ByteDance, Kling, Wan, and ElevenLabs. Enhanced `AiStudioSettingSelect` to automatically resolve and render provider logos in both trigger pill and rich option cards with `NEW`/`PREMIUM` tags, one-line capability subtitles, and selection checkmarks.
+  - Phase 4: Skipped as instructed; confirmed unnecessary for core UGCPilot reference video recreation.
+- Verification: 109/109 tests PASS across 4 suites (`scripts/talking-head-schedule-review.test.mjs`, `scripts/workflow-bookmarked-audio.test.mjs`, `scripts/workflow-creation-form.test.mjs`, `scripts/hook-starting-frame-ui.test.mjs`); `npx tsc --noEmit` PASS with 0 errors.
+
+### UGC-VID-043 — On-Demand Universal Biometric Face Swap Button & Multi-Slide Action
+- Date: 2026-11-01. Status: VERIFIED (CODE & RUNTIME CONFIRMED).
+- Observed: Generating full slideshow sets with 2-stage models would increase costs by 5x ($0.90 vs $0.17). Users requested an on-demand "Swap Face" button directly on specific slide cards in the chat workspace and slide rail to selectively swap faces on only the slides where the influencer's face is visible.
+- Resolution: Integrated on-demand Face Swap button matching the user's sketch (`media_1793475850238_cfb59fcb.png` and click sketch). Built worker Face Swap pipeline (`mode: "face_swap"`, OpenRouter Gemini 3 Pro + sensor grain harmonizer), authenticated backend API (`POST /api/ai-studio/images/face-swap`), and interactive UI (`FaceSwapDialog`, `ImageGenerationCard` two-button action layout, session 1-click swap preference, and header face indicator).
+- Verification: 142/142 worker image tests PASS; `lib/ai-studio/image-presentation-ui.test.mjs` PASS (5/5); 60 hook starting frame UI tests PASS; `npx tsc --noEmit` PASS with 0 errors; worker TypeScript build PASS with 0 errors.
+
+### UGC-VID-042 — Hook Starting-Frame Face Consistency and Mismatched Hand/Neck Luminance
+- Date: 2026-10-31. Status: VERIFIED (CODE & RUNTIME CONFIRMED via OpenRouter 2-Stage Pipeline).
+- Observed: Initial starting-frame generations produced ~75% sibling resemblance with deep frown wrinkles and mismatched hand-to-face luminance (hand in 30% darker murky shadow).
+- Resolution: Implemented OpenRouter 2-stage generation with automated Sharp CIE LAB luminance & 1.2% Gaussian sensor grain harmonization. Stage 1 generates clean pose and erases text banners; Stage 2 locks 95%+ biometric face identity (lips, brows, hazel-amber eyes, compact forehead); Harmonizer balances hand/face bounce light.
+- Recurrence: UGC-VID-044. The recorded harmonizer was a gray noise overlay, and the stage 2 wording named one face.
+- Verification: 5 new unit tests PASS (worker/dist/lib/openrouter-gemini-image.test.js, worker/dist/lib/image-harmonizer.test.js); all 140 worker image tests PASS; 60 hook starting frame UI tests PASS; TypeScript npx tsc --noEmit PASS with 0 errors.
+
 UGC-UI-046 browser follow-up: actual fourteen-profile local fixture now PASS after fetch receiver correction: edited text/width/color, save/reopen, blank removal, full12s/mobile bounds. Hosted acceptance OPEN; no deployment/generation. Layout inventory remains52added/47remaining in99record local scope.
 
 29 October UGC-UI-046 browser recovery continuation: CODE/RUNTIME CONFIRMED fixture status reported Failed to execute fetch on Window: Illegal invocation. useClipDraftSave supplied native fetch as an object property, invoked by transport with the wrong receiver. Wrapped it in a lexical call;24focused editor/layout checks and scoped lint pass. Actual browser rerun pending. No deployment/generation; related browser acceptance remains OPEN until rerun.
@@ -1550,3 +1670,197 @@ UGC-UI-066 local outcome2026-10-29:10playback/private-preview tests,types/lintPA
 - Receipt: docs/analytics-account-audit-2026-10-29.md.
 
 UGC-UI-067-ANALYTICS-ZERO implementation — 2026-10-29: Instagram and TikTok content now default to newest-first; Instagram's existing sort adds Newest first while preserving metric sorts and page reset. Only the Analytics workspace opts its account read into analytics=1. That opt-in schedules an after-response, owner-scoped, non-forced TikTok snapshot refresh for connected TikTok accounts, even when Instagram is selected. Existing five-minute server admission, authorization revisions, active-job reuse and account-picker behavior remain. A fresh read-only provider test returned today's TikTok posts, including zeros. Analytics-only job f2e6d717-6939-4580-8b0d-bcc3acaea734 completed on the hosted worker at16:51:35Z and saved ready snapshots for all four accounts. The first local dispatch lacked worker URL; the next lacked Cloud Tasks permission. These were test-environment limitations, not evidence of a production configuration failure. Same job recovered with signed-in cloud credentials; no publishing or generation.109analytics tests and actual-component browser fixture PASS, including newest zero-view sorting, metric-sort retention, stale TikTok POST/job/GET reconciliation, hidden/offline/error/recovery/owner/range guards. Types PASS; scopedlint zeroerrors with one pre-existing img warning. Live screen still sign-in protected; user chose to continue without login. Production release and new after-response behavior acceptance remain pending. Receipt: docs/analytics-newest-refresh-fix-2026-10-29.md.
+
+## UGC-UI-068 — Talking Head image picker remains a small popover (2026-10-29)
+- Status: OPEN; USER REPORTED / SCREENSHOT OBSERVED. Recurrence of inconsistent chooser geometry in UGC-UI-058.
+- Observed: Hook opens a large centered two-column dialog; Talking Head + Demo Choose image opens a narrow anchored popover with tiny thumbnails.
+- Expected: Talking Head opens a centered dialog with the same shared Hook sizing, selected-photo area, large library grid, scroll boundaries and fixed Done footer. Preserve existing media sources, upload/selection callbacks, model limits, audio/reference roles and drafts.
+- Root cause: CODE CONFIRMED: WorkflowCreationForm.CreatorPicker uses PopoverContent; Hook FormatGenerationReferences uses DialogContent with format-person-image-picker.module.css.
+- Regression: talking_head_image_dialog_desktop_mobile_selection_reopen_escape_limit; workflow_creation_photo_dialog_does_not_change_video_audio_popovers.
+- Scope: picker presentation only; no deployment or generation authorized by this task.
+
+UGC-UI-068 local verification — 2026-10-29: ordinary Talking Head Choose image now opens a single centered Dialog reusing Hook layout/CSS. Selected photos and library scroll independently on desktop, stack on mobile, and Done stays in the footer. Existing upload/catalogue sources and callbacks/limits retained; no new source tabs. Creator Phone picker function is an exact source match; explicit supplied starting-frame control remains authoritative.180regressiontestsPASS; real-component1366/390browserPASS including bounds, selection, upload, catalogue, direct removal, Done/reopen/Escape/focus,6/30limits and atomic overflow rejection. Audio browser1366/1536/390PASS; types/lint/diffcheckPASS. Baseline/after screenshots reviewed. No production build/deployment/generation or backend change; authenticated live acceptance NOT VERIFIED. Status LOCALLY VERIFIED, production OPEN. Receipt docs/talking-head-photo-dialog-2026-10-29.md.
+
+UGC-UI-068 follow-up — USER CLARIFICATION: the complete Hook photo picker is required in Talking Head, including Person photos/My Influencers, Uploaded photos/Starting frames, photo guide, refresh and catalogue controls. The first local patch aligned only geometry and omitted sources. Status OPEN for source parity. Preserve ready-frame identity/job provenance when selecting a starting frame; do not turn it into an ordinary identity image. Regression: talking_head_complete_photo_sources_and_owned_starting_frame_selection.
+
+UGC-UI-068 complete-source verification — 2026-10-30: user clarified full Hook source sections are required. Local Talking Head dialog now has Person photos/My Influencers, Uploaded photos/Starting frames, photo guide, separate catalogue, upload/refresh/clear/Done. Existing owned influencer/history resolvers and frame revalidation are used; generated image asset IDs remain generated references, while starting frames enter the real starting-frame path with exact metadata and source-covering duration. Actual parent regression verifies wrong-owner rejection and script/Demo/audio retention.238checks PASS; full-source1366/390browser PASS including503 recovery, guide, selection limits and changed-frame rejection; audio1366/1536/390browser PASS; types/lint/diffcheck PASS. A stale checkbox test was updated to the already-existing Sound switch. Creator Phone original function and compact library retained. No live generation/data mutation or deployment. Status LOCALLY VERIFIED, authenticated hosted acceptance NOT VERIFIED. Receipt docs/talking-head-complete-photo-picker-2026-10-30.md.
+
+## UGC-UI-069 — Starting-frame prompt should open on demand (2026-10-30)
+- Status: OPEN; USER REPORTED / SCREENSHOT OBSERVED. Follow-up to UGC-UI-063: the full editor is always visible and makes the preparation panel too tall.
+- Expected: Starting image prompt is a collapsed native disclosure; expanding reveals the full editable prompt and save/default controls. Preserve prompt text, input roles, persistence and generation requests.
+- Root cause: CODE CONFIRMED: optionalInstructions uses a section without a disclosure.
+- Regression: starting image prompt is collapsed by default with the full editor and preferences inside its disclosure.
+UGC-UI-069 local checks: native details/summary now wraps the existing editor without unmounting its contents or changing generation inputs. All 59 starting-frame UI tests PASS; scoped ESLint and TypeScript PASS. Browser desktop/mobile interaction and hosted acceptance NOT VERIFIED. No deployment. See docs/starting-frame-prompt-disclosure-2026-10-30.md.
+
+UGC-UI-069 follow-up (2026-10-30): USER REQUESTED hiding the image-role explanation and application/saved/default prompt controls, even when the editor disclosure opens. Preserve editable prompt and stored preferences. CODE CONFIRMED these controls currently render inside the disclosure. Status OPEN pending targeted test. Regression: prompt preference controls remain hidden inside expanded editor.
+
+## UGC-UI-070 — Consistent new video model default (2026-10-30)
+- USER REQUESTED: Seedance 2.5 selected by default across video workflows. CODE CONFIRMED: shared Explore defaults already prefer enabled Seedance, but VideoGenerationWorkspace forced Omni for workflows and Trending started with Kling.
+- Local implementation: shared availability-aware default helper now initializes these new-session selectors. Preserve manual choices, recovered drafts, image/audio defaults and feature gates.
+- Regression: workflow and Studio video generation default to enabled Seedance and retain explicit Studio choices; new video defaults prefer enabled Seedance without selecting a disabled model.
+- Evidence: 38 settings/quick-start/workflow tests PASS. Browser and hosted acceptance NOT VERIFIED. No generation or deployment.
+
+## UGC-UI-071 — Redundant Hook and Wall Create headings (2026-10-30)
+- USER REQUESTED / SCREENSHOT OBSERVED: hide Hook video and Wall of text headings above the source tabs. CODE CONFIRMED: FormatWorkspace omits the existing hideHeading prop on WorkflowVideoSourceSection.
+- Scope: only enable hideHeading at this shared Hook/Wall caller; preserve accessible section labels, source modes, uploads, generation and other workflows.
+- Status: OPEN pending checks. Regression: Hook and Wall reuse the accessible hidden source heading.
+UGC-UI-071 local verification: existing hideHeading accessibility assertion and six source-video UI regressions PASS. Single caller prop changed; labels remain available to screen readers. Browser screenshots and production NOT VERIFIED. No deployment.
+
+## UGC-UI-072 — Intermittent reference playback, Hook 03 (2026-10-30)
+- USER REPORTED: some reference cards play and others do not; example Dd394l1gRWG. Status OPEN. Initial root cause UNKNOWN.
+- Evidence: hosted Hook03 MP4 responds200,15,489,144bytes,3.733333s; ffprobe reports H264 High4:4:4Predictive,yuv420p,33.19Mbps. This is an incompatible-profile/high-bandwidth risk; actual failing browser still unverified.
+- Regression: browser-compatible derived preview retains exact source binding, silence and duration without modifying generation source media.
+UGC-UI-072 local outcome: independent browser preview uses H264High/yuv420p/faststart,848522bytes,109matchingtimestamps,3.733333s,silent; full decode PASS. Original retained. Public upload verified200/206.10release/playbacktests,types,lintPASS. Local web catalogue override is source-key/audio-policy bound. Website deployment and actual browser acceptance NOT VERIFIED; broader catalogue audit partial. Receipt docs/reference-playback-audit-2026-10-30.md.
+
+### UGC-VID-033 — Hook batch 1 source/prompt recheck (2026-10-30)
+- Status: OPEN / USER REQUESTED. Linked to UGC-VID-013 and UGC-VID-019. Source-frame review found Hook03 final right-to-left gaze underdescribed, Hook01 offscreen phone grip stated as visible fact, and Hook05 finger/lip separation overly specific. The user requested corrections and another review of Hooks01–06. Root cause of generated discrepancies remains UNKNOWN.
+- Expected: source-grounded action chronology, visible camera motion and prop/hand continuity; no unsupported contact assertions. Original opening, duration, saved edits and prior job receipts remain unchanged.
+- Regression: hook_batch1_source_bound_prompt_revisions_and_neighbor_isolation; source-time phase coverage and original-opening prompt compilation. No paid generation or deployment.
+
+### UGC-VID-033 verification update — 2026-10-30
+Local source-frame recheck completed for Hooks 01–06. Corrected Hook 01 unseen-grip wording, Hook 03 final gaze sequence, and Hook 05 unsupported finger/lip separation in the local motion plans. Local preview tests cover these reference/hash bindings and preserve user-edited instructions; 31 focused tests passed. This is not generated-video or production verification. See docs/prompt-reviews/hook-batch-01-recheck-2026-10-30.md. Status remains OPEN pending generated-result and deployment acceptance.
+
+## UGC-UI-073 — Selected Talking Head starting-frame preview squeezed (2026-10-30)
+- SCREENSHOT OBSERVED / USER REPORTED: selected frame appears as a narrow strip with clipped Change label.
+- CODE CONFIRMED: compact image-only FormatGenerationReferences is nested in WorkflowCreationForm's three-tile grid but inherits another three-column referenceGrid; only one child is rendered. Root cause: redundant inner columns.
+- Expected: nested one-item grid fills its parent tile; preserve aspect ratio, one preview/Change, photo selection and generation roles. Scope CSS only; status OPEN pending verification.
+UGC-UI-073 local verification: scoped nested single-column CSS rule fixes the reproduced narrow preview.32regression tests/types PASS; actual-component1280/390browser PASS including width assertion,Change,remove,selection,Done/Escape,model/frame replacement. Before/after fixture screenshots reviewed. No image bytes,payload,identity or source changes. Hosted acceptance NOT VERIFIED; no deployment. Receipt docs/starting-frame-tile-width-2026-10-30.md.
+
+## UGC-UI-074 — Uneven selected-reference hover border (2026-10-30)
+- USER REPORTED / SCREENSHOT OBSERVED: orange highlight looks broken along rounded selected audio tile. CODE CONFIRMED: hover draws an inset shadow on square inner deck clipped by rounded outer picker. Scope: highlight the outer picker for tile presentation; keep person-strip highlighting and focus states. Status OPEN; regression: selected_audio_hover_border_desktop_mobile.
+
+## UGC-VID-034-AUDIO — Selected voice sample blocks Seedance minimum (2026-10-30)
+- USER REPORTED: Laura reference selected but Generate says at least2seconds. CODE CONFIRMED: public Laura MP3 FGY2WhTYpPnrIDTdsKH5 is16527bytes and1.996916seconds by ffprobe. Picker checks only maximum; submission checks minimum2. No submission from this blocked state; hosted provider receipt not inspected.
+- Expected: reject undersized reference before replacing previous selection; report measured duration and minimum. Do not round or pad secretly, change provider guard or pretend voice samples have fixed duration. Status OPEN; regression: near_two_second_voice_rejected_before_attachment_and_previous_reference_preserved.
+
+
+### UGC-VID-034 — 2026-10-30 — Hook 18 source-to-prompt timing
+Status: OPEN. Evidence: batch 3 frame review, source frames 43–53 and 60. CODE CONFIRMED: the local motion plan schedules the late shake before it becomes visible and describes blinks earlier than the observed closing of the eyes. Expected: preserve the forehead pose, express the late eye closures and place the camera shake near the end. Root cause: inaccurate authored timing; model compliance remains UNVERIFIED. Regression: local preview timing and source-binding test for Hook 18; generated-video comparison still needed. Related: UGC-VID-033.
+UGC-UI-074 / UGC-VID-034-AUDIO local outcome: publicLauraMP3 verified by ffprobe and actual browser as1.996916s. Minimum now checked before upload/voice/saved attachment acceptance; prior media retained with measured error. No padding/rounding or unsupported paid submission.42audio/APIcontract +32creation/frame testsPASS;1366/1536/390browser hover/name/remove/SoundPASS; initialtypes/lintPASS. Border on rounded parent, not square deck. Deployment and real authenticated paid acceptance NOT VERIFIED. Receipt docs/reference-audio-and-hover-2026-10-30.md.
+
+### UGC-VID-034 local verification update
+Full-size Hook 18 frames and its local preview were compared; 32 focused prompt tests passed including corrected ending timing and preservation of user edits. See docs/prompt-reviews/hook-batch-03-review-2026-10-30.md. Production and generated pixels NOT VERIFIED; status remains OPEN.
+
+UGC-VID-034-AUDIO follow-up2026-10-30: USER REQUESTED at least5seconds of real speech for Seedance voice reference. Provider documentation reAPI seedance2.5 independently confirms2–30seconds/audio,15MB. App policy will require5–30seconds for new Seedance audio admission, preserving full selected recording, WAV/MP3 bytes and worker/provider historical2s contract. Short voice demos remain short and require replacement; no padding,looping,truncation or automatic paid generation. Status OPEN pending checks.
+UGC-VID-034-AUDIO5s verification:50policy/picker/workflow/APItestsPASS; server rejects owned4.999s before startBatch;5saccepted. Picker preserves exact MP3bytes and10/30s durations without trimming. Types/scopedlintPASS. No provider generation or deployment; speech-quality acceptance NOT VERIFIED. Docs/reference-audio-and-hover-2026-10-30.md follow-up records current5–30sproduct policy vs2–30sprovider contract.
+
+### UGC-VID-035 — 2026-10-30 — Batch 4 Hook motion timing
+Status: OPEN. CODE AND FRAME REVIEW: Hook 23 preview directs the laptop lift before the source's late movement; Hook 24 brings glasses off early; Hook 25 completes its expression change too early. Source evidence: batch 4 timestamped contact sheets; reviewed versus local original-opening preview. Expected: match visible action order and approximate source timing while preserving prior user edits. Root cause: inaccurate authored timing; model adherence UNVERIFIED. Regression: source-bound preview checks for late laptop, glasses removal and facial transition. Related UGC-VID-033/034.
+
+### UGC-VID-035 local verification update
+Batch 4 source sheets inspected and Hooks 23, 24 and 25 source-relative timing revised. The local preview regression and source-binding suite passed 33 tests; local TypeScript and ESLint checks passed. See docs/prompt-reviews/hook-batch-04-review-2026-10-30.md. Production and generated pixels NOT VERIFIED; status remains OPEN.
+
+## UGC-UI-075-SLIDESHOW — Mixed-language and unclear generation clarification (2026-10-30)
+- Status:OPEN. USER REPORTED / SCREENSHOT OBSERVED: clarification includes Chinese/Japanese-looking text (背景) in an English paragraph; message claims no face-reference uploads while UploadA/B are visible. Screenshot codex-clipboard-3e48e6fb-f0d3-49ca-85b1-7e4d0459eddc.png.
+- Expected: clear English feedback with concise heading, readable questions and next step. Preserve ambiguity checks before generation; feedback from older image selections must not describe current uploads as absent.
+- Root cause at report:UNKNOWN for actual model input and browser history. CODE CONFIRMED gaps: planner has no explicit English-only clarification rule; UI renders raw questions; persisted feedback scope omits attachment IDs. These do not prove why this exact attempt reported missing photos.
+- Regression: slideshow_clarification_english_fallback_and_readable_panel; changed_uploads_mark_previous_check_stale; clarification_reload_owner_isolation_and_no_automatic_generation; planner_keeps_real_ambiguity_gate_and_exact_slide_copy.
+
+### UGC-VID-036 — 2026-10-30 — batch 5 glasses timing
+Status OPEN. Local source-frame review found Hook 27 keeps the glasses temple at the lip until roughly 2.1s; its prompt directed removal earlier. Hook 33 holds its hand against glasses on the head until about 1.1s, later than its local prompt. Root cause: source-relative prompt timing mismatch; model behavior unverified. Expected source-matched timing and unchanged user edits. Regression: local preview timing and user-edit tests. Related UGC-VID-033/035.
+
+UGC-UI-075-SLIDESHOW local verification2026-10-30: plannerrevision4 has English-only concise clarification/inventoryguidance; newmixedscriptquestions normalize to an honestgenericEnglishfallback with nosecondmodelcall. ExactEnglishquestion retained; userprompt/requestednonEnglishslidecopy untouched. Actualconditionalnotice replacesrawparagraph/duplicateerrorbanner. ExactcheckedinputuploadIDs persist; changed/legacyunverifiablephotos showstalecheck,notmissingphotodiagnosis.208tests,types,scopedlint,diffPASS. Actualnotice1366/390/320before/afterreview plus actualpanel/clientfixturemixedresponse/staleIDs/reload/account/lostresponseGET/noduplicatePOSTPASS. InitialtypesgeneratedfilemissingrerunPASS. Actualproductionbrowseropenssignin; originalmissinguploadattemptinputcauseUNKNOWN; no privateinputreplay/deployment/paidgeneration/backendmutation. StatusLOCALLYVERIFIED/PRODUCTIONOPEN. Files/evidence docs/slideshow-clarification-english-2026-10-30.md.
+
+## UGC-UI-076-SCHEDULE-LINK — Consistent inline Scheduling confirmation across workflows (2026-10-30)
+- Status:OPEN. USER REPORTED / SCREENSHOT OBSERVED: Slideshow View in Scheduling sits below Back to Edit/Schedule post; user asks to match Hook and apply to all workflows. Source screenshot codex-clipboard-be787b7d-9127-4377-b2d1-fbfaa31881ec.png. Recurrence/scope extension of UGC-UI-060.
+- Expected: compact Post scheduled/status plus one View in Scheduling link above existing action buttons for Hook, Wall, Slideshow and Talking Head, retaining actual confirmation gates, errors and preparation states.
+- Root cause at report:UNKNOWN. Source inspection confirms only PendingExploreSchedulePanel adopted inline confirmation; FormatSchedulePanel and TalkingHeadScheduleActions still place the link below the action row.
+- Regression: all_workflow_confirmed_schedule_links_share_status_row_above_actions; unconfirmed_schedule_has_no_success_link; repeat_reload_and_lost_acknowledgement_keep_exact_schedule_identity.
+
+### UGC-VID-036 local verification update
+Batch 5 frames reviewed and Hook 27/33 local timing corrected; 34 focused tests passed, including preview timing and user edit preservation. TypeScript and ESLint passed. See docs/prompt-reviews/hook-batch-05-review-2026-10-30.md. Model output and production are NOT VERIFIED; status remains OPEN.
+
+UGC-UI-076-SCHEDULE-LINK local verification 2026-10-30: source confirms old bottom-link rendering in shared FormatSchedulePanel and TalkingHeadScheduleActions. Both now reuse Hook confirmation/compact styles above existing buttons, preserving original saved-receipt gates. 68 focused tests, scoped lint and desktop/mobile actual-component fixture browser PASS including reload, repeat-hour, double clicks and lost acknowledgements. Slideshow mobile before/after and Talking Head desktop visually inspected. Status LOCALLY VERIFIED / PRODUCTION OPEN; no real schedule, provider publication or deployment. Full scope/evidence docs/all-workflow-schedule-status-2026-10-30.md.
+
+## UGC-UI-077-SLIDESHOW-TOOLBAR — Slideshow action clutter and buried review (2026-10-30)
+Status: OPEN. USER REPORTED / SCREENSHOT OBSERVED: screenshots df7a4a7c and 9e91a88d show many competing controls and Review post below the sequence. Expected: review/scheduling handoff at top and fewer duplicate buttons, preserving every slide and library functionality. Root cause at report: UNKNOWN. Regression: slideshow_header_has_single_review_action; library_background_replacement_remains_available; slide_reorder_delete_and_save_recovery_survive_toolbar_simplification. Scope extends UGC-UI-037 duplicate controls; UGC-UI-006 draft recovery protected.
+
+### UGC-VID-037 — 2026-10-30 — Hook 36 hand gesture timing
+Status OPEN. Source frame review shows the questioning hand begins rising about 0.3–0.4s and settles palm-up around 0.7–0.8s; prior local preview instructed 0.18–0.42s. Root cause: authored timing mismatch; generated model behavior unverified. Regression: local prompt timing and user edit preservation. Related UGC-VID-033/036.
+
+UGC-UI-077-SLIDESHOW-TOOLBAR verification2026-10-30: CODE CONFIRMED duplicate openLibrary(background) entry points and duplicate thumbnail/delete/reorder affordances. Header now holds one Save & review post / Review post action, More holds save-only/generated results. Background functionality retained in existing image inspector; bins/drag/keyboard preserved, Earlier/Later collapsed. Slideshow final submission group moved before settings via opt-in; other workflows retain position.150focusedtests,types,scopedlint,diff and both actual-component fixturebrowser suitesPASS including recovery,dirtysave,librarycancel/apply/text,noduplicatePOST,desktop/mobile/320/namedcontainer,touch. Before/after screenshots reviewed. Status LOCALLY VERIFIED / PRODUCTION OPEN; no real post/deployment/modelcall. Evidence/fullfiles docs/slideshow-toolbar-redesign-2026-10-30.md.
+
+### UGC-VID-037 local verification update
+Batch 6 source sheets reviewed; Hook 36 timing adjusted in local motion plan. Focused test suite passed 35 tests, including user edit protection. Production and generated-video results NOT VERIFIED; status remains OPEN. See docs/prompt-reviews/hook-batch-06-review-2026-10-30.md.
+
+### UGC-VID-038 — 2026-10-30 — Hook 46 late eye closure
+Status OPEN. Source frames for reference 318267dcb393c3e701c8c944 show a brief eye closure around 1.97–2.03s and reopening around 2.07s, while the local prompt placed closure around 1.51–1.70s. CODE AND FRAME REVIEW: the authored phase boundaries are inconsistent with the visible source; actual model adherence is unverified. Expected: maintain the covering hand and move the eye closure to the observed late interval. Regression: source-bound preview timing, distinct Hook 46 reference, and preservation of user edits. Related UGC-VID-033/037.
+
+### UGC-VID-038 local verification update
+The prompt now compiles the late eye closure to approximately 1.97–2.07s for the 2.434s source. The local prompt-preview test verifies timing, distinct duplicate-title reference selection, and explicit user-edit preservation; source-bound activation tests passed. Generated output and production deployment remain NOT VERIFIED.
+
+### UGC-VID-039 — 2026-10-30 — Hook 54 smile and camera timing
+Status OPEN. CODE AND FRAME REVIEW: source reference cdddd09fdd3b5a23d9949205 briefly opens then repurses the lips early, with the close-up and clear smile developing around 0.8–1.0s; the local prompt placed the smile around 0.23–0.55s. Root cause: authored timing mismatch. Expected: retain the earlier pursed expression and camera approach before the smile. Generated model behavior unverified. Regression: source-bound prompt-preview timing and preservation of user edits. Related UGC-VID-038.
+
+### UGC-VID-039 local verification update
+Updated local Hook 54 motion phases to hold the questioning expression through the camera approach and develop the smile around 0.76–1.02s. Local source-bound preview and user-edit checks passed alongside existing prompt activation tests. Generation and production remain NOT VERIFIED.
+
+### UGC-VID-040 — 2026-10-30 — Hook 51 laptop ending clarity
+Status OPEN. USER REQUEST and FRAME REVIEW: enlarged frames 78–95 show the creator lowering the raised hand, looking down, bringing hands toward the laptop, then raising the visible lid near 3.0–3.17s. The hinge and exact opening angle are obscured. The earlier wording did not distinguish the late lid movement clearly. Root cause: insufficient source-specific prompt detail; generated behavior unverified. Expected: describe the visible sequence and avoid inventing hidden hinge angles. Regression: source-bound preview timing and preservation of user edits. Related UGC-VID-039.
+
+### UGC-VID-040 local verification update
+The source-bound local prompt now describes lowering the hand and the visible lid rising near 3.01–3.2s; no hidden hinge angle is asserted. The preview test and 38 related local tests pass, including user-edit preservation. Generated-video and live behavior remain unverified.
+
+## UGC-UI-075 — Starting-frame history, unconfirmed request and generation blocking (2026-10-30)
+- USER REPORTED / SCREENSHOT OBSERVED: unconfirmed request warning, generation appears blocked after eight images, and earlier results automatically reappear on reopening. User requests Previous generations button and on-demand review.
+- CODE CONFIRMED: unknown request ID returns404 and remains recoverable; saved pending entries block new work to avoid duplicate paid requests. Screenshot also shows custom prompt exceeds Seedream4000-character limit, which disables Generate. Local history cap is12, not8; exact cause of user's blocking requires live evidence.
+- Expected: safe reconciliation of ambiguous requests without duplicate charges; actionable prompt limit; new generations beyond eight; previous results on demand with each frame's original identity/photo provenance intact. Status OPEN, no code fix verified.
+- Regression: unknown_request_recovery_no_double_charge; nine_plus_starting_frames; previous_generations_on_demand_preserves_provenance.
+
+
+## UGC-VID-041 — Gemini starting-frame incomplete result (2026-10-30)
+- USER REPORTED / SCREENSHOT OBSERVED: Gemini 3 Pro starting-frame variations show incomplete without image data.
+- HOSTED LOG CONFIRMED: two generate_image jobs b4d21840-b2ff-4fbb-852b-64b271167848 and 6e2a3d19-d0fb-4d23-b0a2-11f682c545fd failed at2026-10-30T13:13:23Z; worker logs only provider_operation_failed and incomplete without image data. No provider failure details or credit/refund evidence in those logs.
+- CODE CONFIRMED: worker persists provider ID and treats any incomplete response as terminal. Google defines incomplete as incomplete results with possible output-limit cause, but exact cause here UNKNOWN. No assumption of safety block or token limit; no duplicate submission.
+- Expected: trace provider status details and durable operations, communicate actionable failure and preserve safe recovery; regression: gemini_incomplete_reason_and_safe_retry. Status OPEN; not fixed or deployed.
+
+
+UGC-UI-075 Previous generations implementation follow-up: latest user requests explicit button above the result thumbnails. Restored browser-local account/draft/reference records remain intact, completed preview/rail hidden until reveal; pending status/errors still readable. No new job is created by reveal. Status OPEN pending tests.
+UGC-UI-075 history portion locally implemented: Previous generations above thumbnail rail gates restored result/approval display; reveal/hide preserves saved inputs and submits no jobs.59UItests/types/lintPASS. Pending reads/errors and current-session generation preserved. Existing12-entry chooser cap unchanged; not unlimited history. Browser visual and hosted acceptance NOT TESTED. Other UGC-UI-075 issues remain open; no deployment. Receipt docs/starting-frame-previous-generations-2026-10-30.md.
+
+## UGC-UI-078-PRICE — Starting-frame price error shown as endless checking (2026-10-30)
+- USER REPORTED: Checking price persists and Generate more delayed/disabled. CODE CONFIRMED: cost query retry=false, no price error/retry UI, undefined data always renders checking. Other causes of delayed terminal status require runtime evidence. Status OPEN; regression: pricing_failure_retry_releases_generate_without_resubmission.
+
+
+UGC-VID-041 provider read2026-10-30: both saved Google operations now return incomplete with output_image.data present, no error field. Worker message incorrectly asserts without image data for any noncompleted status. Decoder validation pending; not evidence of a usable completed image yet. No new paid request/job rewrite.
+UGC-VID-041 / UGC-UI-078-PRICE local verification: both existing Google operations return incomplete with final JPEGdata; strict full decode1536x2752PASS. Worker status-only rejection corrected to accept strictly decodable incomplete final output, preserving invalid/missing/failed rejection and no-resubmission. Price error now distinct from pending with Retry price;60UI+12Geminitests,workerbuild,types,lint,diffPASS. Hosted failed jobs/credits unchanged; no deployment or paidgeneration. Why Google marked incomplete and other latency causes remain UNKNOWN. Receipt docs/gemini-and-starting-price-fix-2026-10-30.md.
+
+## UGC-UI-079 — History placement, workflow isolation, and video selection sequence-canvas hand-off in Talking Head + Demo (2026-10-31)
+- USER REPORTED / SCREENSHOT OBSERVED (media_1793391678670, media_1793391749437, media_1793391783121, media_1793391800173):
+  1. In Talking Head + Demo (`/explore/create-hook`), History is rendered as a tab in the gallery subheader alongside "References" and "Your videos" rather than positioned in the right-side corner.
+  2. Clicking History opens a drawer showing generations created in the Hook Video workflow instead of being strictly isolated to this workflow.
+  3. Selecting a video from History or viewing "Your videos" shows a single-column card with "Use video 1" and isolated prompt text (Image 3) instead of transitioning directly to the dual-card sequence canvas (Image 4: Hook video preview player with Edit hook video + Change dropdown alongside Demo video card).
+- CODE CONFIRMED:
+  1. `hook-workflow-preview.tsx` rendered `<button>History</button>` inside `<nav className={referenceStyles.tabs}>` between `References` and `Your videos`.
+  2. `WorkflowVideoAssetPicker library="generation_history"` queried `/api/media?collection=video&sourceTypes=generated_video` without filtering by workflow, pulling in all generated videos for the account regardless of origin.
+  3. When an asset was selected from History or generated, `setShowGenerationResults(true)` was set, stranding the user on `WorkflowPreviewCanvas` (`overviewActive` was false), and clicking "Use video 1" did not switch to the sequence overview.
+- Expected:
+  1. Move History button to the right-side corner of the header/tabs bar, leaving `References` and `Your videos` on the left.
+  2. Isolate History query and display to `workflow: "talking_head"` only.
+  3. Selecting a video from History or adopting a video immediately mounts the dual-card sequence canvas (Hook video + Demo video).
+- Status: LOCALLY VERIFIED (Pending deployed acceptance).
+- Fix details:
+  1. Repositioned History button to far-right corner via .historyAction (margin-left: auto) with clock icon and <span>History</span>.
+  2. Scoped generation history API endpoint and client filtering to workflow: "talking_head". Updated GeneratedVideoHistoryMetadata to tag workflow during generation dispatch and DB reads.
+  3. Redesigned History drawer rows to show prompt directions, duration badge (4s), model tag, and search filtering.
+  4. Selecting a video from History or clicking a result transitions directly to the sequence overview (WorkflowEditWorkspace) by resetting showGenerationResults to false.
+- Regression: scripts/workflow-source-video-ui.test.mjs, scripts/workflow-demo-audio-state.test.mjs, lib/ai-studio/generated-video-history-metadata.test.ts (48/48 PASS). Non-incremental tsc --noEmit PASS (0 errors).
+
+
+## UGC-UI-080 — Photo picker redesign: removal of UGC Pilot catalog images, removal of left 'Your photos' selection aside, removal of Photo guide, and compact single-column layout (2026-10-31)
+- USER REQUESTED / SCREENSHOT OBSERVED (media_1793456130597, media_1793456130598, media_1793456130623):
+  1. Remove UGC Pilot images link/catalog section beside "+ Upload photos" across all Choose Image dialogs.
+  2. Remove the left "Your photos" sidebar (showing "Start with a clear face") which caused the modal to shift jarringly between Uploaded photos and Starting frames, making the skin compact and single-column.
+  3. Remove "Photo guide & examples" from the dialog header.
+- Status: LOCALLY VERIFIED (Pending deployed acceptance).
+- Fix details:
+  1. Removed UGC Pilot catalog images button & section from all Choose Image / Photo Picker dialogs.
+  2. Removed left 'Your photos' selection aside ('Start with a clear face') and converted modal body to a clean, stable single column (width 640px) that eliminates layout jumping between Uploaded photos and Starting frames. Added Clear selection action to footer.
+  3. Hidden 'Photo guide & examples' trigger from modal header.
+- Regression: 107 tests pass in scripts/explore-format-reference-upload.test.mjs, scripts/workflow-creation-form.test.mjs, scripts/workflow-demo-audio-state.test.mjs, scripts/workflow-source-video-ui.test.mjs. Non-incremental tsc --noEmit PASS (0 errors).
+
+## UGC-OPS-019 — Legacy domain redirect felt slow (2026-11-01)
+- USER REPORTED: moving from getugcpilot.com to vidmake.io took a long time.
+- RUNTIME MEASURED from this network: apex 307 to vidmake.io was 150–225ms on three tries. `/pricing` was 136–171ms. vidmake.io document headers were 225–325ms. `www.getugcpilot.com` first try spent 5.07s in DNS, then 308 to the apex; the next two tries were 114–125ms. The app then adds the 307.
+- Root cause of the slow sample: DNS for www, then one extra hop to the apex. The application redirect itself is not a multi-second wait. Status: MEASURED. No whole-domain Vercel redirect added.
+- Regression: scripts/domain-migration-phase1.test.mjs and lib/navigation/release-routing.test.mjs.

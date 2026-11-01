@@ -59,19 +59,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.111111]: Bring gaze from screen-left toward lens with a skeptical furrowed-brow half smile."
+            "action": "PHASE [0–0.20]: Hold the skeptical furrowed-brow expression and look from screen-left toward the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.111111–0.2555556666666667]: Lift hand beside cheek and rotate the wrist into a palm-up questioning gesture."
+            "action": "PHASE [0.20–0.47]: Lift the hand beside the cheek and turn the wrist palm-up in a questioning gesture."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.2555556666666667–0.5446613333333333]: Hold the compact extended palm-up pose and questioning expression through the ending."
-          },
-          {
-            "phase": "ending",
-            "action": "PHASE [0.5446613333333333–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.47–1]: Hold the compact palm-up pose with the questioning expression through the ending."
           }
         ],
         "camera": "Keep the portrait composition steady.",
@@ -1070,19 +1066,19 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.6222223333333333]: Remain reclined with the same hand already across the lips; hold amused narrowed eyes with small brow movements and head drift."
+            "action": "PHASE [0–0.81]: Remain reclined with the same hand already across the lips; hold amused narrowed eyes with small brow movements and head drift."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6222223333333333–0.7000000000000001]: Briefly close eyes without lifting the covering hand."
+            "action": "PHASE [0.81–0.85]: Briefly close eyes without lifting the covering hand."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.7000000000000001–0.811328]: Reopen eyes and keep the restrained covered smile."
+            "action": "PHASE [0.85–0.9]: Reopen eyes and keep the restrained covered smile."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.811328–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.9–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Retain the reclining selfie angle with gentle handheld drift.",
@@ -1110,7 +1106,7 @@
           71
         ],
         "frameCount": 72,
-        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "reviewNote": "All 72 decoded frames reviewed in order, with enlarged frames around the late eye closure; timings follow the 2.434-second source, with a trailing hold when needed. Generated fidelity is not tested.",
         "issues": [],
         "sourceFileSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
         "visualQualification": "not_tested"
@@ -1591,7 +1587,7 @@
       "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
       "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
       "plan": {
-        "openingState": "The performer sits behind a partially open silver laptop with fingers interlaced in front of the chest.",
+        "openingState": "The performer sits behind a silver laptop with fingers interlaced in front of the chest.",
         "beats": [
           {
             "phase": "opening",
@@ -1611,11 +1607,15 @@
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8645834375–1]: Bring the hands to the laptop and lift the lid slightly while looking down, ending with both arms lowered and the same laptop in front."
+            "action": "PHASE [0.8645834375–0.9375]: Bring both hands down toward the laptop while looking at it; keep the lid in its current position."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9375–1]: As the other hand settles near the base, raise the visible laptop lid with the hand at screen-left, rotating it upward while looking down; the lid is still rising at the end."
           }
         ],
         "camera": "Keep the tabletop camera fixed on both sides of the deliberate cut.",
-        "endingState": "The raised arm is lowered and both hands are near the slightly lifted laptop lid.",
+        "endingState": "The raised arm is lowered, the performer looks down, and the laptop lid has moved upward at the end.",
         "constraints": [
           "Preserve the deliberate hard cut between the arm stretch and neck stretch; do not turn it into continuous movement.",
           "Keep the laptop as the same physical object."
@@ -1853,19 +1853,19 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.13333333333333333]: Move the reclining selfie view closer as pursed lips begin opening."
+            "action": "PHASE [0–0.23]: Hold the raised, pinched brows as the pursed lips briefly part, then return toward a purse."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.13333333333333333–0.31111099999999997]: Form a small disbelieving smile with pinched raised brows."
+            "action": "PHASE [0.23–0.43]: Keep the questioning pursed expression while the selfie view moves steadily closer."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.31111099999999997–0.588889]: Hold the closer towel-wrapped portrait as the smile settles slightly."
+            "action": "PHASE [0.43–0.58]: As the view tightens, part the lips and develop a small disbelieving smile."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.588889–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.58–1]: Hold the closer towel-wrapped portrait with the small smile, slight head movement and hands outside the picture."
           }
         ],
         "camera": "Move from a reclining selfie distance into a tighter face view.",

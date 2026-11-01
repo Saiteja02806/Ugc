@@ -3,7 +3,7 @@ export const THEME_STORAGE_KEY = "ugc-pilot-theme";
 export type ThemePreference = "dark" | "light";
 
 export const THEME_BACKGROUND_COLORS = {
-  dark: "#1f1f1f",
+  dark: "#121212",
   light: "#f8fafc",
 } satisfies Record<ThemePreference, string>;
 

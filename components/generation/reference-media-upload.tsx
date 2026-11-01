@@ -157,7 +157,7 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
           void selectFiles(files);
         }} />
         {inline ? preview : null}
-        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy || append && referenceCount >= maxReferences} onClick={() => inputRef.current?.click()}>
+        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy || append && referenceCount >= maxReferences} onClick={() => inputRef.current?.click()}>
           {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : inline ? <Plus className="size-4" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
         </Button>
         {!inline ? preview : null}

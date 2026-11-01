@@ -122,8 +122,8 @@ export function OAuthConsentView({
       <div className={styles.shell}>
         <header className={styles.brandHeader}>
           <div className={styles.wordmark}>
-            <ConsentBrandMark className={styles.brandMark} />
-            <span>UGC Pilot</span>
+            <ConsentBrandMark className={styles.brandMark} theme="light" />
+            <span>Vidmake</span>
           </div>
           <span className={styles.secureLabel}>
             <LockKeyhole size={13} aria-hidden="true" /> Secure connection
@@ -135,11 +135,11 @@ export function OAuthConsentView({
             <div className={styles.introText}>
               <h1 id="oauth-consent-title">Connect {clientName}</h1>
               <p className={styles.subtitle}>
-                Give {clientName} the access below to your UGC Pilot account.
+                Give {clientName} the access below to your Vidmake account.
               </p>
             </div>
             <div className={styles.connection} aria-hidden="true">
-              <ConsentBrandMark className={styles.connectionBrand} />
+              <ConsentBrandMark className={styles.connectionBrand} theme="light" />
               <span className={styles.connectionLine}><Link2 size={16} /></span>
               <span className={styles.clientMark}><KeyRound size={23} strokeWidth={1.7} /></span>
             </div>
@@ -149,7 +149,7 @@ export function OAuthConsentView({
             <div className={styles.account}>
               <span className={styles.accountIcon}><UserRound size={18} aria-hidden="true" /></span>
               <div className={styles.accountIdentity}>
-                <span className={styles.accountCaption}>UGC Pilot account</span>
+                <span className={styles.accountCaption}>Vidmake account</span>
                 <p translate="no">{accountLabel}</p>
               </div>
               {onSwitchAccount ? (
@@ -198,17 +198,17 @@ export function OAuthConsentView({
             {loading ? (
               <p className={styles.status} role="status" aria-live="polite">
                 <LoaderCircle className={styles.spinner} size={18} aria-hidden="true" />
-                Checking your UGC Pilot sign-in…
+                Checking your Vidmake sign-in…
               </p>
             ) : !accountLabel ? (
               <div className={styles.signIn}>
                 <h2>Sign in to continue</h2>
-                <p>Use the UGC Pilot account you want to connect.</p>
+                <p>Use the Vidmake account you want to connect.</p>
                 {signInControl}
               </div>
             ) : !emailVerified ? (
               <p className={styles.verifyNotice} role="status">
-                Verify this account’s email address in UGC Pilot, then return here to connect.
+                Verify this account’s email address in Vidmake, then return here to connect.
               </p>
             ) : (
               <div className={styles.actions}>
@@ -238,10 +238,10 @@ export function OAuthConsentView({
           </footer>
         </section>
 
-        <nav className={styles.legal} aria-label="UGC Pilot legal information">
-          <a href="https://getugcpilot.com/privacy" rel="noreferrer" target="_blank">Privacy policy</a>
+        <nav className={styles.legal} aria-label="Vidmake legal information">
+          <a href="https://vidmake.io/privacy" rel="noreferrer" target="_blank">Privacy policy</a>
           <span aria-hidden="true">·</span>
-          <a href="https://getugcpilot.com/terms" rel="noreferrer" target="_blank">Terms of service</a>
+          <a href="https://vidmake.io/terms" rel="noreferrer" target="_blank">Terms of service</a>
         </nav>
       </div>
     </main>

@@ -868,8 +868,8 @@ export function PlatformSelectionModal({
                       className={cn(
                         "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
                         complete &&
-                          "border-primary bg-primary text-primary-foreground",
-                        active && "border-primary bg-primary/10 text-primary",
+                          "border-white bg-white text-[#101014]",
+                        active && "border-white text-foreground-strong",
                         !complete &&
                           !active &&
                           "border-border bg-card-muted text-muted-foreground",
@@ -1176,7 +1176,7 @@ function AccountsStep({
                   className={cn(
                     "flex items-center gap-3 rounded-card border bg-card p-3.5 transition sm:p-4",
                     selected
-                      ? "border-primary/60 bg-primary/5 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_18%,transparent)]"
+                      ? "border-white shadow-[0_0_0_1px_rgb(255_255_255_/_18%)]"
                       : "border-border hover:border-border-strong",
                     unavailableMessage && "bg-card-muted/70",
                   )}

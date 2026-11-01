@@ -23,7 +23,7 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
     <DialogContent className="inset-y-0 left-auto right-0 top-0 flex h-dvh w-full max-w-[460px] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-l bg-background p-0 sm:max-w-[460px]">
       <header className="shrink-0 border-b border-border px-5 py-5 pr-12">
         <DialogTitle>Influencer image history</DialogTitle>
-        <DialogDescription className="mt-1 text-xs">Every completed influencer image is saved automatically. Open an image to view it or use it as a reference.</DialogDescription>
+        <DialogDescription className="mt-1 text-xs">Every completed influencer image is saved automatically. Open an image to view it on the canvas.</DialogDescription>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
         {busy ? <p className="mb-4 text-xs text-muted" role="status">You can open an earlier image when your current request finishes.</p> : null}

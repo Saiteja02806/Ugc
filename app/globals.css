@@ -12,23 +12,23 @@
   --card: #ffffff;
   --card-muted: #f1f5f9;
   --surface-subtle: #f1f5f9;
-  --selected: #fff7ed;
+  --selected: #f1f5f9;
   --foreground-strong: #0f172a;
   --muted: #475569;
   --muted-subtle: #94a3b8;
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
-  --brand: #ff5a1f;
-  --brand-soft: #fff7ed;
-  --primary: #ff5a1f;
-  --primary-hover: #e04810;
+  --brand: #0078d4;
+  --brand-soft: #f1f5f9;
+  --primary: #0078d4;
+  --primary-hover: #005a9e;
   --instagram-orange: #ff5a1f;
   --instagram-rose: #d62976;
-  --instagram-violet: #7c3aed;
+  --instagram-violet: #0078d4;
   --accent-pink: #d62976;
-  --accent-purple: #7c3aed;
+  --accent-purple: #0078d4;
   --deep-contrast: #0f172a;
-  --focus: #ff5a1f;
+  --focus: #0078d4;
   --success: #10b981;
   --success-foreground: #ffffff;
   --warning: #f59e0b;
@@ -174,7 +174,7 @@ body {
   margin: 0;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
-  -webkit-tap-highlight-color: rgb(255 90 31 / 0.14);
+  -webkit-tap-highlight-color: rgb(216 180 254 / 0.18);
 }
 
 * {
@@ -210,7 +210,7 @@ button:not(:disabled),
 }
 
 ::selection {
-  background: rgb(255 90 31 / 0.2);
+  background: rgb(216 180 254 / 0.28);
   color: var(--foreground);
 }
 
@@ -268,28 +268,28 @@ p {
 .dark,
 .dark .instagram-theme {
   color-scheme: dark;
-  --background: #1f1f1f;
+  --background: #121212;
   --foreground: #f5f3f0;
   --card: #292929;
   --card-muted: #242424;
   --surface-subtle: #242424;
-  --selected: #3a2721;
+  --selected: #333333;
   --foreground-strong: #f5f3f0;
   --muted: #b9b5af;
   --muted-subtle: #a29e98;
   --border: #3f3f3f;
   --border-strong: #525252;
-  --brand: #ff7045;
-  --brand-soft: #3a2721;
-  --primary: #ff7045;
-  --primary-hover: #ff825f;
+  --brand: #0078d4;
+  --brand-soft: #2a2a2a;
+  --primary: #0078d4;
+  --primary-hover: #005a9e;
   --instagram-orange: #ff7a18;
   --instagram-rose: #ec4899;
-  --instagram-violet: #9b6cf2;
+  --instagram-violet: #0078d4;
   --accent-pink: #ec4899;
-  --accent-purple: #9b6cf2;
+  --accent-purple: #0078d4;
   --deep-contrast: #111827;
-  --focus: #ff7045;
+  --focus: #0078d4;
   --success: #46b879;
   --success-foreground: #11271c;
   --warning: #dfa34a;
@@ -305,7 +305,7 @@ p {
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary-foreground: #1f1f1f;
+  --primary-foreground: #ffffff;
   --secondary: var(--surface-subtle);
   --secondary-foreground: var(--foreground-strong);
   --muted-foreground: var(--muted-subtle);
@@ -314,7 +314,7 @@ p {
   --destructive: var(--error);
   --input: var(--border);
   --ring: var(--focus);
-  --chart-1: #ff7045;
+  --chart-1: #0078d4;
   --chart-2: #46b879;
   --chart-3: #7aa7f8;
   --chart-4: #dfa34a;
@@ -327,6 +327,144 @@ p {
   --sidebar-accent-foreground: var(--primary);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--focus);
+}
+
+/* Flat action fill. The landing page overrides this back to white. */
+.bg-primary {
+  background-color: #0078d4;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.bg-primary:hover {
+  background-color: #005a9e;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dark .landing-pill {
+  border-color: rgb(255 255 255 / 0.1);
+  background-color: #161616;
+  background-image: linear-gradient(180deg, #1c1c1c 0%, #141414 100%);
+  box-shadow: none;
+}
+
+.dark .landing-pill:hover {
+  border-color: rgb(255 255 255 / 0.28);
+}
+
+.dark .landing-pill-notch {
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+.dark .landing-header-notch {
+  border-color: rgb(255 255 255 / 0.1);
+  background-color: rgb(22 22 22 / 0.95);
+  box-shadow: none;
+}
+
+.text-gradient {
+  background-image: none;
+  color: #0078d4;
+  -webkit-text-fill-color: #0078d4;
+}
+
+.gradient-edge,
+.gradient-edge:hover {
+  border: 1px solid #0078d4;
+  background: var(--card);
+}
+
+/* Public landing stays black and white. The action blue begins on the other pages. */
+.dark .landing-mono {
+  --brand: #ffffff;
+  --primary: #ffffff;
+  --primary-hover: #e7e7e7;
+  --primary-foreground: #121212;
+  --focus: #ffffff;
+  --ring: #ffffff;
+  --accent-foreground: #ffffff;
+  --chart-1: #ffffff;
+}
+
+.landing-mono .bg-primary {
+  background-color: #ffffff;
+  background-image: none;
+  color: #121212;
+  box-shadow: none;
+}
+
+.landing-mono .bg-primary:hover {
+  background-color: #e7e7e7;
+  background-image: none;
+  color: #121212;
+  box-shadow: none;
+}
+
+.landing-mono .text-gradient {
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.landing-mono .gradient-edge,
+.landing-mono .gradient-edge:hover {
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: var(--card);
+}
+
+.dark .landing-mono .landing-pill:hover {
+  border-color: rgb(255 255 255 / 0.28);
+}
+
+/* In-app canvas only. Landing keeps the .dark tokens and the white landing button. */
+.dark .app-canvas {
+  --background: #101014;
+  --card: #222228;
+  --card-muted: #1a1a20;
+  --surface-subtle: #1a1a20;
+  --selected: #2c2c31;
+  --brand: #0078d4;
+  --brand-soft: #2a2a2e;
+  --primary: #0078d4;
+  --primary-hover: #005a9e;
+  --focus: #f5f3f0;
+  --accent: #2c2a36;
+  --accent-foreground: #f5f3f0;
+  --sidebar: #16161a;
+  --ring: #f5f3f0;
+}
+
+.sign-in-screen .bg-primary {
+  background-color: #0078d4;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.sign-in-screen .bg-primary:hover {
+  background-color: #005a9e;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dark .app-canvas .bg-primary {
+  background-color: #0078d4;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dark .app-canvas .bg-primary:hover {
+  background-color: #005a9e;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
 }
 
 @layer base {

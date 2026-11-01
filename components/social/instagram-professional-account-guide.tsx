@@ -18,7 +18,7 @@ const INSTAGRAM_PROFESSIONAL_ACCOUNT_STEPS = [
   ],
   [
     "4",
-    "Reconnect UGC Pilot",
+    "Reconnect Vidmake",
     "Finish the Creator setup, then return and connect again.",
   ],
 ] as const;
@@ -51,7 +51,7 @@ export function InstagramProfessionalAccountGuide({
             Switch to a Creator account
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            UGC Pilot needs an Instagram Creator account to publish. A personal
+            Vidmake needs an Instagram Creator account to publish. A personal
             account cannot be connected for publishing.
           </p>
         </div>

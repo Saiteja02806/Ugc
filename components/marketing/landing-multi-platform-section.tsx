@@ -26,7 +26,7 @@ export function LandingMultiPlatformSection() {
             id="multi-platform-heading"
             className="mt-4 text-balance text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-foreground-strong sm:text-5xl lg:text-[3.25rem]"
           >
-            One video. <span className="text-primary">Your chosen platforms.</span>
+            One video. <span className="text-gradient">Your chosen platforms.</span>
           </h2>
           <p className="mt-5 max-w-md text-base leading-7 text-muted sm:text-lg">
             Choose your connected accounts, pick when your video should go live, and confirm your schedule—all from one workspace.

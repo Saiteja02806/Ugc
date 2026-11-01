@@ -26,11 +26,11 @@ export function AICharacterCard({ localPreview = false }: { localPreview?: boole
           <video ref={videoRef} poster={CHARACTER_POSTER}
             muted loop playsInline preload="none" width={960} height={540}
             aria-hidden="true" tabIndex={-1} className={styles.characterVideo} />
-          <span className="absolute bottom-4 right-4 flex size-9 items-center justify-center rounded-full border border-border bg-background/60 text-muted transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground motion-reduce:transition-none">
+          <span className={styles.linkChip}>
             <ExploreLinkIndicator label="AI character builder" className="size-4" />
           </span>
         </div>
-        <h3 id="explore-character-title" className="mt-4 text-lg font-semibold tracking-tight text-foreground-strong">Build AI influencer</h3>
+        <h3 id="explore-character-title" className="mt-3 text-lg font-semibold tracking-tight text-foreground-strong">Build AI influencer</h3>
         <p className="mt-1.5 max-w-[44ch] text-pretty text-sm leading-6 text-muted">Create an AI influencer for yourself or your business.</p>
       </Link>
     </article>

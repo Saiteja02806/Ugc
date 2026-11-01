@@ -67,7 +67,7 @@ export function OAuthConsent({
     }
   }
 
-  const accountLabel = user?.email ?? user?.displayName ?? "UGC Pilot account";
+  const accountLabel = user?.email ?? user?.displayName ?? "Vidmake account";
   const redirectTitle = redirectDestination === "chatgpt"
     ? "Return to ChatGPT"
     : redirectDestination === "claude"

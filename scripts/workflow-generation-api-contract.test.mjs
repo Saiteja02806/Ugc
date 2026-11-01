@@ -92,7 +92,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.equal(job.input.model, model);
         assert.equal(job.input.hookIdea, input.instructions);
         assert.deepEqual(job.input.referenceImageUrls, []);
-        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined);
+        assert.equal(job.input.provider, model === "kling_3_0" ? undefined : "reapi");
       }
       assert.equal(reservations.size, quantity);
     }
@@ -100,7 +100,10 @@ test("both workflow clients reach the real API's text-only contract for every av
 });
 
 test("creator and app screenshots reach the real API as uploaded multi-image guidance", async () => {
-  for (const model of ["google_omni", "seedance_2_5", "wan_3_0"]) {
+  await assert.rejects(client().generate(draft({ kind: "phone", settings: normalizeWorkflowGenerationSettings({ model: "google_omni" }, true),
+    creator: { name: "creator.png", url: "blob:creator" }, appScreen: { name: "app.png", url: "blob:app", kind: "image" },
+  })), /one image, or three images/);
+  for (const model of ["seedance_2_5", "wan_3_0"]) {
     jobs.clear(); reservations.clear(); uploads.length = 0;
     await client().generate(draft({ kind: "phone", settings: normalizeWorkflowGenerationSettings({ model }, true),
       creator: { name: "creator.png", url: "blob:creator" }, appScreen: { name: "app.png", url: "blob:app", kind: "image" },
@@ -170,7 +173,10 @@ test("timed-reference ownership is also checked before Explore's atomic startBat
   assert.equal((await invoke()).status, 400);
   assert.equal(starts, 0);
   ownedAssets.set(audioId, { id: audioId, url: body.referenceAudioUrls[0], user_id: "owner-a", collection: "audio", status: "ready",
-    deleted_at: null, duration_seconds: 5, mime_type: "audio/mpeg", file_size_bytes: 1024 });
+    deleted_at: null, duration_seconds: 4.999, mime_type: "audio/mpeg", file_size_bytes: 1024 });
+  assert.equal((await invoke()).status, 400, "server must reject short owned audio before reservation");
+  assert.equal(starts, 0);
+  ownedAssets.set(audioId, { ...ownedAssets.get(audioId), duration_seconds: 5 });
   assert.equal((await invoke()).status, 202);
   assert.equal(starts, 1);
   assert.equal(reservations.size, 0); // Only the adapter owns the atomic reservation.
@@ -216,18 +222,17 @@ test("Talking Head sends approved opening and optional face photos through real 
   const frame = { assetId: "00000000-0000-4000-8000-000000000001", jobId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-car-story", url: "https://storage.example.com/opening.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural talking-head performance", generateAudio: true };
   approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, receipt: { version: 1 }, output: { width: 720, height: 1280, ratio: "9:16" } };
   try {
-    const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
-    await client().generate(draft({ instructions: 'Say "This is my own script."', referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) }));
+    await client().generate(draft({ instructions: 'Say "This is my own script."', referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: [], settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) }));
     const job = [...jobs.values()][0];
     assert.match(job.input.hookIdea, /own script/);
     assert.match(job.input.hookIdea, /natural talking-head performance/i);
     assert.match(job.input.hookIdea, /SOUND SETTING: ON/);
     assert.equal(job.input.referenceId, "talking-car-story");
     assert.equal(job.input.startingFrameImageUrl, frame.url);
-    assert.equal(job.input.referenceImageUrls.length, 2);
-    assert.deepEqual(job.input.referenceImageUrls, ["https://storage.example.com/1.png", "https://storage.example.com/2.png"]);
-    assert.equal(job.input.personReference.mainImageUrl, job.input.referenceImageUrls[0]);
-    assert.deepEqual(job.input.personReference.supportingImageUrls, job.input.referenceImageUrls.slice(1));
+    assert.equal(job.input.provider, "reapi");
+    assert.deepEqual(job.input.referenceImageUrls, []);
+    const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
+    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /starting image alone|face photos/);
     const count = jobs.size;
     await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) })), /Omni/);
     assert.equal(jobs.size,count);
@@ -241,7 +246,7 @@ test("Talking Head image plus owned voice reaches real admission in reference mo
   try {
     for(const model of ["wan_3_0","seedance_2_5"])for(const withFace of [false,true]){
       jobs.clear();reservations.clear();ownedAssets.set(frame.assetId,{id:frame.assetId,url:frame.url,user_id:"owner-a",collection:"image",status:"ready",deleted_at:null,mime_type:"image/png",file_size_bytes:1024});
-      await client().generate(draft({instructions:'Say "My product saves time."',startingFrame:frame,startingFramePhotos:withFace?[{assetId:"face-owned",name:"Face",url:"https://storage.example.com/face.png"}]:[],audioReference:{url:"blob:voice",name:"Voice.mp3",duration:4,file:{type:"audio/mpeg",size:1024}},settings:normalizeWorkflowGenerationSettings({model,duration:4,quantity:1},true)}));
+      await client().generate(draft({instructions:'Say "My product saves time."',startingFrame:frame,startingFramePhotos:withFace?[{assetId:"face-owned",name:"Face",url:"https://storage.example.com/face.png"}]:[],audioReference:{url:"blob:voice",name:"Voice.mp3",duration:5,file:{type:"audio/mpeg",size:1024}},settings:normalizeWorkflowGenerationSettings({model,duration:4,quantity:1},true)}));
       const job=[...jobs.values()][0];assert.ok(job);
       assert.equal(job.input.referenceImageUrls[0],frame.url);assert.equal(job.input.referenceImageUrls.length,withFace?2:1);assert.deepEqual(job.input.referenceAudioUrls,["https://storage.example.com/audio.media"]);
       assert.equal(job.input.startingFrameImageUrl,undefined);assert.equal(job.input.startingFrameReceipt,undefined);

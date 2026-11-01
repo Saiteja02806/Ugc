@@ -21,7 +21,7 @@ const datePublished = "2026-10-26";
 const faqs = [
   {
     question: "What is an AI UGC content creator for SaaS?",
-    answer: "An AI UGC content creator for SaaS is a platform like UGC Pilot that generates photorealistic talking-head creator avatars paired with real software demo workflows. Instead of hiring human creators for $200 per video, SaaS teams can test 10+ video hook angles in minutes.",
+    answer: "An AI UGC content creator for SaaS is a platform like Vidmake that generates photorealistic talking-head creator avatars paired with real software demo workflows. Instead of hiring human creators for $200 per video, SaaS teams can test 10+ video hook angles in minutes.",
   },
   {
     question: "Why should SaaS founders use AI UGC instead of traditional ads?",
@@ -32,12 +32,12 @@ const faqs = [
     answer: "Yes, when used correctly. The creator avatar delivers a 3-second problem hook, and the video immediately transitions into authentic screen captures of your SaaS app solving that exact problem.",
   },
   {
-    question: "Does UGC Pilot support AI UGC generation via MCP?",
-    answer: "Yes. UGC Pilot provides a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with OAuth sign-in and 78 public tools for generating images, videos, speech, and edits directly inside Claude and Codex.",
+    question: "Does Vidmake support AI UGC generation via MCP?",
+    answer: "Yes. Vidmake provides a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with OAuth sign-in and 78 public tools for generating images, videos, speech, and edits directly inside Claude and Codex.",
   },
   {
     question: "How much does AI UGC for SaaS cost compared to hiring creators?",
-    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. UGC Pilot offers a 7-day trial with credits, and plans starting at $19 to $49 per month with generation credits; each experiment uses the credits required by its model.",
+    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. Vidmake offers a 7-day trial with credits, and plans starting at $19 to $49 per month with generation credits; each experiment uses the credits required by its model.",
   },
 ] as const;
 
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -74,7 +74,7 @@ export default function AiContentCreationToolsPage() {
           Software founders don&apos;t struggle with building products; they struggle with <strong className="font-semibold text-foreground-strong">distribution</strong>. On TikTok, Instagram Reels, and YouTube Shorts, corporate slide decks and plain screen recordings get scrolled past in two seconds.
         </p>
         <p>
-          Winning SaaS distribution requires an <strong className="font-semibold text-foreground-strong">AI UGC content creator for SaaS</strong>: combining authentic, scroll-stopping human creator hooks with real software demo workflows. This guide covers how to set up an automated short-form video engine for your SaaS with <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>.
+          Winning SaaS distribution requires an <strong className="font-semibold text-foreground-strong">AI UGC content creator for SaaS</strong>: combining authentic, scroll-stopping human creator hooks with real software demo workflows. This guide covers how to set up an automated short-form video engine for your SaaS with <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>.
         </p>
 
         <ArticleH2>Why SaaS needs a dedicated AI UGC video workflow</ArticleH2>
@@ -98,12 +98,12 @@ export default function AiContentCreationToolsPage() {
           Strong <ArticleLink href="/guides/saas-marketing">SaaS marketing</ArticleLink> starts with the exact phrasing your buyers use on support calls and sales demos. Use an LLM to turn customer questions into short video briefs, and pair them with tested openings from our <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> library or <ArticleLink href="/blog/ugc-ad-script-templates">UGC ad script templates</ArticleLink>.
         </p>
 
-        <ArticleH3>2. AI UGC video &amp; carousel generation (UGC Pilot)</ArticleH3>
+        <ArticleH3>2. AI UGC video &amp; carousel generation (Vidmake)</ArticleH3>
         <p>
-          Once you have a message, you need native vertical assets. <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> is built specifically for founders and lean teams: you set your website and business context once, then generate creator-style <ArticleLink href="/hookvideos">hook videos</ArticleLink>, text-led clips, speech, and multi-slide decks with the <ArticleLink href="/instagram-carousel-maker">Instagram carousel maker</ArticleLink>. You review, edit, and download the approved files from your library.
+          Once you have a message, you need native vertical assets. <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> is built specifically for founders and lean teams: you set your website and business context once, then generate creator-style <ArticleLink href="/hookvideos">hook videos</ArticleLink>, text-led clips, speech, and multi-slide decks with the <ArticleLink href="/instagram-carousel-maker">Instagram carousel maker</ArticleLink>. You review, edit, and download the approved files from your library.
         </p>
         <p>
-          If you already live inside an AI coding or chat environment, you can also connect Claude or Codex directly to the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and generate assets from a prompt.
+          If you already live inside an AI coding or chat environment, you can also connect Claude or Codex directly to the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and generate assets from a prompt.
         </p>
 
         <ArticleH3>3. Real product screen capture</ArticleH3>
@@ -111,7 +111,7 @@ export default function AiContentCreationToolsPage() {
           An AI generator should never invent a fake UI claim. Pair your AI hook clip with a real screen recording of your SaaS product performing one clear action. Our guide on <ArticleLink href="/guides/product-demo-to-short-video">turning a product demo into a short video</ArticleLink> walks through combining a creator hook with genuine software proof.
         </p>
 
-        <ArticleH2>Real SaaS &amp; brand examples made with UGC Pilot</ArticleH2>
+        <ArticleH2>Real SaaS &amp; brand examples made with Vidmake</ArticleH2>
         <p>
           Before choosing any video tool, inspect real public outputs posted on live social channels:
         </p>
@@ -158,7 +158,7 @@ export default function AiContentCreationToolsPage() {
               </tr>
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">MCP &amp; workflow fit</th>
-                <td className="p-4 align-top">Technical founders can drive UGC Pilot directly from Claude or Codex via OAuth MCP.</td>
+                <td className="p-4 align-top">Technical founders can drive Vidmake directly from Claude or Codex via OAuth MCP.</td>
               </tr>
             </tbody>
           </table>
@@ -170,7 +170,7 @@ export default function AiContentCreationToolsPage() {
             <strong className="font-semibold text-foreground-strong">Customer testimonials:</strong> Never present an AI character as a real customer. Genuine reviews must come from real users.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Product UI claims:</strong> Show real screen captures of your software rather than letting generative video invent interfaces. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">UGC Pilot vs hiring UGC creators</ArticleLink> for a complete comparison.
+            <strong className="font-semibold text-foreground-strong">Product UI claims:</strong> Show real screen captures of your software rather than letting generative video invent interfaces. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink> for a complete comparison.
           </li>
         </ul>
 
@@ -183,7 +183,7 @@ export default function AiContentCreationToolsPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. UGC Pilot has a hosted Streamable HTTP <ArticleLink href="/mcp">MCP server</ArticleLink> with OAuth sign-in and 78 public tools. Follow the setup guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>.
+                  Yes. Vidmake has a hosted Streamable HTTP <ArticleLink href="/mcp">MCP server</ArticleLink> with OAuth sign-in and 78 public tools. Follow the setup guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>.
                 </>
               ),
             },
@@ -211,11 +211,11 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/ai-video-generator-for-saas", title: "AI Video Generator for SaaS", description: "Turn product briefs into short videos with creator avatars." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/guides/saas-marketing", title: "SaaS marketing guide", description: "Build a repeatable system for explaining your SaaS product." },
-          { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "Real YouTube videos made with UGC Pilot for SaaS founders." },
+          { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "Real YouTube videos made with Vidmake for SaaS founders." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Generate short-form creator videos from a brief." },
           { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Real YouTube, Instagram Reel, and TikTok outputs." },
           { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type and how to use them." },
-          { href: "/mcp", title: "UGC Pilot MCP server", description: "Connect Claude, Codex, or ChatGPT to generate UGC assets." },
+          { href: "/mcp", title: "Vidmake MCP server", description: "Connect Claude, Codex, or ChatGPT to generate UGC assets." },
           { href: "/pricing", title: "Pricing", description: "Seven-day trial and monthly plan details." },
         ]}
       />

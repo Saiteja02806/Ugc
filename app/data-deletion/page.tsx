@@ -10,7 +10,7 @@ import {
 export const metadata: Metadata = {
   title: "Data Deletion",
   description:
-    "Instructions for deleting UGC Pilot account data, connected Instagram data, uploaded media, generated carousels, and scheduling records.",
+    "Instructions for deleting Vidmake account data, connected Instagram data, uploaded media, generated carousels, and scheduling records.",
 };
 
 type DataDeletionPageProps = {
@@ -30,7 +30,7 @@ export default async function DataDeletionPage({
     <LegalPageShell
       eyebrow="Data deletion"
       title="Delete Instagram account data and content"
-      description="UGC Pilot users can disconnect Instagram, delete uploaded or generated content, and request deletion of their account data."
+      description="Vidmake users can disconnect Instagram, delete uploaded or generated content, and request deletion of their account data."
     >
       <div className="space-y-8">
         {confirmation ? (
@@ -42,7 +42,7 @@ export default async function DataDeletionPage({
 
         <LegalSection title="How to request deletion">
           <LegalList>
-            <li>Sign in to UGC Pilot.</li>
+            <li>Sign in to Vidmake.</li>
             <li>Open Settings.</li>
             <li>Open the Instagram publishing section.</li>
             <li>Disconnect Instagram.</li>
@@ -72,12 +72,12 @@ export default async function DataDeletionPage({
 
         <LegalSection title="Instagram-specific notes">
           <p>
-            Disconnecting or deleting data in UGC Pilot does not delete content
+            Disconnecting or deleting data in Vidmake does not delete content
             that has already been published on Instagram. To delete a post that
             is already live, use Instagram directly.
           </p>
           <p>
-            Disconnecting Instagram stops future UGC Pilot scheduling and
+            Disconnecting Instagram stops future Vidmake scheduling and
             publishing through that connection. Users may also revoke access
             through their Instagram or Meta account settings.
           </p>

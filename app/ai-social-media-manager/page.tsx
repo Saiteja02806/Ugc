@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: content.canonicalPath },
   robots: { index: false, follow: true },
   openGraph: {
-    title: "AI Social Media Manager | UGCPilot",
+    title: "AI Social Media Manager | Vidmake",
     description:
       "A focused workflow for business-aware content creation and review.",
     url: content.canonicalPath,
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "AI Social Media Manager | UGCPilot",
+    title: "AI Social Media Manager | Vidmake",
     description:
       "A focused workflow for business-aware content creation and review.",
   },

@@ -21,14 +21,46 @@
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 16px;
   background: var(--card-muted);
-  transition: border-color 160ms ease;
 }
 
-.workflowCard:has(a:hover) .cover {
-  border-color: var(--primary);
+.cover video,
+.characterVideo,
+.characterPoster {
+  transition: transform 420ms ease;
+}
+
+.workflowCard:has(a:hover) .cover video,
+.workflowCard:has(a:hover) .characterVideo,
+.workflowCard:has(a:hover) .characterPoster,
+.workflowCard:has(a:focus-visible) .cover video,
+.workflowCard:has(a:focus-visible) .characterVideo,
+.workflowCard:has(a:focus-visible) .characterPoster {
+  transform: scale(1.035);
+}
+
+.linkChip {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(16 16 20 / 62%);
+  color: var(--foreground-strong);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.workflowCard:hover .linkChip,
+.workflowCard:focus-within .linkChip,
+.linkChip:has([data-explore-link-pending="true"]) {
+  opacity: 1;
 }
 
 /* These are decorative previews, not media controls. The enclosing link owns
@@ -47,7 +79,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #1f1f1f;
+  background: #121212;
 }
 
 .characterVideo, .characterPoster {
@@ -67,7 +99,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   aspect-ratio: 16 / 9;
-  gap: 12px;
+  gap: 8px;
 }
 
 .toolCard {
@@ -76,41 +108,45 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  border-radius: 12px;
-  background: var(--card-muted);
-  padding: 10px;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  padding: 14px;
+  text-align: left;
+  transition: background-color 160ms ease;
 }
 
 .toolTitle {
   max-width: 100%;
   color: var(--foreground-strong);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 18px;
-  text-align: center;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 
-.toolCard:hover {
-  border-color: var(--border-strong);
-  background: var(--card);
-}
-
-.toolCard:hover .arrow {
-  color: var(--primary);
-  transform: translate(2px, -2px);
+.toolCard:hover,
+.toolCard:focus-visible {
+  background: var(--selected);
 }
 
 .arrow {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  transition: color 160ms ease, transform 160ms ease;
+  top: 12px;
+  right: 12px;
+  color: var(--foreground-strong);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.toolCard:hover .arrow,
+.toolCard:focus-visible .arrow,
+.toolCard:has([data-explore-link-pending="true"]) .arrow {
+  opacity: 1;
 }
 
 @container explore (min-width: 560px) {
@@ -128,11 +164,21 @@
 @media (prefers-reduced-motion: reduce) {
   .characterVideo { display: none; }
 
-  .cover, .toolCard, .arrow {
+  .cover video,
+  .characterVideo,
+  .characterPoster,
+  .linkChip,
+  .toolCard,
+  .arrow {
     transition: none;
   }
 
-  .toolCard:hover .arrow {
+  .workflowCard:has(a:hover) .cover video,
+  .workflowCard:has(a:hover) .characterVideo,
+  .workflowCard:has(a:hover) .characterPoster,
+  .workflowCard:has(a:focus-visible) .cover video,
+  .workflowCard:has(a:focus-visible) .characterVideo,
+  .workflowCard:has(a:focus-visible) .characterPoster {
     transform: none;
   }
 }

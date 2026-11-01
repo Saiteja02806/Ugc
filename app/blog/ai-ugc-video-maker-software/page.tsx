@@ -20,7 +20,7 @@ const datePublished = "2026-10-29";
 const faqs = [
   {
     question: "What is an AI UGC video maker for software?",
-    answer: "It is an automated video studio like UGC Pilot that turns technical software features and documentation into engaging creator hook videos, speech, and animated captions tailored for short-form social media feeds.",
+    answer: "It is an automated video studio like Vidmake that turns technical software features and documentation into engaging creator hook videos, speech, and animated captions tailored for short-form social media feeds.",
   },
   {
     question: "How does it simplify complex technical software for social media?",
@@ -28,15 +28,15 @@ const faqs = [
   },
   {
     question: "Can I generate videos directly from release notes or changelogs?",
-    answer: "Yes. By feeding your feature release notes or documentation into UGC Pilot, the system crafts matching 3-second hook openings, problem-solution scripts, and caption outlines.",
+    answer: "Yes. By feeding your feature release notes or documentation into Vidmake, the system crafts matching 3-second hook openings, problem-solution scripts, and caption outlines.",
   },
   {
-    question: "Does UGC Pilot create Instagram carousels in addition to video?",
+    question: "Does Vidmake create Instagram carousels in addition to video?",
     answer: "Yes. With the Instagram Carousel Maker, you can transform the same feature brief into a high-save multi-slide educational deck for Instagram and LinkedIn.",
   },
   {
-    question: "Can I connect UGC Pilot to my development environment via MCP?",
-    answer: "Yes. UGC Pilot features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for Claude and Codex.",
+    question: "Can I connect Vidmake to my development environment via MCP?",
+    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for Claude and Codex.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function AiUgcVideoMakerSoftwarePage() {
           You spent three weeks building a high-performance database caching layer or a multi-tenant permission engine. But when you announce it on social media, nobody cares. Why? Because you explained <strong className="font-semibold text-foreground-strong">how it was built</strong> instead of <strong className="font-semibold text-foreground-strong">why it saves the customer&apos;s day</strong>.
         </p>
         <p>
-          An <strong className="font-semibold text-foreground-strong">AI UGC video maker for software</strong> bridges this communication gap. With <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>, you can translate technical changelogs and product briefs into snappy creator hook videos that resonate with everyday users.
+          An <strong className="font-semibold text-foreground-strong">AI UGC video maker for software</strong> bridges this communication gap. With <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>, you can translate technical changelogs and product briefs into snappy creator hook videos that resonate with everyday users.
         </p>
 
         <ArticleH2>The Feature-to-Benefit Translation Matrix</ArticleH2>
@@ -178,7 +178,7 @@ export default function AiUgcVideoMakerSoftwarePage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/blog/cost-of-ugc-video-for-saas", title: "Cost of UGC Video for SaaS", description: "Creators vs agencies vs AI software unit economics." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating software videos with 2 free credits." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating software videos on the 7-day trial." },
         ]}
       />
     </VideoMarketingPage>

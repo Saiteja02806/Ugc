@@ -10,15 +10,15 @@ export const metadata: Metadata = {
   title: "Free Creator Tools: Hook Text & Video Libraries",
   description,
   alternates: { canonical: "/free-tools" },
-  openGraph: { title: "Free creator tools | UGC Pilot", description, url: "/free-tools", type: "website" },
-  twitter: { card: "summary_large_image", title: "Free creator tools | UGC Pilot", description },
+  openGraph: { title: "Free creator tools | Vidmake", description, url: "/free-tools", type: "website" },
+  twitter: { card: "summary_large_image", title: "Free creator tools | Vidmake", description },
 };
 
 export default function FreeToolsPage() {
   return <main className="min-h-dvh bg-background text-foreground">
     <LandingHeader initialHasSession={false} />
     <section className="mx-auto max-w-[1120px] px-5 pb-16 pt-36 sm:px-8 sm:pb-24 sm:pt-44" aria-labelledby="tools-title">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Free tools from UGC Pilot</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Free tools from Vidmake</p>
       <h1 id="tools-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-foreground-strong sm:text-6xl">Find your words.<br />Find your opening.</h1>
       <p className="mt-6 max-w-xl text-lg leading-8 text-muted">Start your next Reel, TikTok, Short or app demo with a hook. Two free libraries. No account needed to download.</p>
       <div className="mt-12 grid gap-6 lg:grid-cols-2">
@@ -32,7 +32,7 @@ export default function FreeToolsPage() {
           <p className="mt-3 text-sm leading-6 text-muted">11 collections · TikTok, Reels, Shorts and app demos</p>
           <div className="pt-7">
             <p className="min-h-12 text-sm leading-6 text-muted">Free PDF · No signup · Unlimited downloads</p>
-            <a href="/resources/ugc-pilot-110-hooks.pdf" download="UGCPilot_The_Reaction_Hook_Library.pdf" className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"><Download className="size-4" aria-hidden="true" />Download 110 free hooks</a>
+            <a href="/resources/ugc-pilot-110-hooks.pdf" download="Vidmake_The_Reaction_Hook_Library.pdf" className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"><Download className="size-4" aria-hidden="true" />Download 110 free hooks</a>
             <p className="mt-4 flex items-center gap-2 text-xs leading-5 text-muted"><Check className="size-3.5" aria-hidden="true" />Keep the PDF handy for your next post.</p>
             <Link href="/free-hook-lines" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm text-primary underline underline-offset-4">Browse and copy hook lines<ArrowRight className="size-4" aria-hidden="true" /></Link>
           </div>
@@ -41,6 +41,6 @@ export default function FreeToolsPage() {
       </div>
       <p className="mt-10 text-sm leading-6 text-muted">Making a hook + demo video? <Link href="/guides/product-demo-to-short-video" className="text-primary underline underline-offset-4">Read the product-demo guide.</Link></p>
     </section>
-    <footer className="mx-auto flex max-w-[1120px] flex-wrap gap-x-6 gap-y-3 border-t border-border px-5 py-7 text-sm text-muted sm:px-8"><Link href="/">UGC Pilot</Link><Link href="/privacy">Privacy</Link><Link href="/contact">Contact</Link></footer>
+    <footer className="mx-auto flex max-w-[1120px] flex-wrap gap-x-6 gap-y-3 border-t border-border px-5 py-7 text-sm text-muted sm:px-8"><Link href="/">Vidmake</Link><Link href="/privacy">Privacy</Link><Link href="/contact">Contact</Link></footer>
   </main>;
 }

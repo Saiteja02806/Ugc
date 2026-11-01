@@ -72,7 +72,7 @@ test("anonymous GET, refresh and prefetch never consume a slot", async () => {
 test("anonymous native POST streams a ZIP attachment and rejects replay", async () => {
   const api = handlers(), id = randomUUID(), response = await api.POST(post(id));
   assert.equal(response.status, 200); assert.equal(response.headers.get("content-type"), "application/zip");
-  assert.match(response.headers.get("content-disposition")!, /attachment.*UGCPilot-Hook-Video-Bundle.zip/);
+  assert.match(response.headers.get("content-disposition")!, /attachment.*Vidmake-Hook-Video-Bundle.zip/);
   const zip = Buffer.from(await response.arrayBuffer()); assert.equal(zip.length, Number(response.headers.get("content-length")));
   assert.equal(zip.readUInt32LE(), 0x04034b50); assert.equal((await api.POST(post(id))).status, 409);
   assert.equal((await bundleStatus(api.store, bundleHash)).count, 1);

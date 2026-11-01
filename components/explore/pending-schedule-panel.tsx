@@ -9,7 +9,7 @@ import { WorkflowSchedulingPanel } from "@/components/explore/workflow-schedulin
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
-import { workflowAccountSelectionError, workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
+import { workflowAccountSelectionError, workflowScheduleTargets, workflowSelectedAccountIds, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft, type WorkflowScheduleDraftUpdate } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { isScheduleTimeout, requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
@@ -29,7 +29,7 @@ export function useBackgroundScheduleAvailability(owner: string | null, enabled:
 
 /** Confirmation saves a durable render/schedule snapshot. Polling never POSTs. */
 export function PendingExploreSchedulePanel({ owner, scope, composition, draft, onChange, timezone, active, onBackToEdit, onScheduled }: {
-  owner: string; scope: string; composition: ExploreScheduleComposition; draft: WorkflowScheduleDraft; onChange: (value: WorkflowScheduleDraft) => void;
+  owner: string; scope: string; composition: ExploreScheduleComposition; draft: WorkflowScheduleDraft; onChange: (update: WorkflowScheduleDraftUpdate) => void;
   timezone: string; active: boolean; onBackToEdit?: () => void;
   onScheduled?: () => void;
 }) {
@@ -193,5 +193,5 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       <div className={styles.reviewAction}><div className={`${styles.actionHelp} ${styles.confirmation}`}><p role="status">{busy ? progress : actionHelp}</p>{confirmed ? <Link href="/scheduling" className={`${styles.schedulingLink} ${styles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link> : null}</div>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
   </div>;
-  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
+  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(current => selectWorkflowAccount(current, platform, id))} />} /></div>;
 }

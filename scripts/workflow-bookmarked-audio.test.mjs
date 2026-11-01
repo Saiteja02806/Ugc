@@ -11,7 +11,24 @@ const element = (type, props = {}) => typeof type === "function" ? type(props) :
 const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" ? [node, ...nodes(node.props?.children)] : [];
 const text = node => Array.isArray(node) ? node.map(text).join(" ") : node && typeof node === "object" ? text(node.props?.children) : !node || typeof node === "boolean" ? "" : String(node);
 
-function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 30, assets = [], metadataDuration = 5, mediaKind = "audio", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
+test("five-second voice context keeps longer recordings whole and rejects shorter samples", async () => {
+  for (const duration of [1.996916, 4, 4.999, 5, 10, 30, 30.1]) {
+    const h = harness({ minDuration: 5, metadataDuration: duration });
+    nodes(h.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
+    await new Promise(setImmediate);
+    const accepted = duration >= 5 && duration <= 30;
+    assert.equal(h.choices.length, accepted ? 1 : 0);
+    if (accepted) {
+      assert.equal(h.audio.asset.duration, duration, "do not trim longer samples to five seconds");
+      assert.deepEqual([...new Uint8Array(await h.audio.asset.file.arrayBuffer())], [1, 2, 3]);
+    } else {
+      assert.equal(h.audio.asset.url, "blob:previous");
+      assert.match(h.audio.error, duration < 5 ? /at least 5 seconds/ : /up to 30 seconds/);
+    }
+  }
+});
+
+function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 30, minDuration = 0, assets = [], metadataDuration = 5, mediaKind = "audio", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
   let cursor = 0, referenced = 0;
   const slots = [], calls = [], choices = [];
   let mediaCursor = 0, nextUrl = 0;
@@ -60,8 +77,28 @@ function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 3
   vm.runInNewContext(ts.transpileModule(source, {fileName:"choices.tsx", compilerOptions:{ target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX }}).outputText, {
     exports: exported, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, File, AbortController, Error,
   });
-  return { calls, choices, revoked, get audio() { return attachment(); }, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio: attachment(), maxDuration, onVoiceReference: () => referenced++}); } };
+  return { calls, choices, revoked, get audio() { return attachment(); }, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio: attachment(), minDuration, maxDuration, onVoiceReference: () => referenced++}); } };
 }
+
+test("near-two-second voice samples are rejected before attachment and valid MP3 references retain their exact bytes", async () => {
+  for (const metadataDuration of [1.996916, 2, 5]) {
+    const h = harness({ minDuration: 2, metadataDuration });
+    nodes(h.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
+    await new Promise(setImmediate);
+    if (metadataDuration < 2) {
+      assert.equal(h.choices.length, 0);
+      assert.equal(h.audio.asset.url, "blob:previous");
+      assert.match(h.audio.error, /1\.996 seconds.*at least 2 seconds/);
+      assert.equal(h.referenced(), 0);
+    } else {
+      assert.equal(h.choices.length, 1);
+      assert.equal(h.choices[0].options.minDuration, 2);
+      assert.equal(h.audio.asset.duration, metadataDuration);
+      assert.equal(h.audio.asset.file.type, "audio/mpeg");
+      assert.deepEqual([...new Uint8Array(await h.audio.asset.file.arrayBuffer())], [1, 2, 3]);
+    }
+  }
+});
 
 test("saved choices and transferred files follow WAN's 15-second limit and Seedance's 30-second limit", async () => {
   const assets = [10, 20].map(duration => ({ id: `recording-${duration}`, name: `${duration} second recording`, duration, purpose: "exact", status: "ready", testOnly: false }));

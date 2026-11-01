@@ -26,7 +26,7 @@ export function AppScreenPicker({ attachment, model = "seedance_2_5" }: { attach
   const referencePolicy = getVideoReferencePolicy(model);
   return <div className="inline-flex shrink-0 items-center rounded-lg bg-card-muted ring-1 ring-inset ring-border/50">
     <Popover>
-      <PopoverTrigger render={<Button type="button" variant="ghost" className="h-8 rounded-lg px-3 text-sm" aria-label="App screen" />}>
+      <PopoverTrigger render={<Button type="button" variant="ghost" className="h-8 px-3 text-sm" aria-label="App screen" />}>
         <Smartphone className="size-3.5" aria-hidden="true" />App screen
         {attachment.asset ? <Check className="size-3 text-primary" aria-label="App screen attached" /> : <Plus className="size-3" aria-hidden="true" />}
       </PopoverTrigger>
@@ -39,7 +39,7 @@ export function AppScreenPicker({ attachment, model = "seedance_2_5" }: { attach
           if (file) void attachment.choose(file, { maxDuration: referencePolicy.maxVideoDuration, maxBytes: file.type.startsWith("video/") ? referencePolicy.maxVideoBytes : referencePolicy.maxImageBytes });
           event.target.value = "";
         }} />
-        <Button type="button" variant="outline" className="rounded-lg text-sm" disabled={attachment.loading} onClick={() => input.current?.click()}>
+        <Button type="button" variant="outline" className="text-sm" disabled={attachment.loading} onClick={() => input.current?.click()}>
           <Plus className="size-3.5" aria-hidden="true" />{attachment.loading ? "Reading file…" : attachment.asset ? "Replace app screen" : "Attach app screen"}
         </Button>
         <p className="text-sm leading-5 text-muted">Screenshots up to 20 MB. Files upload when you Generate.</p>

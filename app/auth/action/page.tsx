@@ -37,7 +37,7 @@ function EmailActionContent({ mode, code, continueUrl }: {
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [continuePath] = useState(() => getSafeEmailContinuePath(
-    continueUrl, typeof window === "undefined" ? "https://getugcpilot.com" : window.location.origin,
+    continueUrl, typeof window === "undefined" ? "https://vidmake.io" : window.location.origin,
   ));
 
   useEffect(() => {
@@ -132,8 +132,8 @@ function EmailActionContent({ mode, code, continueUrl }: {
     <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          <ProductLogoMark className="size-9 rounded-control bg-primary p-2" imageClassName="brightness-0 invert" sizes="36px" />
-          UGC Pilot
+          <ProductLogoMark className="size-8" sizes="32px" />
+          Vidmake
         </Link>
         <Link href="/sign-in" className="text-sm font-semibold text-muted hover:text-foreground">Sign in</Link>
       </header>
@@ -168,7 +168,7 @@ function EmailActionContent({ mode, code, continueUrl }: {
             <Button type="submit" className="h-12 w-full" disabled={isBusy}>{isBusy ? "Updating…" : "Reset password"}</Button>
           </form> : null}
           {success ? <Button className="h-12 w-full" disabled={isBusy} onClick={handleContinue}>
-            {isBusy ? "Opening…" : mode === "verifyEmail" ? "Continue to UGC Pilot" : "Continue to sign in"}
+            {isBusy ? "Opening…" : mode === "verifyEmail" ? "Continue to Vidmake" : "Continue to sign in"}
           </Button> : null}
           {error ? <p role="alert" className="mt-4 text-center text-sm leading-6 text-error">{error}</p> : null}
           {state === "error" ? <Link href={continuePath} className="mt-6 block rounded-lg text-center text-sm font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Return to sign in</Link> : null}

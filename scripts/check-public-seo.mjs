@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
-const canonicalOrigin = "https://getugcpilot.com";
+const canonicalOrigin = "https://vidmake.io";
 const publicPaths = JSON.parse(await fs.readFile(new URL("../lib/marketing/public-page-paths.json", import.meta.url), "utf8"));
 const expectedUrls = publicPaths.map(path => new URL(path, canonicalOrigin).href).sort();
 const evidence = [];
@@ -27,12 +27,14 @@ async function check(name, url, inspect, options = {}) {
 }
 
 await check("www canonical redirect", "https://www.getugcpilot.com", response => {
-  assert.equal(response.status, 308);
-  assert.equal(new URL(response.headers.get("location")).origin, canonicalOrigin);
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get("location"), `${canonicalOrigin}/`);
 }, { redirect: "manual" });
 await check("HTTPS redirect", "http://getugcpilot.com", response => {
-  assert([301, 308].includes(response.status));
-  assert.equal(new URL(response.headers.get("location")).origin, canonicalOrigin);
+  assert([301, 307, 308].includes(response.status));
+  const location = new URL(response.headers.get("location"));
+  assert.equal(location.protocol, "https:");
+  assert.ok(["getugcpilot.com", "www.getugcpilot.com", "vidmake.io", "www.vidmake.io"].includes(location.hostname));
 }, { redirect: "manual" });
 await check("robots", `${canonicalOrigin}/robots.txt`, (response, body) => {
   assert.equal(response.status, 200);

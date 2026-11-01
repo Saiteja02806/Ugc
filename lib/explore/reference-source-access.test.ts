@@ -12,8 +12,8 @@ test("free generation grants never permit original-post access, including spent 
   }
 });
 
-test("only verified active Starter and Growth plans open originals", () => {
-  for (const planKey of ["starter", "growth"]) {
+test("only verified active Starter, Growth, and Startup plans open originals", () => {
+  for (const planKey of ["starter", "growth", "startup"]) {
     const data = { isActive: true, planKey };
     assert.equal(canOpenReferenceSource({ ...ready, data }), true);
     assert.equal(canOpenReferenceSource({ ...ready, data: { ...data, isActive: false } }), false);

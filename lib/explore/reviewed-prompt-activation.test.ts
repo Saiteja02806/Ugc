@@ -50,11 +50,32 @@ test("Hook 01 keeps phone pickup and continued final shake at every animation du
   const directions = hookMotionPlanDirections(plan);
   for (const durationSeconds of [3, 4, 8]) {
     const compiled = buildHookAnimationPrompt({ directions, durationSeconds, generateAudio: false });
-    assert.match(compiled, /takes hold of the recording phone/);
-    assert.match(compiled, /Continue lifting and tilting the handheld phone/);
+    assert.match(compiled, /arm remains extended toward the camera/);
+    assert.match(compiled, /Continue lifting and tilting the handheld viewpoint/);
+    assert.doesNotMatch(compiled, /takes hold of the recording phone/);
     assert.match(compiled, /small uneven shake/);
     assert.match(compiled, /Do not settle back into a centered desk shot/);
     assert.match(compiled, /completely silent/);
+  }
+});
+
+test("batch 1 preserves source-bound endings and avoids asserting unseen contact", () => {
+  const ids = ["explore-paired-hook-4585ee949081c4e5cd835cd3", "explore-paired-hook-7c53cba88343579e7e15c8b0", "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", "explore-paired-hook-b43622d1486957644f3317e6", "explore-paired-hook-510f7a66546d25863c268477", "explore-paired-hook-55cb1594a04550147e829d7f"];
+  for (const id of ids) {
+    const source = hookKeyframeMotionCatalog[id];
+    const plan = getHookKeyframeMotionReviewDraft(id, source.sourceSha256, 0)?.candidatePlan;
+    assert.ok(plan, id);
+    const durationSeconds = Math.max(4, Math.ceil(source.sourceDurationSeconds));
+    const compiled = buildHookAnimationPrompt({ directions: hookMotionPlanDirections(plan), durationSeconds, actionDurationSeconds: source.sourceDurationSeconds, generateAudio: false });
+    assert.ok(compiled.includes(plan.endingState), id);
+    assert.doesNotMatch(compiled, /PHASE \[/, id);
+    assert.equal(getHookKeyframeMotionReviewDraft(id, "0".repeat(64), 0), undefined);
+    if (id === ids[2]) assert.match(compiled, /glance toward screen-right, then shift the eyes toward screen-left/);
+    if (id === ids[4]) {
+      assert.match(compiled, /raised index finger in front of the face/);
+      assert.doesNotMatch(compiled, /finger separate from the lips/);
+      assert.match(compiled, /Do not add a sip/);
+    }
   }
 });
 

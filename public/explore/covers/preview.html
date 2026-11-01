@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wall of Text Cover Video Preview — V5 Master</title>
+  <style>
+    :root {
+      --bg: #08090D;
+      --card-bg: #11141D;
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #F7F7F7;
+      --muted: #94A3B8;
+      --accent: #E2E8F0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 36px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+    }
+    header {
+      text-align: center;
+      max-width: 760px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .badge-v5 {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #F7F7F7;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .preview-section {
+      width: 100%;
+      max-width: 1080px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .video-card-desktop {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background-color: #000;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+    }
+    .video-card-mobile {
+      width: 100%;
+      max-width: 380px;
+      aspect-ratio: 16 / 9;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background-color: #000;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .contact-sheet-img {
+      width: 100%;
+      max-width: 1080px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      display: block;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    }
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .spec-table th, .spec-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .spec-table th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge-v5">V5 MASTER RELEASE • FAST EDITORIAL PACING</div>
+    <h1>Wall of Text — Premium 16:9 Cover Video</h1>
+    <p>192 frames @ 24 FPS (8.00s), 1280&times;720, silent, faststart MP4. Built with Remotion using authentic Vidmake Wall of Text footage. Zero clutter, solid high-contrast typography, and seamless loop reset.</p>
+  </header>
+
+  <div class="preview-section">
+    <div class="section-label">1. Master 16:9 Desktop Preview (Autoplay • Scrubbable • Loop)</div>
+    <div class="video-card-desktop">
+      <video
+        src="./wall-of-text-v5.mp4"
+        poster="./wall-of-text-v5.webp"
+        autoplay
+        loop
+        muted
+        playsinline
+        controls
+      ></video>
+    </div>
+  </div>
+
+  <div class="preview-section">
+    <div class="section-label">2. Mobile Explore Card Preview</div>
+    <div class="video-card-mobile">
+      <video
+        src="./wall-of-text-v5.mp4"
+        poster="./wall-of-text-v5.webp"
+        autoplay
+        loop
+        muted
+        playsinline
+        controls
+      ></video>
+    </div>
+  </div>
+
+  <div class="preview-section">
+    <div class="section-label">3. 16-Milestone Contact Sheet (4&times;4 Grid • 2560&times;1440)</div>
+    <img class="contact-sheet-img" src="./wot-contact-sheet.png" alt="WOT V5 16-Milestone Contact Sheet">
+  </div>
+
+  <div class="preview-section">
+    <div class="section-label">4. V5 Architectural & Pacing Specifications</div>
+    <table class="spec-table">
+      <thead>
+        <tr>
+          <th>Beat</th>
+          <th>Frames</th>
+          <th>Duration</th>
+          <th>Choreography & Visual Design</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Beat 1</td>
+          <td>000–015</td>
+          <td>0.67s</td>
+          <td>Giant solid WALL OF TEXT. opening in #F7F7F7 on #08090D. Zero caption bleed.</td>
+        </tr>
+        <tr>
+          <td>Beat 2</td>
+          <td>016–037</td>
+          <td>0.92s</td>
+          <td>Hero 1 (Nutrition & Fitness) lands with scale overshoot; readable hold.</td>
+        </tr>
+        <tr>
+          <td>Beat 3</td>
+          <td>038–044</td>
+          <td>0.29s</td>
+          <td>High-tempo 3D directional swap: Card 1 exits left, Card 2 enters right.</td>
+        </tr>
+        <tr>
+          <td>Beat 4</td>
+          <td>045–068</td>
+          <td>1.00s</td>
+          <td>Hero 2 (Travel & Perspective) clean centered composition; readable hold.</td>
+        </tr>
+        <tr>
+          <td>Beat 5</td>
+          <td>069–077</td>
+          <td>0.38s</td>
+          <td>Full-frame kinetic REMIX. typography slam (240px, 900 weight, -0.06em kerning).</td>
+        </tr>
+        <tr>
+          <td>Beat 6</td>
+          <td>078–101</td>
+          <td>1.00s</td>
+          <td>Hero 3 (Mental Models) enters from depth; readable hold.</td>
+        </tr>
+        <tr>
+          <td>Beat 7</td>
+          <td>102–111</td>
+          <td>0.42s</td>
+          <td>Three-card burst assembling from multi-directional paths.</td>
+        </tr>
+        <tr>
+          <td>Beat 8</td>
+          <td>112–153</td>
+          <td>1.75s</td>
+          <td>Editorial triptych develops. Negative space title above cards (zero overlap).</td>
+        </tr>
+        <tr>
+          <td>Beat 9</td>
+          <td>154–179</td>
+          <td>1.08s</td>
+          <td>Foreground focus sequence: shifts emphasis across cards dynamically.</td>
+        </tr>
+        <tr>
+          <td>Beat 10</td>
+          <td>180–191</td>
+          <td>0.50s</td>
+          <td>Controlled masked transition returning to Frame 000 typography for seamless loop.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

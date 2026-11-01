@@ -298,14 +298,14 @@ function WalkthroughCanvas({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-[18px] border border-white/[0.12] bg-[#101316] shadow-[0_18px_48px_rgb(0_0_0_/_0.3)]",
+        "relative w-full overflow-hidden rounded-[18px] border border-white/[0.12] bg-[#292929] shadow-[0_18px_48px_rgb(0_0_0_/_0.3)]",
         reducedMotion && "trending-walkthrough-reduced-motion",
       )}
       data-walkthrough-step={step.kind}
       style={{ height: "min(500px, calc(100dvh - 10rem))" }}
     >
       <WalkthroughKeyframes />
-      <div className="absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.08] bg-[#101316]/92 px-5 backdrop-blur-sm">
+      <div className="absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.08] bg-[#292929]/92 px-5 backdrop-blur-sm">
         <span className="min-w-0 truncate pr-4 text-xs font-semibold tracking-[-0.01em] text-white/90">
           How our Trending feed works
         </span>
@@ -501,7 +501,7 @@ function DemoScene() {
   return (
     <>
       <div className="absolute left-[12%] top-[18%] w-[20%]"><MediaCard format="hook" slide={0} /></div>
-      <div className="absolute left-[39%] top-[14%] h-[72%] w-[39%] overflow-hidden rounded-[18px] border border-dashed border-primary/65 bg-primary/[0.06] p-[2%]">
+      <div className="absolute left-[39%] top-[14%] h-[72%] w-[39%] overflow-hidden rounded-[18px] border border-dashed border-white/50 p-[2%]">
         <div className="flex size-full items-center justify-center rounded-[15px] border border-white/[0.09] bg-[#14181d]"><Clapperboard className="size-[20%] text-primary/75" /></div>
         <div className="absolute inset-[5%] overflow-hidden rounded-[15px] bg-black opacity-0" style={{ animation: "trendingWalkthroughReveal 220ms ease-out 1900ms forwards" }}><video autoPlay className="size-full object-contain" loop muted playsInline preload="auto" src={WALKTHROUGH_DEMO_SOURCE} /><span className="absolute bottom-[7%] left-[7%] inline-flex items-center gap-1 rounded-full bg-success px-2 py-1 text-[clamp(8px,0.8vw,10px)] font-bold text-success-foreground"><Check className="size-3 stroke-[3]" />Demo added</span></div>
       </div>
@@ -627,7 +627,7 @@ function ControlsHighlight({ onComplete }: { onComplete: () => void }) {
       <style>{`
         @keyframes trendingWalkthroughControlHighlight {
           0%,100% { border-color: rgb(255 255 255 / 0.14); box-shadow: none; transform: translateY(0); }
-          45% { border-color: rgb(255 90 31 / 0.78); box-shadow: 0 0 0 4px rgb(255 90 31 / 0.16), 0 0 28px rgb(255 90 31 / 0.28); transform: translateY(-1px); }
+          45% { border-color: rgb(216 180 254 / 0.78); box-shadow: 0 0 0 4px rgb(216 180 254 / 0.16), 0 0 28px rgb(216 180 254 / 0.28); transform: translateY(-1px); }
         }
         .trending-walkthrough-control-highlight { animation: trendingWalkthroughControlHighlight 1.25s ease-in-out 2; }
         @media (prefers-reduced-motion: reduce) { .trending-walkthrough-control-highlight { animation-duration: 1ms; } }
@@ -636,7 +636,7 @@ function ControlsHighlight({ onComplete }: { onComplete: () => void }) {
         ? createPortal(
             <aside
               aria-label={guide.heading}
-              className="fixed z-[70] w-[284px] rounded-[16px] border border-white/[0.14] bg-[#101316] p-4 text-white shadow-[0_18px_48px_rgb(0_0_0_/_0.32)]"
+              className="fixed z-[70] w-[284px] rounded-[16px] border border-white/[0.14] bg-[#292929] p-4 text-white shadow-[0_18px_48px_rgb(0_0_0_/_0.32)]"
               data-trending-walkthrough-control-guide
               data-trending-walkthrough-control-step={step}
               role="dialog"
@@ -644,7 +644,7 @@ function ControlsHighlight({ onComplete }: { onComplete: () => void }) {
             >
               <span
                 aria-hidden="true"
-                className="absolute -top-1.5 size-3 rotate-45 border-l border-t border-white/[0.14] bg-[#101316]"
+                className="absolute -top-1.5 size-3 rotate-45 border-l border-t border-white/[0.14] bg-[#292929]"
                 style={{ left: position.arrowLeft - 6 }}
               />
               <div className="relative">
@@ -657,7 +657,7 @@ function ControlsHighlight({ onComplete }: { onComplete: () => void }) {
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <span className="text-xs font-semibold text-white/45">{guide.step}</span>
                   <button
-                    className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101316]"
+                    className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#292929]"
                     onClick={() => {
                       if (step === "edit") {
                         setStep("adjust");

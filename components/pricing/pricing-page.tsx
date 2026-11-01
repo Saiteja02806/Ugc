@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { ONE_TIME_FREE_GENERATION_CREDITS } from "@/lib/billing/free-generation-credit-policy";
 import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "@/lib/billing/free-trial-policy";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
@@ -19,7 +19,7 @@ import { PricingComparison } from "@/components/pricing/pricing-comparison";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import {
-  pricingPlans,
+  displayedPricingPlans,
   pricingWorkflows,
   type BillingInterval,
 } from "@/lib/pricing/plans";
@@ -37,15 +37,15 @@ const faqs = [
   },
   {
     question: "What happens when my trial ends?",
-    answer: "Choose Starter or Growth to keep receiving daily content. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. Choose a paid plan for a monthly AI credit allowance.",
+    answer: "Choose Starter, Growth, or Startup to keep receiving daily content. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. A paid plan adds a monthly AI credit allowance.",
   },
   {
     question: "Are daily content concepts separate from AI credits?",
-    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day and Growth includes 50. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
+    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day. Growth and Startup include 50. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
   },
   {
-    question: "How do UGC Pilot credits work?",
-    answer: `Free accounts receive ${ONE_TIME_FREE_GENERATION_CREDITS} credits once; these do not refill monthly. Starter includes 200 shared credits each month and Growth includes 600, including on annual subscriptions. Generation cost depends on the model, video duration and settings. Check the displayed credit cost before generating. If a generation costs more than your remaining credits, choose a paid plan to continue.`,
+    question: "How do Vidmake credits work?",
+    answer: `Free accounts receive ${ONE_TIME_FREE_GENERATION_CREDITS} credits once; these do not refill monthly. Starter includes 360 credits each month, Growth includes 720, and Startup includes 1,800, including on annual subscriptions. One second of video costs 4 credits, so those allowances make 30, 60, or 150 three-second hooks, or 15, 30, or 75 six-second videos. Check the displayed credit cost before generating.`,
   },
   {
     question: "Which workflows and platforms are included?",
@@ -53,7 +53,7 @@ const faqs = [
   },
   {
     question: "How do annual billing and plan changes work?",
-    answer: "Annual plans charge $190 for Starter or $490 for Growth upfront, equal to ten monthly payments. Credits still refresh monthly. Existing subscribers can open the secure Dodo billing portal to manage their plan, payment details and cancellation. Your portal shows when any change takes effect.",
+    answer: "Annual plans charge $290 for Starter, $490 for Growth, or $990 for Startup upfront, equal to ten monthly payments. Credits still refresh monthly. Existing subscribers can open the secure Dodo billing portal to manage their plan, payment details and cancellation. Your portal shows when any change takes effect.",
   },
 ];
 
@@ -79,16 +79,10 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
           <Link
             href="/"
             className="group flex min-w-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="UGC Pilot home"
+            aria-label="Vidmake home"
           >
-            <ProductLogoMark
-              className="size-8 rounded-xl bg-primary p-1.5 shadow-xs"
-              imageClassName="brightness-0 invert"
-              sizes="32px"
-            />
-            <span className="truncate text-base font-semibold tracking-tight text-foreground-strong">
-              UGC Pilot
-            </span>
+            <ProductLogoMark className="size-8" sizes="32px" />
+            <ProductWordmark className="truncate text-[18px] text-foreground-strong" />
           </Link>
 
           <nav aria-label="Pricing navigation" className="flex items-center gap-3">
@@ -212,7 +206,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         </section>
 
         {/* Feature Comparison Matrix */}
-        <PricingComparison plans={pricingPlans} />
+        <PricingComparison plans={displayedPricingPlans} />
 
         {/* Grouped Accordion FAQ Section */}
         <section
@@ -260,8 +254,8 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
       <footer className="border-t border-border bg-background px-5 py-8 sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-normal text-muted sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <ProductLogoMark className="size-4.5 rounded-md bg-primary p-1" imageClassName="brightness-0 invert" sizes="18px" />
-            <span className="font-semibold text-foreground-strong">UGC Pilot</span>
+            <ProductLogoMark className="size-5" sizes="20px" />
+            <span className="font-semibold text-foreground-strong">Vidmake</span>
             <span>— Your content workspace</span>
           </div>
           <span>Prices in USD; applicable taxes shown at checkout. Billing by Dodo Payments.</span>

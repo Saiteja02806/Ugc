@@ -98,7 +98,7 @@ export function LandingHeroGallery() {
 
   return (
     <div className="relative left-1/2 w-[calc(100vw-2rem)] max-w-[1320px] -translate-x-1/2" data-hero-gallery>
-      <div aria-hidden="true" className="pointer-events-none absolute bottom-[7%] left-1/2 h-32 w-[76%] -translate-x-1/2 rounded-full bg-primary/20 blur-[72px] dark:bg-primary/15" />
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-[7%] left-1/2 h-32 w-[76%] -translate-x-1/2 rounded-full bg-transparent" />
       <div ref={stage} role="region" aria-roledescription="carousel" aria-label="Explore content examples"
         className="group/gallery relative h-[480px] touch-pan-y overflow-hidden sm:h-[510px]"
         onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}

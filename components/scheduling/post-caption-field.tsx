@@ -17,12 +17,18 @@ export function PostCaptionField({ ownerId, enabled = true, value, onChange, ini
   const initializedHere = useRef<string | null>(null);
   const input = useRef<HTMLTextAreaElement | null>(null);
   const returnToCaption = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   useEffect(() => {
-    if (!applyDefault || !enabled || disabled || !ownerId || !saved.library || !saved.available || initializedHere.current === ownerId) return;
-    initializedHere.current = ownerId;
+    if (!applyDefault || !enabled || disabled || !ownerId || !saved.library || !saved.available) return;
+    // A blank post that the user has not touched should receive the default.
+    // Do not latch that attempt: a same-turn draft update can drop it, and the
+    // next render must be able to apply the default again.
+    if (initialized || value.length) return;
     const next = initialSavedCaption(saved.library, value, initialized);
-    if (next !== null) onChange(next);
-  }, [saved.library, saved.available, enabled, disabled, ownerId, value, initialized, onChange, applyDefault]);
+    if (!next) return;
+    onChangeRef.current(next);
+  }, [saved.library, saved.available, enabled, disabled, ownerId, value, initialized, applyDefault]);
   const matching = saved.library?.captions.find(caption => caption.text === value);
   const busy = disabled || saved.pending;
   async function save() {

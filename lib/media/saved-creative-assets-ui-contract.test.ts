@@ -56,8 +56,9 @@ test("Saved content renders through a flat embedded presentation", () => {
   assert.match(carouselLibrary, /!embedded && "overflow-hidden rounded-panel/);
 });
 
-test("Saved category controls use a responsive floating pill track", () => {
-  assert.match(savedTab, /rounded-full/);
+test("Saved category controls use the shared 10px corner", () => {
+  assert.match(savedTab, /rounded-\[10px\]/);
+  assert.doesNotMatch(savedTab, /rounded-full border border-border\/80 bg-card-muted\/80 p-1/);
   assert.match(savedTab, /sm:w-auto/);
   assert.match(savedTab, /savedCreativeFilters/);
 });

@@ -18,13 +18,13 @@ export type BillingSubscription = {
   currentPeriodEnd: string | null;
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
-  displayName: "Free" | "Starter" | "Growth";
+  displayName: "Free" | "Starter" | "Growth" | "Startup";
   freeGenerationCredits?: { granted: number; remaining: number; reserved: number; used: number };
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
   isDodoManaged: boolean;
-  planKey: "free" | "starter" | "growth";
+  planKey: "free" | "starter" | "growth" | "startup";
   sharedMonthlyCredits: number;
   status:
     | "active"

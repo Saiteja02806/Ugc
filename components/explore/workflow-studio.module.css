@@ -26,8 +26,8 @@
 }
 
 .chat form[data-layout]:focus-within {
-  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: var(--foreground);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .chat [role="tabpanel"] {

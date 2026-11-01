@@ -44,7 +44,7 @@ export function useSlideshowPromptImprover({ owner, prompt, contextKey, disabled
     }
   }
 
-  const action = <button type="button" className="inline-flex size-10 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-primary outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus disabled:cursor-default disabled:opacity-50" aria-label="Improve instructions" title={busy ? "Improving instructions…" : "Improve instructions"}
+  const action = <button type="button" className="inline-flex size-10 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-foreground outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus disabled:cursor-default disabled:opacity-50" aria-label="Improve instructions" title={busy ? "Improving instructions…" : "Improve instructions"}
     disabled={disabled || busy || !owner || !prompt.trim() || prompt.length > 8000} onClick={() => void improve()}>
     <Sparkle className={busy ? "size-5 animate-pulse motion-reduce:animate-none" : "size-5"} aria-hidden="true" />
   </button>;

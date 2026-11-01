@@ -62,6 +62,20 @@ test("using a saved caption closes the library, applies exact text and returns f
   assert.equal(h.writes.length, 0);
 });
 
+test("a dropped default is applied again while the post caption is still blank", () => {
+  const id = randomUUID();
+  const h = fixture({ revision: 1, defaultId: id, captions: [{ id, text: "My default" }] });
+  assert.equal(h.props.value, "My default");
+  h.render();
+  let calls = 0;
+  h.props.onChange = value => { calls += 1; h.props.value = value; h.props.initialized = true; };
+  h.props.value = "";
+  h.props.initialized = false;
+  h.render();
+  assert.equal(calls, 1);
+  assert.equal(h.props.value, "My default");
+});
+
 test("defaults cannot refill a cleared caption and library failure does not disable typing", () => {
   const id = randomUUID(), h = fixture({ revision: 1, defaultId: id, captions: [{ id, text: "My default" }] }); h.render();
   assert.equal(h.props.value, "My default");

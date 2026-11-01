@@ -7,7 +7,7 @@ import { ConnectAiPanel } from "@/components/mcp-onboarding/connect-ai-panel";
 import styles from "./connect-ai.module.css";
 
 const connectTitle = "Connect your AI";
-const connectDescription = "Connect your UGC Pilot account to Codex, ChatGPT, or Claude. OAuth sign-in, then create images, short videos, and edits from the conversation.";
+const connectDescription = "Connect your Vidmake account to Codex, ChatGPT, or Claude. OAuth sign-in, then create images, short videos, and edits from the conversation.";
 
 export const metadata: Metadata = {
   title: connectTitle,
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/connect-ai" },
   openGraph: {
     type: "website",
-    url: "https://getugcpilot.com/connect-ai",
-    siteName: "UGC Pilot",
+    url: "/connect-ai",
+    siteName: "Vidmake",
     title: connectTitle,
     description: connectDescription,
   },
@@ -35,7 +35,7 @@ export default function ConnectAiPage() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link href="/" className="flex items-center gap-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-            <ProductLogoMark className="size-9" sizes="36px" />UGC Pilot
+            <ProductLogoMark className="size-8" sizes="32px" />Vidmake
           </Link>
           <nav aria-label="Connect navigation" className="flex items-center gap-4 text-sm text-muted">
             <Link href="/guides" className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Guides</Link>
@@ -52,8 +52,8 @@ export default function ConnectAiPage() {
           <div>
             <p className="text-sm font-semibold text-primary">Connect your AI</p>
             <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-5xl">Your next image or video starts with a conversation.</h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted">Connect UGC Pilot once. Describe what you want in Codex, ChatGPT, or Claude, and let your AI create it and bring back the result.</p>
-            <p className="mt-4 text-sm leading-6 text-muted">Use your own UGC Pilot account. Generation uses your UGC Pilot plan and credits.</p>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted">Connect Vidmake once. Describe what you want in Codex, ChatGPT, or Claude, and let your AI create it and bring back the result.</p>
+            <p className="mt-4 text-sm leading-6 text-muted">Use your own Vidmake account. Generation uses your Vidmake plan and credits.</p>
           </div>
           <div className="rounded-3xl border border-border bg-card p-6 shadow-card sm:p-8" aria-label="Example generation workflow">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">Example request</p>

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: guide.description,
   alternates: { canonical: "/guides/social-media-marketing-for-saas" },
   openGraph: {
-    title: "Social Media Marketing for SaaS | UGCPilot",
+    title: "Social Media Marketing for SaaS | Vidmake",
     description: guide.description,
     url: "/guides/social-media-marketing-for-saas",
     type: "article",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Social Media Marketing for SaaS | UGCPilot",
+    title: "Social Media Marketing for SaaS | Vidmake",
     description: guide.description,
     images: [founderGuideOpenGraphImage],
   },

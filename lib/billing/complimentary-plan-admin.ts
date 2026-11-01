@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { PaidBillingPlanKey } from "./policy";
 import { getActiveComplimentaryPlanGrant } from "./complimentary-plan-grants";
 import { getUserSubscription } from "./subscription-db";
 import {
@@ -35,7 +36,7 @@ export async function grantComplimentaryPlan(params: {
   account: FirebaseAdminUser;
   expiresAt: string | null;
   grantedByUserId: string;
-  planKey: "starter" | "growth";
+  planKey: PaidBillingPlanKey;
   reason: string;
 }) {
   if (!params.account.emailVerified) {

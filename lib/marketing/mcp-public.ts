@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { brandOrganizationSameAs } from "./brand-videos";
+import { publicOrigin } from "./public-origin";
 import { ogSize } from "./og-card";
 import { publicPagePaths } from "./public-pages";
 import catalog from "./mcp-tool-catalog.json";
@@ -40,7 +41,7 @@ const publicMcpGroups = catalog.groups.map((group) => ({
 export const publicMcpToolCount = publicMcpGroups.reduce((count, group) => count + group.tools.length, 0);
 export const publicMcpToolCatalog = { toolCount: publicMcpToolCount, groups: publicMcpGroups };
 
-export const publicOrigin = "https://getugcpilot.com";
+export { publicOrigin };
 export const mcpEndpoint = "https://mcp.getugcpilot.com/mcp";
 export const mcpIssuer = "https://mcp.getugcpilot.com";
 
@@ -58,7 +59,7 @@ export const mcpSetupScopes = [
 export const mcpOptionalAccountScope = "account:write";
 
 export const connectionCheckPrompt =
-  "Use UGC Pilot to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
+  "Use Vidmake to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
 
 export const codexConfigToml = `[mcp_servers.ugc-pilot]
 url = "https://mcp.getugcpilot.com/mcp"
@@ -89,7 +90,7 @@ export const mcpWorkflows = [
   },
   {
     title: "Create a product image",
-    prompt: "Use UGC Pilot to generate one vertical product image of my skincare bottle on a bathroom shelf.",
+    prompt: "Use Vidmake to generate one vertical product image of my skincare bottle on a bathroom shelf.",
     tools: ["generate_image", "get_job"],
   },
   {
@@ -111,7 +112,7 @@ export const mcpWorkflows = [
 
 const sharedFaqs: McpFaq[] = [
   {
-    question: "Where is the UGC Pilot MCP server?",
+    question: "Where is the Vidmake MCP server?",
     answer: `The hosted server is ${mcpEndpoint}. The transport is Streamable HTTP. Sign-in is OAuth with PKCE on ${mcpIssuer}. Put the URL in the client configuration and approve access in the browser. Do not paste an API key or access token into the chat.`,
   },
   {
@@ -120,7 +121,7 @@ const sharedFaqs: McpFaq[] = [
   },
   {
     question: "What does a connected agent do with my account?",
-    answer: "It reads the signed-in account, plan, and credits, then creates images, short videos, speech, edit drafts, and exports when you ask. Generation uses that account's UGC Pilot plan and credits. You download the finished file and share it from the channel you already manage.",
+    answer: "It reads the signed-in account, plan, and credits, then creates images, short videos, speech, edit drafts, and exports when you ask. Generation uses that account's Vidmake plan and credits. You download the finished file and share it from the channel you already manage.",
   },
 ];
 
@@ -130,13 +131,13 @@ export const mcpPages = {
     eyebrow: "MCP server",
     title: "UGC video MCP server",
     h1: "UGC video MCP server for Claude, Codex, and ChatGPT",
-    description: `Connect Claude, Codex, or ChatGPT to the hosted UGC Pilot MCP server. OAuth sign-in, ${publicMcpToolCount} tools, and copy-paste setup for UGC images, short video, speech, and edits.`,
-    lede: "Point your agent at one Streamable HTTP server, approve scoped access for your UGC Pilot account, and ask for the image, video, or edit in the chat.",
+    description: `Connect Claude, Codex, or ChatGPT to the hosted Vidmake MCP server. OAuth sign-in, ${publicMcpToolCount} tools, and copy-paste setup for UGC images, short video, speech, and edits.`,
+    lede: "Point your agent at one Streamable HTTP server, approve scoped access for your Vidmake account, and ask for the image, video, or edit in the chat.",
     faqs: [
       ...sharedFaqs,
       {
         question: "Which clients can connect?",
-        answer: "Claude on the web and desktop uses a custom connector. Codex uses ~/.codex/config.toml and an OAuth login. ChatGPT can add the same URL where custom MCP connections are enabled for the account. Claude Code can add the HTTP server or load the plugin bundle. Each person signs in to their own UGC Pilot account.",
+        answer: "Claude on the web and desktop uses a custom connector. Codex uses ~/.codex/config.toml and an OAuth login. ChatGPT can add the same URL where custom MCP connections are enabled for the account. Claude Code can add the HTTP server or load the plugin bundle. Each person signs in to their own Vidmake account.",
       },
       {
         question: "Does the connector cost extra?",
@@ -149,17 +150,17 @@ export const mcpPages = {
     eyebrow: "Claude connector",
     title: "UGC video MCP server for Claude",
     h1: "UGC video MCP server for Claude",
-    description: `Add the UGC Pilot MCP server in Claude with a custom connector. OAuth sign-in, the hosted server URL, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
-    lede: "Claude connects to the hosted server from Customize → Connectors. You sign in to UGC Pilot, approve the scopes, and enable the connector in the conversation.",
+    description: `Add the Vidmake MCP server in Claude with a custom connector. OAuth sign-in, the hosted server URL, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
+    lede: "Claude connects to the hosted server from Customize → Connectors. You sign in to Vidmake, approve the scopes, and enable the connector in the conversation.",
     faqs: [
       ...sharedFaqs,
       {
-        question: "How do I add UGC Pilot in Claude?",
-        answer: "Open Customize, then Connectors, then Add custom connector. Name it UGC Pilot and paste https://mcp.getugcpilot.com/mcp. Finish the detected OAuth sign-in and approve the requested scopes. Enable the connector in the conversation before you send a prompt.",
+        question: "How do I add Vidmake in Claude?",
+        answer: "Open Customize, then Connectors, then Add custom connector. Name it Vidmake and paste https://mcp.getugcpilot.com/mcp. Finish the detected OAuth sign-in and approve the requested scopes. Enable the connector in the conversation before you send a prompt.",
       },
       {
         question: "Does a Team or Enterprise workspace need an admin?",
-        answer: "Yes, when the organization requires an administrator to add custom connectors. After the connector exists, each person still signs in with their own UGC Pilot account. The plugin ZIP is optional. The hosted URL is enough for the tools.",
+        answer: "Yes, when the organization requires an administrator to add custom connectors. After the connector exists, each person still signs in with their own Vidmake account. The plugin ZIP is optional. The hosted URL is enough for the tools.",
       },
     ],
   },
@@ -168,8 +169,8 @@ export const mcpPages = {
     eyebrow: "Codex config",
     title: "UGC video MCP server for Codex",
     h1: "UGC video MCP server for Codex",
-    description: `Add the UGC Pilot MCP server to Codex in ~/.codex/config.toml. Streamable HTTP, OAuth login, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
-    lede: "Codex stores the server in ~/.codex/config.toml, then opens a browser so you can sign in to UGC Pilot and approve the scopes.",
+    description: `Add the Vidmake MCP server to Codex in ~/.codex/config.toml. Streamable HTTP, OAuth login, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
+    lede: "Codex stores the server in ~/.codex/config.toml, then opens a browser so you can sign in to Vidmake and approve the scopes.",
     faqs: [
       ...sharedFaqs,
       {
@@ -178,7 +179,7 @@ export const mcpPages = {
       },
       {
         question: "Why does a new Codex thread miss the tools?",
-        answer: "An open thread can keep the tool list it discovered at the start. Save the config, complete OAuth, then start a new thread and ask UGC Pilot to call get_profile. Re-authenticate when the sign-in expires or a requested scope is missing.",
+        answer: "An open thread can keep the tool list it discovered at the start. Save the config, complete OAuth, then start a new thread and ask Vidmake to call get_profile. Re-authenticate when the sign-in expires or a requested scope is missing.",
       },
     ],
   },
@@ -203,7 +204,7 @@ export function publicPageMetadata(input: {
     openGraph: {
       type: "website",
       url,
-      siteName: "UGC Pilot",
+      siteName: "Vidmake",
       title: input.title,
       description: input.description,
       ...(image ? { images: image } : {}),
@@ -234,7 +235,7 @@ export function mcpSoftwareJsonLd(path: string, description: string, faqs: reado
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        name: "UGC Pilot MCP Server",
+        name: "Vidmake MCP Server",
         applicationCategory: "DeveloperApplication",
         operatingSystem: "Web",
         url: new URL(path, publicOrigin).href,
@@ -243,9 +244,9 @@ export function mcpSoftwareJsonLd(path: string, description: string, faqs: reado
         featureList: `${publicMcpToolCount} MCP tools for account reads, image and video generation, speech, edit drafts, and exports`,
         provider: {
           "@type": "Organization",
-          name: "UGC Pilot",
+          name: "Vidmake",
           url: publicOrigin,
-          logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
+          logo: `${publicOrigin}/brand/vidmake-mark.png`,
         },
       },
       faqJsonLd(faqs),
@@ -259,20 +260,20 @@ export function homepageJsonLd(description: string) {
     "@graph": [
       {
         "@type": "Organization",
-        name: "UGC Pilot",
+        name: "Vidmake",
         url: publicOrigin,
-        logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
+        logo: `${publicOrigin}/brand/vidmake-mark.png`,
         sameAs: [...brandOrganizationSameAs],
       },
       {
         "@type": "WebSite",
-        name: "UGC Pilot",
+        name: "Vidmake",
         url: publicOrigin,
-        publisher: { "@type": "Organization", name: "UGC Pilot", url: publicOrigin },
+        publisher: { "@type": "Organization", name: "Vidmake", url: publicOrigin },
       },
       {
         "@type": "SoftwareApplication",
-        name: "UGC Pilot",
+        name: "Vidmake",
         applicationCategory: "MultimediaApplication",
         operatingSystem: "Web",
         url: publicOrigin,
@@ -296,11 +297,11 @@ export function buildLlmsText() {
   const pages = publicPagePaths
     .map((path) => `- ${publicOrigin}${path}`)
     .join("\n");
-  return `# UGC Pilot
+  return `# Vidmake
 
 > AI UGC video and SaaS marketing studio for founders and small product teams, with a hosted MCP server for Claude, Codex, and ChatGPT.
 
-UGC Pilot helps SaaS founders and small teams market their products with creator-style UGC videos, hook clips, text-led videos, speech, video edits, and Instagram carousels from the signed-in account. The studio is at ${publicOrigin}. The MCP server is ${mcpEndpoint}.
+Vidmake helps SaaS founders and small teams market their products with creator-style UGC videos, hook clips, text-led videos, speech, video edits, and Instagram carousels from the signed-in account. The studio is at ${publicOrigin}. The MCP server is ${mcpEndpoint}.
 
 ## MCP setup
 
@@ -317,7 +318,7 @@ UGC Pilot helps SaaS founders and small teams market their products with creator
 
 ### Claude
 
-Open Customize → Connectors → Add custom connector. Name it UGC Pilot, paste ${mcpEndpoint}, and finish OAuth. Enable the connector in the conversation.
+Open Customize → Connectors → Add custom connector. Name it Vidmake, paste ${mcpEndpoint}, and finish OAuth. Enable the connector in the conversation.
 
 ### Codex
 

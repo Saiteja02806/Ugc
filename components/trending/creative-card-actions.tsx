@@ -114,7 +114,7 @@ export function CreativeEditAction({
       size="creative-edit"
       aria-label="Edit this creative (Press E)"
       title="Edit (E)"
-      className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
+      className="group transition-all duration-200 hover:border-white/50 hover:bg-card hover:text-foreground active:scale-[0.98]"
       disabled={disabled}
       onClick={onEdit}
     >
@@ -124,7 +124,7 @@ export function CreativeEditAction({
         aria-hidden="true"
       />
       <span>Edit</span>
-      <kbd className="hidden ml-1 rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted transition-colors group-hover:border-primary/30 group-hover:text-primary sm:inline-block">
+      <kbd className="hidden ml-1 rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted transition-colors group-hover:border-white/30 group-hover:text-primary sm:inline-block">
         E
       </kbd>
     </Button>

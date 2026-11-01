@@ -10,7 +10,7 @@
       "tools": [
         {
           "name": "get_profile",
-          "description": "Identify the connected UGC Pilot account.",
+          "description": "Identify the connected Vidmake account.",
           "scope": "account:read"
         },
         {
@@ -657,7 +657,7 @@
         },
         {
           "name": "list_social_connections",
-          "description": "List social accounts owned by the connected UGC Pilot account. Returns connection health and public account labels only; it never returns OAuth tokens, provider credentials, or hidden scheduler data.",
+          "description": "List social accounts owned by the connected Vidmake account. Returns connection health and public account labels only; it never returns OAuth tokens, provider credentials, or hidden scheduler data.",
           "scope": "publishing:read"
         },
         {

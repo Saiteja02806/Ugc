@@ -511,7 +511,7 @@ export function AvatarsWorkspace({
               }
             }}
             spacing={1}
-            className="inline-flex w-full rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs md:w-auto"
+            className="inline-flex w-full rounded-[10px] border border-border/80 bg-card-muted/80 p-1 shadow-xs md:w-auto"
           >
             {mediaWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
@@ -522,7 +522,7 @@ export function AvatarsWorkspace({
                   key={tab.id}
                   value={tab.id}
                   aria-current={isActive ? "page" : undefined}
-                  className="h-9 flex-1 gap-2 rounded-full px-4 text-xs sm:text-sm font-medium text-muted transition-all hover:text-foreground aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] aria-pressed:ring-1 aria-pressed:ring-border/60 md:flex-none"
+                  className="h-9 flex-1 gap-2 rounded-[10px] px-4 text-xs sm:text-sm font-medium text-muted transition-all hover:text-foreground aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] aria-pressed:ring-1 aria-pressed:ring-border/60 md:flex-none"
                 >
                   <Icon className="size-3.5 sm:size-4" aria-hidden="true" />
                   {tab.label}

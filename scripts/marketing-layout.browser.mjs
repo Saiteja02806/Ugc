@@ -158,7 +158,7 @@ try {
   await page.getByRole("status").filter({ hasText: /^Copied$/ }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "https://mcp.getugcpilot.com/mcp");
   await page.getByRole("button", { name: "Copy First prompt", exact: true }).click();
-  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "Use UGC Pilot to check my connection, plan, credits, and available generation options. Do not generate anything yet.");
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "Use Vidmake to check my connection, plan, credits, and available generation options. Do not generate anything yet.");
   await page.getByRole("link", { name: "Copy the setup", exact: true }).click();
   await page.waitForURL(url => url.hash === "#setup");
   assert.equal(new URL(page.url()).hash, "#setup");

@@ -145,7 +145,7 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
     const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: 1,
-      input: { generationId: crypto.randomUUID(), model, ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
+      input: { generationId: crypto.randomUUID(), model, ...(model === "seedream_5_pro" || model === "gemini_3_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
         referenceImageUrls, hookKeyframe: receipt, exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
     }, { beforeDispatch: async stored => {
       const existing = hookKeyframeReceiptFromJob(stored, ownerId);

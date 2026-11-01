@@ -56,6 +56,14 @@ test("complimentary access resolves to the highest tier without replacing Dodo",
     resolveBillingAccess({ complimentaryPlanKey: "growth", dodoPlanKey: "growth" }),
     { accessSource: "dodo", planKey: "growth" },
   );
+  assert.deepEqual(
+    resolveBillingAccess({ complimentaryPlanKey: "startup", dodoPlanKey: "growth" }),
+    { accessSource: "complimentary", planKey: "startup" },
+  );
+  assert.deepEqual(
+    resolveBillingAccess({ complimentaryPlanKey: "growth", dodoPlanKey: "startup" }),
+    { accessSource: "dodo", planKey: "startup" },
+  );
 });
 
 test("billing administration fails closed and requires a verified allowlisted email", () => {

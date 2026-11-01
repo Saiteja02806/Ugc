@@ -12,7 +12,7 @@ export function LandingFooter({
   return (
     <footer data-landing-footer className="relative isolate overflow-hidden bg-[#141414] px-5 pt-10 text-sm text-[#BDBDBD] sm:px-8 sm:pt-12 lg:px-10">
       <div className="relative z-10 mx-auto flex max-w-[1360px] flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <p className="shrink-0">© UGCPilot 2026.</p>
+        <p className="shrink-0">© Vidmake 2026.</p>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:gap-x-7">
           <nav aria-label="Footer legal" className="flex flex-wrap items-center gap-x-5 sm:gap-x-7">
             <a href="/privacy" className={linkClass}>Privacy</a>
@@ -29,7 +29,7 @@ export function LandingFooter({
           </nav>
         </div>
       </div>
-      <div aria-hidden="true" data-footer-wordmark className="pointer-events-none relative -mb-[0.22em] mt-20 select-none whitespace-nowrap text-center text-[clamp(4rem,20.5vw,22rem)] font-black leading-[0.9] tracking-[-0.075em] text-[#242424] sm:mt-28 lg:mt-36">UGCPilot</div>
+      <div aria-hidden="true" data-footer-wordmark className="pointer-events-none relative -mb-[0.22em] mt-20 select-none whitespace-nowrap text-center text-[clamp(4rem,20.5vw,22rem)] font-black leading-[0.9] tracking-[-0.075em] text-[#242424] sm:mt-28 lg:mt-36">Vidmake</div>
     </footer>
   );
 }

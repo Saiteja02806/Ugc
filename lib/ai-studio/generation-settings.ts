@@ -21,6 +21,7 @@ const KLING_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as c
 // duration support from WAN's broader range or change an entered value silently.
 const SEEDANCE_VIDEO_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] as const;
 const WAN_VIDEO_DURATIONS = [2, 3, ...SEEDANCE_VIDEO_DURATIONS] as const;
+const OMNI_VIDEO_DURATIONS = [4, 6, 8, 10] as const;
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
 
 
@@ -55,6 +56,12 @@ export function getAIStudioVideoModelLabel(model: AIStudioVideoModel) {
   return { kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5", wan_3_0: "WAN 3.0" }[model];
 }
 
+export function getDefaultAIStudioVideoModel(
+  seedanceEnabled = process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE === "true",
+): AIStudioVideoModel {
+  return seedanceEnabled ? "seedance_2_5" : "kling_3_0";
+}
+
 export function isAIStudioVideoModelAvailable(
   model: AIStudioVideoModel,
   seedanceEnabled = process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE === "true",
@@ -68,6 +75,7 @@ export function getAIStudioVideoDurations(model: AIStudioVideoModel): readonly A
   if (model === "wan_3_0") return WAN_VIDEO_DURATIONS;
   if (model === "seedance_2_5") return SEEDANCE_VIDEO_DURATIONS;
   if (model === "kling_3_0") return KLING_VIDEO_DURATIONS;
+  if (model === "google_omni") return OMNI_VIDEO_DURATIONS;
   return AI_STUDIO_VIDEO_DURATIONS.filter((duration) => duration <= 10);
 }
 

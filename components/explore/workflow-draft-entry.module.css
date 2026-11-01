@@ -43,15 +43,15 @@
   line-height: 20px;
 }
 
-.primaryAction { background: var(--primary); color: var(--primary-foreground); }
-.primaryAction:hover { background: var(--primary-hover); }
+.primaryAction { background: #0078d4; color: #ffffff; }
+.primaryAction:hover { background: #005a9e; }
 .secondaryAction { border: 1px solid var(--border-strong); background: var(--card); color: var(--foreground); }
 .secondaryAction:hover { background: var(--card-muted); }
 .backLink { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 12px; border-radius: 6px; padding: 0 8px; color: var(--muted); font-size: 13px; text-decoration: none; }
 .backLink:hover { color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
 .backLink:focus-visible,
 .primaryAction:focus-visible,
-.secondaryAction:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.secondaryAction:focus-visible { outline: 2px solid var(--foreground); outline-offset: 4px; }
 
 @media (min-width: 768px) { .screen { min-height: 100dvh; } }
 @media (max-width: 380px) { .card { padding: 28px 20px; } .title { font-size: 22px; } }

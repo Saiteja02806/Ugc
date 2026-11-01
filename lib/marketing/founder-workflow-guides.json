@@ -316,7 +316,7 @@
         "heading": "Translate the release note into a task",
         "paragraphs": [
           "“Assignee filter added” describes a feature. “Find the tasks assigned to you in this project” gives an existing user an action. Write the old difficulty and new action before planning scenes.",
-          "This example uses a fictional project app with a new assignee filter. It is an editorial exercise, not evidence of a UGC Pilot feature or a customer result."
+          "This example uses a fictional project app with a new assignee filter. It is an editorial exercise, not evidence of a Vidmake feature or a customer result."
         ]
       },
       {
@@ -608,7 +608,7 @@
         "heading": "Choose a task with a visible ending",
         "paragraphs": [
           "“Save an article to Weekend reads” has an observable ending. “Organize your life” does not. Choose an action the interface can prove without narration.",
-          "This fictional reading-app sequence contains an article, a collection chooser and a saved confirmation. It is a planning model, not an existing product recording or a promise that UGC Pilot performs these app actions."
+          "This fictional reading-app sequence contains an article, a collection chooser and a saved confirmation. It is a planning model, not an existing product recording or a promise that Vidmake performs these app actions."
         ]
       },
       {
@@ -1119,7 +1119,7 @@
         "heading": "Define completion from the user’s perspective",
         "paragraphs": [
           "Pick a first action that makes the app useful: save a first reading item, create a first project or complete a sample session. Opening the home screen is not necessarily meaningful completion. Choose one action and confirm how the app visibly records it.",
-          "This example uses a fictional reading app. The user creates a collection and saves a first article. It does not describe a UGC Pilot feature or evidence of improved activation."
+          "This example uses a fictional reading app. The user creates a collection and saves a first article. It does not describe a Vidmake feature or evidence of improved activation."
         ]
       },
       {
@@ -1419,7 +1419,7 @@
   {
     "slug": "hook-video-with-real-app-demo",
     "title": "How to Combine an AI Reaction Hook with a Real SaaS Demo",
-    "description": "Plan a reaction hook and real app demo as one social video, with a worked SaaS example, timed edit plan and UGC Pilot workflow checklist.",
+    "description": "Plan a reaction hook and real app demo as one social video, with a worked SaaS example, timed edit plan and Vidmake workflow checklist.",
     "lede": "Use the opening to make a founder’s problem recognizable, then let a real recording of your app answer it. The reaction and the demonstration should tell the same story.",
     "intent": "A complete social reaction-to-product-proof format; existing editing guide owns general demo shortening.",
     "sections": [
@@ -1442,7 +1442,7 @@
         "heading": "Choose an opening that leaves room for the product",
         "paragraphs": [
           "Use an owned reaction clip or an AI-generated opening that fits the message. A puzzled look can introduce searching for information; a small realization can introduce a useful discovery. An unrelated shocked performance makes a larger promise than a modest software action can repay.",
-          "In UGC Pilot, the Hook video workflow has a Create area for footage and a Demo step for the product recording. If requesting new AI footage, review the available model, supported references and displayed credit estimate before submitting. An existing owned opening can avoid an unnecessary new generation. Do not treat a reference clip as permission to republish its creator or claims.",
+          "In Vidmake, the Hook video workflow has a Create area for footage and a Demo step for the product recording. If requesting new AI footage, review the available model, supported references and displayed credit estimate before submitting. An existing owned opening can avoid an unnecessary new generation. Do not treat a reference clip as permission to republish its creator or claims.",
           "Keep exact hook wording in an editable text layer. Generated lettering is not a reliable substitute for approved copy. If an identity reference is used, review the person’s appearance separately from whether the scene and performance support your message. A generated reaction should not be presented as a genuine customer endorsement."
         ]
       },
@@ -1509,7 +1509,7 @@
     "links": [
       {
         "href": "/explore/hook-video",
-        "title": "Open Hook video in UGC Pilot",
+        "title": "Open Hook video in Vidmake",
         "description": "Sign in to work on an opening and a real product demo."
       },
       {
@@ -1542,7 +1542,7 @@
   {
     "slug": "wall-of-text-video-for-saas",
     "title": "How to Make a Wall-of-Text Video for Your SaaS",
-    "description": "Turn verified SaaS business context into a natural wall-of-text social video, with original overlay copy, a footage plan and a UGC Pilot checklist.",
+    "description": "Turn verified SaaS business context into a natural wall-of-text social video, with original overlay copy, a footage plan and a Vidmake checklist.",
     "lede": "Let one relatable situation carry the message. Write the words from real business context, choose footage that leaves them readable, and review the text as part of the final video.",
     "intent": "Business-context-to-written-social-story workflow; existing readable-text guide owns typography and existing hook library owns short openings.",
     "sections": [
@@ -1578,7 +1578,7 @@
         ]
       },
       {
-        "heading": "Build and review it in UGC Pilot",
+        "heading": "Build and review it in Vidmake",
         "paragraphs": [
           "Open Wall of text in Explore. Choose an owned background or create footage with the available controls. Review any displayed credit estimate before a new generation. A source reference helps you plan a creative structure; it does not establish permission to reuse another creator’s footage, wording or claims.",
           "For the chosen video, use the text-editing area to add or review your overlay. Keep the selected words and paragraph breaks deliberate. If using a text remix, confirm that it refers to your business and preserves only supported product facts. A useful draft is still a draft.",
@@ -1633,7 +1633,7 @@
     "links": [
       {
         "href": "/explore/wall-of-text",
-        "title": "Open Wall of text in UGC Pilot",
+        "title": "Open Wall of text in Vidmake",
         "description": "Sign in to work on footage and the written overlay."
       },
       {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
+import { ProductWordmark } from "@/components/brand/product-logo";
 import { LandingLogo } from "@/components/marketing/landing-logo";
 
 type NavItem = {
@@ -50,14 +51,14 @@ export function LandingHeader({
       <div
         className={`pointer-events-auto mx-auto flex w-full items-center justify-between border transition-[max-width,height,padding,gap,background-color,border-color,border-radius,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
           isScrolled
-            ? "h-13 max-w-[620px] gap-3 rounded-full border-border bg-card/90 px-3.5 shadow-floating backdrop-blur-xl"
+            ? "landing-header-notch h-13 max-w-[620px] gap-3 rounded-full border-border bg-card/90 px-3.5 shadow-floating backdrop-blur-xl"
             : "h-16 max-w-[1200px] gap-5 rounded-none border-transparent bg-transparent px-0 shadow-none"
         }`}
       >
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="UGCPilot home"
+          aria-label="Vidmake home"
         >
           <LandingLogo
             sizes={isScrolled ? "24px" : "28px"}
@@ -65,9 +66,7 @@ export function LandingHeader({
               isScrolled ? "size-6" : "size-7"
             }`}
           />
-          <span className="truncate text-[17px] font-semibold text-foreground-strong">
-            UGCPilot
-          </span>
+          <ProductWordmark className="truncate text-[18px] text-foreground-strong" />
         </Link>
 
         <nav

@@ -1,4 +1,4 @@
-export const ONE_TIME_FREE_GENERATION_CREDITS = 2;
+export const ONE_TIME_FREE_GENERATION_CREDITS = 0;
 
 export type FreeGenerationCredits = {
   granted: number;

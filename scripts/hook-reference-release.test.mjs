@@ -3,6 +3,7 @@ import { mock, test } from "node:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import release from "../worker/src/lib/explore-hook-reference-release.json" with { type: "json" };
+import browserPreviews from "../lib/explore/browser-reference-previews.json" with { type: "json" };
 import additions from "../worker/src/lib/explore-hook-reference-addition-release.json" with { type: "json" };
 import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
 import octoberBatch from "../worker/src/lib/explore-hook-reference-oct23-release.json" with { type: "json" };
@@ -50,7 +51,9 @@ test("the active Hook gallery retains reviewed source links and respects silent 
     assert.equal(hook.sourceUrl, registered.sourceUrl ?? registered.instagramUrl);
     assert.equal(hook.sourcePlatform, registered.sourcePlatform ?? (registered.instagramUrl ? "instagram" : undefined));
     if (registered.audioPolicy === "silent") {
-      assert.equal(hook.previewVideoUrl, hook.videoUrl);
+      const browserPreview = browserPreviews.items.find(row => row.referenceId === hook.id && row.sourceStorageKey === registered.videoStorageKey && row.audioPolicy === "silent");
+      if (browserPreview) assert.ok(hook.previewVideoUrl.endsWith(browserPreview.previewStorageKey));
+      else assert.equal(hook.previewVideoUrl, hook.videoUrl);
       assert.equal(hook.pairedAudio, undefined);
     } else {
       // A native-audio source can be its own soundtrack preview without remuxing.

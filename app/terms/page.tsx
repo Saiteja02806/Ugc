@@ -9,20 +9,20 @@ import {
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for UGC Pilot's YouTube, TikTok, and Instagram content creation, media upload, scheduling, and publishing features.",
+    "Terms of Service for Vidmake's YouTube, TikTok, and Instagram content creation, media upload, scheduling, and publishing features.",
 };
 
 export default function TermsPage() {
   return (
     <LegalPageShell
       eyebrow="Terms of Service"
-      title="Rules for using UGC Pilot"
-      description="These terms explain how users may use UGC Pilot to create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content."
+      title="Rules for using Vidmake"
+      description="These terms explain how users may use Vidmake to create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content."
     >
       <div className="space-y-8">
         <LegalSection title="Service overview">
           <p>
-            UGC Pilot is a user-controlled social content creation and
+            Vidmake is a user-controlled social content creation and
             scheduling tool. Users can provide business context, prepare videos
             and multi-slide posts, upload or select images and videos, create
             and edit captions, review rights and disclosures, and approve content
@@ -32,14 +32,14 @@ export default function TermsPage() {
 
         <LegalSection title="Eligibility and user accounts">
           <p>
-            Users must be old enough to use UGC Pilot under applicable law and
+            Users must be old enough to use Vidmake under applicable law and
             able to agree to these terms for themselves or for the business they
             represent.
           </p>
           <p>
             Users are responsible for keeping account credentials secure and for
             all activity under their account. Users must provide accurate
-            information and may not use UGC Pilot to access accounts they do not
+            information and may not use Vidmake to access accounts they do not
             own or have permission to manage.
           </p>
         </LegalSection>
@@ -47,13 +47,13 @@ export default function TermsPage() {
         <LegalSection title="Connected social accounts">
           <p>
             Users may connect a YouTube channel, TikTok account, or Instagram
-            professional account they own or are authorized to manage. UGC Pilot
+            professional account they own or are authorized to manage. Vidmake
             uses the connection only to provide the requested account selection,
             scheduling, publishing, status, and insights features available for
             that platform.
           </p>
           <p>
-            Users can disconnect a platform through UGC Pilot Settings and
+            Users can disconnect a platform through Vidmake Settings and
             remain responsible for following YouTube, TikTok, and Instagram
             terms, community guidelines, advertising rules, and other applicable
             policies.
@@ -63,10 +63,10 @@ export default function TermsPage() {
         <LegalSection title="Content ownership and license">
           <p>
             Users keep ownership of the content they upload, create, generate,
-            edit, or publish through UGC Pilot.
+            edit, or publish through Vidmake.
           </p>
           <p>
-            Users grant UGC Pilot the limited permission needed to store,
+            Users grant Vidmake the limited permission needed to store,
             process, render, modify, schedule, transmit, and publish content
             that the user approves or asks us to process.
           </p>
@@ -76,7 +76,7 @@ export default function TermsPage() {
           <p>
             Users are responsible for confirming that they own or have
             permission to use all content they upload, generate, select,
-            schedule, or publish through UGC Pilot.
+            schedule, or publish through Vidmake.
           </p>
           <LegalList>
             <li>Videos, images, captions, thumbnails, and brand assets.</li>
@@ -92,7 +92,7 @@ export default function TermsPage() {
             required by law, advertising rules, or platform policy.
           </p>
           <p>
-            Users may not use UGC Pilot to impersonate people, clone a person
+            Users may not use Vidmake to impersonate people, clone a person
             without permission, create deceptive testimonials, misrepresent
             sponsored content, or bypass platform labels for AI-generated or
             commercial content.
@@ -114,13 +114,13 @@ export default function TermsPage() {
             <li>Illegal content, adult exploitation, harassment, hate, or unsafe content.</li>
             <li>Unauthorized faces, voices, music, logos, copyrighted assets, or private information.</li>
             <li>Publishing content that violates YouTube, TikTok, or Instagram policy.</li>
-            <li>Attempting to reverse engineer, overload, or abuse UGC Pilot systems.</li>
+            <li>Attempting to reverse engineer, overload, or abuse Vidmake systems.</li>
           </LegalList>
         </LegalSection>
 
         <LegalSection title="Publishing control">
           <p>
-            UGC Pilot is designed for user-approved publishing. Users are
+            Vidmake is designed for user-approved publishing. Users are
             expected to review carousel slides, images, videos, captions,
             disclosures, rights confirmations, the destination platform account,
             and the schedule before publishing.
@@ -157,7 +157,7 @@ export default function TermsPage() {
 
         <LegalSection title="Service availability">
           <p>
-            UGC Pilot may change, pause, or discontinue features. Publishing
+            Vidmake may change, pause, or discontinue features. Publishing
             and insights features depend on YouTube, TikTok, Instagram, and
             other provider APIs, approvals, granted permissions, rate limits,
             account eligibility, and platform availability.
@@ -178,7 +178,7 @@ export default function TermsPage() {
             publishing them.
           </p>
           <p>
-            UGC Pilot does not guarantee that generated content will be approved
+            Vidmake does not guarantee that generated content will be approved
             by YouTube, TikTok, or Instagram, publish successfully, or achieve
             any particular reach, engagement, sales, or other performance result.
           </p>
@@ -186,7 +186,7 @@ export default function TermsPage() {
 
         <LegalSection title="Liability">
           <p>
-            To the maximum extent permitted by law, UGC Pilot is not liable for
+            To the maximum extent permitted by law, Vidmake is not liable for
             indirect, incidental, consequential, special, exemplary, or punitive
             damages, or for lost profits, lost revenue, lost data, failed
             publishing, delayed scheduling, account restrictions, or platform

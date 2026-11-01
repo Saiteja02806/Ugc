@@ -11,7 +11,7 @@ import {
 } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { downloadVideoReference, readMp4DurationSeconds, OMNI_EDIT_MAX_VIDEO_SECONDS } from "./video-reference-input.js";
-import { hookStartingFrameFaceReferenceLimit } from "./hook-starting-frame-video.js";
+const LEGACY_GOOGLE_OMNI_FACE_PHOTOS = 5;
 
 type GenerateGeminiOmniVideoParams = {
   aspectRatio: "9:16" | "16:9";
@@ -76,7 +76,7 @@ export async function generateGeminiOmniVideoBuffer({
   } else {
     const faceUrls = referenceImageUrls ?? [];
     if (startingFrameImageUrl && (referenceImageUrl || referenceVideoUrl || referenceVideoMode ||
-      faceUrls.length > hookStartingFrameFaceReferenceLimit("google_omni") ||
+      faceUrls.length > LEGACY_GOOGLE_OMNI_FACE_PHOTOS ||
       new Set([startingFrameImageUrl, ...faceUrls]).size !== faceUrls.length + 1 ||
       referenceVideoDurationSeconds != null || !Number.isInteger(durationSeconds) || durationSeconds < 3 || durationSeconds > 10)) {
       throw new ProviderRequestNotSubmittedError("Omni starting-frame animation requires one starting image, up to 5 distinct optional face photos, no source video and a duration from 3 to 10 seconds.");
@@ -95,7 +95,7 @@ export async function generateGeminiOmniVideoBuffer({
     // Direct stable-route parity is inferred, not paid-test acceptance. Keep
     // the live token preflight below; a source video does not use an image slot.
     if (imageUrls.length > 10) {
-      throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 10 Google Omni reference images.");
+      throw new ProviderRequestNotSubmittedError("Vidmake accepts up to 10 Google Omni reference images.");
     }
     const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
     let referenceVideo;

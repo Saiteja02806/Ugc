@@ -318,7 +318,7 @@ export function DormantMultiPlatformAnalyticsDashboard() {
       <div className="mx-auto w-full max-w-[1360px]">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+            <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted text-foreground">
               <SidebarIcon name="analytics" className="size-5" />
             </span>
             <div className="min-w-0">
@@ -445,7 +445,7 @@ function AnalyticsReadyState({
         <MetricCard
           icon={<ListChecks className="size-4" aria-hidden="true" />}
           label="Total Posts"
-          sourceLabel="UGC Pilot schedule records"
+          sourceLabel="Vidmake schedule records"
           value={formatMetricNumber(analytics.totals.posts)}
         />
       </div>
@@ -878,13 +878,13 @@ function MetricLineChart({
             );
           })}
           {areaPath ? (
-            <path d={areaPath} fill="rgb(255 90 31 / 0.10)" stroke="none" />
+            <path d={areaPath} fill="rgb(165 110 242 / 0.16)" stroke="none" />
           ) : null}
           {linePath ? (
             <path
               d={linePath}
               fill="none"
-              stroke={hasData ? "rgb(23 52 84)" : "rgb(255 90 31)"}
+              stroke={hasData ? "rgb(165 110 242)" : "rgb(216 180 254)"}
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={hasData ? "5" : "3"}
@@ -896,7 +896,7 @@ function MetricLineChart({
               key={point.bucket.dateKey}
               cx={point.x}
               cy={point.y}
-              fill={point.bucket[metricKey] > 0 ? "rgb(255 90 31)" : "rgb(216 210 203)"}
+              fill={point.bucket[metricKey] > 0 ? "rgb(216 180 254)" : "rgb(155 147 163)"}
               r={point.bucket[metricKey] > 0 ? 5 : 3.5}
               vectorEffect="non-scaling-stroke"
             >
@@ -1161,7 +1161,7 @@ function DistributionBars({
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-card">
               <div
-                className="h-full rounded-full bg-primary"
+                className="h-full rounded-full bg-foreground"
                 style={{ width: `${width}%` }}
               />
             </div>
@@ -1280,7 +1280,7 @@ function EmptyAnalyticsState({
 function StateHeading({
   description,
   icon,
-  iconClassName = "bg-brand-soft text-primary",
+  iconClassName = "bg-card-muted text-foreground",
   title,
 }: {
   description: string;
@@ -1516,7 +1516,7 @@ function buildAnalyticsSummary({
   if (scheduledPostTotals.posts > 0) {
     contentTypeRows.push({
       label: "Scheduled posts",
-      message: "Post count from UGC Pilot schedule records.",
+      message: "Post count from Vidmake schedule records.",
       totals: scheduledPostTotals,
     });
   }

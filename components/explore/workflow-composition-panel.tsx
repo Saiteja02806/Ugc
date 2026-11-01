@@ -135,7 +135,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
     <section aria-label="Background music" className={creation.editGroup}>
       {connected && options && onOptionsChange ? <div className={creation.finishRow}>
         <span className="text-sm font-medium">Background music</span>
-        <Button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic })}>{options.backgroundMusic ? "On" : "Off"}</Button>
+        <Button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} variant="muted" className="h-7 px-3 text-xs" onClick={() => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic })}>{options.backgroundMusic ? "On" : "Off"}</Button>
       </div> : <UnavailableToggle label="Background music" descriptionId={unavailableId} />}
       {backgroundMusic ? <div className="mt-2 space-y-2">
         <p className="text-xs text-muted">Entire video · plays underneath the talking head and demo.</p>
@@ -166,7 +166,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
             </PopoverContent>
           </Popover>
         </div>
-        {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
+        {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
       </div>
       <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
         <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label}</span></summary>

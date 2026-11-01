@@ -17,7 +17,7 @@ const steps = [
   },
   {
     name: "Open the UGC video creator",
-    text: "Use AI Studio on the AI UGC video generator page, or connect Claude and ask it to use the UGC Pilot MCP server.",
+    text: "Use AI Studio on the AI UGC video generator page, or connect Claude and ask it to use the Vidmake MCP server.",
   },
   {
     name: "Add a reference only when you have one",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -54,7 +54,7 @@ export default function HowToCreateUgcVideosPage() {
     <VideoMarketingPage
       eyebrow="UGC video creator"
       h1={h1}
-      lede="A UGC video creator turns a short brief into creator-style footage you can review and download. The video below is one file from UGC Pilot's own founder series. It shows the kind of output, not a recording of these exact steps."
+      lede="A UGC video creator turns a short brief into creator-style footage you can review and download. The video below is one file from Vidmake's own founder series. It shows the kind of output, not a recording of these exact steps."
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -101,7 +101,7 @@ export default function HowToCreateUgcVideosPage() {
           { href: "/blog/ugc-video-generator-examples", title: "More examples", description: "The third Short, Instagram reels, and Clara TikTok videos." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
-          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
           { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
           { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },

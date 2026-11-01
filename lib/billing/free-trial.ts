@@ -154,7 +154,11 @@ export async function assertFreeTrialContentAccess(
     return {
       paid: true as const,
       planKey:
-        activeSubscription.planKey === "growth" ? "growth" : "starter",
+        activeSubscription.planKey === "growth" ||
+        activeSubscription.planKey === "startup" ||
+        activeSubscription.planKey === "starter"
+          ? activeSubscription.planKey
+          : "starter",
       trial: null,
     };
   }

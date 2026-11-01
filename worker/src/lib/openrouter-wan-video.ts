@@ -32,7 +32,7 @@ export function buildOpenRouterWanRequest(input: WanInput) {
   }
   const images = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   if (images.length > 6 || new Set(images).size !== images.length || images.some(url => !isHttpsUrl(url))) {
-    throw new ProviderRequestNotSubmittedError("WAN 3.0 accepts up to six distinct uploaded image references in UGC Pilot.");
+    throw new ProviderRequestNotSubmittedError("WAN 3.0 accepts up to six distinct uploaded image references in Vidmake.");
   }
   return {
     model: OPENROUTER_WAN_MODEL,

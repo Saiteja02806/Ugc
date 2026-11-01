@@ -79,8 +79,7 @@ test("landing auth CTAs start signed out in shared HTML and reconcile the browse
   );
   assert.equal(hasAuthSessionCookie("not_ugc_session=1"), false);
   assert.equal(hasAuthSessionCookie("ugc_session=10"), false);
-  assert.match(landingPage, /const initialHasSession = false/);
-  assert.match(landingPage, /initialHasSession=\{initialHasSession\}/);
+  assert.match(landingPage, /redirect\("\/explore"\)/);
   assert.match(landingAuthActions, /initialHasSession \|\| hasSessionCookie\(\)/);
 });
 
@@ -105,6 +104,12 @@ test("the persistent workspace shell preserves the existing route access matrix"
     activeKey: "analytics",
     defaultSidebarCollapsed: false,
   });
+  assert.deepEqual(getWorkspaceRouteConfig("/explore"), {
+    access: "none",
+    activeKey: "explore",
+    defaultSidebarCollapsed: false,
+  });
+  assert.equal(getWorkspaceRouteConfig("/explore/hook-video")?.access, "profile");
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
     activeKey: "avatars",

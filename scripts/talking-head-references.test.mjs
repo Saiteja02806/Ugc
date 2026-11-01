@@ -47,7 +47,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
     react: { useState: () => [null, () => {}] },
     "react/jsx-runtime": { jsx, jsxs: jsx },
-    "@/components/ui/button": { Button: "button" },
+    "lucide-react": { RotateCcw: "rotate" },
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
     "./recreate-workspace": { ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
     "@/lib/explore/talking-head-reference": { visibleTalkingHeadReferences },
@@ -63,6 +63,8 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() { chosen++; }, onRetry() {} });
     assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), expected);
     const action = nodes(tree).find(node => node.type === "button" && node.props.onPointerEnter);
+    assert.match(action.props["aria-label"], /^(Recreate|Preview) /);
+    assert.equal(action.props.children?.type, "rotate");
     const before = warmed;
     action.props.onPointerEnter(); action.props.onFocus();
     assert.equal(warmed - before, startingFrameEnabled ? 2 : 0);

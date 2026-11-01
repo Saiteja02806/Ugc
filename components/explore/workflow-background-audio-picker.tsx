@@ -129,7 +129,7 @@ function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled
           <p className="text-xs leading-5 text-muted">Choose background music for your video. Preview a track before adding it.</p>
           {library.isPending ? <p role="status" className="text-xs text-muted">Loading background music…</p> : null}
           {library.data ? <>
-            <input type="search" aria-label="Search background audio" placeholder="Search tracks, moods or energy…" value={search} onChange={event => setSearch(event.target.value)} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary" />
+            <input type="search" aria-label="Search background audio" placeholder="Search tracks, moods or energy…" value={search} onChange={event => setSearch(event.target.value)} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:border-white" />
             <p role="status" className="text-xs text-muted">{visible.length} {visible.length === 1 ? "track" : "tracks"}</p>
             {visible.length ? <ul aria-label="Background music tracks" className={`${quietScrollbar.surface} max-h-72 space-y-1 overflow-auto`}>
               {visible.map(track => { const key = `${track.source}:${track.id}`; return <li key={key} className="flex items-center gap-2 rounded-lg p-1">

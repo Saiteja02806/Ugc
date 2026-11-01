@@ -12,4 +12,4 @@ export function isTikTokDirectPostAudited() {
 }
 
 export const TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE =
-  "Public TikTok posting will be available after UGC Pilot's TikTok Direct Post audit is approved. For a private test, choose Only me and make the TikTok account private.";
+  "Public TikTok posting will be available after Vidmake's TikTok Direct Post audit is approved. For a private test, choose Only me and make the TikTok account private.";

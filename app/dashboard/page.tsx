@@ -1,5 +1,5 @@
-import { TrendingWorkspace } from "@/components/trending/trending-workspace";
+import { redirect } from "next/navigation";
 
 export default function DashboardPage() {
-  return <TrendingWorkspace />;
+  redirect("/explore");
 }

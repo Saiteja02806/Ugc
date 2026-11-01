@@ -14,7 +14,7 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/makeugc-alternative-for-b2b-saas";
 const title = "MakeUGC Alternative for B2B SaaS: Studio Quality vs Script Automation";
-const description = "Compare MakeUGC and UGC Pilot for B2B SaaS marketing: evaluating video quality, tech creator avatars, product demo integration, and AI agent automation.";
+const description = "Compare MakeUGC and Vidmake for B2B SaaS marketing: evaluating video quality, tech creator avatars, product demo integration, and AI agent automation.";
 const datePublished = "2026-10-29";
 
 const faqs = [
@@ -27,16 +27,16 @@ const faqs = [
     answer: "B2B buyers make high-consideration purchasing decisions. If an ad features an avatar with obvious visual glitches or desynchronized audio, prospective buyers will question the engineering reliability of your software product.",
   },
   {
-    question: "How does UGC Pilot support B2B SaaS workflows?",
-    answer: "UGC Pilot is built for tech teams: it pairs 3-second expressive creator hooks with crisp software UI cutaways, formats captions for mobile readability, and provides a multi-slide carousel creator for LinkedIn and Instagram.",
+    question: "How does Vidmake support B2B SaaS workflows?",
+    answer: "Vidmake is built for tech teams: it pairs 3-second expressive creator hooks with crisp software UI cutaways, formats captions for mobile readability, and provides a multi-slide carousel creator for LinkedIn and Instagram.",
   },
   {
-    question: "Can I connect UGC Pilot to Claude or Codex via MCP?",
-    answer: "Yes. UGC Pilot provides an official multi-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp, allowing AI coding assistants to research hooks, generate videos, and monitor jobs directly.",
+    question: "Can I connect Vidmake to Claude or Codex via MCP?",
+    answer: "Yes. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp, allowing AI coding assistants to research hooks, generate videos, and monitor jobs directly.",
   },
   {
-    question: "How does UGC Pilot pricing work?",
-    answer: "UGC Pilot offers a 7-day free trial with 2 one-time credits and no credit card required, followed by self-serve plans starting at $19 and $49 per month.",
+    question: "How does Vidmake pricing work?",
+    answer: "Vidmake offers a 7-day free trial with 2 one-time credits and no credit card required, followed by self-serve plans starting at $19 and $49 per month.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -59,7 +59,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
     <VideoMarketingPage
       eyebrow="SaaS Video Alternatives"
       h1={title}
-      lede="MakeUGC made synthetic UGC accessible for lightweight video creation. But when marketing B2B software, enterprise buyers demand higher visual realism and authentic software proof. Here is how MakeUGC and UGC Pilot compare."
+      lede="MakeUGC made synthetic UGC accessible for lightweight video creation. But when marketing B2B software, enterprise buyers demand higher visual realism and authentic software proof. Here is how MakeUGC and Vidmake compare."
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -76,18 +76,18 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
           However, selling B2B software requires a much higher standard of visual trust than selling an impulse-buy consumer gadget. A business buyer evaluating a CRM, database tool, or analytics platform will immediately dismiss an ad if the creator avatar exhibits robotic speech or synthetic video artifacts.
         </p>
         <p>
-          Here is a detailed comparison of MakeUGC and <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> for B2B software marketing.
+          Here is a detailed comparison of MakeUGC and <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> for B2B software marketing.
         </p>
 
-        <ArticleH2>Direct Feature Comparison: MakeUGC vs UGC Pilot</ArticleH2>
+        <ArticleH2>Direct Feature Comparison: MakeUGC vs Vidmake</ArticleH2>
         <div className="overflow-x-auto rounded-[22px] border border-border">
           <table className="w-full min-w-[500px] border-collapse text-left text-sm leading-6">
-            <caption className="sr-only">MakeUGC vs UGC Pilot feature breakdown for B2B software</caption>
+            <caption className="sr-only">MakeUGC vs Vidmake feature breakdown for B2B software</caption>
             <thead className="bg-card-muted/60 text-foreground-strong">
               <tr>
                 <th scope="col" className="p-4 font-semibold">Evaluation Area</th>
                 <th scope="col" className="p-4 font-semibold">MakeUGC</th>
-                <th scope="col" className="p-4 font-semibold">UGC Pilot</th>
+                <th scope="col" className="p-4 font-semibold">Vidmake</th>
               </tr>
             </thead>
             <tbody>
@@ -129,17 +129,17 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
 
         <ArticleH3>1. The Engineering Credibility Halo</ArticleH3>
         <p>
-          When a technical leader or CTO watches a video ad, the quality of your video reflects directly on the quality of your software. A glitchy synthetic avatar makes your company look like a fly-by-night operation. UGC Pilot focuses on photorealistic tech avatars who speak with natural conversational cadence.
+          When a technical leader or CTO watches a video ad, the quality of your video reflects directly on the quality of your software. A glitchy synthetic avatar makes your company look like a fly-by-night operation. Vidmake focuses on photorealistic tech avatars who speak with natural conversational cadence.
         </p>
 
         <ArticleH3>2. Transitioning to Genuine UI Proof</ArticleH3>
         <p>
-          B2B software cannot be sold on a creator&apos;s verbal promise alone. B2B buyers need to see the button being clicked, the report being generated, or the workflow executing. UGC Pilot structures every video around the 3-second hook followed by genuine software screen recordings. Learn more in our guide on <ArticleLink href="/blog/saas-product-demo-video-generator">SaaS product demo video generators</ArticleLink>.
+          B2B software cannot be sold on a creator&apos;s verbal promise alone. B2B buyers need to see the button being clicked, the report being generated, or the workflow executing. Vidmake structures every video around the 3-second hook followed by genuine software screen recordings. Learn more in our guide on <ArticleLink href="/blog/saas-product-demo-video-generator">SaaS product demo video generators</ArticleLink>.
         </p>
 
         <ArticleH3>3. Cross-Channel Repurposing: Video to Carousel</ArticleH3>
         <p>
-          B2B buyers frequently save educational carousels on LinkedIn and Instagram to share with team members. While MakeUGC produces individual video clips, UGC Pilot allows you to turn the same underlying script into an educational multi-slide deck with the <ArticleLink href="/instagram-carousel-maker">Instagram Carousel Maker</ArticleLink>.
+          B2B buyers frequently save educational carousels on LinkedIn and Instagram to share with team members. While MakeUGC produces individual video clips, Vidmake allows you to turn the same underlying script into an educational multi-slide deck with the <ArticleLink href="/instagram-carousel-maker">Instagram Carousel Maker</ArticleLink>.
         </p>
 
         <ArticleH2>When Should You Choose MakeUGC?</ArticleH2>
@@ -152,9 +152,9 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
           <li>You do not need to show software interfaces or integrate screen recordings.</li>
         </ul>
 
-        <ArticleH2>When Should You Choose UGC Pilot?</ArticleH2>
+        <ArticleH2>When Should You Choose Vidmake?</ArticleH2>
         <p>
-          UGC Pilot is built for you if:
+          Vidmake is built for you if:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>You are building or marketing B2B SaaS, DevTools, or digital software.</li>
@@ -172,7 +172,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and full{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and full{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),
@@ -181,7 +181,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start testing with 2 free credits on our 7-day free trial. See{" "}
+                  Start with our 7-day free trial. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -195,7 +195,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
           { href: "/blog/arcads-alternative-for-saas", title: "Arcads Alternative for SaaS", description: "Physical e-commerce ads vs software video workflows." },
           { href: "/blog/creatify-alternative-for-saas", title: "Creatify Alternative for Software", description: "Automated link scrapers vs dedicated SaaS video workflows." },
           { href: "/blog/ai-creator-avatars-tech-products", title: "AI Creator Avatars for Tech", description: "Personas that developers and software buyers trust." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video generation." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
           { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
         ]}
       />

@@ -32,6 +32,23 @@ test("selected Hook supplies an image-only motion preview without importing the 
   assert.equal(getHookKeyframeMotionPrompt({ referenceId: id, sourceSha256: entry.sourceSha256, startingFrameIndex: 0, durationSeconds: 4, generateAudio: false }).status, "blocked");
 });
 
+test("batch 1 recreation previews use the corrected source-specific directions without replacing edits", () => {
+  const cases = [
+    ["explore-paired-hook-4585ee949081c4e5cd835cd3", /arm remains extended toward the camera/],
+    ["explore-paired-hook-ef59f4b5e69bc9e125f8ada7", /glance toward screen-right, then shift the eyes toward screen-left/],
+    ["explore-paired-hook-510f7a66546d25863c268477", /raised index finger in front of the face/],
+  ] as const;
+  for (const [referenceId, expected] of cases) {
+    const source = hookKeyframeMotionCatalog[referenceId];
+    const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId, sourceSha256: source.sourceSha256 }),
+      { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+    const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+    assert.match(preview.directions, expected);
+    assert.match(preview.animationPrompt!, expected);
+    assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+  }
+});
+
 test("main/support photos apply only to the image stage; sound applies only to animation", () => {
   const d = updateHookKeyframeDraft(draft, { imageAssetIds: ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"], instructions: "Keep the same clothing." });
   const silent = getHookKeyframePromptPreview(d), soundOn = getHookKeyframePromptPreview(updateHookKeyframeDraft(d, { generateAudio: true }));
@@ -110,4 +127,92 @@ test("known 4s/5s sources preview their full timeline, with only a trailing hold
  assert.match(p.animationPrompt!,new RegExp(Math.ceil(source)+"-second video"));
  if(source===4.3)assert.match(p.animationPrompt!,/FINAL HOLD 4.3–5s/);
  }
+});
+
+test("Hook 18 keeps its eye closure and camera shake near the observed source ending", () => {
+  const referenceId = "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc";
+  const source = hookKeyframeMotionCatalog[referenceId];
+  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId, sourceSha256: source.sourceSha256 }),
+    { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+  assert.match(preview.animationPrompt!, /1\.39–1\.78s: Briefly close and reopen/);
+  assert.match(preview.animationPrompt!, /1\.78–2\.17s:.*viewpoint shakes/);
+  assert.match(preview.animationPrompt!, /FINAL HOLD 2\.17–3s/);
+  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("batch 4 source timing keeps the laptop lift, glasses removal and final expression late", () => {
+ const cases = [
+  ["explore-paired-hook-59dee735a7c5d1643bc57127", /1\.93–2\.3s: Tilt the laptop lid/],
+  ["explore-paired-hook-43f2c2d266d23e3af05875d8", /2\.18–2\.57s: Pull the glasses/],
+  ["explore-paired-hook-62f80506cbbedab0d340f863", /1\.09–1\.63s: Narrow the mouth/],
+ ] as const;
+ for (const [referenceId, expected] of cases) {
+  const source = hookKeyframeMotionCatalog[referenceId];
+  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+  assert.match(preview.animationPrompt!, expected);
+  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+ }
+});
+
+test("batch 5 glasses actions retain the source pauses and respect user edits", () => {
+ const cases = [
+  ["explore-paired-hook-4ddf4d0f6dc4493f7eb6572f", /2\.1–2\.57s: Move the glasses temple away/],
+  ["explore-paired-hook-f24aeb3d18886faf62ca3b8c", /1\.13–1\.32s: Release the glasses/],
+ ] as const;
+ for (const [referenceId, expected] of cases) {
+  const source = hookKeyframeMotionCatalog[referenceId];
+  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+  assert.match(preview.animationPrompt!, expected);
+  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+ }
+});
+
+test("Hook 36 local preview retains the pause before its questioning gesture", () => {
+ const referenceId = "explore-paired-hook-f1b5421be14d24803539be89";
+ const source = hookKeyframeMotionCatalog[referenceId];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /0\.33–0\.77s: Lift the hand/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("Hook 46 late eye closure follows its source and leaves the other Hook 46 and user edits intact", () => {
+ const id = "explore-paired-hook-318267dcb393c3e701c8c944";
+ const source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /1\.97–2\.07s: Briefly close eyes/);
+ assert.match(preview.animationPrompt!, /2\.07–2\.19s: Reopen eyes/);
+ assert.match(preview.animationPrompt!, /mouth is already covered/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+ const otherId = "explore-paired-hook-4aa27111a23b04a6dd27717b";
+ const other = hookKeyframeMotionCatalog[otherId];
+ const otherOpening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: otherId, sourceSha256: other.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const otherPreview = getHookKeyframePromptPreview(otherOpening, "hook", undefined, undefined, undefined, other.sourceDurationSeconds);
+ assert.match(otherPreview.animationPrompt!, /Lower hand away from mouth/);
+ assert.doesNotMatch(otherPreview.animationPrompt!, /1\.97–2\.07s: Briefly close eyes/);
+});
+
+test("Hook 54 waits for the source close-up before the smile, preserving user edits", () => {
+ const id = "explore-paired-hook-cdddd09fdd3b5a23d9949205";
+ const source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /0\.41–0\.76s: Keep the questioning pursed expression/);
+ assert.match(preview.animationPrompt!, /0\.76–1\.02s: As the view tightens/);
+ assert.match(preview.animationPrompt!, /FINAL HOLD 1\.77–3s/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("Hook 51 retains the late laptop lid lift without imposing an unseen opening angle", () => {
+ const id = "explore-paired-hook-d7a0b28cd22cc29d618a5a6d";
+ const source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /3\.01–3\.2s: As the other hand settles near the base, raise the visible laptop lid/);
+ assert.doesNotMatch(preview.animationPrompt!, /partially open silver laptop/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
 });

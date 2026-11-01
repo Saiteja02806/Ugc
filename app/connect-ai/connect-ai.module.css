@@ -1,12 +1,13 @@
 .page {
-  --primary: #c2410c;
-  --primary-hover: #9a3412;
-  --focus: #c2410c;
+  --primary: #0078d4;
+  --primary-hover: #005a9e;
+  --primary-foreground: #ffffff;
+  --focus: #0078d4;
 }
 
 :global(.dark) main.page {
-  --primary: #ff9a6b;
-  --primary-hover: #ffb38f;
-  --primary-foreground: #1f1f1f;
-  --focus: #ff9a6b;
+  --primary: #0078d4;
+  --primary-hover: #005a9e;
+  --primary-foreground: #ffffff;
+  --focus: #0078d4;
 }

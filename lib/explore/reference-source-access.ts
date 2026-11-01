@@ -1,3 +1,5 @@
+import { isPaidBillingPlan } from "../billing/policy.ts";
+
 type ReferenceSourceSubscription = {
   isActive?: boolean;
   planKey?: string;
@@ -12,5 +14,5 @@ export function canOpenReferenceSource(query: {
 }) {
   return query.isSuccess === true && query.isFetching === false &&
     query.isError === false && query.data?.isActive === true &&
-    (query.data.planKey === "starter" || query.data.planKey === "growth");
+    isPaidBillingPlan(query.data.planKey);
 }

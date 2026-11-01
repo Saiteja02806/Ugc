@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines, Bookmark, Check, LoaderCircle, Pause, Play, RefreshCw } from "lucide-react";
+import { AudioLines, Bookmark, Check, LoaderCircle, Pause, Play, RefreshCw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
@@ -15,15 +15,68 @@ import { Button } from "@/components/ui/button";
 import type { WorkflowAttachment } from "./hook-workflow-media-controls";
 import styles from "./workflow-saved-audio.module.css";
 
-export function WorkflowSavedAudioChoices({ ownerId, audio, onVoiceReference, maxDuration = 30 }: { ownerId: string; audio: WorkflowAttachment; onVoiceReference: () => void; maxDuration?: number }) {
+const CURATED_FAST_VOICES: AudioVoice[] = [
+  {
+    id: "21m00Tcm4TlvDq8ikWAM",
+    name: "Anna",
+    category: "premade",
+    labels: { accent: "American", gender: "Female", age: "young", use_case: "conversational" },
+    description: "Conversational female voice",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/df6788f9-1965-4720-94f6-7b447814b628.mp3",
+  },
+  {
+    id: "TxGEqnHWrfWFTfGW9XjX",
+    name: "Josh",
+    category: "premade",
+    labels: { accent: "American", gender: "Male", age: "young", use_case: "founder" },
+    description: "Energetic founder voice",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/TxGEqnHWrfWFTfGW9XjX/3a34a179-883a-4424-ab04-f655b3bc919b.mp3",
+  },
+  {
+    id: "EXAVITQu4vr4xnSDxMaL",
+    name: "Chloe",
+    category: "premade",
+    labels: { accent: "American", gender: "Female", age: "young", use_case: "ugc creator" },
+    description: "Authentic UGC creator voice",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/0152fdf5-94f1-4ae4-b374-90d160432740.mp3",
+  },
+  {
+    id: "VR6AewLTigWG4xSOukaG",
+    name: "Kobbie",
+    category: "premade",
+    labels: { accent: "British", gender: "Male", age: "middle aged", use_case: "storyteller" },
+    description: "Deep narrative storyteller voice",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/VR6AewLTigWG4xSOukaG/66e83dc2-6543-4897-9283-e18e3a890479.mp3",
+  },
+  {
+    id: "pNInz6obpgDQGcFmaJgB",
+    name: "Wilder",
+    category: "premade",
+    labels: { accent: "American", gender: "Male", age: "middle aged", use_case: "authority" },
+    description: "Confident authoritative voice",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/67341770-466d-473d-82d2-282136e05367.mp3",
+  },
+];
+
+export function WorkflowSavedAudioChoices({ ownerId, audio, onVoiceReference, minDuration = 0, maxDuration = 30 }: { ownerId: string; audio: WorkflowAttachment; onVoiceReference: () => void; minDuration?: number; maxDuration?: number }) {
   const { user, loading } = useAuth();
   if (loading) return <p role="status" className="text-xs text-muted">Loading your saved voices…</p>;
   if (!user) return <p className="text-xs text-muted">Sign in to see your saved voices and recordings.</p>;
   if (user.uid !== ownerId) return <p role="status" className="text-xs text-muted">Loading your saved voices…</p>;
-  return <SavedAudioSession key={user.uid} uid={user.uid} audio={audio} maxDuration={maxDuration} onVoiceReference={onVoiceReference} />;
+  return <SavedAudioSession key={user.uid} uid={user.uid} audio={audio} minDuration={minDuration} maxDuration={maxDuration} onVoiceReference={onVoiceReference} />;
 }
 
-function SavedAudioSession({ uid, audio, onVoiceReference, maxDuration }: { uid: string; audio: WorkflowAttachment; onVoiceReference: () => void; maxDuration: number }) {
+function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDuration }: { uid: string; audio: WorkflowAttachment; onVoiceReference: () => void; minDuration: number; maxDuration: number }) {
   const api = useMemo(() => createAudioApi(uid), [uid]);
   const bookmarks = useAudioBookmarks(uid, api);
   const selection = useAudioVoiceSelection(uid, api);
@@ -61,7 +114,7 @@ function SavedAudioSession({ uid, audio, onVoiceReference, maxDuration }: { uid:
         if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error(`Choose a complete audio recording up to ${maxDuration} seconds.`);
         const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
         return new File([blob], `${name}.${extension}`, { type: blob.type });
-      }, { maxDuration, signal: controller.signal });
+      }, { minDuration, maxDuration, signal: controller.signal });
       if (accepted && !controller.signal.aborted && voice) onVoiceReference();
     } catch (error) {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Audio could not be selected. Try again.");
@@ -78,7 +131,16 @@ function SavedAudioSession({ uid, audio, onVoiceReference, maxDuration }: { uid:
       <button type="button" className={styles.preview} aria-label={`${playing === voice.id ? "Pause" : "Play"} ${voice.name} sample`} disabled={!voice.previewUrl} onClick={() => preview(voice)}>
         <VoiceOrb id={voice.id} /><span className={styles.playIcon}>{playing === voice.id ? <Pause size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}</span>
       </button>
-      <div className={styles.details}><strong title={voice.name}>{voice.name}</strong><span>{voice.labels.accent || voice.labels.use_case || "Voice sample"}{chosen ? " · Selected with Use It" : ""}</span></div>
+      <div className={styles.details}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <strong title={voice.name}>{voice.name}</strong>
+          {voice.labels.gender ? <span className={styles.tagPill}>{voice.labels.gender}</span> : null}
+          <span className={styles.soundwaveBars} data-playing={playing === voice.id ? "true" : undefined} aria-hidden="true">
+            <span /><span /><span /><span />
+          </span>
+        </div>
+        <span>{voice.labels.accent || voice.labels.use_case || "Voice sample"}{chosen ? " · Selected with Use It" : ""}</span>
+      </div>
       <Button type="button" variant="outline" disabled={!voice.previewUrl || !library.data?.account?.paid || busy} title={library.data?.account?.paid ? "Attach this voice sample as a reference" : "This voice is currently available for preview only"} aria-label={`Use ${voice.name} sample as voice reference`} className={styles.useButton} onClick={() => void attach(`/api/audio/voices/${encodeURIComponent(voice.id)}/sample`, voice.id, `${voice.name} voice sample`, true)}>
         {attaching === voice.id ? <LoaderCircle size={14} className="animate-spin" /> : chosen ? <Check size={14} /> : null}Use sample
       </Button>
@@ -89,7 +151,16 @@ function SavedAudioSession({ uid, audio, onVoiceReference, maxDuration }: { uid:
     {loadError ? <p role="alert" className={styles.error}>{loadError}<button type="button" onClick={refresh}><RefreshCw size={13} />Retry saved choices</button></p> : null}
     {selected ? <section aria-label="Selected voice"><h4 className={styles.heading}><AudioLines size={14} />Your selected voice</h4><ul className={styles.list}>{voiceRow(selected, true)}</ul></section> : null}
     <section aria-label="Bookmarked voices"><h4 className={styles.heading}><Bookmark size={14} />Bookmarked voices</h4>
-      {saved.length ? <ul className={styles.list}>{saved.map(voice => voiceRow(voice))}</ul> : !bookmarks.loading && !bookmarks.error ? <p className="text-xs leading-5 text-muted">{selected && bookmarks.ids.has(selected.id) ? "Your selected voice is also bookmarked." : "Bookmark voices in Audio generation to see them here."}</p> : null}
+      {saved.length ? (
+        <ul className={styles.list}>{saved.map(voice => voiceRow(voice))}</ul>
+      ) : !bookmarks.loading && !bookmarks.error ? (
+        <>
+          <p className="text-xs leading-5 text-muted">{selected && bookmarks.ids.has(selected.id) ? "Your selected voice is also bookmarked." : "Bookmark voices in Audio generation, or pick from popular creator voices below:"}</p>
+          <ul className={styles.list} aria-label="Curated creator voices">
+            {CURATED_FAST_VOICES.filter(v => v.id !== selected?.id).map(voice => voiceRow(voice))}
+          </ul>
+        </>
+      ) : null}
       {unavailable && library.isSuccess ? <p className="text-xs text-muted">{unavailable} saved {unavailable === 1 ? "voice is" : "voices are"} currently unavailable.</p> : null}
     </section>
     <details className={styles.recordings}><summary>Choose saved audio <span>{recordings.length}</span></summary>

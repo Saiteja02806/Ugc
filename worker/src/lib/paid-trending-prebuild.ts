@@ -18,7 +18,7 @@ export class PaidTrendingPrebuildRequestError extends Error {
 }
 
 export async function preparePaidTrendingInApp(params: {
-  expectedPlanKey: "starter" | "growth";
+  expectedPlanKey: "starter" | "growth" | "startup";
   subscriptionId: string;
   userId: string;
 }) {

@@ -30,7 +30,7 @@ export function TrendingAiHookBundle({ intro }: { intro: ReactNode }) {
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10">
         <header className="mb-12 flex items-center justify-between border-b border-border pb-5">
-          <Link href="/" className="text-lg font-semibold tracking-tight">UGC Pilot</Link>
+          <Link href="/" className="text-lg font-semibold tracking-tight">Vidmake</Link>
           <nav className="flex items-center gap-1" aria-label="Hook videos">
             <Link href="/guides" className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Guides</Link>
             <Link href="/dashboard" className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Open app →</Link>

@@ -27,7 +27,7 @@ export function validateReferenceFileBatch(
       ? "This model accepts image references only. Video and audio references are unavailable."
       : "This model does not accept that reference type.";
   }
-  if (existingKinds.length + kinds.length > maxFiles) return `You can attach up to ${maxFiles} reference files in UGC Pilot.`;
+  if (existingKinds.length + kinds.length > maxFiles) return `You can attach up to ${maxFiles} reference files in Vidmake.`;
   if ([...existingKinds, ...kinds].filter((kind) => kind === "image").length > maxImages) return `This model accepts up to ${maxImages} reference images. Remove an image or choose another model.`;
   if ([...existingKinds, ...kinds].filter((kind) => kind === "video").length > 1) return "Attach one reference video. Remove the current video to replace it.";
   if ([...existingKinds, ...kinds].filter((kind) => kind === "audio").length > 1) return "Attach one audio reference. Remove the current audio to replace it.";

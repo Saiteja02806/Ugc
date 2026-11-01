@@ -39,7 +39,7 @@ export function LandingBottomCta({ initialHasSession }: { initialHasSession: boo
         <AgentArc />
         <div className="relative z-10 mx-auto flex max-w-[620px] flex-col items-center text-center lg:py-16">
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-            <Sparkles className="size-4" aria-hidden="true" /> UGC Pilot for AI agents
+            <Sparkles className="size-4" aria-hidden="true" /> Vidmake for AI agents
           </span>
           <h2 className="mt-5 text-balance text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-foreground-strong sm:text-5xl lg:text-[3.5rem]">
             Your content studio. Controlled by your agent.

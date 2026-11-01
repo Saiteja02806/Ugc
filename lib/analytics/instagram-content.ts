@@ -524,7 +524,7 @@ function getInstagramContentErrorMessage(error: unknown) {
 
 /**
  * Meta's account media feed can lag behind a post that was published through
- * UGC Pilot. Read the saved, non-sensitive media IDs and ask Meta for only the
+ * Vidmake. Read the saved, non-sensitive media IDs and ask Meta for only the
  * missing posts. A saved database reference is not enough proof that a post is
  * still live: if Meta cannot return it, Analytics must not invent an empty row.
  */

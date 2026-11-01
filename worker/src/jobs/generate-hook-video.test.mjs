@@ -270,7 +270,7 @@ test("starting-frame face roles and model compatibility are checked before reser
 test("malformed or mixed first-frame worker input rejects before reserving a paid operation", async () => {
   const before = received.length;
   for (const patch of [
-    { provider: "runway" }, { model: "google_omni" }, { model: "wan_3_0", provider: "gemini" }, { exploreFormat: "unsupported" }, { generationIntent: "replace_face" },
+    { provider: "runway" }, { model: "wan_3_0", provider: "gemini" }, { exploreFormat: "unsupported" }, { generationIntent: "replace_face" },
     { startingFrameAssetId: undefined }, { startingFrameJobId: undefined }, { startingFrameReceipt: null },
     { referenceId: "another-hook" }, { durationSeconds: 16 }, { durationSeconds: 3 },
     { avatarImageUrl: "https://owned-media.example.test/portrait.png" },

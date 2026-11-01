@@ -1,5 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+import { resolvePrimaryAppOrigin } from "@/lib/marketing/public-origin";
+
 export const runtime = "nodejs";
 
 type MetaSignedRequestPayload = {
@@ -12,7 +14,7 @@ type MetaSignedRequestPayload = {
 export async function GET() {
   return Response.json({
     status: "ready",
-    message: "UGC Pilot Meta data deletion callback endpoint is available.",
+    message: "Vidmake Meta data deletion callback endpoint is available.",
   });
 }
 
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
   }
 
   const confirmationCode = createConfirmationCode(payload.user_id);
-  const baseUrl = process.env.APP_BASE_URL ?? "https://getugcpilot.com";
+  const baseUrl = resolvePrimaryAppOrigin();
 
   return Response.json({
     url: `${baseUrl}/data-deletion?confirmation=${confirmationCode}`,

@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot",
+    kicker: "Vidmake",
     title: "UGC hooks that stop the scroll.",
     subtitle: "Twenty real examples by type, ready to turn into a video.",
   });

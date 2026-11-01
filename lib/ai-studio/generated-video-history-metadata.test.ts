@@ -34,3 +34,12 @@ test("omits unsupported values from video history metadata", () => {
     {},
   );
 });
+
+test("identifies workflow correctly from job input tags, starting frame, or references", () => {
+  assert.equal(getGeneratedVideoHistoryMetadata({ workflow: "talking_head", hookIdea: "Talking head video" }).workflow, "talking_head");
+  assert.equal(getGeneratedVideoHistoryMetadata({ startingFrameReceipt: { workflow: "talking_head" }, hookIdea: "Script" }).workflow, "talking_head");
+  assert.equal(getGeneratedVideoHistoryMetadata({ referenceId: "talking-car-story", hookIdea: "Car story" }).workflow, "talking_head");
+  assert.equal(getGeneratedVideoHistoryMetadata({ workflowKind: "phone", hookIdea: "App demo" }).workflow, "phone");
+  assert.equal(getGeneratedVideoHistoryMetadata({ exploreFormat: "wall_text", hookIdea: "Background" }).workflow, "wall_text");
+  assert.equal(getGeneratedVideoHistoryMetadata({ exploreFormat: "hook", referenceId: "HV_001", hookIdea: "Hook idea" }).workflow, "hook");
+});

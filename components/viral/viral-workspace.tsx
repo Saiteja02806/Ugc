@@ -20,7 +20,8 @@ import {
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
-import { AI_STUDIO_VIDEO_MODELS, getAIStudioVideoModelLabel, isAIStudioVideoModelAvailable, type AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
+import { getModelProviderInfo } from "@/components/generation/model-provider-logos";
+import { AI_STUDIO_VIDEO_MODELS, getDefaultAIStudioVideoModel, getAIStudioVideoModelLabel, isAIStudioVideoModelAvailable, type AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 import { getExploreVideoGenerationLink } from "@/lib/explore/video-generation-link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -124,7 +125,7 @@ const EXPLORE_BACKDROP_VIDEO_LIMIT = 4;
 
 export function ViralWorkspace() {
   const [activeSection, setActiveSection] = useState<ExploreSection>("hook");
-  const [videoModel, setVideoModel] = useState<AIStudioVideoModel>("kling_3_0");
+  const [videoModel, setVideoModel] = useState<AIStudioVideoModel>(() => getDefaultAIStudioVideoModel());
   const { loading: authLoading, user } = useAuth();
   const subscriptionQuery = useBillingSubscription();
   const isProUser = subscriptionQuery.data?.isActive === true;
@@ -163,11 +164,18 @@ export function ViralWorkspace() {
                 <AiStudioSettingSelect
                   ariaLabel="Explore video model"
                   value={videoModel}
-                  options={AI_STUDIO_VIDEO_MODELS.map((model) => ({
-                    value: model,
-                    label: `${getAIStudioVideoModelLabel(model)}${isAIStudioVideoModelAvailable(model) ? "" : " · temporarily unavailable"}`,
-                    disabled: !isAIStudioVideoModelAvailable(model),
-                  }))}
+                                    options={AI_STUDIO_VIDEO_MODELS.map((model) => {
+                    const meta = getModelProviderInfo(model);
+                    return {
+                      value: model,
+                      label: `${getAIStudioVideoModelLabel(model)}${isAIStudioVideoModelAvailable(model) ? "" : " — temporarily unavailable"}`,
+                      triggerLabel: getAIStudioVideoModelLabel(model),
+                      disabled: !isAIStudioVideoModelAvailable(model),
+                      icon: meta.logo,
+                      badge: meta.badge,
+                      description: meta.description,
+                    };
+                  })}
                   onChange={(value) => setVideoModel(value as AIStudioVideoModel)}
                 />
               </div>

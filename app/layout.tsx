@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { Suspense } from "react";
 
 import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirect-handler";
 import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
+import { DomainMoveNotice } from "@/components/marketing/domain-move-notice";
 import {
   THEME_BACKGROUND_COLORS,
   THEME_STORAGE_KEY,
 } from "@/lib/theme";
 
 import "./globals.css";
+
+const brandSerif = localFont({
+  src: "../public/subtitle-fonts/serif/InstrumentSerif-Regular.ttf",
+  display: "swap",
+  variable: "--font-brand-serif",
+  weight: "400",
+});
 
 const geistSans = localFont({
   src: [
@@ -97,13 +106,16 @@ const arialBoldWallText = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://getugcpilot.com"),
+  metadataBase: new URL("https://vidmake.io"),
   title: {
-    default: "UGC Pilot",
-    template: "%s | UGC Pilot",
+    default: "Vidmake",
+    template: "%s | Vidmake",
   },
   description:
-    "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in UGC Pilot.",
+    "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in Vidmake.",
+  verification: {
+    google: "X8wAlsUNDn-IxZoXdj-k5R1WhTKxO8Eb1GEJKzzFyvM",
+  },
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [
@@ -148,7 +160,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${arialBoldWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${brandSerif.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${arialBoldWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,
@@ -171,6 +183,9 @@ export default function RootLayout({
             __html: retiredContentStorageCleanupScript,
           }}
         />
+        <Suspense fallback={null}>
+          <DomainMoveNotice />
+        </Suspense>
         <ThemeProvider>
           <AuthProvider>
             <GoogleAuthRedirectHandler />

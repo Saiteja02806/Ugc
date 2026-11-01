@@ -237,7 +237,7 @@ test("both workflows share the guarded account control and reset destination on 
     assert.match(source, /<WorkflowConnectedAccounts enabled=\{generationEnabled\} active=\{section === "schedule"\} ownerId=\{ownerId\}/);
     assert.match(source, /selectWorkflowAccount\(current, platform, id\)/);
   }
-  assert.match(read("components/explore/workflow-scheduling-panel.tsx"), /toggleWorkflowPlatform\(draft, value\)/);
+  assert.match(read("components/explore/workflow-scheduling-panel.tsx"), /toggleWorkflowPlatform\(current, value\)/);
   const source = read("components/explore/workflow-connected-accounts.tsx");
   assert.match(source, /getCurrentUserIdToken\(ownerId\)/);
   assert.match(source, /if \(signal.aborted\)/);

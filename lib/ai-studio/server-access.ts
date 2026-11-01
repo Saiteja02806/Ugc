@@ -13,9 +13,10 @@ const PRO_ACCESS_MESSAGE =
 export async function isAIStudioProUser(user: VerifiedFirebaseUser) {
   const subscription = await getUserSubscription(user.uid, { strict: true });
 
-  // "isPro" is the existing client capability flag. Free generation credits
-  // enable AI Studio without activating a subscription or other paid features.
-  return subscription.isActive || subscription.freeGenerationCredits.granted > 0;
+  // "isPro" is the existing client capability flag for Explore and AI Studio
+  // routes. A free account can open those routes, and generation still requires
+  // a paid credit balance.
+  return subscription.isActive || subscription.planKey === "free" || subscription.freeGenerationCredits.granted > 0;
 }
 
 export async function requireAIStudioProUser(request: Request) {

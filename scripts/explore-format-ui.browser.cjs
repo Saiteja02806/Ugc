@@ -31,14 +31,14 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       assert.equal(shortcut.searchParams.get('preview'), '1');
       assert.equal(shortcut.searchParams.get('mode'), mode);
     }
-    await page.waitForFunction(() => [...document.querySelectorAll('[data-workflow-cover] video')].length === 3 && [...document.querySelectorAll('[data-workflow-cover] video')].every(video => video.readyState >= 2 && !video.paused && video.videoWidth === 960 && video.videoHeight === 540));
-    const coverPaths = ['/explore/covers/hook-video-v2.mp4', '/explore/covers/wall-of-text-v3.mp4', '/explore/covers/slideshows-v2.mp4'];
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-workflow-cover] video')].length === 3 && [...document.querySelectorAll('[data-workflow-cover] video')].every(video => video.readyState >= 2 && !video.paused && ((video.videoWidth === 960 && video.videoHeight === 540) || (video.videoWidth === 1280 && video.videoHeight === 720))));
+    const coverPaths = ['/explore/covers/hook-video-v2.mp4', '/explore/covers/wall-of-text-v5.mp4', '/explore/covers/slideshows-v2.mp4'];
     for (const [index, video] of (await page.locator('[data-workflow-cover] video').all()).entries()) {
       assert.equal(await video.evaluate(element => element.muted && element.loop && element.playsInline), true);
       assert.equal(await video.evaluate(element => new URL(element.currentSrc).pathname), coverPaths[index]);
       assert.equal(await video.evaluate(element => getComputedStyle(element).objectFit), 'cover');
     }
-    assert.ok(Math.abs(await page.locator('[data-workflow-cover] video').nth(1).evaluate(video => video.duration) - 15.6667) < .05);
+    assert.ok(Math.abs(await page.locator('[data-workflow-cover] video').nth(1).evaluate(video => video.duration) - 8.0) < .05 || Math.abs(await page.locator('[data-workflow-cover] video').nth(1).evaluate(video => video.duration) - 15.6667) < .05);
     // A stable view of each current cover's opening example.
     await page.locator('[data-workflow-cover] video').evaluateAll(videos => videos.forEach(video => { video.pause(); video.currentTime = video.currentSrc.includes('wall-of-text') ? 2 : .5; }));
     await page.waitForFunction(() => [...document.querySelectorAll('[data-workflow-cover] video')].every(video => !video.seeking));

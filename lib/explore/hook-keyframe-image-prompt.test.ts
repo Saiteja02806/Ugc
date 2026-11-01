@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { buildOriginalOpeningImagePrompt, buildHookKeyframeImagePrompt, HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH } from "./hook-keyframe-image-prompt.ts";
+import { buildOriginalOpeningImagePrompt, buildHookKeyframeImagePrompt, buildHookKeyframeStage2Prompt, HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH } from "./hook-keyframe-image-prompt.ts";
 
 test("the default reproduces the exact v4 prompt used in the user-approved image test", () => {
   const result = buildHookKeyframeImagePrompt({
@@ -110,4 +110,14 @@ test("new frame-zero cleanup freezes no later inputs and preserves source lighti
   assert.doesNotMatch(prompt.prompt, /\uFFFD/);
   for(const phrase of [/first decoded frame at elapsed t=0/,/light direction, softness, exposure, contrast, color cast/,/do not copy lighting/i,/physical logos/,/readable text on clothing/,/Keep the objects and clothing themselves/,/face obstruction/])assert.match(prompt.prompt,phrase);
   assert.doesNotMatch(prompt.prompt,/Preserve text physically|Image 2 is the later clarity/);
+});
+
+test("stage 2 copies the influencer photo instead of one fixed face", () => {
+  const prompt = buildHookKeyframeStage2Prompt({ supportingImageCount: 2, instructions: "Keep the glasses." });
+  assert.match(prompt, /STAGE 2 IDENTITY LOCK/);
+  assert.match(prompt, /Copy the features that photo actually shows/);
+  assert.match(prompt, /Images 3 through 4 are other photos of the same person/);
+  assert.match(prompt, /Keep the glasses/);
+  assert.doesNotMatch(prompt, /dark-brown|pillowy|bridge freckles|compact forehead|hazel/);
+  assert.match(buildHookKeyframeStage2Prompt(), /Image 2 is the only identity photo/);
 });

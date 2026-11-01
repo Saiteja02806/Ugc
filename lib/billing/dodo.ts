@@ -1,8 +1,10 @@
 import DodoPayments from "dodopayments";
 import type { UnwrapWebhookEvent } from "dodopayments/resources/webhooks/webhooks";
 
+import { resolvePrimaryAppOrigin } from "@/lib/marketing/public-origin";
+
 export type DodoBillingInterval = "monthly" | "yearly";
-export type DodoPlanSlug = "starter" | "growth";
+export type DodoPlanSlug = "starter" | "growth" | "startup";
 
 export type DodoCheckoutParams = {
   billingInterval: DodoBillingInterval;
@@ -85,7 +87,7 @@ export function resolveDodoProductId(
 export function resolveDodoProductConfig(
   productId: string,
 ): DodoProductConfig | null {
-  for (const planSlug of ["starter", "growth"] as const) {
+  for (const planSlug of ["starter", "growth", "startup"] as const) {
     for (const billingInterval of ["monthly", "yearly"] as const) {
       const configuredId = process.env[
         getProductEnvironmentVariable(planSlug, billingInterval)
@@ -101,11 +103,7 @@ export function resolveDodoProductConfig(
 }
 
 export function getBillingAppBaseUrl() {
-  const rawUrl =
-    process.env.APP_BASE_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "https://getugcpilot.com";
-  const url = new URL(rawUrl);
+  const url = new URL(resolvePrimaryAppOrigin());
 
   if (getDodoEnvironment() === "live_mode" && url.protocol !== "https:") {
     throw new Error("APP_BASE_URL must use HTTPS in Dodo live mode.");
@@ -152,7 +150,7 @@ export async function createDodoCheckoutSession(
         name:
           params.userName ||
           params.userEmail.split("@")[0] ||
-          "UGC Pilot customer",
+          "Vidmake customer",
       };
   const session = await getDodoClient().checkoutSessions.create({
     cancel_url: resolveCheckoutCancelUrl(params),
@@ -274,5 +272,11 @@ function getProductEnvironmentVariable(
   planSlug: DodoPlanSlug,
   billingInterval: DodoBillingInterval,
 ) {
+  if (planSlug === "startup") {
+    return billingInterval === "monthly"
+      ? "DODO_STARTUP_PLAN_MONTHLY"
+      : "DODO_STARTUP_PLAN_YEARLY";
+  }
+
   return `DODO_${planSlug.toUpperCase()}_${billingInterval.toUpperCase()}_PRODUCT_ID`;
 }

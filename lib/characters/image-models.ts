@@ -16,6 +16,8 @@ export function getCharacterImageModelLabel(model: (typeof CHARACTER_IMAGE_MODEL
 }
 export const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 export const MAX_CHARACTER_REFERENCES = 10;
+/** The visual influencer studio sends this model. Seedream remains available to other image jobs. */
+export const CHARACTER_STUDIO_IMAGE_MODEL = "gemini_3_pro" as const satisfies (typeof CHARACTER_IMAGE_MODELS)[number];
 
 export function getCharacterPromptLimit(model: (typeof CHARACTER_IMAGE_MODELS)[number]) {
   return model === "seedream_5_pro" ? 4_000 : MAX_CHARACTER_PROMPT_LENGTH;

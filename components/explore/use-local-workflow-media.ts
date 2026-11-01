@@ -51,7 +51,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
       if (request !== revision.current) return false;
       if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
       if (options.minDuration && duration !== null && duration < options.minDuration) {
-        setError(`Choose ${kind} at least ${options.minDuration} second long.`);
+        setError(`This ${kind} is ${Math.floor(duration * 1000) / 1000} seconds. Choose ${kind} at least ${options.minDuration} ${options.minDuration === 1 ? "second" : "seconds"} long.`);
         return false;
       }
       if (options.maxDuration && duration !== null && duration > options.maxDuration) {

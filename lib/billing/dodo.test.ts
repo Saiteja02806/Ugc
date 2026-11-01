@@ -107,6 +107,19 @@ test("product ids are required and map to one exact plan and cadence", () => {
   });
   assert.equal(resolveDodoProductConfig("pdt_unknown"), null);
 
+  const originalStartupMonthly = process.env.DODO_STARTUP_PLAN_MONTHLY;
+  const originalStartupYearly = process.env.DODO_STARTUP_PLAN_YEARLY;
+  process.env.DODO_STARTUP_PLAN_MONTHLY = "pdt_startup_monthly_test";
+  process.env.DODO_STARTUP_PLAN_YEARLY = "pdt_startup_yearly_test";
+  assert.equal(resolveDodoProductId("startup", "monthly"), "pdt_startup_monthly_test");
+  assert.deepEqual(resolveDodoProductConfig("pdt_startup_yearly_test"), {
+    billingInterval: "yearly",
+    planSlug: "startup",
+    productId: "pdt_startup_yearly_test",
+  });
+  restoreEnvironment("DODO_STARTUP_PLAN_MONTHLY", originalStartupMonthly);
+  restoreEnvironment("DODO_STARTUP_PLAN_YEARLY", originalStartupYearly);
+
   restoreEnvironment("DODO_STARTER_YEARLY_PRODUCT_ID", original);
 });
 
@@ -156,6 +169,10 @@ test("purchase intent survives authentication using validated values only", () =
   assert.equal(
     getPostSignInDestination(params),
     "/pricing?checkout=continue&plan=growth&billing=yearly",
+  );
+  assert.equal(
+    getPostSignInDestination(new URLSearchParams("plan=startup&billing=yearly")),
+    "/pricing?checkout=continue&plan=startup&billing=yearly",
   );
   assert.equal(
     getPostSignInDestination(new URLSearchParams("plan=unknown")),

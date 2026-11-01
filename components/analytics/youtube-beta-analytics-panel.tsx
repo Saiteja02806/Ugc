@@ -155,11 +155,11 @@ export function YouTubeBetaAnalyticsPanel({
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <span
-          className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-red-500"
+          className="absolute inset-y-0 left-0 w-1 bg-foreground"
           aria-hidden="true"
         />
         <header className="px-5 py-5 sm:px-6">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             Performance snapshot
           </p>
           <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -226,7 +226,7 @@ export function YouTubeBetaAnalyticsPanel({
       <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
               Content insights
             </p>
             <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -288,7 +288,7 @@ function AnalyticsSurface({
     <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             {eyebrow}
           </p>
           <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -320,7 +320,7 @@ function SnapshotMetric({
     <div className="min-w-0 border-b border-border p-4 [&:nth-child(odd)]:border-r [&:nth-last-child(-n+2)]:border-b-0 sm:p-5 lg:border-b-0 lg:border-r lg:last:border-r-0">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-muted">{label}</p>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-primary [&>svg]:size-4">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-foreground [&>svg]:size-4">
           {icon}
         </span>
       </div>
@@ -574,7 +574,7 @@ function YouTubeContentDetailDialog({
               <section aria-labelledby="youtube-metric-breakdown">
                 <p
                   id="youtube-metric-breakdown"
-                  className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong"
                 >
                   Video metrics
                 </p>
@@ -656,7 +656,7 @@ function YouTubeContentDetailMetric({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
-      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-primary">
+      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-foreground">
         {icon}
         {label}
       </dt>
@@ -678,7 +678,7 @@ function AccountReadiness({
 }) {
   return (
     <aside className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
         Account readiness
       </p>
       <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">

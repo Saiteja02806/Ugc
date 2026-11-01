@@ -7,7 +7,7 @@ export function LandingComparisonSection() {
         {/* Section Header */}
         <div className="mx-auto max-w-xl text-center">
           <p className="text-sm font-semibold text-primary">
-            Why UGC Pilot
+            Why Vidmake
           </p>
           <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-4xl">
             Bring your content workflow into one place.
@@ -89,14 +89,14 @@ export function LandingComparisonSection() {
           </div>
 
           {/* ========================================================= */}
-          {/* Right: The UGCPilot Flow (Clean Orange Outline Only, No Inner Glow) */}
+          {/* Right: The Vidmake Flow (Clean Orange Outline Only, No Inner Glow) */}
           {/* ========================================================= */}
           <div className="relative flex flex-col justify-between overflow-hidden rounded-[22px] border-2 border-primary bg-card p-5 sm:p-6 shadow-card">
             <div>
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                    The UGC Pilot Flow
+                    The Vidmake Flow
                   </span>
                   <h3 className="mt-0.5 text-xl font-semibold text-foreground-strong">
                     Create, review, then export

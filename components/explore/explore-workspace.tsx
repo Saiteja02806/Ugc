@@ -1,7 +1,10 @@
 "use client";
 
 import { Headphones, ImageIcon, Sparkles, Video } from "lucide-react";
+import NextLink from "next/link";
+
 import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
+import { useAuth } from "@/contexts/auth-context";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";
@@ -15,12 +18,32 @@ import { cn } from "@/lib/utils";
 const QUICK_START_ICONS = { studio: Sparkles, video: Video, image: ImageIcon, audio: Headphones };
 
 export function ExploreWorkspace({ localPreview = false }: { localPreview?: boolean }) {
+  const { user } = useAuth();
+
   return (
     <section className={cn(scrollbars.surface, scrollbars.page, "min-h-dvh bg-background px-4 py-7 text-foreground sm:px-6 lg:px-8 lg:py-8")}>
       <div className={styles.page}>
-        <header className="mb-7">
-          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground-strong">Explore</h1>
-          <p className="mt-2 text-sm text-muted">Find your next format. Start with a workflow or a creation tool.</p>
+        <header className="mb-7 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground-strong">Explore</h1>
+            <p className="mt-2 text-sm text-muted">Find your next format. Start with a workflow or a creation tool.</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <NextLink
+              href="/pricing"
+              className="inline-flex h-9 items-center rounded-[10px] border border-border-strong bg-card px-3.5 text-sm font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Upgrade
+            </NextLink>
+            {user ? null : (
+              <NextLink
+                href="/sign-in"
+                className="inline-flex h-9 items-center rounded-full bg-foreground-strong px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                Sign up
+              </NextLink>
+            )}
+          </div>
         </header>
         <section aria-label="Workflows">
           <div className={styles.workflowGrid}>
@@ -47,7 +70,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
                   );
                 })}
               </div>
-              <h3 id="explore-quick-start-title" className="mt-4 text-lg font-semibold tracking-tight text-foreground-strong">Quick start</h3>
+              <h3 id="explore-quick-start-title" className="mt-3 text-lg font-semibold tracking-tight text-foreground-strong">Quick start</h3>
               <p className="mt-1.5 max-w-[44ch] text-pretty text-sm leading-6 text-muted">Open a tool to create images, videos, or audio.</p>
             </section>
           </div>

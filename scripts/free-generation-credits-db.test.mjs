@@ -158,3 +158,15 @@ test("browser roles cannot claim credits or mutate ledgers through the Data API"
     await reserve(db, "service-claim");
   } finally { await db.close(); }
 });
+
+test("the removal migration leaves free accounts with no spendable credits", async () => {
+  const db = await fixture();
+  try {
+    assert.equal((await grant(db)).rows[0].result.remaining, 2);
+    await db.exec(readFileSync(new URL("../supabase/migrations/20261101123000_remove_free_generation_credits.sql", import.meta.url), "utf8"));
+    assert.deepEqual((await grant(db)).rows[0].result, { granted: 0, remaining: 0, reserved: 0, used: 0 });
+    await assert.rejects(reserve(db, "denied"), /insufficient_billing_credits/u);
+    assert.equal((await balance(db)).credit_limit, 0);
+    assert.equal((await balance(db)).reserved_credits, 0);
+  } finally { await db.close(); }
+});

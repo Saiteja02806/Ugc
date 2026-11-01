@@ -44,7 +44,7 @@ export function SiteAnalytics() {
 
   return (
     <section aria-label="Analytics preferences" className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-xl rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl">
-      <p className="font-semibold">Help us improve UGC Pilot</p>
+      <p className="font-semibold">Help us improve Vidmake</p>
       <p className="mt-2 text-sm text-muted-foreground">
         With your permission, Google Analytics measures public page visits and new accounts.
         You can change your choice here at any time. <Link href="/cookies" className="underline">Cookie policy</Link>

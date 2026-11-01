@@ -2,7 +2,7 @@ import type { BillingInterval } from "@/lib/pricing/plans";
 
 export type PurchaseIntent = {
   billingInterval: BillingInterval;
-  planSlug: "free" | "growth" | "starter";
+  planSlug: "free" | "growth" | "starter" | "startup";
 };
 
 export function parsePurchaseIntent(
@@ -10,7 +10,12 @@ export function parsePurchaseIntent(
 ): PurchaseIntent | null {
   const rawPlan = searchParams.get("plan");
 
-  if (rawPlan !== "free" && rawPlan !== "starter" && rawPlan !== "growth") {
+  if (
+    rawPlan !== "free" &&
+    rawPlan !== "starter" &&
+    rawPlan !== "growth" &&
+    rawPlan !== "startup"
+  ) {
     return null;
   }
 

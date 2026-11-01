@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 import type { GoogleGenAI } from "@google/genai";
 
 import { buildGeminiImageRequest, generateGemini3ProImageBuffer } from "./gemini-image.js";
@@ -107,6 +108,21 @@ test("Google status retrieval failures retain the interaction for recovery", asy
     await assert.rejects(generateGemini3ProImageBuffer({ ...base, providerOperationId: "saved-interaction", ...callbacks(events) }, client), ProviderOperationPollingError);
     assert.deepEqual(events, []);
   } finally { getMock.mock.restore(); }
+});
+
+test("an incomplete operation recovers only a fully decodable final image without resubmission", async () => {
+  const valid = await sharp({ create: { width: 16, height: 16, channels: 3, background: "white" } }).png().toBuffer();
+  for (const data of [valid.toString("base64"), "invalid", ""]) {
+    const events: string[] = [];
+    const result = generateGemini3ProImageBuffer({ ...base, providerOperationId: "saved-interaction", ...callbacks(events) }, fakeClient(events, "incomplete", data));
+    if (data === valid.toString("base64")) {
+      assert.deepEqual(await result, valid);
+      assert.deepEqual(events, ["get:saved-interaction", "persist-success"]);
+    } else {
+      await assert.rejects(result, ProviderOperationTerminalError);
+      assert.deepEqual(events, ["get:saved-interaction"]);
+    }
+  }
 });
 
 test("Google terminal failures and missing image data cannot trigger another paid submission", async () => {

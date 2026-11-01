@@ -573,7 +573,7 @@ export function HookVideoScheduleDrawer({
                             setScheduledTime(scheduledTime);
                             setScheduledDate(event.target.value);
                           }}
-                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-white focus:ring-1 focus:ring-white"
                         />
                       </label>
                       <label className="text-xs font-semibold text-muted">
@@ -589,7 +589,7 @@ export function HookVideoScheduleDrawer({
                         name="schedule-timezone"
                         value={timezone}
                         onChange={(event) => setTimezone(event.target.value)}
-                        className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-white focus:ring-1 focus:ring-white"
                       >
                         {getSchedulingTimeZoneOptions(timezone).map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
                       </select>
@@ -669,7 +669,7 @@ export function HookVideoScheduleDrawer({
           {preparationPending ? (
             <div
               role="status"
-              className="mt-4 flex items-start gap-2 rounded-[10px] border border-primary/25 bg-primary/5 px-3 py-2.5 text-xs font-semibold leading-5 text-primary"
+              className="mt-4 flex items-start gap-2 rounded-[10px] border border-white/30 px-3 py-2.5 text-xs font-semibold leading-5 text-primary"
             >
               <Loader2
                 className="mt-0.5 size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
@@ -759,7 +759,7 @@ function ConnectionRow({
   const available = connection.status === "connected";
 
   return (
-    <div className={cn("overflow-hidden rounded-[12px] border bg-card", selected ? "border-primary" : "border-border", !available && "opacity-55")}>
+    <div className={cn("overflow-hidden rounded-[12px] border bg-card", selected ? "border-white" : "border-border", !available && "opacity-55")}>
       <label className={cn("flex min-h-14 items-center gap-3 px-3 py-2", available ? "cursor-pointer" : "cursor-not-allowed")}>
         <input
           type="checkbox"

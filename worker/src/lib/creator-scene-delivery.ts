@@ -36,7 +36,7 @@ export function creatorSceneCanonicalUrl(source: Source, role: CreatorSceneRole 
 export function isCreatorSceneCanonicalUrl(url: string, receipt: Source, role: CreatorSceneRole = "source") {
   try {
     const candidate = new URL(url), canonical = new URL(creatorSceneCanonicalUrl(receipt, role));
-    return [creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com"].includes(candidate.origin)
+    return [creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com", "https://vidmake.io", "https://www.vidmake.io"].includes(candidate.origin)
       && candidate.pathname === canonical.pathname && !candidate.search && !candidate.hash && !candidate.username && !candidate.password;
   } catch { return false; }
 }

@@ -158,7 +158,7 @@ export function useSocialOAuthPopup(params?: {
         setConnectingConnectionId(null);
         setConnectingIntent(null);
         setPopupError(
-          "Your browser blocked the connection window. Allow popups for UGC Pilot and try again.",
+          "Your browser blocked the connection window. Allow popups for Vidmake and try again.",
         );
         setPopupErrorCode(null);
         return;
@@ -267,7 +267,14 @@ export function useSocialOAuthPopup(params?: {
   };
 }
 
-function isAllowedOAuthMessageOrigin(origin: string) {
+const TRUSTED_OAUTH_HOSTNAMES = new Set([
+  "vidmake.io",
+  "www.vidmake.io",
+  "getugcpilot.com",
+  "www.getugcpilot.com",
+]);
+
+export function isAllowedOAuthMessageOrigin(origin: string) {
   if (origin === window.location.origin) {
     return true;
   }
@@ -276,13 +283,18 @@ function isAllowedOAuthMessageOrigin(origin: string) {
     const current = new URL(window.location.origin);
     const incoming = new URL(origin);
 
-    return (
-      current.protocol === incoming.protocol &&
-      ((current.hostname === "getugcpilot.com" &&
-        incoming.hostname === "www.getugcpilot.com") ||
-        (current.hostname === "www.getugcpilot.com" &&
-          incoming.hostname === "getugcpilot.com"))
-    );
+    if (current.protocol !== incoming.protocol) {
+      return false;
+    }
+
+    if (
+      TRUSTED_OAUTH_HOSTNAMES.has(current.hostname) &&
+      TRUSTED_OAUTH_HOSTNAMES.has(incoming.hostname)
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
@@ -322,7 +334,7 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
       message = `${getPlatformLabel(result.platform)} connected, but the account profile could not be loaded. Check the granted permissions.`;
       break;
     case "connection_save_failed":
-      message = `${getPlatformLabel(result.platform)} connected, but UGC Pilot could not save the account. Try again.`;
+      message = `${getPlatformLabel(result.platform)} connected, but Vidmake could not save the account. Try again.`;
       break;
     case "youtube_channel_missing":
       message = "No YouTube channel was found for this Google account.";

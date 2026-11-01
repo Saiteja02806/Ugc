@@ -9,20 +9,20 @@ import {
 export const metadata: Metadata = {
   title: "System Status",
   description:
-    "Public status and support information for UGC Pilot account connections, uploads, scheduling, and publishing.",
+    "Public status and support information for Vidmake account connections, uploads, scheduling, and publishing.",
 };
 
 export default function StatusPage() {
   return (
     <LegalPageShell
       eyebrow="System Status"
-      title="UGC Pilot status and support"
-      description="Use this page for public support contacts and current operational guidance for UGC Pilot."
+      title="Vidmake status and support"
+      description="Use this page for public support contacts and current operational guidance for Vidmake."
     >
       <div className="flex flex-col gap-8">
         <LegalSection title="Current status">
           <p>
-            UGC Pilot does not currently publish a separate real-time incident
+            Vidmake does not currently publish a separate real-time incident
             dashboard. If uploads, account connections, scheduling, or
             publishing appear unavailable, contact support so we can investigate
             the account and connected platform involved.
@@ -31,10 +31,10 @@ export default function StatusPage() {
 
         <LegalSection title="What to include in a support request">
           <LegalList>
-            <li>The email address used for the UGC Pilot account.</li>
+            <li>The email address used for the Vidmake account.</li>
             <li>The connected Instagram account involved.</li>
             <li>The time the issue occurred and the post or draft affected.</li>
-            <li>Any visible error message from UGC Pilot or the connected platform.</li>
+            <li>Any visible error message from Vidmake or the connected platform.</li>
           </LegalList>
         </LegalSection>
 

@@ -27,7 +27,7 @@ export type YouTubePublicationActivitySummary = {
 };
 
 /**
- * Builds a user-facing audit trail from UGC Pilot's durable scheduling
+ * Builds a user-facing audit trail from Vidmake's durable scheduling
  * records. This intentionally reports publishing state only; it does not
  * represent YouTube performance metrics such as views or watch time.
  */

@@ -40,10 +40,16 @@ test("the shared workflow time field preserves 24-hour values and the rest of th
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/workflow-scheduling-panel.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, name); return imports[name]; } });
+  for (const actionsPosition of [undefined, "top"]) {
+    const footer = jsx.jsx("schedule-actions", {});
+    const tree = nodes(exported.WorkflowSchedulingPanel({ draft, onChange() {}, footer, actionsPosition }));
+    assert.equal(tree.filter(node => node === footer).length, 1);
+    assert.equal(tree.indexOf(footer) < tree.findIndex(node => node.type === "PostCaptionField"), actionsPosition === "top", "Only opted-in slideshow actions move above the settings");
+  }
   for (const time of ["00:00", "05:30", "12:00", "17:30", "23:59"]) {
     const current = { ...draft, time, timezone: "Asia/Calcutta" };
     let next;
-    const tree = exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = value; }, timezone: current.timezone });
+    const tree = exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = scheduling.resolveWorkflowScheduleDraft(current, value); }, timezone: current.timezone });
     const field = nodes(tree).find(node => node.type === "time-picker");
     assert.equal(field.props.value, time);
     field.props.onChange("17:30");
@@ -51,7 +57,7 @@ test("the shared workflow time field preserves 24-hour values and the rest of th
     assert.equal(current.time, time, "Editing must not mutate the existing draft");
   }
   let current = { ...draft }, next;
-  const render = () => exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = value; }, timezone: "Asia/Calcutta" });
+  const render = () => exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = scheduling.resolveWorkflowScheduleDraft(current, value); }, timezone: "Asia/Calcutta" });
   for (const preset of [5, 60, 180, "tomorrow"]) {
     nodes(render()).find(node => node.type === "quick-actions").props.onSelect({ date: "2099-12-02", time: "09:00" }, preset);
     current = next;
@@ -287,6 +293,14 @@ test("Hook, Wall and Slideshow can schedule the same output an hour later with a
     const key = `ugc-explore:schedule:v1:alice:format:${h.props.output.kind}:${output.id}`;
     const previous = JSON.parse(h.storage.get(key));
     assert.ok(previous.scheduleId);
+    const footerNodes = nodes(h.form().footer);
+    const links = footerNodes.filter(node => node.type === "Link" && node.props.href === "/scheduling");
+    assert.equal(links.length, 1, `${format}: exactly one confirmed Scheduling link`);
+    const confirmation = footerNodes.find(node => node.type === "div" && Array.isArray(node.props.children) && node.props.children.includes(links[0]));
+    assert.ok(confirmation, `${format}: link shares its parent with the status`);
+    assert.equal(nodes(confirmation).find(node => node.props?.role === "status").props.children, "Post scheduled");
+    assert.ok(footerNodes.indexOf(links[0]) < footerNodes.findIndex(node => node.type === "Button" && node.props.size === "lg"));
+    assert.equal(footerNodes.filter(node => node.props?.role === "status" && node.props.children === "Post scheduled").length, 1);
     const repeat = nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg");
     assert.equal(repeat.props.disabled, false);
     repeat.props.onClick(); repeat.props.onClick(); await settle(); h.render();

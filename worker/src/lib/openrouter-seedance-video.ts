@@ -31,12 +31,12 @@ export function buildOpenRouterSeedanceRequest(input: SeedanceInput) {
   const images = input.referenceImageUrls?.length
     ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   if (images.length > 6 || new Set(images).size !== images.length || images.some((url) => !isHttpsUrl(url))) {
-    throw new ProviderRequestNotSubmittedError("Seedance 2.5 accepts up to six distinct uploaded image references in UGC Pilot.");
+    throw new ProviderRequestNotSubmittedError("Seedance 2.5 accepts up to six distinct uploaded image references in Vidmake.");
   }
   const audio = input.referenceAudioUrls ?? [];
   const media = [...images, ...audio, ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : [])];
   if (media.length > 6 || audio.length > 1 || media.some(url => !isHttpsUrl(url)) || new Set(media).size !== media.length) {
-    throw new ProviderRequestNotSubmittedError("Use up to six distinct HTTPS references, including one audio and one video reference, in UGC Pilot.");
+    throw new ProviderRequestNotSubmittedError("Use up to six distinct HTTPS references, including one audio and one video reference, in Vidmake.");
   }
   // OpenRouter Seedance 2.5 accepts all three input_references modalities.
   // These guide generation; there is no soundtrack mixing or demo append here.

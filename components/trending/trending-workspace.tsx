@@ -1197,7 +1197,7 @@ export function TrendingWorkspace() {
                 <Link
                   href={trialPill.href}
                   title={trialPill.title}
-                  className="inline-flex h-6 items-center rounded-full border border-primary/25 bg-primary/[0.08] px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/[0.15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="inline-flex h-6 items-center rounded-full border border-white/40 px-2.5 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   {trialPill.label}
                 </Link>
@@ -1208,7 +1208,7 @@ export function TrendingWorkspace() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <MediaLibraryButton label="Manage library" variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
+            <MediaLibraryButton label="Manage library" variant="creative-edit" disabled={authLoading || !user} />
             <Button
               data-trending-adjust-control
               type="button"
@@ -1218,7 +1218,7 @@ export function TrendingWorkspace() {
               title="Adjust content mix"
               disabled={authLoading || !user}
               onClick={() => setContentMixOpen(true)}
-              className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
+              className="group transition-all duration-200 hover:border-white/50 hover:bg-card hover:text-foreground active:scale-[0.98]"
             >
               <SlidersHorizontal
                 data-icon="inline-start"
@@ -1236,7 +1236,7 @@ export function TrendingWorkspace() {
               title={automationStatus?.owner === user?.uid && automationStatus?.status === "active" ? "Slideshow automation is active" : "Slideshow automation"}
               disabled={authLoading || !user}
               onClick={() => setAutomationOpen(true)}
-              className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
+              className="group transition-all duration-200 hover:border-white/50 hover:bg-card hover:text-foreground active:scale-[0.98]"
             >
               <Sparkles
                 data-icon="inline-start"
@@ -1552,7 +1552,7 @@ function TrendingReadyEmptyState() {
 
 function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-14 text-center">
+    <div className="mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border border-border bg-card px-6 py-14 text-center">
       <h2 className="text-lg font-semibold text-foreground-strong">
         Complete your profile
       </h2>
@@ -3231,8 +3231,8 @@ const CarouselActionOption = forwardRef<
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[12px] border bg-card-muted px-5 py-4 text-left transition-[background-color,border-color] hover:border-primary/50 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-65",
-        selected ? "border-primary/50 ring-2 ring-primary/15" : "border-border",
+        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[12px] border bg-card-muted px-5 py-4 text-left transition-[background-color,border-color] hover:border-white/50 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-65",
+        selected ? "border-white ring-2 ring-white/20" : "border-border",
       )}
     >
       <span

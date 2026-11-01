@@ -1,17 +1,17 @@
-# UGC Pilot
+# Vidmake
 
-[UGC Pilot](https://getugcpilot.com) turns a short brief into creator-style video you can review, edit, and download. Claude and Codex can do the same work through the hosted MCP server at `https://mcp.getugcpilot.com/mcp`. Sign-in is OAuth, so you approve access in the browser instead of pasting an API key into the chat.
+[Vidmake](https://vidmake.io) turns a short brief into creator-style video you can review, edit, and download. Claude and Codex can do the same work through the hosted MCP server at `https://mcp.getugcpilot.com/mcp`. Sign-in is OAuth, so you approve access in the browser instead of pasting an API key into the chat.
 
-- [Website](https://getugcpilot.com)
-- [MCP server](https://getugcpilot.com/mcp)
-- [Connect Claude](https://getugcpilot.com/mcp/claude)
-- [Connect Codex](https://getugcpilot.com/mcp/codex)
-- [MCP tools](https://getugcpilot.com/docs/mcp-tools)
+- [Website](https://vidmake.io)
+- [MCP server](https://vidmake.io/mcp)
+- [Connect Claude](https://vidmake.io/mcp/claude)
+- [Connect Codex](https://vidmake.io/mcp/codex)
+- [MCP tools](https://vidmake.io/docs/mcp-tools)
 - MCP URL: `https://mcp.getugcpilot.com/mcp`
 
 ## See it in action
 
-These are the same public videos embedded on [UGC video generator examples](https://getugcpilot.com/blog/ugc-video-generator-examples).
+These are the same public videos embedded on [UGC video generator examples](https://vidmake.io/blog/ugc-video-generator-examples).
 
 ### YouTube
 
@@ -46,7 +46,7 @@ These are the same public videos embedded on [UGC video generator examples](http
 
 ## Repository
 
-This repository is the Next.js app for UGC Pilot. It generates reusable AI creator avatars for short-form UGC ad hooks.
+This repository is the Next.js app for Vidmake. It generates reusable AI creator avatars for short-form UGC ad hooks.
 
 ## Current Slice
 

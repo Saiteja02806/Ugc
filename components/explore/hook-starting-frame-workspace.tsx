@@ -8,6 +8,7 @@ import { ArrowLeft, ExternalLink, ImageIcon, Loader2, RefreshCw, Scan, UserRound
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
+import { LidarPointCloudCanvas } from "@/components/video/lidar-point-cloud-canvas";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -125,6 +126,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const [choosingInfluencer, setChoosingInfluencer] = useState(false);
   const [saved, setSaved] = useState(false);
   const [variations, setVariations] = useState<HookKeyframeVariationStore | null>(null);
+  const restoredRequests = useRef(new Set<string>());
+  const [showPreviousGenerations, setShowPreviousGenerations] = useState(false);
   const [variationCount, setVariationCount] = useState(1);
   const [checkpointRestored, setCheckpointRestored] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -252,6 +255,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           throw new Error("Another tab has a different saved image request. Reopen this preparation to recover it.");
         }
         const recovered = stored ?? (legacy ? importHookKeyframeCheckpoint(legacy) : null);
+        restoredRequests.current = new Set(recovered?.entries.map(entry => entry.checkpoint.requestKey) ?? []);
+        setShowPreviousGenerations(false);
         if (recovered && !stored) localStorage.setItem(variationsKey, JSON.stringify(recovered));
         setVariations(recovered); setCheckpointRestored(true);
       }
@@ -497,20 +502,22 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const frameStyle = { "--frame-ratio": frameQuery.data ? frameQuery.data.frame.width / frameQuery.data.frame.height : 9 / 16 } as CSSProperties;
   const resultStyle = { "--frame-ratio": imageJob?.output ? imageJob.output.width / imageJob.output.height : 9 / 16 } as CSSProperties;
   const selectedIndex = readableEntries.findIndex(entry => entry.checkpoint.requestKey === checkpoint?.requestKey);
-  const cannotUseFrame = !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
+  const historyCollapsed = !showPreviousGenerations && Boolean(checkpoint && restoredRequests.current.has(checkpoint.requestKey));
+  const cannotUseFrame = historyCollapsed || !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
   const customPromptSize = draft.customImagePrompt === undefined ? 0 : draft.customImagePrompt.length + "\n\nIMAGE INPUT ORDER:\n".length + hookKeyframeProviderImageLabels(Math.max(1, draft.imageAssetIds.length), 7).join("\n").length;
   const customPromptLimit = draft.imageModel === "seedream_5_pro" ? 4000 : 8000;
   const promptLimitError = customPromptSize > customPromptLimit ? `Shorten this prompt to fit ${customPromptLimit.toLocaleString()} characters including image labels for this model.` : null;
   const cannotGenerate = Boolean(promptLimitError) || Boolean(generationDisabledReason) || motionBlocked || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
   const generateLabel = submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image";
   const resultActions = presentation === "recreation" ? <div className={styles.resultActions} role="group" aria-label="Starting frame approval" data-has-results={Boolean(readableEntries.length)}>
-    {readableEntries.length ? <div className={styles.resultSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Review your starting frame"}</strong>
+    {readableEntries.length && !historyCollapsed ? <div className={styles.resultSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Review your starting frame"}</strong>
       {!imageJob?.output || !matchingImage || !previewReady(imageJob) || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? <span>{imageJob?.output && !matchingImage ? "Inputs changed. Generate a new frame to use them." : promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? "Motion needs review before this image can be used." : imageJob?.output ? "Load and review the selected preview before continuing." : creatingImage ? "Your images are generating. You can review them here." : "Generate an image, then select it to continue."}</span> : null}
     </div> : null}
-    {!generationDisabledReason ? <p className={styles.resultCost}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking price…"}</p> : null}
+    {!generationDisabledReason ? <p className={styles.resultCost}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : costQuery.error ? "Price could not be loaded." : "Checking price…"}</p> : null}
+    {costQuery.error && costQuery.data === undefined ? <Button type="button" variant="ghost" size="sm" disabled={costQuery.isFetching} onClick={() => void costQuery.refetch()}>Retry price</Button> : null}
     <div className={styles.resultButtons}>
       <Button type="button" aria-label={readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel} variant={readableEntries.length ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : readableEntries.length ? variationCount > 1 ? `Generate ${variationCount} more frames` : "Generate another" : variationCount > 1 ? `Generate ${variationCount} starting frames` : "Generate starting frame"}</Button>
-      {readableEntries.length ? <Button type="button" aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
+      {readableEntries.length && !historyCollapsed ? <Button type="button" aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
     </div>
   </div> : null;
   const applicationPrompt = buildOriginalOpeningImagePrompt({ personImageCount: Math.max(1, draft.imageAssetIds.length), instructions: draft.instructions }).prompt;
@@ -522,12 +529,14 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       localStorage.setItem(promptPreferenceKey, JSON.stringify(next)); setSavedPrompt(next); setStorageError(null);
     } catch { setStorageError("Your prompt could not be saved in this browser."); }
   }
-  const optionalInstructions = <section className={styles.promptDetails} aria-label="Starting image prompt">
-    <label className={styles.instructions}>Starting image prompt
+  const optionalInstructions = <details className={styles.promptDetails} aria-label="Starting image prompt">
+    <summary>Starting image prompt</summary>
+    <label className={styles.instructions}><span className="sr-only">Starting image prompt</span>
       <textarea name="starting-image-prompt" aria-label="Starting image prompt" rows={9} autoComplete="off" value={editorPrompt} disabled={busy || creatingImage || Boolean(retainedFrame)} maxLength={6000}
         onChange={event => { const value = event.target.value; setError(value.trim() ? null : "Enter a starting-image prompt."); setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: value })); setSaved(false); }} />
     </label>
     {promptLimitError ? <p role="alert" className="text-destructive">{promptLimitError}</p> : null}
+    <div hidden>
     <p className="text-xs text-muted">Image 1 supplies the scene. Image 2 and later photos supply the influencer’s identity.</p>
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="outline" disabled={busy || creatingImage || Boolean(retainedFrame)} onClick={() => { setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: undefined })); setSaved(false); }}>Use application prompt</Button>
@@ -536,20 +545,22 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     </div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={busy || creatingImage} checked={savedPrompt?.useDefault ?? false} onChange={event => savePromptPreference(event.target.checked)} />Use as my default in this browser</label>
     {savedPrompt ? <p role="status" className="text-xs text-muted">Prompt saved in this browser.</p> : null}
-  </section>;
+    </div>
+  </details>;
   const generatedPreview = checkpoint || presentation === "recreation" ? <section ref={generatedSection} className={styles.generated} style={resultStyle} data-recreation-step={presentation === "recreation" ? "result" : undefined} aria-label={presentation === "recreation" ? "Generated starting frames" : "Generated starting image"}>
         <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">3</span> : null}{presentation === "recreation" ? "Your starting frame" : "Your starting image"}</h2><p>{previewRuntime ? "Sample result · layout only" : "Compare with the source"}</p></div></div>
-        {imageJob?.output ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label={presentation === "recreation" ? `Enlarge variation ${selectedIndex + 1}` : "Enlarge generated starting image"} title="Enlarge generated starting image"
+        {imageJob?.output && !historyCollapsed ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label={presentation === "recreation" ? `Enlarge variation ${selectedIndex + 1}` : "Enlarge generated starting image"} title="Enlarge generated starting image"
           onClick={event => { if (!imageJob.output) return; previewTrigger.current = event.currentTarget;
             setEnlargedImage({ url: previewRuntime?.outputPreviewUrls?.[imageJob.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? imageJob.output.url,
               title: "Your starting image", alt: "Generated starting frame to inspect in detail", width: imageJob.output.width, height: imageJob.output.height }); }}>
           <StartingFrameImage key={`${outputPreviewUrl(imageJob.output)}:${previewAttempts[imageJob.output.mediaAssetId] ?? 0}`} assetId={imageJob.output.mediaAssetId} url={outputPreviewUrl(imageJob.output)} width={imageJob.output.width} height={imageJob.output.height} alt="Generated starting frame to review before animation" onStateChange={reportPreviewState} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
           </button></div>
           {!matchingImage ? <p className={styles.notice} role="status">Your photos, model or image instructions have changed. Generate a new image before using it.</p> : null}
-        </> : <div className={styles.imageStatus} role="status" aria-busy={waitingForSelectedImage}>{waitingForSelectedImage ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ImageIcon aria-hidden="true" />}{!resultError ? <p>{!checkpoint ? "Your generated starting frame will appear here." : selectedImageStatus}</p> : null}</div>}
-        {imageJob?.output && previewStates[imageJob.output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" disabled={imageJobQuery?.isFetching} onClick={() => { if (!imageJob.output) return; const assetId = imageJob.output.mediaAssetId; reportPreviewState(assetId, outputPreviewUrl(imageJob.output), "loading"); setPreviewAttempts(current => ({ ...current, [assetId]: (current[assetId] ?? 0) + 1 })); void imageJobQuery?.refetch(); }}>Retry preview</Button> : null}
+        </> : <div className={`${styles.imageStatus} relative overflow-hidden`} role="status" aria-busy={waitingForSelectedImage}>{waitingForSelectedImage ? <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" /> : null}{waitingForSelectedImage ? <Loader2 className="relative z-10 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ImageIcon aria-hidden="true" />}{!resultError ? <p className="relative z-10">{historyCollapsed && imageJob?.isTerminal ? "Your generated starting frame will appear here." : !checkpoint ? "Your generated starting frame will appear here." : selectedImageStatus}</p> : null}</div>}
+        {!historyCollapsed && imageJob?.output && previewStates[imageJob.output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" disabled={imageJobQuery?.isFetching} onClick={() => { if (!imageJob.output) return; const assetId = imageJob.output.mediaAssetId; reportPreviewState(assetId, outputPreviewUrl(imageJob.output), "loading"); setPreviewAttempts(current => ({ ...current, [assetId]: (current[assetId] ?? 0) + 1 })); void imageJobQuery?.refetch(); }}>Retry preview</Button> : null}
         {resultError ? <p role="alert" className="text-destructive">{resultError}</p> : null}
-        {readableEntries.length > 1 ? <div className={styles.variations} role="group" aria-label="Starting image variations">
+        {restoredRequests.current.size > 0 ? <Button type="button" variant="ghost" size="sm" aria-expanded={showPreviousGenerations} onClick={() => setShowPreviousGenerations(value => !value)}>{showPreviousGenerations ? "Hide previous generations" : "Previous generations"}</Button> : null}
+        {readableEntries.length > 1 && !historyCollapsed ? <div className={styles.variations} role="group" aria-label="Starting image variations">
           {readableEntries.map((entry, index) => {
             const job = imageJobQueries[index]?.data;
             return <button key={entry.checkpoint.requestKey} type="button" className={styles.variation}
@@ -561,8 +572,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
             </button>;
           })}
         </div> : null}
-        {readableEntries.length > 1 ? <p className={styles.variationProgress} role="status">{imageJobQueries.filter(query => query.data?.output).length} of {readableEntries.length} ready · Choose an image to review.</p> : null}
-        {imageJob?.output ? <>
+        {readableEntries.length > 1 && !historyCollapsed ? <p className={styles.variationProgress} role="status">{imageJobQueries.filter(query => query.data?.output).length} of {readableEntries.length} ready · Choose an image to review.</p> : null}
+        {imageJob?.output && !historyCollapsed ? <>
           {presentation !== "recreation" ? <p className={styles.caption}>Check face, pose and scene.</p> : null}
           {presentation !== "recreation" ? <Button className={styles.useFrame} type="button" disabled={cannotUseFrame} onClick={() => selectStartingFrame(imageJob)}>Use as starting frame</Button> : null}
         </> : null}

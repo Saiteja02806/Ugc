@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import sharp from "sharp";
 
 import {
   ProviderOperationPollingError,
@@ -153,9 +154,18 @@ export async function generateGemini3ProImageBuffer(params: {
       throw new ProviderOperationPollingError("Gemini 3 Pro image status could not be read.", { cause });
     }
   }
-  if (interaction.status !== "completed" || !interaction.output_image?.data) {
+  // Google can return a fully encoded image with an incomplete interaction.
+  // Recover only a decodable image, never text, thinking images or empty output.
+  let usableIncompleteImage = false;
+  if (interaction.status === "incomplete" && interaction.output_image?.data) {
+    try {
+      await sharp(Buffer.from(interaction.output_image.data, "base64"), { failOn: "warning" }).raw().toBuffer();
+      usableIncompleteImage = true;
+    } catch { /* Preserve the terminal failure for truncated or invalid output. */ }
+  }
+  if ((interaction.status !== "completed" && !usableIncompleteImage) || !interaction.output_image?.data) {
     throw new ProviderOperationTerminalError(
-      `Gemini 3 Pro image generation ended with status ${interaction.status} without image data.`,
+      `Gemini 3 Pro image generation ended with status ${interaction.status} without a usable image.`,
       interaction,
     );
   }

@@ -685,7 +685,7 @@ for (const format of ["hook", "wall_text"]) {
     const images = Array.from({ length: 3 }, (_, index) => ({ kind: "image", asset: { id: `image-${index}`, url: `https://owned-media.test/image-${index}.png`, title: `Image ${index}` } }));
     for (const image of images) h.render().composer.props.referenceControls.props.onChange(image, "image");
     let controls = h.render().composer.props.referenceControls.props;
-    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 10);
+    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 3);
     controls.onImagesChange(images.filter(image => image.asset.id !== "image-1"));
     controls = h.render().composer.props.referenceControls.props;
     assert.equal(controls.imageSelections.length, 2); assert.ok(controls.styleVideo);

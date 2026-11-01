@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ArrowRight, BookOpen, Clock3 } from "lucide-react";
 import Link from "next/link";
 
+import { publicOrigin } from "@/lib/marketing/public-origin";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { founderGuides } from "@/components/marketing/founder-guide-page";
 import { founderWorkflowGuides } from "@/components/marketing/founder-workflow-guide";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     "Practical UGC video and content marketing guides for founders who need to explain their product, create useful content, and build a sustainable growth routine.",
   alternates: { canonical: "/guides" },
   openGraph: {
-    title: "UGC Video & Content Marketing Guides | UGC Pilot",
+    title: "UGC Video & Content Marketing Guides | Vidmake",
     description:
       "Practical UGC video and content marketing guides for founders building a sustainable growth routine.",
     url: "/guides",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "UGC Video & Content Marketing Guides | UGC Pilot",
+    title: "UGC Video & Content Marketing Guides | Vidmake",
     description:
       "Practical UGC video and content marketing guides for founders building a sustainable growth routine.",
   },
@@ -53,15 +54,15 @@ export default function GuidesPage() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "UGC Pilot founder marketing guides",
-    url: "https://getugcpilot.com/guides",
+    name: "Vidmake founder marketing guides",
+    url: `${publicOrigin}/guides`,
     mainEntity: {
       "@type": "ItemList",
       itemListElement: guides.map((guide, index) => ({
         "@type": "ListItem",
         position: index + 1,
         name: guide.title,
-        url: `https://getugcpilot.com/guides/${guide.slug}`,
+        url: `${publicOrigin}/guides/${guide.slug}`,
       })),
     },
   };
@@ -171,7 +172,7 @@ export default function GuidesPage() {
         <div className="mx-auto max-w-[1200px] rounded-[28px] border border-primary/30 bg-[linear-gradient(130deg,rgba(255,107,69,0.18),rgba(255,107,69,0.05)_58%,rgba(255,255,255,0.02))] px-6 py-10 shadow-floating sm:px-10 sm:py-14 lg:px-14">
           <div className="flex items-center gap-2 text-sm font-medium text-primary"><Clock3 className="size-4" aria-hidden="true" />Turn one useful idea into this week’s content.</div>
           <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-4xl">Bring the business context and the creative work into one place.</h2>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted">Use UGC Pilot to create carousels, short videos, and text-led content from the product knowledge your team already has.</p>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-muted">Use Vidmake to create carousels, short videos, and text-led content from the product knowledge your team already has.</p>
           <div className="mt-8"><LandingAuthCta className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background" initialHasSession={false} /></div>
         </div>
       </section>

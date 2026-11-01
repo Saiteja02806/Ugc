@@ -373,7 +373,7 @@ export function InstagramAnalyticsWorkspace() {
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-foreground-strong">
               Performance overview
             </p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
@@ -559,7 +559,7 @@ function AnalyticsReadyState({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex w-fit items-center gap-2 text-sm font-medium text-muted">
-          <Clock3 className="size-4 text-primary" aria-hidden="true" />
+          <Clock3 className="size-4 text-foreground" aria-hidden="true" />
           {analytics.rangeLabel}
         </span>
         <DateRangeSelector
@@ -571,7 +571,7 @@ function AnalyticsReadyState({
       {showAccountSelector && allConnections.length > 1 ? (
         <div className="flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-card p-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 px-0.5">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+            <span className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
               Account View
             </span>
           </div>
@@ -585,11 +585,11 @@ function AnalyticsReadyState({
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <span
-          className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-[#d62976]"
+          className="absolute inset-y-0 left-0 w-1 bg-foreground"
           aria-hidden="true"
         />
         <header className="flex flex-col gap-2 px-5 py-5 sm:px-6">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             Performance snapshot
           </p>
           <h2 className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -704,7 +704,7 @@ function SnapshotMetric({
     <div className="min-w-0 border-b border-border p-4 [&:nth-child(odd)]:border-r [&:nth-last-child(-n+2)]:border-b-0 sm:p-5 lg:border-b-0 lg:border-r lg:last:border-r-0">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-muted">{label}</p>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-primary [&>svg]:size-4">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-foreground [&>svg]:size-4">
           {icon}
         </span>
       </div>
@@ -735,7 +735,7 @@ function AnalyticsSurface({
     <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             {eyebrow}
           </p>
           <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -776,7 +776,7 @@ function InstagramAccountSelector({
         className={cn(
           "inline-flex min-h-11 touch-manipulation items-center gap-2 whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
           selectedConnectionId === "all"
-            ? "bg-primary text-primary-foreground shadow-card"
+            ? "border border-white bg-card text-foreground-strong"
             : "text-muted hover:bg-card hover:text-foreground-strong",
         )}
         onClick={() => onChange("all")}
@@ -787,7 +787,7 @@ function InstagramAccountSelector({
           className={cn(
             "rounded px-1.5 py-0.5 text-[10px] font-bold leading-none",
             selectedConnectionId === "all"
-              ? "bg-primary-foreground/20 text-primary-foreground"
+              ? "bg-card-muted text-foreground-strong"
               : "bg-background text-muted-foreground",
           )}
         >
@@ -810,7 +810,7 @@ function InstagramAccountSelector({
             className={cn(
               "inline-flex min-h-11 touch-manipulation items-center gap-2 whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
               selected
-                ? "bg-primary text-primary-foreground shadow-card"
+                ? "border border-white bg-card text-foreground-strong"
                 : "text-muted hover:bg-card hover:text-foreground-strong",
             )}
             onClick={() => onChange(connection.id)}
@@ -848,7 +848,7 @@ function DateRangeSelector({
             className={cn(
               "min-h-10 touch-manipulation whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
               selected
-                ? "bg-primary text-primary-foreground shadow-card"
+                ? "border border-white bg-card text-foreground-strong"
                 : "text-muted hover:bg-card-muted hover:text-foreground-strong",
             )}
             onClick={() => onChange(option.days)}
@@ -1674,7 +1674,7 @@ function InstagramReadinessPanel({
   return (
     <aside className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
           Account readiness
         </p>
         <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -1863,7 +1863,7 @@ function InstagramContentPerformance({
         <header className="border-b border-border px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
                 Content insights
               </p>
               <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
@@ -2350,7 +2350,7 @@ function ContentPerformanceDrawer({
               <section aria-labelledby="content-metric-breakdown">
                 <p
                   id="content-metric-breakdown"
-                  className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong"
                 >
                   Metric breakdown
                 </p>
@@ -2401,7 +2401,7 @@ function ContentPerformanceDrawer({
               <section className="mt-6" aria-labelledby="content-caption">
                 <p
                   id="content-caption"
-                  className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong"
                 >
                   Caption
                 </p>
@@ -2565,7 +2565,7 @@ function ContentTypeBadge({ type }: { type: InstagramContentType }) {
           "border-instagram-rose/25 bg-instagram-rose/8 text-instagram-rose",
         type === "carousel" &&
           "border-instagram-violet/25 bg-instagram-violet/8 text-instagram-violet",
-        type === "post" && "border-primary/25 bg-primary/8 text-primary",
+        type === "post" && "border-white/40 text-foreground-strong",
       )}
     >
       {icon}

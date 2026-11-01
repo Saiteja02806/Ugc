@@ -6,7 +6,7 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot",
+    kicker: "Vidmake",
     title: "HeyGen alternative for social UGC hooks.",
     subtitle: "High-retention social hooks vs formal enterprise presentations.",
   });

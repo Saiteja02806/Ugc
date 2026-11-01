@@ -1,4 +1,4 @@
-export type PaidTrendingPrebuildPlanKey = "starter" | "growth";
+export type PaidTrendingPrebuildPlanKey = "starter" | "growth" | "startup";
 
 /**
  * This key is shared with the database trigger. It collapses duplicate Dodo

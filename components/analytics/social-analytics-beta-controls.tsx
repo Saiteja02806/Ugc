@@ -54,7 +54,7 @@ export function SocialAnalyticsBetaControls({
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-foreground-strong">
             Account selection
           </p>
           <h2 className="mt-1 text-lg font-bold tracking-[-0.02em] text-foreground">
@@ -149,7 +149,7 @@ function PlatformAccountMenu({
         className={cn(
           "inline-flex size-12 touch-manipulation items-center justify-center rounded-full text-muted transition-[background-color,color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-card hover:text-foreground-strong active:scale-[0.97] motion-reduce:transition-none",
           selected &&
-            "w-auto min-w-16 gap-1.5 bg-primary px-3.5 text-primary-foreground shadow-card hover:bg-primary-hover hover:text-primary-foreground",
+            "w-auto min-w-16 gap-1.5 border border-white bg-card px-3.5 text-foreground-strong hover:bg-card hover:text-foreground-strong",
         )}
         title={`${label} accounts`}
         onClick={onPlatformChange}
@@ -232,7 +232,7 @@ function AccountMenuOption({
       className={cn(
         "flex min-h-11 w-full items-center gap-3 rounded-[var(--radius-segment)] px-3 py-2 text-left text-sm transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected
-          ? "bg-primary text-primary-foreground shadow-card"
+          ? "border border-white bg-card text-foreground-strong"
           : "text-foreground hover:bg-card-muted",
       )}
       onClick={onClick}
@@ -240,7 +240,7 @@ function AccountMenuOption({
       <span
         className={cn(
           "flex size-6 shrink-0 items-center justify-center",
-          selected ? "text-primary-foreground" : "text-muted",
+          selected ? "text-foreground-strong" : "text-muted",
         )}
       >
         {icon}
@@ -249,7 +249,7 @@ function AccountMenuOption({
       <span
         className={cn(
           "shrink-0 text-[11px] font-semibold",
-          selected ? "text-primary-foreground/80" : "text-muted",
+          selected ? "text-foreground" : "text-muted",
         )}
       >
         {meta}

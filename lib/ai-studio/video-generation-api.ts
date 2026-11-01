@@ -58,6 +58,7 @@ import {
 type GenerateVideoRequest = {
   automaticHookText?: unknown;
   exploreFormat?: unknown;
+  workflow?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   referenceImageUrls?: unknown;
@@ -214,7 +215,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     const faceCount = Array.isArray(body.referenceImageUrls) ? body.referenceImageUrls.length : 0;
     if (faceCount && (!frameVoiceReference && (!hookStartingFrameFaceReferenceLimit(body.model) || faceCount > hookStartingFrameFaceReferenceLimit(body.model)) ||
       frameVoiceReference && faceCount + 1 > getVideoReferencePolicy(body.model as AIStudioVideoModel, { hasTimedReferences: true }).maxImages)) {
-      return NextResponse.json({ ok: false, error: "Use Omni Flash 1.1 with up to 5 optional face photos, or remove the face references before choosing another animation model." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Omni Flash animates the starting image alone. Remove the extra face photos." }, { status: 400 });
     }
     if ((faceCount && body.imageReferencePurpose !== "person") || (!faceCount && body.imageReferencePurpose !== undefined)) {
       return NextResponse.json({ ok: false, error: "Use the additional images as face references for the same person." }, { status: 400 });
@@ -226,7 +227,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       return NextResponse.json({ ok: false, error: "Keep the approved starting image and optional face photos. Remove source videos and audio references; use Sound on for generated audio." }, { status: 400 });
     }
     if (typeof body.durationSeconds !== "number" || !hookStartingFrameVideoDurations(body.model).includes(body.durationSeconds)) {
-      return NextResponse.json({ ok: false, error: `Choose a whole-number starting-frame duration from ${body.model === "seedance_2_5" ? 4 : 3} to ${body.model === "google_omni" ? 10 : 15} seconds.` }, { status: 400 });
+      return NextResponse.json({ ok: false, error: body.model === "google_omni"
+        ? "Google Omni duration must be 4, 6, 8, or 10 seconds."
+        : `Choose a whole-number starting-frame duration from ${body.model === "seedance_2_5" ? 4 : 3} to 15 seconds.` }, { status: 400 });
     }
   }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
@@ -306,14 +309,18 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
   const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
   const durationSeconds = referenceVideoMode ? model === "seedance_2_5" ? Math.ceil(referenceVideoDurationSeconds ?? 4) : Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
-    : isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
+    : isFormatVideoReference ? 3
+    : model === "google_omni" && body?.durationSeconds === undefined ? 4
+    : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
   if (!referenceVideoMode && !isFormatVideoReference && body?.durationSeconds !== undefined && (
     typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
     !getAIStudioVideoDurations(model).some(seconds => seconds === body.durationSeconds)
   )) {
     const durations = getAIStudioVideoDurations(model);
-    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} supports whole-number durations from ${durations[0]} to ${durations.at(-1)} seconds.`, ok: false }, { status: 400 });
+    return NextResponse.json({ error: model === "google_omni"
+      ? "Google Omni duration must be 4, 6, 8, or 10 seconds."
+      : `${getAIStudioVideoModelLabel(model)} supports whole-number durations from ${durations[0]} to ${durations.at(-1)} seconds.`, ok: false }, { status: 400 });
   }
   if (body?.resolution !== undefined && !getAIStudioVideoResolutions(model).some(value => value === body.resolution)) {
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} supports ${getAIStudioVideoResolutions(model).join(" or ")} video quality.`, ok: false }, { status: 400 });
@@ -452,15 +459,15 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
   if (referenceAudioUrls.length > 1) {
-    return NextResponse.json({ error: "Use one audio reference in UGC Pilot.", ok: false }, { status: 400 });
+    return NextResponse.json({ error: "Use one audio reference in Vidmake.", ok: false }, { status: 400 });
   }
   const maxReferences = referencePolicy.maxFiles;
   if (referenceImageUrls.length > referencePolicy.maxImages) {
-    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${referencePolicy.maxImages} reference images in UGC Pilot. Remove an image or choose another model.`, ok: false }, { status: 400 });
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${referencePolicy.maxImages} reference images in Vidmake. Remove an image or choose another model.`, ok: false }, { status: 400 });
   }
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
-      { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },
+      { error: `This model accepts up to ${maxReferences} reference files in Vidmake.`, ok: false },
       { status: 400 },
     );
   }
@@ -506,9 +513,21 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (model === "google_omni" && (durationSeconds < 3 || durationSeconds > 10)) {
+  if (model === "google_omni" && !referenceVideoMode && !isFormatVideoReference && ![4, 6, 8, 10].includes(durationSeconds)) {
     return NextResponse.json(
-      { error: "Google Omni duration must be between 3 and 10 seconds.", ok: false },
+      { error: "Google Omni duration must be 4, 6, 8, or 10 seconds.", ok: false },
+      { status: 400 },
+    );
+  }
+  if (model === "google_omni" && !usesStartingFrame && referenceImageUrls.length !== 0 && referenceImageUrls.length !== 1 && referenceImageUrls.length !== 3) {
+    return NextResponse.json(
+      { error: "Omni Flash accepts no image, one image, or three images.", ok: false },
+      { status: 400 },
+    );
+  }
+  if (model === "google_omni" && generationPrompt.length > 2_000) {
+    return NextResponse.json(
+      { error: "Omni Flash prompts must be 2,000 characters or fewer.", ok: false },
       { status: 400 },
     );
   }
@@ -641,7 +660,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
   const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
-    : model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
+    : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" ? "reapi" : undefined;
   const providerReferenceImages = frameVoiceReference && startingFrame ? [startingFrame.imageUrl, ...referenceImageUrls] : referenceImageUrls;
   const startingFrameInput = frameVoiceReference && startingFrame ? {
     startingImageReference: { version: 1, mode: "image_voice_reference", assetId: startingFrame.assetId, imageJobId: startingFrame.imageJobId,
@@ -682,6 +701,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         batchIndex: index + 1, batchSize: quantity, durationSeconds,
         hookIdea: body?.exploreFormat === "wall_text" ? `${generationPrompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : generationPrompt, model,
         ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? { exploreFormat: body.exploreFormat } : {}),
+        ...(typeof body?.workflow === "string" ? { workflow: body.workflow } : startingFrame?.workflow ? { workflow: startingFrame.workflow } : typeof body?.referenceId === "string" && (body.referenceId.startsWith("talking-") || body.referenceId.includes("talking")) ? { workflow: "talking_head" } : body?.exploreFormat === "wall_text" ? { workflow: "wall_text" } : body?.exploreFormat === "hook" ? { workflow: "hook" } : {}),
         ...(provider ? { provider } : {}),
         promptMode: "direct", projectId,
         referenceVideoDurationSeconds, referenceVideoUrl,
@@ -721,6 +741,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           ...(automaticHookText ? { automaticHookText: automaticHookText as unknown as Json } : {}),
           aspectRatio,
           ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
+          ...(typeof body?.workflow === "string" ? { workflow: body.workflow } : startingFrame?.workflow ? { workflow: startingFrame.workflow } : typeof body?.referenceId === "string" && (body.referenceId.startsWith("talking-") || body.referenceId.includes("talking")) ? { workflow: "talking_head" } : body?.exploreFormat === "wall_text" ? { workflow: "wall_text" } : body?.exploreFormat === "hook" ? { workflow: "hook" } : {}),
           avatarImageUrl,
           referenceImageUrls: providerReferenceImages,
           ...(imageRoles ? { personReference: imageRoles } : {}),

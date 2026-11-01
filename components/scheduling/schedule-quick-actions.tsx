@@ -17,7 +17,7 @@ export function ScheduleQuickActions({ timezone, onSelect, disabled = false }: {
   return <div className="min-w-0 max-w-full">
     <p className="mb-2 text-xs font-medium text-muted">Quick schedule</p>
     <div role="group" aria-label="Quick publish times" className="flex min-w-0 max-w-full flex-nowrap gap-1.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
-      {presets.map(preset => <Button key={preset.value} type="button" size="sm" variant="outline" className="h-8 shrink-0 rounded-full px-3 text-xs whitespace-nowrap" disabled={disabled} onClick={() => {
+      {presets.map(preset => <Button key={preset.value} type="button" size="sm" variant="outline" className="h-8 shrink-0 px-3 text-xs whitespace-nowrap" disabled={disabled} onClick={() => {
         try { const parts = quickSchedulePreset(preset.value, timezone); setError(null); onSelect(parts, preset.value); }
         catch { setError("Choose a valid timezone before selecting a quick time."); }
       }}>{preset.label}</Button>)}

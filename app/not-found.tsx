@@ -7,11 +7,7 @@ export default function NotFound() {
   return (
     <main className="instagram-theme flex min-h-dvh items-center justify-center bg-background px-5 py-12 text-foreground">
       <section className="w-full max-w-lg rounded-[var(--radius-modal)] border border-border bg-card p-7 text-center shadow-floating sm:p-10">
-        <ProductLogoMark
-          className="mx-auto size-12 rounded-card bg-primary p-3"
-          imageClassName="brightness-0 invert"
-          sizes="48px"
-        />
+        <ProductLogoMark className="mx-auto size-12" sizes="48px" />
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.14em] text-primary">
           404 · Page not found
         </p>

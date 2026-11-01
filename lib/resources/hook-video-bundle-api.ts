@@ -50,7 +50,7 @@ export function createHookBundleHandlers(deps: Dependencies) {
       handedOff = true;
       return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { headers: { ...headers,
         "Content-Type": "application/zip", "Content-Length": String(size),
-        "Content-Disposition": 'attachment; filename="UGCPilot-Hook-Video-Bundle.zip"' } });
+        "Content-Disposition": 'attachment; filename="Vidmake-Hook-Video-Bundle.zip"' } });
     } catch { return reply({ error: "Could not start the download. Please try again." }, 503); }
     finally { if (!handedOff && iterator) await iterator.return(undefined).catch(() => undefined); }
   }

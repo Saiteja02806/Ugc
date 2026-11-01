@@ -26,7 +26,7 @@ export type ScheduleCancelOutcome = "cancelled" | "not_found" | "too_late";
 /**
  * A published Instagram media reference saved by the scheduling pipeline.
  * This is deliberately limited to non-sensitive identifiers that can be used
- * to reconcile the Analytics media list with posts UGC Pilot actually made.
+ * to reconcile the Analytics media list with posts Vidmake actually made.
  */
 export type PublishedInstagramPostReference = {
   connectionId: string;

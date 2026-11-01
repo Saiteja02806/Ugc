@@ -18,7 +18,7 @@ import {
 const path = "/blog/ugc-video-generator-examples";
 const title = "UGC video generator examples";
 const h1 = "UGC video generator examples from real brand videos";
-const description = "Real UGC Pilot videos from the Teja Chundu YouTube channel, with Instagram reels and TikTok videos on accounts named Clara. Titles come from the public posts.";
+const description = "Real Vidmake videos from the Teja Chundu YouTube channel, with Instagram reels and TikTok videos on accounts named Clara. Titles come from the public posts.";
 
 export const metadata: Metadata = {
   title,
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -41,7 +41,7 @@ export default function UgcVideoExamplesPage() {
     <VideoMarketingPage
       eyebrow="Examples"
       h1={h1}
-      lede="These UGC video generator examples were made with UGC Pilot, a UGC video AI generator for short founder videos. Each YouTube card uses the title, author, and thumbnail returned by YouTube. Play stays unloaded until you choose it."
+      lede="These UGC video generator examples were made with Vidmake, a UGC video AI generator for short founder videos. Each YouTube card uses the title, author, and thumbnail returned by YouTube. Play stays unloaded until you choose it."
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -106,7 +106,7 @@ export default function UgcVideoExamplesPage() {
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "Steps from a brief to a downloaded file, with one example embed." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
-          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
           { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
           { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },

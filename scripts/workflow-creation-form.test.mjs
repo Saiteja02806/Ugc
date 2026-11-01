@@ -44,9 +44,11 @@ function harness({ seedanceEnabled = false } = {}) {
       useCallback(callback) { cursor++; return callback; },
     },
     "next/image": { default: "image" },
+    "@/components/explore/talking-head-photo-library": { TalkingHeadPhotoLibrary: "photo-library" },
+    "@/components/explore/person-photo-guide": { PersonPhotoGuide: "photo-guide" },
     "@/components/explore/workflow-image-library": { WorkflowImageLibrary: "image-library" },
     "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async assetId => ({id: assetId}) },
-    "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video"].map((name) => [name, name])),
+    "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video", "X"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
@@ -54,6 +56,8 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "image-preview" },
     "@/components/explore/workflow-reference-preview.module.css": { default: {} },
     "@/components/ui/button": { Button: "button" },
+    "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogTitle", "DialogTrigger"].map((name) => [name, name])),
+    "@/components/explore/format-person-image-picker.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
     "@/lib/ai-studio/generation-settings": backend,
@@ -128,11 +132,11 @@ test("Talking Head exposes its saved image library with owner, limits and explic
   const chosen = [], saved = {id:"saved",url:"https://owned.test/product.png"};
   const h = harness();
   const tree = h.render({ ownerId:"owner-a", imageReferences:{assets:[],maxImages:6,chooseSavedImage:async (...args)=>{chosen.push(args);return true;}} });
-  const library = nodes(tree).find(n=>n.type === "image-library");
+  const library = nodes(tree).find(n=>n.type === "photo-library");
   assert.equal(library.props.ownerId,"owner-a"); assert.equal(library.props.disabled,false);
-  assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelect(saved),true);
+  assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelectUpload(saved),true);
   assert.deepEqual(chosen,[[saved,"owner-a"]]);
-  const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "image-library");
+  const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "photo-library");
   assert.equal(full.props.disabled,false);
   assert.equal(full.props.limitReached,true, "At capacity, selected images must remain removable");
 });
@@ -392,14 +396,14 @@ test("reference video appears only after a user selects it, with no stock-video 
 
 test("reference states show selection, loading and errors without changing instructions or tile geometry", () => {
   const actual = harness();
-  const tile = (tree, label) => nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render.props["aria-label"].startsWith(label)).props.render;
+  const tile = (tree, label) => nodes(tree).find((node) => ["DialogTrigger", "PopoverTrigger"].includes(node.type) && node.props.render.props["aria-label"].startsWith(label)).props.render;
   const empty = actual.render();
   assert.equal(tile(empty, "Choose image").props["data-state"], "available");
   assert.equal(tile(empty, "Choose video").props["data-state"], "empty");
   const loading = actual.render({ videoReference: { asset: null, error: null, loading: true } });
   assert.equal(tile(loading, "Choose video").props["data-state"], "loading");
   assert.equal(tile(loading, "Choose video").props["aria-busy"], true);
-  assert.equal(nodes(loading).find((node) => node.props.role === "status").props.children, "Reading your reference…");
+  assert.equal(nodes(loading).find((node) => node.props.role === "status" && node.props.children === "Reading your reference…").props.children, "Reading your reference…");
   const selected = actual.render({ creator: { asset: { name: "mine.png", url: "blob:mine" }, loading: false, error: null } });
   assert.equal(tile(selected, "Choose image").props["data-state"], "selected");
   assert.equal(tile(selected, "Choose image").props.title, "mine.png");
@@ -409,4 +413,40 @@ test("reference states show selection, loading and errors without changing instr
   assert.equal(nodes(failed).find((node) => node.type === "textarea").props.value, "  Keep exactly this.  ");
   assert.ok([empty, loading, selected, failed].every((tree) => tile(tree, "Choose video").props.className.includes("referenceButton")));
   assert.equal(nodes(empty).find((node) => node.type === "h2").props.className, "sr-only");
+});
+
+
+test("image chooser reuses the large Hook dialog layout while video and audio retain their controls", () => {
+  const tree = harness().render();
+  const dialog = nodes(tree).find(node => node.type === "DialogContent");
+  assert.equal(dialog.props.className,"dialog");
+  assert.ok(nodes(dialog).some(node => node.type === "aside" && node.props["aria-label"] === "Selected reference images"));
+  assert.ok(nodes(dialog).some(node => node.type === "footer" && node.props.className === "footer"));
+  assert.equal(nodes(dialog).filter(node => node.type === "button" && node.props.children === "Done").length,1);
+  assert.equal(nodes(dialog).find(node => node.type === "photo-library").props.section,"person");
+  assert.equal(nodes(tree).filter(node => node.type === "PopoverContent").length,1,"video reference remains its original popover");
+});
+
+
+test("Creator Phone and supplied starting-frame controls keep their existing picker paths", () => {
+  const phone = harness().render({kind:"phone"});
+  assert.equal(nodes(phone).filter(node => node.type === "DialogContent").length,0);
+  assert.ok(nodes(phone).some(node => node.type === "PopoverTrigger" && node.props.render.props["aria-label"].startsWith("Choose image")));
+  const framed = harness().render({startingFrameControl:"Existing approved-frame picker"});
+  assert.ok(text(framed).includes("Existing approved-frame picker"));
+  assert.equal(nodes(framed).filter(node => node.type === "DialogContent").length,0);
+});
+
+
+test("Talking Head forwards the exact stored frame and influencer ownership callbacks", async () => {
+  const selected=[],reads=[];
+  const h=harness();
+  const tree=h.render({ownerId:"owner-a",onStartingFrameSelect:frame=>{selected.push(frame);return true;},imageReferences:{assets:[],maxImages:30,chooseInfluencerImage:async(...args)=>{reads.push(args);return true;}}});
+  const library=nodes(tree).find(n=>n.type==="photo-library");
+  assert.equal(await library.props.onSelectInfluencer("face-asset"),true);
+  assert.deepEqual(reads,[["face-asset","owner-a"]]);
+  const frame={assetId:"frame-asset",jobId:"frame-job",ownerId:"owner-a",referenceId:"source",motionInstructions:"Frozen source motion"};
+  library.props.onSelectStartingFrame(frame);assert.equal(selected[0],frame);
+  assert.ok(nodes(tree).some(n=>n.type==="photo-guide"));
+  assert.ok(text(tree).includes("My Influencers"));assert.ok(text(tree).includes("Person photos"));
 });

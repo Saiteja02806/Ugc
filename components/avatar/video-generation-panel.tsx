@@ -380,7 +380,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("hookIdea", event.target.value)
               }
-              className="min-h-24 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="min-h-24 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-white focus:ring-4 focus:ring-primary/15"
             />
           </label>
 
@@ -397,7 +397,7 @@ export function VideoGenerationPanel({
                     event.target.value as HookVideoProvider,
                   )
                 }
-                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-white focus:ring-4 focus:ring-primary/15"
               >
                 {providerOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -419,7 +419,7 @@ export function VideoGenerationPanel({
                     event.target.value as HookVideoEmotion,
                   )
                 }
-                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-white focus:ring-4 focus:ring-primary/15"
               >
                 {emotionOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -442,7 +442,7 @@ export function VideoGenerationPanel({
                   event.target.value as HookVideoCameraStyle,
                 )
               }
-              className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-white focus:ring-4 focus:ring-primary/15"
             >
               {cameraStyleOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -461,7 +461,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("productName", event.target.value)
               }
-              className="h-11 rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-white focus:ring-4 focus:ring-primary/15"
             />
           </label>
 
@@ -474,7 +474,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("productDescription", event.target.value)
               }
-              className="min-h-20 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="min-h-20 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-white focus:ring-4 focus:ring-primary/15"
             />
           </label>
         </div>

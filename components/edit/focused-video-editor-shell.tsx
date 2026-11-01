@@ -622,7 +622,7 @@ function EditorTopBar({
           disabled={isReturning}
           aria-label={returnLabel}
           title={returnLabel}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border-strong bg-card-muted text-foreground-strong shadow-sm transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border-strong bg-card-muted text-foreground-strong shadow-sm transition-colors hover:border-white/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
           {isReturning ? (
             <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />

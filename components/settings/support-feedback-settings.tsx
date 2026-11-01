@@ -137,8 +137,8 @@ export function SupportFeedbackSettings({
 
       setSuccess(
         isTicket
-          ? "Ticket raised. The UGC Pilot team can now review the issue and your account context."
-          : "Feature requested. The UGC Pilot team can now review your idea.",
+          ? "Ticket raised. The Vidmake team can now review the issue and your account context."
+          : "Feature requested. The Vidmake team can now review your idea.",
       );
       setTitle("");
       setDescription("");
@@ -227,7 +227,7 @@ export function SupportFeedbackSettings({
                 <Badge variant="outline">Optional</Badge>
               </div>
               <p className="text-xs leading-5 text-muted">
-                JPG, PNG, or WebP up to 10 MB. The image is stored with your request for the UGC Pilot team to review.
+                JPG, PNG, or WebP up to 10 MB. The image is stored with your request for the Vidmake team to review.
               </p>
               {attachment ? (
                 <div className="flex min-w-0 items-center gap-3 rounded-control border border-border bg-card px-3 py-2.5">
@@ -485,7 +485,7 @@ function FeedbackOwnerInbox() {
                     <p className="font-semibold text-muted">
                       {submission.userDisplayName ||
                         submission.userEmail ||
-                        "UGC Pilot user"}
+                        "Vidmake user"}
                     </p>
                     {submission.userEmail ? (
                       <p className="break-all">{submission.userEmail}</p>

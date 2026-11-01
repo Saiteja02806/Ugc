@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     question: "Can an AI avatar speak my software demo script?",
-    answer: "Yes. In UGC Pilot, you provide the hook script and feature explanation. The AI creator delivers the lines with natural timing and lip-sync, which you then cut to your screen recording.",
+    answer: "Yes. In Vidmake, you provide the hook script and feature explanation. The AI creator delivers the lines with natural timing and lip-sync, which you then cut to your screen recording.",
   },
   {
     question: "How many features should I show in one short demo video?",
@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I generate product demo video assets via API or MCP?",
-    answer: "Yes. UGC Pilot provides a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating media, and managing video jobs directly inside Claude and Codex.",
+    answer: "Yes. Vidmake provides a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating media, and managing video jobs directly inside Claude and Codex.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function SaasProductDemoVideoGeneratorPage() {
           If you show a prospective buyer a 10-minute Loom recording of your SaaS product, 90% of them will drop off before you reach the core feature. On mobile social feeds, you have <strong className="font-semibold text-foreground-strong">three seconds</strong> to establish why your software matters before the viewer swipes away.
         </p>
         <p>
-          A <strong className="font-semibold text-foreground-strong">SaaS product demo video generator</strong> bridges the gap between entertainment and product truth. With <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>, you pair an expressive AI creator hook with genuine software UI screen recordings to demonstrate immediate value.
+          A <strong className="font-semibold text-foreground-strong">SaaS product demo video generator</strong> bridges the gap between entertainment and product truth. With <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>, you pair an expressive AI creator hook with genuine software UI screen recordings to demonstrate immediate value.
         </p>
 
         <ArticleH2>The 3-Part Hook-to-Demo Formula</ArticleH2>
@@ -191,7 +191,7 @@ export default function SaasProductDemoVideoGeneratorPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and full{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and full{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),
@@ -206,7 +206,7 @@ export default function SaasProductDemoVideoGeneratorPage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/guides/screen-recording-for-app-demo", title: "Recording App Demos for Vertical Video", description: "Framing, resolution, and mobile readability." },
           { href: "/guides/saas-demo-video-script", title: "SaaS Demo Video Script Template", description: "15 and 30-second scripts with software cutaways." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start testing demo hooks with 2 free credits." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start testing demo hooks on the 7-day trial." },
         ]}
       />
     </VideoMarketingPage>

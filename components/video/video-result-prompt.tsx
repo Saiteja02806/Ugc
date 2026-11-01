@@ -7,20 +7,22 @@ import { cn } from "@/lib/utils";
 import resultLayout from "./video-results.module.css";
 
 export function VideoPromptBubble({
-  createdAt,
+  createdAt: _createdAt,
   prompt,
 }: {
-  createdAt: string;
+  createdAt?: string;
   prompt: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="w-full min-w-0">
-      <div className={cn(resultLayout.promptHeading, "mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted")}>
-        <span className="text-foreground-strong">Prompt</span>
-        <span>{formatGeneratedAt(createdAt)}</span>
+    <div className={cn("relative w-full min-w-0 rounded-[16px] border border-border/80 bg-card/75 backdrop-blur-sm shadow-xs transition-colors hover:border-border-strong overflow-hidden group", resultLayout.promptCard)}>
+      {/* Top right corner Copy Action */}
+      <div className="absolute top-3 right-3 z-10">
+        <AiStudioCopyButton kind="prompt" value={prompt} />
       </div>
+
+      {/* Expandable Prompt Text Button */}
       <button
         type="button"
         aria-expanded={expanded}
@@ -28,38 +30,31 @@ export function VideoPromptBubble({
         onClick={() => setExpanded((current) => !current)}
         className={cn(
           resultLayout.promptToggle,
-          "group flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
-          expanded && "bg-card",
+          "group/btn flex w-full flex-col text-left transition-colors hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none p-4 pb-3.5",
+          expanded && "bg-muted/10",
         )}
       >
         <span
           data-expanded={expanded}
           className={cn(
             resultLayout.promptText,
-            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]",
-            expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
+            "min-w-0 w-full pr-16 whitespace-pre-wrap text-xs md:text-sm font-normal leading-relaxed text-foreground/90 [overflow-wrap:anywhere]",
+            expanded ? "max-h-60 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
           )}
         >
           {prompt}
         </span>
-        {expanded ? (
-          <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
-        ) : (
-          <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-        )}
+        <div className="mt-2.5 flex w-full items-center justify-end border-t border-border/30 pt-1.5 text-[11px] font-medium text-muted transition-colors group-hover/btn:text-foreground">
+          <span className="flex items-center gap-1">
+            <span>{expanded ? "Show less" : "Show full"}</span>
+            {expanded ? (
+              <ChevronUp className="size-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-3.5 transition-transform group-hover/btn:translate-y-0.5" aria-hidden="true" />
+            )}
+          </span>
+        </div>
       </button>
-      <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
     </div>
   );
-}
-
-function formatGeneratedAt(value: string) {
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? "Generated"
-    : new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
 }

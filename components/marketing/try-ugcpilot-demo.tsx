@@ -845,9 +845,9 @@ export function TryUgcPilotDemo() {
           aria-expanded={false}
           title="Open Product URL"
           onClick={() => setMobileControlsOpen(true)}
-          className="fixed bottom-[calc(136px+env(safe-area-inset-bottom))] right-4 z-50 grid size-11 place-items-center rounded-full border border-white/70 bg-white p-1.5 shadow-[0_8px_22px_rgba(255,90,31,0.38)] transition hover:scale-105 hover:border-[#ff5a1f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5a1f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#101010] xl:hidden"
+          className="fixed bottom-[calc(136px+env(safe-area-inset-bottom))] right-4 z-50 grid size-11 place-items-center rounded-full border border-white/70 bg-white p-1.5 shadow-[0_8px_22px_rgba(0,120,212,0.38)] transition hover:scale-105 hover:border-[#0078d4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0078d4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] xl:hidden"
         >
-          <ProductLogoMark className="size-full" sizes="40px" />
+          <ProductLogoMark className="size-full" sizes="40px" theme="light" />
         </button>
       ) : null}
 
@@ -905,7 +905,7 @@ export function TryUgcPilotDemo() {
 
             <div className="absolute inset-x-[clamp(12px,5.5vw,28px)] bottom-[120px] top-[122px] xl:inset-x-4 xl:bottom-[104px]" aria-label={`${readyCount} content cards ready`}>
             {topCard ? <PostInteractionFeed
-              label="Try UGCPilot demo posts. Double-tap to like or scroll to skip."
+              label="Try Vidmake demo posts. Double-tap to like or scroll to skip."
               className="h-full w-full"
               disabled={Boolean(exitDirection) || isAnalyzing || mobileControlsOpen || !isSessionRestored}
               liked={exitDirection === "right"}
@@ -924,7 +924,7 @@ export function TryUgcPilotDemo() {
 
             {!topCard && (isAnalyzing || isRefilling) ? (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center" role="status" aria-live="polite">
-                <LoaderCircle className="size-9 animate-spin text-[#ff6b3d]" aria-hidden="true" />
+                <LoaderCircle className="size-9 animate-spin text-[#0078d4]" aria-hidden="true" />
                 <h2 className="mt-3 text-xl font-bold">Loading more content</h2>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   {isAnalyzing ? "Building your personalized deck…" : "Preparing your next cards…"}
@@ -1004,7 +1004,7 @@ function ProductControlPanel({
   return (
     <div className="rounded-[20px] border border-white/10 bg-zinc-900 p-4 text-white shadow-2xl">
       <div className="mb-4 flex items-center gap-2.5">
-        <span className="size-2.5 rounded-full bg-[#ff5a1f] shadow-[0_0_10px_rgba(255,90,31,0.8)]" aria-hidden="true" />
+        <span className="size-2.5 rounded-full bg-[#0078d4] shadow-[0_0_10px_rgba(0,120,212,0.8)]" aria-hidden="true" />
         <p className="text-[13px] font-bold uppercase tracking-[0.8px] text-zinc-300">AI Content Engine</p>
       </div>
 
@@ -1012,7 +1012,7 @@ function ProductControlPanel({
         <label className="block text-[11px] font-bold uppercase tracking-[0.6px] text-zinc-400" htmlFor={inputId}>
           Product URL
         </label>
-        <div className="flex h-10 items-center rounded-[11px] border border-white/15 bg-zinc-950 px-3 transition-[border-color,box-shadow] focus-within:border-[#ff5a1f] focus-within:ring-2 focus-within:ring-orange-500/20">
+        <div className="flex h-10 items-center rounded-[11px] border border-white/15 bg-zinc-950 px-3 transition-[border-color,box-shadow] focus-within:border-[#0078d4] focus-within:ring-2 focus-within:ring-[#0078d4]/20">
           <input
             id={inputId}
             name="productUrl"
@@ -1028,7 +1028,7 @@ function ProductControlPanel({
         <button
           type="submit"
           disabled={isAnalyzing || !url.trim()}
-          className="flex h-10 w-full items-center justify-center rounded-[11px] bg-[#ff5a1f] px-4 text-[13px] font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e04810] disabled:cursor-wait disabled:opacity-65"
+          className="flex h-10 w-full items-center justify-center rounded-[11px] bg-[#0078d4] px-4 text-[13px] font-bold text-white transition hover:bg-[#005a9e] disabled:cursor-wait disabled:opacity-65"
         >
           {isAnalyzing ? <LoaderCircle className="mr-2 size-3.5 animate-spin" aria-hidden="true" /> : null}
           {isAnalyzing ? "Analyzing…" : "Analyze URL"}
@@ -1045,7 +1045,7 @@ function ProductControlPanel({
         />
       </div>
 
-      <button type="button" onClick={onReset} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-[#ff6a35]">
+      <button type="button" onClick={onReset} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-[#0078d4]">
         <RotateCcw className="size-3.5" aria-hidden="true" /> Reset demo deck
       </button>
       {browserStorageAvailable ? (
@@ -1060,7 +1060,7 @@ function ProductControlPanel({
 function StatusRow({ done, label, loading = false }: { done: boolean; label: string; loading?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-[#ff5a1f] text-white" : "bg-zinc-800 text-zinc-400"}`}>
+      <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-[#0078d4] text-white" : "bg-zinc-800 text-zinc-400"}`}>
         {loading ? <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> : done ? <Check className="size-3" aria-hidden="true" /> : <span className="size-1.5 rounded-full bg-current" />}
       </span>
       <span className="truncate text-xs font-medium text-zinc-300">{label}</span>

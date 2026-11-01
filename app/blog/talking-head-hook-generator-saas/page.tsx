@@ -28,14 +28,14 @@ const faqs = [
   },
   {
     question: "Can I customize the hook script for my software niche?",
-    answer: "Yes. You can write your own custom hook lines or select from proven opening templates in UGC Pilot's Hook Video Studio, tailored to developers, marketers, recruiters, or indie founders.",
+    answer: "Yes. You can write your own custom hook lines or select from proven opening templates in Vidmake's Hook Video Studio, tailored to developers, marketers, recruiters, or indie founders.",
   },
   {
     question: "How long should a talking-head hook be before showing the app?",
     answer: "Between 2.5 and 4.0 seconds. A hook that drags on longer than 4 seconds without showing visual software proof risks losing user attention.",
   },
   {
-    question: "Can I generate hooks via the UGC Pilot MCP server?",
+    question: "Can I generate hooks via the Vidmake MCP server?",
     answer: "Yes. With our hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp, your Claude or Codex agent can generate hooks and inspect status programmatically.",
   },
 ] as const;
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -73,7 +73,7 @@ export default function TalkingHeadHookGeneratorSaasPage() {
           On modern social video platforms, viewers make a subconscious decision to stay or swipe within <strong className="font-semibold text-foreground-strong">2.5 seconds</strong>. If your video opens with a static logo animation, an abstract graphic, or a silent software dashboard, the algorithm registers an immediate drop-off and stops showing your video to new users.
         </p>
         <p>
-          A <strong className="font-semibold text-foreground-strong">talking-head hook generator for SaaS</strong> solves this retention cliff. By combining expressive AI creator avatars with visceral customer pain points in <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink>, you earn the viewer&apos;s attention before showcasing your product.
+          A <strong className="font-semibold text-foreground-strong">talking-head hook generator for SaaS</strong> solves this retention cliff. By combining expressive AI creator avatars with visceral customer pain points in <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink>, you earn the viewer&apos;s attention before showcasing your product.
         </p>
 
         <ArticleH2>The 4 Proven Hook Categories for Tech &amp; SaaS</ArticleH2>
@@ -120,7 +120,7 @@ export default function TalkingHeadHookGeneratorSaasPage() {
           B2B buyers and software developers possess aggressive radar for fake corporate spokespeople. An avatar wearing a tuxedo in front of a fake stock photo office feels untrustworthy.
         </p>
         <p>
-          In UGC Pilot, choose creator personas that match your buyer&apos;s peer group:
+          In Vidmake, choose creator personas that match your buyer&apos;s peer group:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
@@ -184,7 +184,7 @@ export default function TalkingHeadHookGeneratorSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and our{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and our{" "}
                   <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude MCP guide</ArticleLink>.
                 </>
               ),
@@ -199,7 +199,7 @@ export default function TalkingHeadHookGeneratorSaasPage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/guides/hook-video-with-real-app-demo", title: "Hook Video with Real App Demo", description: "Maintain visual continuity from avatar to interface." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating talking-head hooks with 2 free credits." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating talking-head hooks on the 7-day trial." },
         ]}
       />
     </VideoMarketingPage>

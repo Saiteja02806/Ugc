@@ -63,7 +63,7 @@ export function ImageGenerationHistory({
                         aria-pressed={selectedImageId === image.id}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-[16px] border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
-                          selectedImageId === image.id && "border-primary/60 bg-primary/[0.06]",
+                          selectedImageId === image.id && "border-white",
                         )}
                       >
                         <div className="flex h-20 w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card-muted">

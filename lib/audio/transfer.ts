@@ -24,7 +24,7 @@ const headers={"Cache-Control":"private, no-store","Referrer-Policy":"no-referre
 const require=createRequire(import.meta.url);
 function binaries(){return {ffprobe:(require("ffprobe-static") as {path:string}).path,ffmpeg:require("ffmpeg-static") as string};}
 function signingSecret(){const value=process.env.MEDIA_DELIVERY_SIGNING_SECRET?.trim();if(!value||value.length<32)throw new AudioError("Audio transfer signing is not configured.",503);return value;}
-function appOrigin(){const url=new URL(process.env.APP_BASE_URL?.trim()||process.env.NEXT_PUBLIC_APP_URL?.trim()||"https://getugcpilot.com");
+function appOrigin(){const url=new URL(process.env.APP_BASE_URL?.trim()||process.env.NEXT_PUBLIC_APP_URL?.trim()||"https://vidmake.io");
   if(url.protocol!=="https:"||url.username||url.password||url.port)throw new AudioError("Audio transfers require an HTTPS application origin.",503);return url.origin;}
 export function audioTransferReadiness(){
   let download=false,upload=false;

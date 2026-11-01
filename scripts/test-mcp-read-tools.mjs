@@ -45,8 +45,8 @@ globalThis.fetch = async (input, init) => {
     assert.equal(url.searchParams.get("user_id"), "eq.owner-a");
     if (freeCreditMode === "outage") return Response.json({ message: "local free ledger outage" }, { status: 503 });
     return Response.json(freeCreditMode === "missing" ? null : freeCreditMode === "invalid"
-      ? { credit_limit: ONE_TIME_FREE_GENERATION_CREDITS, used_credits: 2, reserved_credits: 1 }
-      : { credit_limit: ONE_TIME_FREE_GENERATION_CREDITS, used_credits: 0, reserved_credits: 1 });
+      ? { credit_limit: 2, used_credits: 2, reserved_credits: 1 }
+      : { credit_limit: 2, used_credits: 0, reserved_credits: 1 });
   }
   if (url.pathname.endsWith("/rest/v1/mcp_oauth_tokens")) {
     seenBearerHash = url.searchParams.get("token_hash");
@@ -452,7 +452,7 @@ billingMode = "free";
 const free = await call("tools/call", { name: "get_entitlements", arguments: {} });
 assert.equal(free.body.result.structuredContent.plan, "free");
 assert.equal(free.body.result.structuredContent.features.video_generation, false);
-assert.equal(free.body.result.structuredContent.credits_remaining, 1);
+assert.equal(free.body.result.structuredContent.credits_remaining, 0);
 assert.equal(free.body.result.structuredContent.credits_reserved, 1);
 freeCreditMode = "missing";
 const noFreeAllocation = await call("tools/call", { name: "get_entitlements", arguments: {} });

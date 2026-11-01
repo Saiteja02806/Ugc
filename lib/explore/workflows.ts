@@ -15,9 +15,9 @@ export const EXPLORE_WORKFLOWS: readonly ExploreWorkflow[] = [
   },
   {
     id: "hook-video", title: "Hook video", description: "Choose a hook reference and create your own video.",
-    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-v2.mp4", coverPoster: "/explore/covers/hook-video-v2.webp",
+    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-v3.mp4", coverPoster: "/explore/covers/hook-video-v3.webp",
   },
-  { id: "wall-of-text", title: "Wall of text", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-v3.mp4", coverPoster: "/explore/covers/wall-of-text-v3.webp" },
+  { id: "wall-of-text", title: "Wall of text", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-v5.mp4", coverPoster: "/explore/covers/wall-of-text-v5.webp" },
   { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshows-v2.mp4", coverPoster: "/explore/covers/slideshows-v2.webp" },
 ];
 

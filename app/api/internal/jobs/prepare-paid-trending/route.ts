@@ -113,8 +113,8 @@ function parseInput(rawBody: string) {
   }
 }
 
-function getPlanKey(value: unknown): "starter" | "growth" | null {
-  return value === "starter" || value === "growth" ? value : null;
+function getPlanKey(value: unknown): "starter" | "growth" | "startup" | null {
+  return value === "starter" || value === "growth" || value === "startup" ? value : null;
 }
 
 function getString(value: unknown) {

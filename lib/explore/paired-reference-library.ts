@@ -2,6 +2,7 @@ import "server-only";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import { getExplorePairedReferences, isSilentExploreReference } from "@/worker/src/lib/explore-reference-soundtrack";
 import type { ExploreVideoReference } from "./hook-video-types";
+import browserPreviews from "./browser-reference-previews.json" with { type: "json" };
 
 export function getPairedExploreVideos(format: "hook" | "wall_text"): ExploreVideoReference[] {
   return getExplorePairedReferences(format).map(item => ({ id: item.id, videoUrl: buildPublicStorageUrl(item.videoStorageKey), posterUrl: buildPublicStorageUrl(item.posterStorageKey),
@@ -12,5 +13,9 @@ export function getPairedExploreVideos(format: "hook" | "wall_text"): ExploreVid
     ...("sourcePlatform" in item && (item.sourcePlatform === "instagram" || item.sourcePlatform === "tiktok") ? { sourcePlatform: item.sourcePlatform } : {}),
     ...(isSilentExploreReference(item) ? { previewVideoUrl: buildPublicStorageUrl(item.videoStorageKey) }
       : "previewStorageKey" in item && typeof item.previewStorageKey === "string" ? { previewVideoUrl: buildPublicStorageUrl(item.previewStorageKey) } : {}),
+    ...(() => {
+      const preview = browserPreviews.items.find(row => row.referenceId === item.id && row.sourceStorageKey === item.videoStorageKey && row.audioPolicy === (isSilentExploreReference(item) ? "silent" : "paired"));
+      return preview ? { previewVideoUrl: buildPublicStorageUrl(preview.previewStorageKey) } : {};
+    })(),
     ...(!isSilentExploreReference(item) ? { pairedAudio: { title: item.audioTitle, url: buildPublicStorageUrl(item.audioStorageKey), durationSeconds: item.audioDurationSeconds } } : {}) }));
 }

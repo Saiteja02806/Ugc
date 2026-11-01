@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Plus, UserRound, Video } from "lucide-react";
+import { Check, Plus, UserRound, Video, X } from "lucide-react";
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 
 import { WorkflowFilePicker, WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
@@ -9,9 +9,13 @@ import { WorkflowAudioReference, type WorkflowAudioReferenceProps } from "@/comp
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import { WorkflowReferencePreview } from "@/components/explore/workflow-reference-preview";
+import { TalkingHeadPhotoLibrary } from "@/components/explore/talking-head-photo-library";
+import { PersonPhotoGuide } from "@/components/explore/person-photo-guide";
+import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import { WorkflowImageLibrary } from "@/components/explore/workflow-image-library";
 import type { WorkflowImageAttachment } from "@/components/explore/use-local-workflow-images";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
@@ -24,6 +28,7 @@ import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import sections from "@/components/explore/workflow-section-layout.module.css";
 import imagePreview from "@/components/explore/workflow-reference-preview.module.css";
+import photoPicker from "@/components/explore/format-person-image-picker.module.css";
 
 const OUTPUTS = AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({ value: String(count), label: `${count} video${count > 1 ? "s" : ""}` }));
 const RATIOS = AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
@@ -38,12 +43,13 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   generationSettings: WorkflowGenerationSettings;
   onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
   startingFrameControl?: ReactNode;
+  onStartingFrameSelect?: (frame: HookStartingFrameSelection) => boolean | void;
   startingFrameMode?: boolean;
   startingFrameSoundControl?: ReactNode;
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, startingFrameMode = false, startingFrameSoundControl }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -69,7 +75,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
-        {startingFrameControl ?? <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile={kind === "hook"} />}
+        {startingFrameControl ?? (kind === "hook" ? <TalkingHeadCreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile onStartingFrameSelect={onStartingFrameSelect} /> : <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} />)}
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
@@ -83,7 +89,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
             <p className="text-sm leading-6 text-muted">Guide the scene and motion. WAN 3.0: up to 15 seconds and 32 MB · Seedance 2.5: up to 30 seconds and 250 MB.</p>
             {videoReference.asset ? <><WorkflowMediaPlayer asset={videoReference.asset} kind="video" label="Video reference preview" className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" /><p className="break-all text-xs text-muted">{videoReference.asset.name}</p></> : null}
             <WorkflowFilePicker attachment={{ ...videoReference, choose: file => videoReference.choose(file, { maxDuration: referencePolicy.maxVideoDuration, maxBytes: referencePolicy.maxVideoBytes }) }} kind="video" label={videoReference.asset ? "Replace video reference" : "Attach video reference"} className="h-9 text-sm" />
-            {videoReference.asset || videoReference.error ? <Button type="button" variant="ghost" aria-label="Remove video reference" className="h-9 rounded-lg text-sm" onClick={videoReference.remove}>Remove video</Button> : null}
+            {videoReference.asset || videoReference.error ? <Button type="button" variant="ghost" aria-label="Remove video reference" className="h-9 text-sm" onClick={videoReference.remove}>Remove video</Button> : null}
             {videoReference.error ? <p role="alert" className="text-sm text-destructive">{videoReference.error}</p> : null}
           </PopoverContent>
         </Popover>
@@ -131,6 +137,59 @@ function SettingField({ label, children }: { label: string; children: ReactNode 
   return <div className={creation.settingField}><span className="text-sm font-medium">{label}</span>{children}</div>;
 }
 
+function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = false, onStartingFrameSelect }: { creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; ownerId?: string | null; tile?: boolean; onStartingFrameSelect?: (frame: HookStartingFrameSelection) => boolean | void }) {
+  const [open, setOpen] = useState(false);
+  const [librarySection, setLibrarySection] = useState<"person" | "influencers">("person");
+  const [libraryRevision, setLibraryRevision] = useState(0);
+  const uploadInput = useRef<HTMLInputElement>(null);
+  const images = imageReferences?.assets ?? (creator.asset ? [creator.asset] : []);
+  const full = Boolean(imageReferences && images.length >= imageReferences.maxImages);
+  const selected = CREATOR_REFERENCES.find((reference) => reference.src === creator.asset?.url);
+  const label = selected ? `Creator ${CREATOR_REFERENCES.indexOf(selected) + 1}` : creator.asset ? "Custom creator" : "Creator";
+  return <div className={imagePreview.picker}>
+    {images.length ? <><div className={imagePreview.images} data-count={images.length}>{images.map(image => <WorkflowReferencePreview key={image.url} url={image.url} name={image.name} disabled={creator.loading} onRemove={imageReferences ? () => imageReferences.removeImage(image.url) : creator.remove} />)}</div>{images.length > 1 ? <span className={imagePreview.count}>{images.length} images</span> : null}</> : null}
+    {imageReferences ? <input ref={uploadInput} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" aria-label="Add reference images" disabled={creator.loading || full} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void imageReferences.chooseFiles(files); }} /> : null}
+    <Dialog open={open} onOpenChange={setOpen}>
+    <DialogTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, imagePreview.action)} aria-busy={creator.loading} data-state={creator.loading ? "loading" : creator.error ? "error" : creator.asset ? "selected" : "available"} title={creator.asset?.name ?? "Choose an optional creator image"} aria-label={`Choose image, currently ${creator.asset ? label : "none selected"}`} />}>
+      {!creator.asset ? <>{tile ? <UserRound aria-hidden="true" /> : null}<span className={creation.referenceLabel}>Choose image</span></> : null}<Plus className={imagePreview.add} aria-hidden="true" />
+    </DialogTrigger>
+    <DialogContent className={photoPicker.dialog}>
+      <header className={photoPicker.header}>
+      <DialogTitle className={photoPicker.title}>Choose person photos</DialogTitle>
+      <DialogDescription className={photoPicker.description}>Choose clear photos of the same person.</DialogDescription>
+      <div className={photoPicker.headerActions}><div className={photoPicker.purpose} role="group" aria-label="Photo library sections">{(["person", "influencers"] as const).map(section => <Button key={section} type="button" variant="outline" size="sm" aria-pressed={librarySection === section} disabled={creator.loading} onClick={() => { setLibrarySection(section); setLibraryRevision(value => value + 1); }} className={cn(librarySection === section && "border-foreground/30 bg-card")}>{section === "person" ? "Person photos" : "My Influencers"}</Button>)}</div><PersonPhotoGuide /></div>
+      </header>
+      <div className={photoPicker.body}>
+      <aside hidden className={photoPicker.selection} aria-label="Selected reference images">
+        <div className={photoPicker.selectionHeading}><h3>Your photos</h3><p>Choose clear photos of the same person.</p></div>
+        {images.length ? <div className={photoPicker.selectedGrid}>{images.map(image => <div className={photoPicker.selectedPhoto} key={image.url}><div className={photoPicker.selectedVisual}><Image src={image.url} alt={`Selected reference: ${image.name}`} width={128} height={160} unoptimized /><Button type="button" variant="ghost" size="icon-sm" className={photoPicker.removePhoto} aria-label={`Remove selected image: ${image.name}`} disabled={creator.loading} onClick={imageReferences ? () => imageReferences.removeImage(image.url) : creator.remove}><X className="size-3.5" aria-hidden="true" /></Button></div></div>)}</div> : <div className={photoPicker.emptySelection}><UserRound aria-hidden="true" /><strong>Start with a clear face</strong><span>Upload a photo or choose one from the library.</span></div>}
+      </aside>
+      <div className={photoPicker.library}>
+      <TalkingHeadPhotoLibrary key={`${ownerId}:${librarySection}:${libraryRevision}`} ownerId={ownerId} section={librarySection} onSectionChange={setLibrarySection}
+        disabled={creator.loading} selectedIds={images.map(image => image.assetId)} limitReached={full}
+        onDeselect={id => { const image = images.find(image => image.assetId === id); if (image && imageReferences) imageReferences.removeImage(image.url); }}
+        onSelectUpload={async asset => Boolean(ownerId && await imageReferences?.chooseSavedImage?.(asset, ownerId))}
+        onSelectInfluencer={async id => Boolean(ownerId && await imageReferences?.chooseInfluencerImage?.(id, ownerId))}
+        onSelectStartingFrame={onStartingFrameSelect ? frame => { const accepted = onStartingFrameSelect(frame); if (accepted !== false) setOpen(false); return accepted; } : undefined}
+        uploadControl={<Button type="button" variant="outline" size="sm" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}><Plus className="size-3.5" aria-hidden="true" />Upload photos</Button>}>
+      <div className={photoPicker.libraryGrid}>
+        {CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={images.some(image => image.url === reference.src)}
+          disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { const existing = images.find(image => image.url === reference.src); if (existing && imageReferences) { imageReferences.removeImage(existing.url); return; } creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); if (!imageReferences) setOpen(false); }}>
+          <Image src={reference.src} alt="" width={56} height={74} sizes="56px" className="aspect-[3/4] w-full object-cover" />
+          <span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", images.some(image => image.url === reference.src) ? "border-white bg-black/70 text-white" : "border-white bg-black/60")}>{images.some(image => image.url === reference.src) ? <Check className="size-3.5" /> : null}</span>
+        </Button>)}
+      </div>
+      </TalkingHeadPhotoLibrary>
+      </div></div>
+      <footer className={photoPicker.footer}>
+        <div className={photoPicker.footerStatus}><p role="status">{images.length} of {imageReferences?.maxImages ?? 1} images selected</p>{creator.error ? <p role="alert" className="text-destructive">{creator.error}</p> : null}</div>
+        {images.length ? <Button type="button" variant="ghost" aria-label="Clear selected photos" disabled={creator.loading} onClick={creator.remove}>Clear selection</Button> : null}
+        <Button type="button" disabled={creator.loading} onClick={() => setOpen(false)}>Done</Button>
+      </footer>
+    </DialogContent>
+  </Dialog></div>;
+}
+
 function CreatorPicker({ creator, imageReferences, ownerId, tile = false }: { creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; ownerId?: string | null; tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
@@ -148,7 +207,7 @@ function CreatorPicker({ creator, imageReferences, ownerId, tile = false }: { cr
     <PopoverContent side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
       <PopoverTitle>Choose image</PopoverTitle>
       <p className="text-sm leading-6 text-muted">{imageReferences ? `Add up to ${imageReferences.maxImages} appearance or product images. Describe how to use them in your instructions.` : "Optional creator image. Your instructions decide how the creator appears."}</p>
-      <div className="flex flex-wrap items-center gap-2">{imageReferences ? <Button type="button" variant="outline" className="h-9 gap-2 rounded-xl text-sm" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}><Plus className="size-4" aria-hidden="true" />Add images</Button> : <WorkflowFilePicker attachment={creator} kind="image" label="Upload creator" className="h-9 rounded-xl text-sm" />}<Button type="button" variant="ghost" aria-label="Remove creator" className="h-9 rounded-lg text-sm" onClick={() => { creator.remove(); setOpen(false); }}>None</Button></div>
+      <div className="flex flex-wrap items-center gap-2">{imageReferences ? <Button type="button" variant="outline" className="h-9 gap-2 text-sm" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}><Plus className="size-4" aria-hidden="true" />Add images</Button> : <WorkflowFilePicker attachment={creator} kind="image" label="Upload creator" className="h-9 text-sm" />}<Button type="button" variant="ghost" aria-label="Remove creator" className="h-9 text-sm" onClick={() => { creator.remove(); setOpen(false); }}>None</Button></div>
       {imageReferences ? <div className="flex items-center justify-between gap-3"><p role="status" className="text-xs text-muted">{images.length} of {imageReferences.maxImages} images selected</p><Button type="button" variant="outline" size="sm" disabled={creator.loading} onClick={() => setOpen(false)}>Done</Button></div> : null}
       <WorkflowImageLibrary ownerId={ownerId} open={open} disabled={creator.loading} limitReached={full} selectedIds={images.map(image => image.assetId)} onDeselect={imageReferences ? id => { const image = images.find(image => image.assetId === id); if (image) imageReferences.removeImage(image.url); } : undefined} onSelect={async asset => {
         if (!ownerId) return false;
@@ -159,7 +218,7 @@ function CreatorPicker({ creator, imageReferences, ownerId, tile = false }: { cr
         {CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={images.some(image => image.url === reference.src)}
           disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { const existing = images.find(image => image.url === reference.src); if (existing && imageReferences) { imageReferences.removeImage(existing.url); return; } creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); if (!imageReferences) setOpen(false); }}>
           <Image src={reference.src} alt="" width={56} height={74} sizes="56px" className="aspect-[3/4] w-full object-cover" />
-          <span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", images.some(image => image.url === reference.src) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{images.some(image => image.url === reference.src) ? <Check className="size-3.5" /> : null}</span>
+          <span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", images.some(image => image.url === reference.src) ? "border-white bg-black/70 text-white" : "border-white bg-black/60")}>{images.some(image => image.url === reference.src) ? <Check className="size-3.5" /> : null}</span>
         </Button>)}
       </div>
       </WorkflowImageLibrary>

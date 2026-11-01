@@ -20,7 +20,7 @@ const datePublished = "2026-10-29";
 const faqs = [
   {
     question: "What is the best AI UGC tool for SaaS founders?",
-    answer: "For SaaS and tech founders, UGC Pilot is ranked #1 because it is specifically designed around software screen demo cutaways, tech-native creator personas, multi-slide carousels, and an official multi-tool OAuth MCP server for Claude and Codex.",
+    answer: "For SaaS and tech founders, Vidmake is ranked #1 because it is specifically designed around software screen demo cutaways, tech-native creator personas, multi-slide carousels, and an official multi-tool OAuth MCP server for Claude and Codex.",
   },
   {
     question: "How do AI UGC tools for SaaS differ from e-commerce video generators?",
@@ -32,11 +32,11 @@ const faqs = [
   },
   {
     question: "What should a bootstrapped SaaS founder budget for AI video tools?",
-    answer: "A lean SaaS team can typically run a complete short-form video routine for $19 to $49 per month on UGC Pilot, compared to $2,000+ per month when hiring human creators.",
+    answer: "A lean SaaS team can typically run a complete short-form video routine for $19 to $49 per month on Vidmake, compared to $2,000+ per month when hiring human creators.",
   },
   {
     question: "Can I automate AI UGC generation inside Claude or Codex?",
-    answer: "Yes. UGC Pilot includes a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating video clips, and managing media directly inside AI agents.",
+    answer: "Yes. Vidmake includes a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating video clips, and managing media directly inside AI agents.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -94,7 +94,7 @@ export default function BestAiUgcToolsForSaasPage() {
             </thead>
             <tbody>
               <tr className="border-t border-border">
-                <th scope="row" className="p-4 font-semibold text-foreground-strong">1. UGC Pilot</th>
+                <th scope="row" className="p-4 font-semibold text-foreground-strong">1. Vidmake</th>
                 <td className="p-4 align-top">SaaS founders, tech tools &amp; digital products</td>
                 <td className="p-4 align-top">Native hook-to-screen cutaway guidance</td>
                 <td className="p-4 align-top">Yes (Included <ArticleLink href="/instagram-carousel-maker">Carousel Maker</ArticleLink>)</td>
@@ -134,9 +134,9 @@ export default function BestAiUgcToolsForSaasPage() {
 
         <ArticleH2>Deep Dive: Top 3 Recommendations by Use Case</ArticleH2>
 
-        <ArticleH3>1. UGC Pilot — Best Overall for SaaS Founders &amp; Developers</ArticleH3>
+        <ArticleH3>1. Vidmake — Best Overall for SaaS Founders &amp; Developers</ArticleH3>
         <p>
-          <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> is the only platform built exclusively for software creators. It bridges the gap between charismatic 3-second talking-head hooks and authentic software screen demos. Furthermore, its official multi-tool Model Context Protocol (MCP) server allows technical teams to trigger video creation directly from Claude Desktop or Codex CLI.
+          <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> is the only platform built exclusively for software creators. It bridges the gap between charismatic 3-second talking-head hooks and authentic software screen demos. Furthermore, its official multi-tool Model Context Protocol (MCP) server allows technical teams to trigger video creation directly from Claude Desktop or Codex CLI.
         </p>
 
         <ArticleH3>2. Arcads — Best for Physical Direct-to-Consumer Brands</ArticleH3>
@@ -178,7 +178,7 @@ export default function BestAiUgcToolsForSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and full{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and full{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),

@@ -23,7 +23,7 @@ const GrantSchema = z
   .object({
     email: EmailSchema,
     expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
-    planKey: z.enum(["starter", "growth"]),
+    planKey: z.enum(["starter", "growth", "startup"]),
     reason: z.string().trim().min(3).max(1000),
   })
   .strict();

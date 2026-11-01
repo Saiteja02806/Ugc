@@ -86,7 +86,7 @@ const MIX_ROWS: Array<{
     format: "carousel",
     icon: Images,
     iconClass: "text-primary",
-    iconSurfaceClass: "border-primary/15 bg-brand-soft",
+    iconSurfaceClass: "border-white/20 bg-card",
     label: "Slideshows",
     valueClass: "text-primary",
   },

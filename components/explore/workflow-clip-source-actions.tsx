@@ -44,8 +44,8 @@ export function WorkflowClipSourceActions({ label, onUpload, onChooseAssets, onG
       <Button type="button" variant="outline" className="min-h-11" disabled={disabled} aria-label={`Choose ${label} from ${libraryName}`} onClick={() => choose("assets")}><FolderOpen className="size-4" aria-hidden="true" />{libraryName}</Button>
       {onGenerate ? <Button type="button" variant="outline" className="min-h-11" disabled={disabled} aria-label={`Generate ${label}`} onClick={() => choose("generate")}><Sparkles className="size-4" aria-hidden="true" />Generate video</Button> : null}
     </> : <Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverTrigger openOnHover={!triggerLabel} delay={150} closeDelay={150} render={<Button type="button" variant="outline" disabled={disabled} className={triggerLabel ? "min-h-10 gap-2" : "min-h-10 w-full gap-2"} aria-label={triggerLabel ? `${triggerLabel} ${label}` : `Choose ${label} source`} />}>
-        {triggerLabel ? null : <Icon className="size-4 shrink-0" aria-hidden="true" />}<span>{triggerLabel ?? title}</span><ChevronDown className="ml-auto size-3.5 shrink-0 text-muted" aria-hidden="true" />
+      <PopoverTrigger openOnHover={!triggerLabel} delay={150} closeDelay={150} render={<Button type="button" variant={triggerLabel ? "outline" : "default"} size={triggerLabel ? "default" : "lg"} disabled={disabled} className={triggerLabel ? "min-h-10 gap-2" : "h-11 min-h-11 w-full gap-2 px-4 text-sm font-semibold shadow-[0_10px_24px_-14px_var(--primary)]"} aria-label={triggerLabel ? `${triggerLabel} ${label}` : `Choose ${label} source`} />}>
+        {triggerLabel ? null : <Icon className="size-4 shrink-0" aria-hidden="true" />}<span>{triggerLabel ?? title}</span><ChevronDown className={`ml-auto size-3.5 shrink-0${triggerLabel ? " text-muted" : ""}`} aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 max-w-[calc(100vw-32px)] gap-1 p-1.5">
         <PopoverTitle className="sr-only">Choose {label} source</PopoverTitle>

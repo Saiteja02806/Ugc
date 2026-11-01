@@ -9,20 +9,20 @@ import {
 export const metadata: Metadata = {
   title: "Acceptable Use Policy",
   description:
-    "Acceptable Use Policy for UGC Pilot, including content rights, AI disclosure, impersonation, spam, and platform compliance rules.",
+    "Acceptable Use Policy for Vidmake, including content rights, AI disclosure, impersonation, spam, and platform compliance rules.",
 };
 
 export default function AcceptableUsePage() {
   return (
     <LegalPageShell
       eyebrow="Acceptable Use Policy"
-      title="Responsible use of UGC Pilot"
-      description="This policy explains what users may and may not create, upload, schedule, or publish through UGC Pilot."
+      title="Responsible use of Vidmake"
+      description="This policy explains what users may and may not create, upload, schedule, or publish through Vidmake."
     >
       <div className="flex flex-col gap-8">
         <LegalSection title="User control and platform rules">
           <p>
-            UGC Pilot is designed for user-controlled social content creation
+            Vidmake is designed for user-controlled social content creation
             and scheduling. Users must review every carousel slide, image,
             video, caption, destination YouTube, TikTok, or Instagram account,
             schedule, rights confirmation, and disclosure before publishing or
@@ -40,7 +40,7 @@ export default function AcceptableUsePage() {
             Users must own or have permission to use all videos, images, music,
             sounds, voices, likenesses, logos, product materials, screenshots,
             captions, and other assets they upload, generate, edit, schedule, or
-            publish through UGC Pilot.
+            publish through Vidmake.
           </p>
           <LegalList>
             <li>Confirm ownership or permission before publishing.</li>
@@ -54,7 +54,7 @@ export default function AcceptableUsePage() {
 
         <LegalSection title="AI-assisted content and disclosures">
           <p>
-            UGC Pilot may automatically prepare AI-assisted carousel slides,
+            Vidmake may automatically prepare AI-assisted carousel slides,
             videos, images, captions, and other social creative assets. Users
             are responsible for reviewing generated outputs and disclosing
             AI-generated, sponsored, commercial, or branded content where

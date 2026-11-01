@@ -19,7 +19,7 @@ function fixture(limit = 6, ownedRead = async id => ({ id, title: "Saved image",
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/use-local-workflow-images.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, Error, require: name => { if (name === "@/lib/explore/format-reference-images") return { fetchFormatReferenceImage: (...args) => ownedRead(...args) }; assert.equal(name, "react"); return react; },
+  }).outputText, { exports, Error, require: name => { if (name === "@/lib/characters/photo-library-client") return { resolveInfluencerPhoto: (owner,id) => ownedRead(id,owner) }; if (name === "@/lib/explore/format-reference-images") return { fetchFormatReferenceImage: (...args) => ownedRead(...args) }; assert.equal(name, "react"); return react; },
     URL: { createObjectURL: file => `blob:${++nextUrl}:${file.name}`, revokeObjectURL: url => revoked.push(url) },
     Image: class { set src(value) { imageReads.push({ url: value, load: () => this.onload(), fail: () => this.onerror() }); } },
   });
@@ -104,4 +104,25 @@ test("remote image download is pending from the initial click and cannot restore
   const choosing = input.chooseRemote(() => new Promise(done => { resolve = done; }));
   assert.equal(h.render().loading, true); input.remove(); resolve(file("late.png"));
   assert.equal(await choosing, false); assert.equal(h.imageReads.length, 0);
+});
+
+
+test("generated influencer selection resolves the owned asset without converting it to an upload", async () => {
+  const reads=[];
+  const h=fixture(2,async(id,owner)=>{reads.push([id,owner]);return{id,title:"My Influencer",url:"https://owned.test/influencer.png",fileSizeBytes:100};});
+  assert.equal(await h.render().chooseInfluencerImage("influencer","owner-a"),true);
+  assert.deepEqual(reads,[["influencer","owner-a"]]);
+  assert.equal(h.render().asset.assetId,"influencer");assert.equal(h.render().asset.file,undefined);
+  assert.equal(await h.render().chooseInfluencerImage("influencer","owner-a"),true);assert.equal(reads.length,1);
+  assert.equal(h.render().assets.length,1);
+  h.render().remove();assert.equal(h.render().assets.length,0);
+});
+
+test("wrong or oversized influencer records cannot replace selected images", async () => {
+  for(const asset of [{id:"foreign",url:"https://owned.test/x.png"},{id:"chosen",url:"https://owned.test/x.png",fileSizeBytes:21*1024**2}]){
+    const h=fixture(2,async()=>asset);
+    h.render().chooseLibraryImage({name:"Existing",url:"/ai-studio/creator-references/creator-01.png"});
+    assert.equal(await h.render().chooseInfluencerImage("chosen","owner-a"),false);
+    assert.equal(h.render().assets.length,1);
+  }
 });

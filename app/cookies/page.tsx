@@ -9,15 +9,15 @@ import {
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description:
-    "Cookie Policy for UGC Pilot, including authentication, preferences, analytics, security, and user choices.",
+    "Cookie Policy for Vidmake, including authentication, preferences, analytics, security, and user choices.",
 };
 
 export default function CookiePolicyPage() {
   return (
     <LegalPageShell
       eyebrow="Cookie Policy"
-      title="How UGC Pilot uses cookies"
-      description="This policy explains how UGC Pilot uses cookies and similar technologies on getugcpilot.com."
+      title="How Vidmake uses cookies"
+      description="This policy explains how Vidmake uses cookies and similar technologies on getugcpilot.com."
     >
       <div className="flex flex-col gap-8">
         <LegalSection title="What cookies do">

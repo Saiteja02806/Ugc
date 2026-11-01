@@ -16,7 +16,7 @@ function harness(load=async id=>({id,status:'ready',collection:'influencer',mime
   if(name==='react')return react;
   if(name.endsWith('/media-client'))return{fetchAIStudioMediaAsset:async(id,token,options)=>{reads.push({id,token,signal:options.signal});return load(id);}};
   if(name.endsWith('/firebase/auth'))return{getCurrentUserIdToken:async owner=>`token-${owner}`};
-  if(name.endsWith('/hook-starting-frame-video'))return{hookStartingFrameFaceReferenceLimit:m=>m==='google_omni'?5:0};
+  if(name.endsWith('/hook-starting-frame-video'))return{hookStartingFrameFaceReferenceLimit:()=>0};
   if(name.endsWith('/starting-frame-photo-selection'))return selection;
   throw Error(name);
  },exports);
@@ -27,30 +27,23 @@ test('empty photo choice is explicit and owner/frame scoped; no URL is stored',(
  assert.throws(()=>selection.readStartingFramePhotos(raw,{...frame,ownerId:'other'}));assert.throws(()=>selection.serializeStartingFramePhotos([photo,photo],frame));assert.throws(()=>selection.serializeStartingFramePhotos([frame.assetId],frame));
  assert.doesNotMatch(raw,/https/);
 });
-test('same ordered preparation photos load through owned GET; removal and replacement survive reload',async()=>{
- const h=harness();assert.equal(h.render().pending,true);await settle();assert.equal(h.render().pending,false);assert.deepEqual(h.reads.map(r=>r.id),[photo,second]);assert.deepEqual(h.applied[0].map(p=>p.asset.id),[photo,second]);
- h.render().remember([]);assert.deepEqual(selection.readStartingFramePhotos(h.values.get(selection.startingFramePhotoKey(frame)),frame),[]);
- h.render({model:'wan_3_0'});await settle();const before=h.reads.length;assert.equal(h.render().pending,false);h.render({model:'google_omni'});await settle();assert.equal(h.reads.length,before);assert.deepEqual(h.applied.at(-1),[]);
- h.render().remember([{asset:{id:second}}]);h.render({model:'seedance_2_5'});h.render({model:'google_omni'});await settle();assert.deepEqual(h.applied.at(-1).map(p=>p.asset.id),[second]);
+test('Omni no longer loads saved face photos into a starting frame',async()=>{
+ const h=harness();assert.equal(h.render().pending,false);await settle();assert.equal(h.reads.length,0);assert.equal(h.applied.length,0);
+ h.render().remember([{asset:{id:second}}]);assert.equal(h.values.size,0);
 });
-test('unsupported routes and disabled preview do not load photos; stale frame reads cannot replace selection',async()=>{
- let release;const h=harness(()=>new Promise(resolve=>release=resolve));h.render({model:'wan_3_0'});await settle();assert.equal(h.reads.length,0);
+test('unsupported routes and disabled preview do not load photos',async()=>{
+ const h=harness();h.render({model:'wan_3_0'});await settle();assert.equal(h.reads.length,0);
  h.render({model:'google_omni',enabled:false});await settle();assert.equal(h.reads.length,0);
- h.render({enabled:true,frame:{...frame,identityAssetIds:[photo]}});await settle();assert.equal(h.reads.length,1);
- h.render({frame:undefined});release({id:photo,status:'ready',collection:'image',mimeType:'image/png'});await settle();assert.equal(h.applied.length,0);assert.equal(h.reads[0].signal.aborted,true);
+ h.render({enabled:true,frame:{...frame,identityAssetIds:[photo]}});await settle();assert.equal(h.reads.length,0);assert.equal(h.applied.length,0);
 });
-test('missing/deleted photo and malformed saved choice fail closed without submitting or reinserting',async()=>{
- const h=harness(async id=>({id,status:'failed',collection:'image',mimeType:'image/png'}));h.render();await settle();assert.match(h.render().error,/unavailable/);assert.equal(h.applied.length,0);
- h.render().remember([]);assert.equal(h.render().error,null);await settle();assert.equal(h.applied.length,0);
+test('a failed saved photo is not fetched once face photos are disabled',async()=>{
+ const h=harness(async id=>({id,status:'failed',collection:'image',mimeType:'image/png'}));h.render();await settle();assert.equal(h.render().error,null);assert.equal(h.applied.length,0);assert.equal(h.reads.length,0);
 });
 
-test('original uploaded influencer photos restore into separate video appearance inputs', async () => {
+test('a starting frame is sent alone when face photos are not restored', async () => {
  const h=harness(async id=>({id,status:'ready',collection:'image',sourceType:'upload',mimeType:'image/png',url:`https://owned.test/${id}`}));
  h.render();await settle();
- const input=startingFrameAnimationInput({...frame,referenceId:'source',url:'https://owned.test/generated-frame.png'},h.applied.at(-1));
+ const input=startingFrameAnimationInput({...frame,referenceId:'source',url:'https://owned.test/generated-frame.png'},h.applied.at(-1)??[]);
  assert.equal(input.startingFrameAssetId,frame.assetId);
- assert.deepEqual(input.referenceImageUrls,[`https://owned.test/${photo}`,`https://owned.test/${second}`]);
- assert.equal(input.imageReferencePurpose,'person');
- h.render().remember([]);h.render({model:'seedance_2_5'});h.render({model:'google_omni'});await settle();
- assert.equal(startingFrameAnimationInput({...frame,referenceId:'source',url:'https://owned.test/generated-frame.png'},h.applied.at(-1)).referenceImageUrls,undefined);
+ assert.equal(input.referenceImageUrls,undefined);
 });

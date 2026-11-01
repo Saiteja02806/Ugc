@@ -14,7 +14,7 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/synthesia-vs-ai-ugc-saas";
 const title = "Synthesia vs AI UGC for SaaS: Corporate Training vs Growth Marketing";
-const description = "Compare Synthesia and UGC Pilot for SaaS marketing: why enterprise learning avatars fail on social media, and how dedicated AI UGC drives software signups.";
+const description = "Compare Synthesia and Vidmake for SaaS marketing: why enterprise learning avatars fail on social media, and how dedicated AI UGC drives software signups.";
 const datePublished = "2026-10-29";
 
 const faqs = [
@@ -23,20 +23,20 @@ const faqs = [
     answer: "You can, but Synthesia is engineered for corporate training and internal communications. Its formal avatars and steady pacing often feel like corporate slide decks on TikTok and Instagram Reels, leading to high drop-off rates.",
   },
   {
-    question: "What is the primary difference between Synthesia and UGC Pilot?",
-    answer: "Synthesia focuses on 16:9 widescreen corporate training and customer support walkthroughs. UGC Pilot focuses on 9:16 vertical short-form creator hooks, product demo cutaways, and educational multi-slide carousels for customer acquisition.",
+    question: "What is the primary difference between Synthesia and Vidmake?",
+    answer: "Synthesia focuses on 16:9 widescreen corporate training and customer support walkthroughs. Vidmake focuses on 9:16 vertical short-form creator hooks, product demo cutaways, and educational multi-slide carousels for customer acquisition.",
   },
   {
-    question: "How does pricing compare between Synthesia and UGC Pilot?",
-    answer: "Synthesia offers self-serve plans with monthly or annual billing, alongside enterprise plans. Compare the current included usage and features for your workflow. UGC Pilot offers a 7-day free trial with 2 credits and monthly self-serve plans starting at $19 and $49.",
+    question: "How does pricing compare between Synthesia and Vidmake?",
+    answer: "Synthesia offers self-serve plans with monthly or annual billing, alongside enterprise plans. Compare the current included usage and features for your workflow. Vidmake offers a 7-day free trial with 2 credits and monthly self-serve plans starting at $19 and $49.",
   },
   {
     question: "Does Synthesia integrate with AI coding agents like Claude and Codex?",
-    answer: "Synthesia provides enterprise APIs, but lacks a Model Context Protocol (MCP) server. UGC Pilot provides a hosted multi-tool Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp for direct agent workflow execution.",
+    answer: "Synthesia provides enterprise APIs, but lacks a Model Context Protocol (MCP) server. Vidmake provides a hosted multi-tool Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp for direct agent workflow execution.",
   },
   {
-    question: "When should a company use both Synthesia and UGC Pilot?",
-    answer: "Many technology companies use Synthesia for internal employee onboarding and long-form help center tutorials, while using UGC Pilot for top-of-funnel customer acquisition on TikTok, Reels, and YouTube Shorts.",
+    question: "When should a company use both Synthesia and Vidmake?",
+    answer: "Many technology companies use Synthesia for internal employee onboarding and long-form help center tutorials, while using Vidmake for top-of-funnel customer acquisition on TikTok, Reels, and YouTube Shorts.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -59,7 +59,7 @@ export default function SynthesiaVsAiUgcSaasPage() {
     <VideoMarketingPage
       eyebrow="SaaS Video Alternatives"
       h1={title}
-      lede="Synthesia pioneered corporate AI video for corporate learning and development. But growth marketing requires an entirely different creative engine. Here is an honest breakdown of Synthesia vs UGC Pilot for software founders."
+      lede="Synthesia pioneered corporate AI video for corporate learning and development. But growth marketing requires an entirely different creative engine. Here is an honest breakdown of Synthesia vs Vidmake for software founders."
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -77,18 +77,18 @@ export default function SynthesiaVsAiUgcSaasPage() {
           However, when software founders attempt to use Synthesia for <strong className="font-semibold text-foreground-strong">growth marketing and customer acquisition</strong>, they face disappointing results. An avatar standing rigidly against a plain studio backdrop reading formal script lines looks like a mandatory corporate seminar. On TikTok, Instagram Reels, and YouTube Shorts, users swipe past it in under two seconds.
         </p>
         <p>
-          Here is how to evaluate Synthesia against <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> for your software marketing strategy.
+          Here is how to evaluate Synthesia against <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> for your software marketing strategy.
         </p>
 
-        <ArticleH2>Direct Feature Comparison: Synthesia vs UGC Pilot</ArticleH2>
+        <ArticleH2>Direct Feature Comparison: Synthesia vs Vidmake</ArticleH2>
         <div className="overflow-x-auto rounded-[22px] border border-border">
           <table className="w-full min-w-[500px] border-collapse text-left text-sm leading-6">
-            <caption className="sr-only">Direct comparison of Synthesia and UGC Pilot for SaaS</caption>
+            <caption className="sr-only">Direct comparison of Synthesia and Vidmake for SaaS</caption>
             <thead className="bg-card-muted/60 text-foreground-strong">
               <tr>
                 <th scope="col" className="p-4 font-semibold">Evaluation Area</th>
                 <th scope="col" className="p-4 font-semibold">Synthesia</th>
-                <th scope="col" className="p-4 font-semibold">UGC Pilot</th>
+                <th scope="col" className="p-4 font-semibold">Vidmake</th>
               </tr>
             </thead>
             <tbody>
@@ -135,7 +135,7 @@ export default function SynthesiaVsAiUgcSaasPage() {
 
         <ArticleH3>1. The Attention Economy Demands High Energy</ArticleH3>
         <p>
-          Corporate training videos are designed for clarity and compliance, not entertainment. On social media, you are competing against comedic skits, viral memes, and high-energy creators. An avatar speaking in a measured, monotone cadence fails to stop the scroll. UGC Pilot generates fast-paced, emotionally resonant hooks built on proven copywriting formulas. Explore our <ArticleLink href="/free-hook-lines">110 free hook lines</ArticleLink>.
+          Corporate training videos are designed for clarity and compliance, not entertainment. On social media, you are competing against comedic skits, viral memes, and high-energy creators. An avatar speaking in a measured, monotone cadence fails to stop the scroll. Vidmake generates fast-paced, emotionally resonant hooks built on proven copywriting formulas. Explore our <ArticleLink href="/free-hook-lines">110 free hook lines</ArticleLink>.
         </p>
 
         <ArticleH3>2. Casual Authenticity Outperforms Studio Polish</ArticleH3>
@@ -153,9 +153,9 @@ export default function SynthesiaVsAiUgcSaasPage() {
           <li>You have an enterprise budget and require custom enterprise security agreements.</li>
         </ul>
 
-        <ArticleH2>When Should You Choose UGC Pilot?</ArticleH2>
+        <ArticleH2>When Should You Choose Vidmake?</ArticleH2>
         <p>
-          UGC Pilot is the right platform if:
+          Vidmake is the right platform if:
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>You are marketing a SaaS startup, software tool, or digital platform to get signups.</li>
@@ -173,7 +173,7 @@ export default function SynthesiaVsAiUgcSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Explore the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and our{" "}
+                  Yes. Explore the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and our{" "}
                   <ArticleLink href="/docs/mcp-tools">tool reference</ArticleLink>.
                 </>
               ),
@@ -188,7 +188,7 @@ export default function SynthesiaVsAiUgcSaasPage() {
           { href: "/blog/heygen-alternative-for-ugc-hooks", title: "HeyGen Alternative for Social Hooks", description: "Social video vs corporate presenters." },
           { href: "/blog/arcads-alternative-for-saas", title: "Arcads Alternative for SaaS", description: "Physical e-commerce ads vs software video workflows." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
-          { href: "/mcp", title: "UGC Pilot MCP Server", description: "Connect Claude and Codex to automate video generation." },
+          { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
           { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
         ]}
       />

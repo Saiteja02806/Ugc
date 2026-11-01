@@ -13,6 +13,13 @@ export type WorkflowScheduleDraft = {
   fiveMinutesFromSubmit?: boolean;
 };
 
+/** A full draft, or a change applied to the latest draft so caption and account updates compose. */
+export type WorkflowScheduleDraftUpdate = WorkflowScheduleDraft | ((current: WorkflowScheduleDraft) => WorkflowScheduleDraft);
+
+export function resolveWorkflowScheduleDraft(current: WorkflowScheduleDraft, update: WorkflowScheduleDraftUpdate): WorkflowScheduleDraft {
+  return typeof update === "function" ? update(current) : update;
+}
+
 export function workflowSelectedPlatforms(draft: WorkflowScheduleDraft): string[] {
   return [...new Set(draft.platforms ?? (draft.platform ? [draft.platform] : []))];
 }

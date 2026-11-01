@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { publicOrigin } from "@/lib/marketing/public-origin";
+
 const privatePaths = [
   "/api/",
   "/mcp-server",
@@ -53,6 +55,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: privatePaths,
       })),
     ],
-    sitemap: "https://getugcpilot.com/sitemap.xml",
+    sitemap: `${publicOrigin}/sitemap.xml`,
   };
 }

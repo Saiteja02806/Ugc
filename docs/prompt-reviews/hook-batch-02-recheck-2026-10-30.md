@@ -1,0 +1,16 @@
+# Hook source-to-prompt review — batch 2
+
+30 October 2026. Public Hooks 07–12. Revisited the batch 1 report and its corrected local preview selection, then inspected the batch 2 timestamped native-frame contact sheets in sequence (519 frames total), comparing them with each new unedited draft's local original-opening prompt preview. Inspected full-resolution final frame of Hook 08 and frames 50 and 70 of Hook 12 to resolve prior uncertainties. Times are approximate source presentation times. No model output or production acceptance was evaluated.
+
+| Hook | Frames | Source evidence | Local prompt assessment |
+|---|---:|---|---|
+| 07 | 77 | Holds glasses at opening, raises them to head about 0.7–1.1s, pauses, then covers mouth with same hand near 2s. | Sequence, glasses position, hand and held ending are present. Camera drift is approximate. No material wording correction identified. |
+| 08 | 79 | Interlaced stretch, first head tilt about 0.7–1.3s, opposite tilt about 1.5–2.0s, returns to laptop with headphones on. | Sequence and ending represented. Full-resolution final frame shows a lowered gaze toward the laptop; earlier uncertainty is resolved to that extent. No change needed. |
+| 09 | 85 | Open-mouth hold, raises glasses onto head starting near 1s, then uses same hand to cover lips by around 2.3s. | Main sequence, prop continuity and ending represented. No material change identified. |
+| 10 | 93 | Sideways open-mouth reaction, fingertips to lip, blink, hand to chest, look forward; later brief eye closures before ending. | These actions, their order and ending are present. Subsecond blink timings are guidance, not demonstrated model precision. No material change identified. |
+| 11 | 112 | Both hands already beside head on headphones; holds open-mouth reaction, blinks and redirects face and eyes toward camera. | Opening pose, held grips, movement and ending represented. Subtle gaze and timing may vary. No material change identified. |
+| 12 | 73 | Mug at mouth initially, lowered while eyes widen, then rounded open mouth; other hand remains at laptop. Full-resolution frames 50 and 70 show a visible thin liquid stream from lower lip toward mug, with downward gaze. | Actual local original-opening preview selects a timed plan including the drink, mug and stream. Earlier audit snapshot's untimed text was from a different lookup, not the actual local preview. No change needed based on this review. |
+
+Batch 1 corrections for Hooks 01, 03 and 05 are covered by local prompt-selection tests. Across batches 1 and 2, the prompt review is based on the retained source, not on whether generated video will faithfully reproduce the action. Source captions are separate from motion and are handled through editing.
+
+A 20-test local prompt, preview and source-binding suite passed. The preview output in the audit folder is a local new-draft example; its default durations do not establish what any particular model supports. Neither the live assignment nor an actual generated result was verified here. No application prompts, historical jobs or production state were changed for batch 2. Precise movement timing, identity and the 2.43s-to-4s model/trim behavior still require actual request and output checks.

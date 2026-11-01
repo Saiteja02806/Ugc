@@ -98,7 +98,7 @@ function getAppBaseUrl() {
   const configured =
     process.env.APP_BASE_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "https://getugcpilot.com";
+    "https://vidmake.io";
   const url = new URL(configured);
 
   if (url.protocol !== "https:" && process.env.NODE_ENV === "production") {

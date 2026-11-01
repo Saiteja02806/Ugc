@@ -10,10 +10,10 @@ const content = seoPageContent.video;
 export const metadata: Metadata = {
   title: "AI UGC Video Generator for SaaS & Apps",
   description:
-    "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media. Review each result in UGC Pilot.",
+    "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media. Review each result in Vidmake.",
   alternates: { canonical: content.canonicalPath },
   openGraph: {
-    title: "AI UGC Video Generator for SaaS & Apps | UGC Pilot",
+    title: "AI UGC Video Generator for SaaS & Apps | Vidmake",
     description:
       "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media.",
     url: content.canonicalPath,
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "AI UGC Video Generator for SaaS & Apps | UGC Pilot",
+    title: "AI UGC Video Generator for SaaS & Apps | Vidmake",
     description:
       "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media.",
   },

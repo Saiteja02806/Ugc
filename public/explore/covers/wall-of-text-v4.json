@@ -1,0 +1,32 @@
+{
+  "version": 4,
+  "name": "wall-of-text-v4",
+  "engine": "remotion",
+  "width": 1280,
+  "height": 720,
+  "fps": 24,
+  "layout": "premium kinetic editorial triptych",
+  "frames": 192,
+  "duration": 8,
+  "bytes": 4982571,
+  "sha256": "b4408ec8acaaaaf73d6fddbcd671d8110aba69fc840451a3772bd42a0bc814d1",
+  "silent": true,
+  "fastStart": true,
+  "sources": [
+    {
+      "file": "wot-hero-1.mp4",
+      "title": "Nutrition & Fitness",
+      "durationSeconds": 6.5
+    },
+    {
+      "file": "wot-hero-2.mp4",
+      "title": "Travel & Perspective",
+      "durationSeconds": 8.5
+    },
+    {
+      "file": "wot-hero-3.mp4",
+      "title": "Mental Models & Laws",
+      "durationSeconds": 7.17
+    }
+  ]
+}

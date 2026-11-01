@@ -4,6 +4,7 @@ import { readSlideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerat
 import { parseSlideshowBusinessContext, slideshowBusinessContextPrompt, type SlideshowBusinessContext } from "../lib/slideshow-business-context.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
+import { generateOpenRouterGeminiHookKeyframe, generateOpenRouterGeminiImage, performOpenRouterFaceSwap } from "../lib/openrouter-gemini-image.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -42,6 +43,7 @@ type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
   model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "nano_banana_2_1" | "seedream_5_pro";
+  mode?: "face_swap";
   provider?: "runway" | "openrouter";
   slideshowGeneration?: SlideshowGenerationSlot;
   slideshowBusinessContext?: SlideshowBusinessContext;
@@ -80,7 +82,12 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
 
   const model = getImageModel(job.input_json.model);
   const provider = job.input_json.provider;
-  if (provider !== undefined && (model !== "seedream_5_pro" || provider !== "runway" && provider !== "openrouter")) {
+  const mode = job.input_json.mode === "face_swap" ? "face_swap" as const : undefined;
+  const isSupportedProvider =
+    provider === undefined ||
+    (model === "seedream_5_pro" && (provider === "runway" || provider === "openrouter")) ||
+    (model === "gemini_3_pro" && provider === "openrouter");
+  if (!isSupportedProvider) {
     throw new ProviderRequestNotSubmittedError("This image job has an unsupported provider route.");
   }
   const characterReferenceContext = promptDrivenCharacter && job.input_json.exploreFormat === undefined;
@@ -105,7 +112,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
   if (slideshowReferenceContract?.version === 4 && slideshowGeneration && slideshowReferenceContract.plan!.outputSlideIndex !== slideshowGeneration.slideIndex) throw new ProviderRequestNotSubmittedError("The saved slide plan does not match this output position.");
   if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
-  if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
+  if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && mode !== "face_swap" && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
   }
   if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
@@ -127,6 +134,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     model,
+    ...(mode ? { mode } : {}),
     ...(provider === undefined ? {} : { provider }),
     prompt: prompt.trim(),
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
@@ -164,7 +172,7 @@ export async function runGenerateImageJob(
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
   // Jobs admitted before the OpenRouter switch have no route field. Keep their
   // Runway operation key and fingerprint so recovery cannot spend twice.
-  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "nano_banana_2" || input.model === "nano_banana_2_1" || input.model === "gemini_3_pro" ? "gemini" : "openai";
+  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "gemini_3_pro" && input.provider === "openrouter" ? "openrouter" : input.model === "nano_banana_2" || input.model === "nano_banana_2_1" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
   const dimensions = getAIStudioImageDimensions(input.aspectRatio);
@@ -182,6 +190,7 @@ export async function runGenerateImageJob(
     aspectRatio: input.aspectRatio,
     generationId: input.generationId,
     model: input.model,
+    ...(input.mode ? { mode: input.mode } : {}),
     ...(input.provider === undefined ? {} : { provider: input.provider }),
     outputKey,
     prompt: input.prompt,
@@ -204,7 +213,7 @@ export async function runGenerateImageJob(
   });
   let generatedImageBuffer: Buffer;
 
-  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro" && provider === "runway") {
+  if ((input.model === "gemini_3_pro" && provider !== "openrouter") || (input.model === "seedream_5_pro" && provider === "runway")) {
     generatedImageBuffer = await generateDurableImageForJob(job, context, input, reservation, stagingKey, operationKey);
   } else if (reservation.shouldSubmit) {
     let generated;
@@ -237,6 +246,36 @@ export async function runGenerateImageJob(
               referenceImageUrl,
               ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
             })
+          : input.model === "gemini_3_pro" && provider === "openrouter"
+          ? await (async () => {
+              const refs = Array.isArray(referenceImages) ? referenceImages as string[] : referenceImageUrl ? [referenceImageUrl] : [];
+              const downloaded = await downloadReferenceImageContext(refs);
+              const refImages = downloaded.map((image) => ({
+                data: image.buffer.toString("base64"),
+                mimeType: image.contentType,
+              }));
+              if (hook) {
+                return generateOpenRouterGeminiHookKeyframe({
+                  prompt: providerPrompt,
+                  aspectRatio: input.aspectRatio,
+                  referenceImages: refImages,
+                  instructions: hook.instructions,
+                });
+              }
+              if (input.mode === "face_swap" && refImages.length >= 2) {
+                return performOpenRouterFaceSwap({
+                  baseImage: refImages[0],
+                  influencerImage: refImages[1],
+                  aspectRatio: input.aspectRatio,
+                  instructions: input.prompt,
+                });
+              }
+              return generateOpenRouterGeminiImage({
+                prompt: providerPrompt,
+                aspectRatio: input.aspectRatio,
+                referenceImages: refImages,
+              });
+            })()
           : input.model === "nano_banana_2" || input.model === "nano_banana_2_1"
           ? referenceLabels ? await generateGeminiImageBuffer(providerPrompt, input.aspectRatio, referenceImages, undefined, referenceLabels) : await generateGeminiImageBuffer(
               providerPrompt,

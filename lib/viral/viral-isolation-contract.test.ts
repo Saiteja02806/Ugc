@@ -23,7 +23,9 @@ test("opens Explore without changing the separate Trending dashboard", () => {
   assert.doesNotMatch(nextConfig, /source: "\/viral\/:path\*"/);
   assert.match(viralPage, /<ViralWorkspace\s*\/>/);
   assert.doesNotMatch(viralPage, /ViralAccessGuard/);
-  assert.match(dashboardPage, /<TrendingWorkspace\s*\/>/);
+  assert.match(dashboardPage, /redirect\("\/explore"\)/);
+  assert.doesNotMatch(dashboardPage, /TrendingWorkspace/);
+  assert.doesNotMatch(sidebar, /label: "Trending"/);
   assert.match(
     workspaceRoutes,
     /prefix: "\/dashboard", activeKey: "trending", access: "profile"/,

@@ -80,7 +80,7 @@ async function resolvePlayStoreProduct(packageId: string, fetchImpl: FetchLike) 
   const response = await fetchImpl(
     `https://play.google.com/store/apps/details?id=${encodeURIComponent(packageId)}&hl=en&gl=US`,
     {
-      headers: { "User-Agent": "UGC Pilot product setup" },
+      headers: { "User-Agent": "Vidmake product setup" },
       signal: AbortSignal.timeout(5_000),
     },
   );

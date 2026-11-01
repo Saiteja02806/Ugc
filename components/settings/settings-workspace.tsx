@@ -222,7 +222,7 @@ export function SettingsWorkspace() {
   }
 
   const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "UGC Pilot user";
+    user?.displayName || user?.email?.split("@")[0] || "Vidmake user";
   const email = user?.email || "No email available";
   const initials = getInitials(displayName, email);
 
@@ -259,7 +259,7 @@ export function SettingsWorkspace() {
                 >
                   <span
                     className={cn(
-                      "absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-primary md:block",
+                      "absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-foreground md:block",
                       selected ? "opacity-100" : "opacity-0",
                     )}
                     aria-hidden="true"
@@ -268,7 +268,7 @@ export function SettingsWorkspace() {
                     className={cn(
                       "size-4.5 shrink-0",
                       selected
-                        ? "text-primary"
+                        ? "text-foreground-strong"
                         : "text-muted-subtle group-hover:text-muted",
                     )}
                     aria-hidden="true"
@@ -422,7 +422,7 @@ export function SettingsWorkspace() {
             <div className="flex flex-col gap-5 px-5 py-5 sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-primary/10 text-primary">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted text-foreground">
                     <Sparkles className="size-5" aria-hidden="true" />
                   </span>
                   <div>
@@ -467,7 +467,7 @@ export function SettingsWorkspace() {
                           ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
                             ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
-                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling. Any unused free AI credits remain available."}
+                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling."}
                     </p>
                   </div>
                 </div>
@@ -494,7 +494,7 @@ export function SettingsWorkspace() {
                   ) : subscription?.isActive ? (
                     <Badge
                       variant="outline"
-                      className="w-full justify-center border-primary/30 text-primary sm:w-auto"
+                      className="w-full justify-center border-white/40 text-foreground-strong sm:w-auto"
                     >
                       Complimentary access
                     </Badge>
@@ -581,7 +581,7 @@ export function SettingsWorkspace() {
                 className={buttonVariants({
                   variant: "ghost",
                   size: "sm",
-                  className: "text-xs font-semibold text-primary hover:text-primary-hover",
+                  className: "text-xs font-semibold text-foreground-strong hover:text-foreground",
                 })}
               >
                 View all plan comparison matrix →
@@ -609,7 +609,7 @@ export function SettingsWorkspace() {
           {activeSection === "instagram-publishing" ? (
           <SettingsSection
             id="instagram-publishing"
-            description="Connect and organize the social accounts UGC Pilot can use for publishing."
+            description="Connect and organize the social accounts Vidmake can use for publishing."
             icon={<Plug className="size-5" aria-hidden="true" />}
             title="Connected accounts"
           >
@@ -630,7 +630,7 @@ export function SettingsWorkspace() {
           >
             <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex min-w-0 items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted text-foreground">
                   {theme === "light" ? (
                     <Sun className="size-5" aria-hidden="true" />
                   ) : (
@@ -679,7 +679,7 @@ export function SettingsWorkspace() {
           {activeSection === "product-updates" ? (
           <SettingsSection
             id="product-updates"
-            description="Review the latest fixes and improvements to UGC Pilot."
+            description="Review the latest fixes and improvements to Vidmake."
             icon={<Sparkles className="size-5" aria-hidden="true" />}
             title="Product updates"
           >
@@ -718,7 +718,7 @@ export function SettingsWorkspace() {
           {activeSection === "raised-ticket" ? (
           <SettingsSection
             id="raised-ticket"
-            description="Explain an issue so the UGC Pilot team can investigate it."
+            description="Explain an issue so the Vidmake team can investigate it."
             icon={<Bug className="size-5" aria-hidden="true" />}
             title="Raise Ticket"
           >
@@ -729,7 +729,7 @@ export function SettingsWorkspace() {
           {activeSection === "request-feature" ? (
           <SettingsSection
             id="request-feature"
-            description="Describe a feature you want UGC Pilot to build."
+            description="Describe a feature you want Vidmake to build."
             icon={<Lightbulb className="size-5" aria-hidden="true" />}
             title="Request Feature"
           >
@@ -750,7 +750,7 @@ export function SettingsWorkspace() {
                   Privacy controls
                 </p>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-                  Review how UGC Pilot handles account information and the
+                  Review how Vidmake handles account information and the
                   public instructions for requesting data deletion.
                 </p>
               </div>
@@ -796,7 +796,7 @@ export function SettingsWorkspace() {
                   </div>
                 </div>
                 <a
-                  href="mailto:privacy@getugcpilot.com?subject=Delete%20UGC%20Pilot%20account%20and%20data"
+                  href="mailto:privacy@getugcpilot.com?subject=Delete%20Vidmake%20account%20and%20data"
                   className={cn(
                     buttonVariants({ size: "lg", variant: "destructive" }),
                     "w-full sm:w-auto",
@@ -831,7 +831,7 @@ function SettingsSection({
   return (
     <section id={id} className="min-w-0" aria-labelledby={`${id}-title`}>
       <header className="flex items-start gap-3 px-5 py-5 pr-14 sm:px-6 sm:pr-16">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-card-muted text-foreground">
           {icon}
         </span>
         <div className="min-w-0">

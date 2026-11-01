@@ -34,11 +34,11 @@ const faqs = [
     answer: "Not for everything. Real testimonials and product-in-hand content are better from real people. AI UGC is useful for hook tests, explainers and app demos.",
   },
   {
-    question: "Does UGC Pilot upload ads to TikTok for me?",
+    question: "Does Vidmake upload ads to TikTok for me?",
     answer: "No. You download the approved file and upload it to TikTok Ads Manager yourself.",
   },
   {
-    question: "How much does it cost to make AI UGC with UGC Pilot?",
+    question: "How much does it cost to make AI UGC with Vidmake?",
     answer: "There's a seven-day free trial with no card, then plans at $19 or $49 a month with monthly credits. See /pricing.",
   },
 ] as const;
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -80,7 +80,7 @@ export default function AiUgcForTikTokAdsPage() {
       <ArticleBody>
         <p>The catch is production. Finding creators, shipping product, waiting for footage and asking for revisions takes time, and testing several hooks multiplies the work. <strong className="font-semibold text-foreground-strong">AI UGC</strong> gives small teams another option: generate creator-style drafts from a brief, review them, and keep only the ones that are honest and good.</p>
         <p>
-          This guide covers how to make AI UGC for TikTok ads, step by step, using <ArticleLink href="/ai-ugc-video-generator">UGC Pilot</ArticleLink> as the example tool. It also covers where AI UGC is the wrong choice.
+          This guide covers how to make AI UGC for TikTok ads, step by step, using <ArticleLink href="/ai-ugc-video-generator">Vidmake</ArticleLink> as the example tool. It also covers where AI UGC is the wrong choice.
         </p>
 
         <ArticleH2>What makes a TikTok ad feel native</ArticleH2>
@@ -134,7 +134,7 @@ export default function AiUgcForTikTokAdsPage() {
         </p>
 
         <ArticleH2>Step 3: Generate the video</ArticleH2>
-        <p>In UGC Pilot&apos;s AI Studio:</p>
+        <p>In Vidmake&apos;s AI Studio:</p>
         <ol className="list-decimal space-y-2 pl-5">
           <li>Paste the script as your brief and describe the scene: &quot;A woman in her 20s talks to her phone camera in a bright kitchen, casual, handheld feel.&quot;</li>
           <li>Choose a vertical format and a short length.</li>
@@ -142,7 +142,7 @@ export default function AiUgcForTikTokAdsPage() {
           <li>Generate, watch, and regenerate anything that looks wrong.</li>
         </ol>
         <p>
-          Prefer working from a chat? Connect Claude or Codex to the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink> and ask for the video in plain language. The <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude guide</ArticleLink> and the <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex guide</ArticleLink> show the full flow, including how to see the credit cost before generating.
+          Prefer working from a chat? Connect Claude or Codex to the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink> and ask for the video in plain language. The <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude guide</ArticleLink> and the <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex guide</ArticleLink> show the full flow, including how to see the credit cost before generating.
         </p>
 
         <ArticleH2>Step 4: Voice, captions and edit</ArticleH2>
@@ -161,7 +161,7 @@ export default function AiUgcForTikTokAdsPage() {
           </li>
         </ul>
         <p>
-          Video editing and export are included in UGC Pilot&apos;s plans; generation spends credits. Details are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
+          Video editing and export are included in Vidmake&apos;s plans; generation spends credits. Details are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
         </p>
 
         <ArticleH2>Step 5: Disclose AI content and follow ad policies</ArticleH2>
@@ -211,11 +211,11 @@ export default function AiUgcForTikTokAdsPage() {
           </li>
         </ul>
         <p>
-          Many teams mix both: human creators for testimonials and product-in-hand shots, AI UGC for hook tests, explainers and app demos. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">UGC Pilot vs hiring UGC creators</ArticleLink> for a fair comparison.
+          Many teams mix both: human creators for testimonials and product-in-hand shots, AI UGC for hook tests, explainers and app demos. See <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink> for a fair comparison.
         </p>
 
         <ArticleH2>Real AI UGC examples on TikTok and beyond</ArticleH2>
-        <p>These are videos made with UGC Pilot, posted on its own accounts:</p>
+        <p>These are videos made with Vidmake, posted on its own accounts:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             TikTok: <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7698738756915907862">example 1</ArticleExternalLink>, <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699988037559700758">example 2</ArticleExternalLink>, <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699923510092631318">example 3</ArticleExternalLink> and <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699105939034574102">example 4</ArticleExternalLink> on <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm">@clara_iamm</ArticleExternalLink>, plus <ArticleExternalLink href="https://www.tiktok.com/@clara_iami/video/7698234106957548814">this clip</ArticleExternalLink> on @clara_iami.
@@ -279,8 +279,8 @@ export default function AiUgcForTikTokAdsPage() {
           { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type, and how to turn one into a video." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
-          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
-          { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from UGC Pilot's own channel." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
+          { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from Vidmake's own channel." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Make a short video from a prompt and optional reference media." },
           { href: "/pricing", title: "Pricing", description: "Current trial and paid plan details." },
         ]}

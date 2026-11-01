@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "Create Instagram carousel posts from your business context. Plan the slides, review the complete post, and keep the approved version in your library.",
   alternates: { canonical: content.canonicalPath },
   openGraph: {
-    title: "Instagram Carousel Maker | UGC Pilot",
+    title: "Instagram Carousel Maker | Vidmake",
     description:
       "Create Instagram carousel posts from your business context, then review the complete post and keep it in your library.",
     url: content.canonicalPath,
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "Instagram Carousel Maker | UGC Pilot",
+    title: "Instagram Carousel Maker | Vidmake",
     description:
       "Create Instagram carousel posts from your business context, then review the complete post and keep it in your library.",
   },

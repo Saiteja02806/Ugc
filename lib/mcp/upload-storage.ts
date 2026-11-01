@@ -39,7 +39,7 @@ export async function privateMcpUploadTarget(key: string) {
   const safeKey = validPrivateStorageKey(key);
   if (!process.env.MEDIA_DELIVERY_SIGNING_SECRET?.trim() || process.env.MEDIA_DELIVERY_SIGNING_SECRET.trim().length < 32)
     throw new ToolFailure("PRIVATE_UPLOAD_UNAVAILABLE", "Private media delivery is not configured.");
-  const app = new URL(process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://getugcpilot.com");
+  const app = new URL(process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://vidmake.io");
   if (app.protocol !== "https:" || app.username || app.password)
     throw new ToolFailure("PRIVATE_UPLOAD_UNAVAILABLE", "Private media delivery requires the configured HTTPS application.");
   await privateWriteBucket();

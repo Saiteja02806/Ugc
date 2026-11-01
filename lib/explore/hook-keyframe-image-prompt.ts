@@ -68,6 +68,8 @@ export function buildOriginalOpeningImagePrompt(input: { personImageCount: numbe
     "Create one photorealistic original-opening photograph for review before video generation. Image1 is the source video's first decoded frame at elapsed t=0, not a later clarity frame. Recreate this exact opening with the influencer from Image2 and supporting identity photos.",
     "SOURCE SHOT — Image1 alone controls camera height and tilt, framing/crop, subject size and placement, background geometry, clothing, body pose, head angle, gaze, expression, hands, held props and their contact/occlusion. Preserve the opening moment, including face obstruction. Do not clear the face, lower an object, change the outfit or jump to a later action.",
     "LIGHTING — Match Image1's light direction, softness, exposure, contrast, color cast, highlights, shadows and reflections. Relight the influencer naturally into that source environment while keeping their recognizable facial proportions and skin detail. Do not copy lighting or color grading from identity photos.",
+    "COMPLEXION & YOUTH — Render a smooth, clear, youthful complexion with relaxed lower eyelids and subtle expression. Do not generate harsh forehead creases, vertical frown lines, or aging wrinkles.",
+    "ANATOMICAL & LIGHTING HARMONY — The influencer's natural skin tone, warmth, and ambient illumination must be unified across the entire visible subject. Any visible hand, fingers, neck, and upper chest must share the exact same skin tone, brightness, and texture as the face, naturally lit without harsh dark shadows.",
     "IDENTITY — Image2 and later images depict the SAME selected influencer. Use only their recognizable facial features, proportions, hairline and natural appearance. They do not supply clothing, background, pose, expression or lighting. Do not blend the source performer's identity into the result.",
     "REMOVE ALL TEXT AND LOGOS — Remove creator captions, subtitles, hook words, emojis, watermarks and graphic overlays, including outlines and shadows. Also remove physical logos, branding and readable text on clothing, objects, packaging, screens, signs and background surfaces. Reconstruct plain underlying fabric or material with matching lighting and texture. Keep the objects and clothing themselves, their shape, color and placement; do not crop, blur or cover them with boxes. Do not generate replacement lettering or logos.",
     "OUTPUT — One complete image matching Image1's aspect ratio and composition, natural skin and anatomy, realistic fingers and prop contact. No new person, extra hand, beauty filter or scene redesign. Preserve source lighting and outfit except the requested logo/text cleanup.",
@@ -120,4 +122,24 @@ export function buildHookKeyframeImagePrompt(input: { personImageCount: number; 
   ].filter(Boolean).join("\n\n");
   if (prompt.length > HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH) throw new Error("Shorten the starting-image instructions.");
   return { version, prompt, roles, imageCount: roles.length };
+}
+
+/** Stage 2 identity lock. The worker copy in openrouter-gemini-image.ts is what Gemini receives. */
+export function buildHookKeyframeStage2Prompt(input: { instructions?: string; supportingImageCount?: number } = {}) {
+  const instructions = input.instructions?.trim() ?? "";
+  const supporting = Math.max(0, Math.floor(input.supportingImageCount ?? 0));
+  const supportingLine = supporting === 0
+    ? "Image 2 is the only identity photo."
+    : supporting === 1
+      ? "Image 3 is another photo of the same person as Image 2. Use it only to confirm that person's features from another angle."
+      : `Images 3 through ${2 + supporting} are other photos of the same person as Image 2. Use them only to confirm that person's features from other angles.`;
+  return [
+    "STAGE 2 IDENTITY LOCK:",
+    "Image 1 is the scene photograph. Keep its composition, camera, pose, hand placement, jewelry, wardrobe, lighting, background, and any part of the face covered by a hand or object.",
+    "Image 2 is the influencer photo. It decides the face.",
+    supportingLine,
+    "Replace the visible face in Image 1 with the person shown in Image 2. Copy the features that photo actually shows: face shape, eye shape, eye spacing, iris color, brows, nose, lips, jawline, hairline, and natural skin detail. Do not assign a brow color, lip shape, forehead size, freckles, or nose shape that Image 2 does not show.",
+    "Relight that face to Image 1 so the face, neck, and hands share the scene light. Keep the identity from Image 2.",
+    instructions ? `USER IMAGE INSTRUCTIONS:\n${instructions}` : "",
+  ].filter(Boolean).join("\n\n");
 }

@@ -6,8 +6,8 @@ export const contentType = ogContentType;
 
 export default function OpenGraphImage() {
   return marketingOgImage({
-    kicker: "UGC Pilot case study",
-    title: "Founder videos made with UGC Pilot.",
+    kicker: "Vidmake case study",
+    title: "Founder videos made with Vidmake.",
     subtitle: "Two public videos from the Teja Chundu YouTube channel.",
   });
 }

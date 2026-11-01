@@ -3,7 +3,7 @@ import type { AudioVoice } from "./types";
 export type AudioContentPurpose = "social" | "ugc_ad" | "product_demo" | "storytelling";
 export type VoiceLibraryFocus = AudioContentPurpose | "all" | "conversational" | "advertisement" | "characters";
 
-// These are UGC Pilot content intentions, not additional provider voice libraries.
+// These are Vidmake content intentions, not additional provider voice libraries.
 export const AUDIO_CONTENT_PURPOSES = [
   { id: "social", label: "Social media", heading: "Voices for your next post", guidance: "A strong opening, one clear idea, a reason to keep watching.", structure: "Hook → main idea → closing line", placeholder: "What will make someone stop scrolling? Write your opening line, then the idea you want to share…", example: "Here's a quick way to [solve a problem]. Start with [first step], then [next step]. Save this for the next time you need it." },
   { id: "ugc_ad", label: "UGC ads", heading: "Voices for creator-style ads", guidance: "Keep it conversational. Introduce the product, explain the benefit, and close with a clear action.", structure: "Hook → product benefit → call to action", placeholder: "Open with the problem your product solves. Explain the benefit in everyday language, then add your call to action…", example: "Looking for a way to [solve a problem]? Meet [product]. It helps you [product benefit] with [key feature]. Take a closer look at [website or offer]." },

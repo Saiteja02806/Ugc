@@ -12,6 +12,7 @@ import Link from "next/link";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { productExamples, type ProductExample } from "@/lib/marketing/product-examples";
+import { publicOrigin } from "@/lib/marketing/public-origin";
 
 type Feature = {
   title: string;
@@ -114,7 +115,7 @@ export const seoPageContent = {
       {
         question: "Can I review a carousel before I download it?",
         answer:
-          "Yes. UGC Pilot keeps the carousel in review so you can approve the creative before you download it.",
+          "Yes. Vidmake keeps the carousel in review so you can approve the creative before you download it.",
       },
       {
         question: "Do I need to write a caption?",
@@ -219,17 +220,17 @@ export const seoPageContent = {
       {
         question: "Where do finished videos go?",
         answer:
-          "Finished generations are saved to your account for use in the rest of your UGC Pilot workflow.",
+          "Finished generations are saved to your account for use in the rest of your Vidmake workflow.",
       },
       {
         question: "Can I try AI video generation before choosing a paid plan?",
         answer:
-          "UGC Pilot's pricing page explains the current seven-day trial and the credits available during it. Review that page for the current plan details before you generate or export work for a campaign.",
+          "Vidmake's pricing page explains the current seven-day trial and the credits available during it. Review that page for the current plan details before you generate or export work for a campaign.",
       },
     ],
     relatedPages: [
       {
-        title: "Founder videos made with UGC Pilot",
+        title: "Founder videos made with Vidmake",
         description: "Two public YouTube videos from the brand series, with the titles YouTube returns.",
         href: "/case-studies/ai-ugc-video-generator-saas-founders",
       },
@@ -308,7 +309,7 @@ export const seoPageContent = {
     ],
     featuresTitle: "A content system for teams with limited time.",
     featuresDescription:
-      "UGC Pilot keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
+      "Vidmake keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
     features: [
       {
         title: "Work from what you know",
@@ -373,7 +374,7 @@ export const seoPageContent = {
     eyebrow: "AI social media manager",
     title: "Keep social content moving without losing the human decision.",
     description:
-      "UGC Pilot brings business context, creative formats, and review into one workspace so your team can create the asset and keep the version they approve.",
+      "Vidmake brings business context, creative formats, and review into one workspace so your team can create the asset and keep the version they approve.",
     proof: "Business context → content formats → human review",
     workflowLabel: "The work stays connected from the first business brief to the reviewed asset.",
     workflow: [
@@ -426,9 +427,9 @@ export const seoPageContent = {
           "It helps a team create formats, review the work, and keep a finished asset they can download.",
       },
       {
-        question: "Does UGC Pilot replace the person managing social media?",
+        question: "Does Vidmake replace the person managing social media?",
         answer:
-          "UGC Pilot supports the content workflow. The team still decides which ideas represent the business and which file to keep.",
+          "Vidmake supports the content workflow. The team still decides which ideas represent the business and which file to keep.",
       },
       {
         question: "Can I use the same business context across formats?",
@@ -470,10 +471,10 @@ function toJsonLd(content: SeoLandingPageContent) {
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        name: "UGC Pilot",
+        name: "Vidmake",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        url: `https://getugcpilot.com${content.canonicalPath}`,
+        url: `${publicOrigin}${content.canonicalPath}`,
         description: content.description,
       },
       {

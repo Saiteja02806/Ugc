@@ -9,22 +9,23 @@ import {
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for UGC Pilot's YouTube, TikTok, and Instagram content creation, media uploads, scheduling, and publishing features.",
+    "Privacy Policy for Vidmake's YouTube, TikTok, and Instagram content creation, media uploads, scheduling, and publishing features.",
 };
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       eyebrow="Privacy Policy"
-      title="How UGC Pilot handles user data"
+      title="How Vidmake handles user data"
       updated="Effective October 8, 2026"
-      description="This policy explains what information we process when users create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content through UGC Pilot."
+      description="This policy explains what information we process when users create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content through Vidmake."
     >
       <div className="space-y-8">
         <LegalSection title="Who we are">
           <p>
-            UGC Pilot is a social content creation and scheduling tool operated
-            through getugcpilot.com. Users can provide business context, prepare
+            Vidmake is a social content creation and scheduling tool operated
+            at vidmake.io. getugcpilot.com remains the address for existing
+            social-platform callbacks. Users can provide business context, prepare
             videos and multi-slide posts, upload images and videos, review
             captions and creative assets, connect YouTube channels, TikTok
             accounts, or Instagram professional accounts, and schedule approved
@@ -135,7 +136,7 @@ export default function PrivacyPolicyPage() {
 
         <LegalSection title="Connected social accounts">
           <p>
-            UGC Pilot supports YouTube channels, TikTok accounts, and Instagram
+            Vidmake supports YouTube channels, TikTok accounts, and Instagram
             professional accounts for available connected-account, scheduling,
             publishing, and analytics features. Feature availability, supported
             formats, and permissions vary by platform. We use connected-account
@@ -147,8 +148,8 @@ export default function PrivacyPolicyPage() {
             approving the content, destination account, and schedule.
           </p>
           <p>
-            Users can disconnect a platform from UGC Pilot Settings or revoke
-            UGC Pilot&apos;s access through the applicable YouTube, TikTok,
+            Users can disconnect a platform from Vidmake Settings or revoke
+            Vidmake&apos;s access through the applicable YouTube, TikTok,
             Instagram, Google, Meta, or other platform account settings.
           </p>
         </LegalSection>
@@ -165,7 +166,7 @@ export default function PrivacyPolicyPage() {
           <p>
             We request permissions only as needed to identify the account
             selected by the user, publish user-approved content, and retrieve
-            account or media insights displayed in UGC Pilot. Tokens are retained
+            account or media insights displayed in Vidmake. Tokens are retained
             only while needed to provide those authorized features, unless
             limited retention is required for security, legal, or
             dispute-resolution reasons.
@@ -189,7 +190,7 @@ export default function PrivacyPolicyPage() {
 
         <LegalSection title="AI-assisted content">
           <p>
-            UGC Pilot provides AI-assisted content preparation, including
+            Vidmake provides AI-assisted content preparation, including
             personalized ideas, automatic multi-slide carousel drafts, captions,
             and video editing workflows. Users may review, modify, save, or
             discard these outputs before scheduling them.
@@ -226,8 +227,8 @@ export default function PrivacyPolicyPage() {
 
         <LegalSection title="Connections to AI assistants">
           <p>
-            When you connect UGC Pilot to an AI assistant such as ChatGPT,
-            Codex, or Claude, you sign in to your own UGC Pilot account and
+            When you connect Vidmake to an AI assistant such as ChatGPT,
+            Codex, or Claude, you sign in to your own Vidmake account and
             approve the displayed permissions. We process the account identifier,
             OAuth client and permission records, token hashes and expiry or
             revocation records needed to authenticate those requests. Credentials
@@ -240,7 +241,7 @@ export default function PrivacyPolicyPage() {
             It can also upload or delete selected media and request image or video
             generation. Generation prompts and reference media are processed by
             the generation providers used for the requested feature. Generation
-            uses your UGC Pilot credits.
+            uses your Vidmake credits.
           </p>
           <p>
             Information returned to your assistant is also subject to that
@@ -274,8 +275,8 @@ export default function PrivacyPolicyPage() {
               privacy@getugcpilot.com
             </a>
             . Data deletion instructions are available at{" "}
-            <a className="font-bold text-primary" href="https://getugcpilot.com/data-deletion">
-              https://getugcpilot.com/data-deletion
+            <a className="font-bold text-primary" href="https://vidmake.io/data-deletion">
+              https://vidmake.io/data-deletion
             </a>
             .
           </p>
@@ -299,7 +300,7 @@ export default function PrivacyPolicyPage() {
 
         <LegalSection title="Children">
           <p>
-            UGC Pilot is not intended for children under 13 or the minimum age
+            Vidmake is not intended for children under 13 or the minimum age
             required by local law. Users may not upload or generate content that
             exploits minors or violates platform child-safety rules.
           </p>

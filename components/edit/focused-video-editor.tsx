@@ -821,7 +821,7 @@ function TrimControls({
                 event.currentTarget.blur();
               }
             }}
-            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-white focus:ring-2 focus:ring-white/25"
           />
         </label>
         <label className="block w-20">
@@ -850,7 +850,7 @@ function TrimControls({
                 event.currentTarget.blur();
               }
             }}
-            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-white focus:ring-2 focus:ring-white/25"
           />
         </label>
         <button
@@ -1110,7 +1110,7 @@ function TextOverlayControls({
               }
               maxLength={TEXT_OVERLAY_MAX_LENGTH}
               rows={4}
-              className="mt-2 min-h-24 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="mt-2 min-h-24 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-white focus:ring-2 focus:ring-white/25"
             />
             <div className="mt-1.5 flex justify-end text-xs font-medium text-muted">
               <span className="tabular-nums">{characterCount}/{TEXT_OVERLAY_MAX_LENGTH}</span>

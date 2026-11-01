@@ -4,7 +4,7 @@ import { BillingActivationStatus } from "@/components/billing/billing-activation
 
 export const metadata: Metadata = {
   title: "Confirming subscription",
-  description: "Confirm your UGC Pilot subscription activation.",
+  description: "Confirm your Vidmake subscription activation.",
 };
 
 export default function DashboardBillingPage() {

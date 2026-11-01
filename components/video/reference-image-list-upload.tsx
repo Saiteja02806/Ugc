@@ -91,7 +91,7 @@ export function ReferenceImageListUpload({
         type="button"
         variant="muted"
         size="icon-lg"
-        className="size-9 min-w-9 rounded-full border border-border/80 bg-card-muted/80 text-muted"
+        className="size-9 min-w-9 rounded-[10px] border border-border/80 bg-card-muted/80 text-muted"
         aria-label={`Add reference images (${selections.length} of ${maxImages})`}
         title={`Add reference images (${selections.length} of ${maxImages})`}
         disabled={disabled || busy || selections.length >= maxImages}

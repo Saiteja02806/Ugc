@@ -8,12 +8,8 @@ export function getVideoReferencePolicy(model: AIStudioVideoModel, options: Vide
   const omniVideo = model === "google_omni" && options.allowOmniVideo === true;
   // Image capacity is independent of the one video / one audio supported by
   // this application. A source clip must not consume a face-photo slot.
-  // Google's Omni 1.1 Enterprise model card documents ten images per prompt:
-  // https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/omni-1-1-flash
-  // The direct Gemini stable route does not publish a separate numeric ceiling;
-  // ten is our supported cap based on that model-family specification, not a
-  // claim of a paid acceptance test or a guarantee about facial fidelity.
-  const maxImages = model === "seedance_2_5" ? 30 : model === "kling_3_0" ? 2 : 10;
+  // ReAPI Omni Flash accepts no image, one image, or three images.
+  const maxImages = model === "seedance_2_5" ? 30 : model === "kling_3_0" ? 2 : model === "google_omni" ? 3 : 10;
   return {
     allowedKinds: ["image", ...(timed || omniVideo ? ["video"] : []), ...(timed ? ["audio"] : [])] as ("image" | "video" | "audio")[],
     maxImages,
@@ -21,6 +17,8 @@ export function getVideoReferencePolicy(model: AIStudioVideoModel, options: Vide
     maxImageBytes: (model === "wan_3_0" && options.hasTimedReferences ? 16 : 20) * 1024 ** 2,
     maxVideoDuration: model === "wan_3_0" ? 15 : omniVideo ? 10 : 30,
     maxAudioDuration: model === "wan_3_0" ? 15 : 30,
+    // Product policy: require more voice context than Seedance's 2s provider minimum.
+    minAudioDuration: model === "seedance_2_5" ? 5 : model === "wan_3_0" ? 1 : 0,
     maxVideoBytes: (model === "wan_3_0" || omniVideo ? 32 : model === "seedance_2_5" ? 200 : 250) * 1024 ** 2,
     maxAudioBytes: (timed ? 15 : 25) * 1024 ** 2,
   };
@@ -39,7 +37,7 @@ export function getVideoTimedReferenceError(model: AIStudioVideoModel, kind: "vi
   if (typeError) return typeError;
   const policy = getVideoReferencePolicy(model, options);
   const maxDuration = kind === "video" ? policy.maxVideoDuration : policy.maxAudioDuration;
-  const minDuration = model === "seedance_2_5" ? 2 : model === "wan_3_0" ? 1 : 0;
+  const minDuration = kind === "audio" ? policy.minAudioDuration : model === "seedance_2_5" ? 2 : model === "wan_3_0" ? 1 : 0;
   const maxBytes = kind === "video" ? policy.maxVideoBytes : policy.maxAudioBytes;
   if (!Number.isFinite(duration) || !duration || duration <= 0 || duration > maxDuration) {
     return `Choose a reference ${kind} up to ${maxDuration} seconds for ${getAIStudioVideoModelLabel(model)}.`;

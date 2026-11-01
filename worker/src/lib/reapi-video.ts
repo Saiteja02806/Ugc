@@ -9,9 +9,11 @@ const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com", "reapiflexible
 
 export const REAPI_SEEDANCE_MODEL = "doubao-seedance-2.5-face";
 export const REAPI_WAN_MODEL = "wan3.0-video";
+export const REAPI_OMNI_MODEL = "gemini-omni-1-1";
+const OMNI_DURATIONS = new Set([4, 6, 8, 10]);
 
 type ReapiVideoInput = {
-  model: "seedance_2_5" | "wan_3_0";
+  model: "seedance_2_5" | "wan_3_0" | "google_omni";
   prompt: string;
   aspectRatio: "9:16" | "16:9";
   durationSeconds: number;
@@ -34,8 +36,28 @@ type ReapiOperation = {
 };
 type ReapiOptions = { apiKey?: string; fetchImpl?: typeof fetch; pollIntervalMs?: number; timeoutMs?: number };
 
+type ReapiVideoRequest = {
+  model: string;
+  prompt: string;
+  duration?: number;
+  size?: string;
+  resolution: string;
+  aspect_ratio?: ReapiVideoInput["aspectRatio"];
+  content_filter?: boolean;
+  generate_audio?: boolean;
+  audio?: boolean;
+  output_format?: string;
+  image_with_roles?: { url: string; role: "first_frame" }[];
+  image_urls?: string[];
+  video_urls?: string[];
+  audio_urls?: string[];
+  generation_type?: "frame" | "reference";
+  omni_reference_task_type?: string;
+};
+
 /** New requests only. Legacy provider adapters and fingerprints stay frozen. */
-export function buildReapiVideoRequest(input: ReapiVideoInput) {
+export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoRequest {
+  if (input.model === "google_omni") return buildReapiOmniVideoRequest(input);
   const seedance = input.model === "seedance_2_5";
   const startingFrame = input.startingFrameImageUrl !== undefined;
   const editing = input.referenceVideoMode === "edit";
@@ -185,6 +207,52 @@ async function fetchJson(url: string, apiKey: string, fetchImpl: typeof fetch, i
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
+function buildReapiOmniVideoRequest(input: ReapiVideoInput): ReapiVideoRequest {
+  const prompt = input.prompt.trim();
+  if (!prompt || prompt.length > 2_000) throw new ProviderRequestNotSubmittedError("Add an Omni prompt of 1–2000 characters.");
+  if (!["720p", "1080p"].includes(input.resolution) || !["9:16", "16:9"].includes(input.aspectRatio)) {
+    throw new ProviderRequestNotSubmittedError("Google Omni supports 720p or 1080p and a 9:16 or 16:9 frame.");
+  }
+  if ((input.referenceAudioUrls?.length ?? 0) > 0) {
+    throw new ProviderRequestNotSubmittedError("Omni Flash on ReAPI does not take an audio reference.");
+  }
+  const editing = input.referenceVideoMode === "edit";
+  const startingFrame = input.startingFrameImageUrl;
+  const extraImages = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+  if (startingFrame && (!isHttpsUrl(startingFrame) || extraImages.length > 0 || input.referenceVideoUrl !== undefined || editing)) {
+    throw new ProviderRequestNotSubmittedError("Omni Flash animates one starting image. Remove extra photos, video, and audio.");
+  }
+  if (input.referenceVideoUrl || editing) {
+    if (!input.referenceVideoUrl || !isHttpsUrl(input.referenceVideoUrl) || ![0, 1, 3].includes(extraImages.length) || new Set(extraImages).size !== extraImages.length || extraImages.some(url => !isHttpsUrl(url))) {
+      throw new ProviderRequestNotSubmittedError("Omni Flash video input requires one source video and no image, one image, or three images.");
+    }
+    return {
+      model: REAPI_OMNI_MODEL,
+      prompt,
+      resolution: input.resolution,
+      aspect_ratio: input.aspectRatio,
+      video_urls: [input.referenceVideoUrl],
+      ...(extraImages.length ? { image_urls: extraImages, generation_type: "reference" as const } : {}),
+    };
+  }
+  const images = startingFrame ? [startingFrame] : extraImages;
+  if (!OMNI_DURATIONS.has(input.durationSeconds)) {
+    throw new ProviderRequestNotSubmittedError("Google Omni duration must be 4, 6, 8, or 10 seconds.");
+  }
+  if (![0, 1, 3].includes(images.length) || new Set(images).size !== images.length || images.some(url => !isHttpsUrl(url))) {
+    throw new ProviderRequestNotSubmittedError("Omni Flash accepts no image, one distinct HTTPS image, or three distinct HTTPS images.");
+  }
+  return {
+    model: REAPI_OMNI_MODEL,
+    prompt,
+    duration: input.durationSeconds,
+    resolution: input.resolution,
+    aspect_ratio: input.aspectRatio,
+    ...(images.length === 1 ? { image_urls: images, generation_type: (startingFrame ? "frame" : "reference") as "frame" | "reference" } : {}),
+    ...(images.length === 3 ? { image_urls: images, generation_type: "reference" as const } : {}),
+  };
+}
+
 function isHttpsUrl(value: string) {
   try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; } catch { return false; }
 }

@@ -12,7 +12,7 @@ export function parseCreatorSlideUrl(value: unknown) {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value);
-    if (![creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com"].includes(url.origin) || url.username || url.password || url.hash) return null;
+    if (![creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com", "https://vidmake.io", "https://www.vidmake.io"].includes(url.origin) || url.username || url.password || url.hash) return null;
     const match = PATTERN.exec(url.pathname);
     return match ? { referenceId: match[1], slideId: match[2], sha256: match[3], extension: match[4], canonicalUrl: `${url.origin}${url.pathname}` } : null;
   } catch { return null; }

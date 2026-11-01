@@ -17,14 +17,14 @@ import { mediaSourceTypes } from "@/lib/media/types";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 
 const empty = z.strictObject({});
-const uuid = z.uuid().describe("A UGC Pilot resource ID.");
+const uuid = z.uuid().describe("A Vidmake resource ID.");
 const sourceUrl = z.url().regex(/^https?:\/\//i);
 const httpsUrl = z.url().regex(/^https:\/\//i);
 const nullableText = z.string().nullable();
 const mediaCollectionDescription =
   "Asset group: image for still images, video for videos, or influencer for creator footage.";
 const mediaSourceTypeDescription =
-  "How UGC Pilot created the asset: upload (library upload), influencer_upload (creator footage upload), demo_upload (demo footage), catalog_influencer (built-in creator asset), generated_image or generated_video (AI output), edit_export (editor export), combined_render (composed video), wall_text_render, or reaction_render.";
+  "How Vidmake created the asset: upload (library upload), influencer_upload (creator footage upload), demo_upload (demo footage), catalog_influencer (built-in creator asset), generated_image or generated_video (AI output), edit_export (editor export), combined_render (composed video), wall_text_render, or reaction_render.";
 // Website audio references do not expand the public MCP V1 asset contract.
 export const MCP_MEDIA_COLLECTIONS = ["influencer", "video", "image"] as const;
 const mediaCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(mediaCollectionDescription);
@@ -66,7 +66,7 @@ export function principal(ctx: ToolContext, scope: string) {
 export function principalIdentity(ctx: ToolContext, scope: string) {
   const auth = ctx.http?.authInfo;
   const uid = auth?.extra?.firebaseUid;
-  if (!auth || typeof uid !== "string" || !uid.trim()) throw new ToolFailure("UNAUTHENTICATED", "Connect your UGC Pilot account.");
+  if (!auth || typeof uid !== "string" || !uid.trim()) throw new ToolFailure("UNAUTHENTICATED", "Connect your Vidmake account.");
   if (!auth.scopes.includes(scope)) throw new ToolFailure("INSUFFICIENT_SCOPE", `The ${scope} permission is required.`);
   return { uid, emailVerified: auth.extra?.emailVerified === true };
 }
@@ -149,7 +149,7 @@ export const registeredReadMcpTools = [
 const profileOutputSchema = z.strictObject({ id: z.string().min(1), name: z.string().min(1).optional(), email: z.email().optional(), nickname: z.string().min(1).optional() });
 
 const entitlementsOutputSchema = z.strictObject({
-  plan: z.enum(["free", "starter", "growth"]),
+  plan: z.enum(["free", "starter", "growth", "startup"]),
   access_source: z.enum(["free", "dodo", "complimentary"]),
   active: z.boolean(),
   credits_remaining: z.number().int().nonnegative(),
@@ -200,7 +200,7 @@ const capabilitiesOutputSchema = z.strictObject({
 
 export function registerReadMcpTools(server: McpServer) {
   server.registerTool("get_profile", {
-    description: "Identify the connected UGC Pilot account.",
+    description: "Identify the connected Vidmake account.",
     inputSchema: empty,
     outputSchema: profileOutputSchema,
     annotations: readOnly,

@@ -6,8 +6,8 @@ export function resolveHookVideoProvider(input: {
   provider?: HookVideoProvider;
 }, legacyOperation: { provider_operation_id: string | null; status: string } | null) {
   if (input.provider === "reapi") {
-    if (input.model !== "seedance_2_5" && input.model !== "wan_3_0") {
-      throw new ProviderRequestNotSubmittedError("ReAPI video generation requires Seedance 2.5 or WAN 3.0.");
+    if (input.model !== "seedance_2_5" && input.model !== "wan_3_0" && input.model !== "google_omni") {
+      throw new ProviderRequestNotSubmittedError("ReAPI video generation requires Omni Flash, Seedance 2.5, or WAN 3.0.");
     }
     // Newly admitted ReAPI jobs must never migrate an existing paid operation.
     if (legacyOperation) {

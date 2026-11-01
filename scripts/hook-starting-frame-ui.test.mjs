@@ -24,7 +24,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
+function harness({ priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = uuidStart;
   const jobs = new Map();
@@ -53,8 +53,8 @@ function harness({ captureCreatorDirections, referenceOverrides = {}, curatedRep
       useQuery(options) {
         queries.push(options);
         const name = options.queryKey[0];
-        return { data: name === "hook-source-frame-v4-opening" ? frameData : name === "hook-starting-image-cost" ? 1 : undefined,
-          isPending: false, error: name === "hook-source-frame-v4-opening" ? frameError : null, refetch: () => {}, isFetching: false };
+        return { data: name === "hook-source-frame-v4-opening" ? frameData : name === "hook-starting-image-cost" ? priceError ? undefined : 1 : undefined,
+          isPending: false, error: name === "hook-source-frame-v4-opening" ? frameError : name === "hook-starting-image-cost" && priceError ? new Error("Price unavailable") : null, refetch: () => { if (name === "hook-starting-image-cost") priceError = false; }, isFetching: false };
       },
       useQueries({ queries: batchQueries }) {
         return batchQueries.map(options => {
@@ -501,9 +501,20 @@ test("a completed legacy image remains usable even when its old photo count exce
   h.setJob({ id: checkpoint.jobId, status: "completed", isTerminal: true, error: null,
     receipt: { ...scope, version: 1, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
     output: { mediaAssetId: "00000000-0000-4000-8000-000000000046", url: "https://media.example.test/old-frame.png", width: 720, height: 1280 } });
-  h.render(); await h.settle(); const tree = h.render();
+  h.render(); await h.settle(); let tree = h.render();
   assert.equal(button(tree, "Generate another starting image").props.disabled, true);
+  assert.equal(nodes(tree).some(n => n.props?.alt === "Generated starting frame to review before animation"), false);
+  assert.equal(button(tree, "Previous generations").props["aria-expanded"], false);
+  assert.equal(h.submissions.length, 0);
+  button(tree, "Previous generations").props.onClick(); tree = h.render();
+  assert.equal(button(tree, "Hide previous generations").props["aria-expanded"], true);
   assert.equal(button(tree, "Use as starting frame").props.disabled, false);
+  assert.equal(h.submissions.length, 0);
+  const before = [...h.stored.entries()];
+  button(tree, "Hide previous generations").props.onClick(); tree = h.render();
+  assert.equal(button(tree, "Previous generations").props["aria-expanded"], false);
+  assert.deepEqual([...h.stored.entries()], before, "disclosure does not change saved provenance");
+  button(tree, "Previous generations").props.onClick(); tree = h.render();
   button(tree, "Use as starting frame").props.onClick();
   assert.equal(h.selections.length, 1); assert.equal(h.submissions.length, 0);
 });
@@ -864,6 +875,17 @@ test("Nano Banana 2.1 appears as a separate starting-image option and freezes it
  assert.equal(h.submissions.at(-1).imageModel,"nano_banana_2_1");
 });
 
+test("failed pricing offers retry and releases Generate without submitting a job", async () => {
+ const h=harness({priceError:true,presentation:"recreation"});h.render();await h.settle();let tree=h.render();
+ find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
+ assert.match(text(tree),/Price could not be loaded/);
+ assert.doesNotMatch(text(tree),/Checking price/);
+ assert.equal(button(tree,"Generate starting frame").props.disabled,true);
+ button(tree,"Retry price").props.onClick();tree=h.render();
+ assert.equal(button(tree,"Generate starting frame").props.disabled,false);
+ assert.equal(h.submissions.length,0);
+});
+
 test("full prompt editing, saving, default restoration and application reset use the exact chosen text", async () => {
  const h=harness();h.render();await h.settle();let tree=h.render();
  find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
@@ -882,4 +904,23 @@ test("full prompt editing, saving, default restoration and application reset use
  assert.equal(nodes(fresh.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt").props.value,custom);
  const other=harness({ownerId:"another"});other.stored.set(prefKey,h.stored.get(prefKey));other.render();await other.settle();
  assert.notEqual(nodes(other.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt").props.value,custom);
+});
+
+test("starting image prompt is collapsed by default with the full editor and preferences inside its disclosure", async () => {
+ const h=harness();h.render();await h.settle();
+ const tree=h.render();
+ const disclosure=nodes(tree).find(n=>n.type==="details"&&n.props["aria-label"]==="Starting image prompt");
+ assert.ok(disclosure);
+ assert.notEqual(disclosure.props.open,true);
+ assert.equal(text(nodes(disclosure).find(n=>n.type==="summary")),"Starting image prompt");
+ assert.ok(nodes(disclosure).some(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt"));
+ assert.ok(text(disclosure).includes("Save my prompt"));
+ assert.ok(text(disclosure).includes("Use as my default in this browser"));
+ const hiddenPreferences=nodes(disclosure).find(n=>n.type==="div"&&n.props.hidden===true);
+ assert.ok(hiddenPreferences,"prompt preferences stay hidden even when the disclosure opens");
+ assert.ok(text(hiddenPreferences).includes("Image 1 supplies the scene."));
+ assert.ok(text(hiddenPreferences).includes("Use application prompt"));
+ assert.ok(text(hiddenPreferences).includes("Save my prompt"));
+ assert.ok(text(hiddenPreferences).includes("Use as my default in this browser"));
+ assert.equal(nodes(hiddenPreferences).some(n=>n.type==="textarea"),false,"editable prompt must remain outside hidden preferences");
 });

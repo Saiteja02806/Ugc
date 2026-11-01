@@ -16,20 +16,20 @@ import { faqJsonLd } from "@/lib/marketing/mcp-public";
 
 const path = "/blog/ugc-videos-with-codex-mcp";
 const title = "How to Make UGC Videos with Codex Using an MCP Server";
-const description = "Connect Codex to the UGC Pilot MCP server and generate UGC-style videos, voiceovers and edits from your terminal. Setup, prompts and review steps.";
+const description = "Connect Codex to the Vidmake MCP server and generate UGC-style videos, voiceovers and edits from your terminal. Setup, prompts and review steps.";
 const datePublished = "2026-10-25";
 
 const faqs = [
   {
     question: "Can Codex generate videos by itself?",
-    answer: "No. Codex needs an MCP server with video tools. Once UGC Pilot is connected, Codex can call generation, speech and editing tools and return the files.",
+    answer: "No. Codex needs an MCP server with video tools. Once Vidmake is connected, Codex can call generation, speech and editing tools and return the files.",
   },
   {
     question: "Do I put an API key in config.toml?",
     answer: "No. Add only the server URL. Sign-in uses OAuth, and tokens should stay out of the file.",
   },
   {
-    question: "How many tools does the UGC Pilot MCP server have?",
+    question: "How many tools does the Vidmake MCP server have?",
     answer: "The public tool list has 78 tools. The MCP tools reference at /docs/mcp-tools shows each one with its scope.",
   },
   {
@@ -37,11 +37,11 @@ const faqs = [
     answer: "The connection is included with your account. Generating images, video and speech, and some finishing work, spends credits from your plan.",
   },
   {
-    question: "Why can't Codex see the UGC Pilot tools?",
+    question: "Why can't Codex see the Vidmake tools?",
     answer: "Check that you finished codex mcp login, then start a new session so the tool list reloads.",
   },
   {
-    question: "Does UGC Pilot post my videos?",
+    question: "Does Vidmake post my videos?",
     answer: "No. You download the approved file and upload it wherever you want yourself.",
   },
   {
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: new URL(path, publicOrigin).href,
-    siteName: "UGC Pilot",
+    siteName: "Vidmake",
     title,
     description,
   },
@@ -80,7 +80,7 @@ export default function UgcVideosWithCodexMcpPage() {
     >
       <ArticleBody>
         <p>
-          The <strong className="font-semibold text-foreground-strong">Model Context Protocol (MCP)</strong> fixes that. When you connect Codex to the <ArticleLink href="/mcp">UGC Pilot MCP server</ArticleLink>, the same session that reads your codebase can write a hook, generate a UGC-style clip, add a voiceover and export an edit. This guide walks through the setup, a prompt flow that works, and how to review the output before you use it anywhere.
+          The <strong className="font-semibold text-foreground-strong">Model Context Protocol (MCP)</strong> fixes that. When you connect Codex to the <ArticleLink href="/mcp">Vidmake MCP server</ArticleLink>, the same session that reads your codebase can write a hook, generate a UGC-style clip, add a voiceover and export an edit. This guide walks through the setup, a prompt flow that works, and how to review the output before you use it anywhere.
         </p>
         <p>
           If you use Claude instead, see the companion post, <ArticleLink href="/blog/ugc-ads-with-claude-mcp">How to make UGC ads with Claude using an MCP server</ArticleLink>.
@@ -90,7 +90,7 @@ export default function UgcVideosWithCodexMcpPage() {
         <p>Most founders who ship with Codex already have the best source material for a product video sitting in the repo: what the product does, who it&apos;s for, and what changed this week. Moving that context into a separate video tool means copy-pasting and re-explaining. With MCP, you skip that step:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>Codex reads the README or a feature file and drafts a script from real product facts.</li>
-          <li>It calls UGC Pilot tools to generate the video and audio.</li>
+          <li>It calls Vidmake tools to generate the video and audio.</li>
           <li>You review and approve every file before it leaves your machine.</li>
         </ul>
         <p>
@@ -100,7 +100,7 @@ export default function UgcVideosWithCodexMcpPage() {
         <ArticleH2>What you need</ArticleH2>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            A UGC Pilot account. The seven-day free trial needs no credit card; paid plans start at $19 a month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+            A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $19 a month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
           </li>
           <li>Codex CLI or the Codex IDE extension.</li>
           <li>
@@ -128,7 +128,7 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
 
         <ArticleH2>Step 3: Check the connection before you spend credits</ArticleH2>
         <p>Start a fresh Codex session and ask:</p>
-        <ArticlePrompt>Use UGC Pilot to check my connection, plan, credits and available generation options. Don&apos;t generate anything yet.</ArticlePrompt>
+        <ArticlePrompt>Use Vidmake to check my connection, plan, credits and available generation options. Don&apos;t generate anything yet.</ArticlePrompt>
         <p>
           Codex should call tools such as <ArticleCode>get_profile</ArticleCode>, <ArticleCode>get_entitlements</ArticleCode> and <ArticleCode>get_capabilities</ArticleCode> and summarise what your plan allows. If the tools don&apos;t show up, start a new session; an open session can keep the tool list it loaded at the start.
         </p>
@@ -140,14 +140,14 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
         <p>This is the part where Codex earns its place. Point it at real files:</p>
         <ArticlePrompt>Read README.md and the pricing page source. Write 5 UGC-style hooks under 10 words for solo SaaS founders, then a 15-second script for the strongest one. Only use claims the files support.</ArticlePrompt>
         <p>
-          Because Codex is reading your actual product copy, it&apos;s less likely to drift into features you don&apos;t have. Still check every line. If you saved a brand profile in UGC Pilot, ask Codex to read it with <ArticleCode>get_saas_brand</ArticleCode> so the tone matches.
+          Because Codex is reading your actual product copy, it&apos;s less likely to drift into features you don&apos;t have. Still check every line. If you saved a brand profile in Vidmake, ask Codex to read it with <ArticleCode>get_saas_brand</ArticleCode> so the tone matches.
         </p>
         <p>
           Need a starting structure? The post on <ArticleLink href="/blog/ugc-ad-script-templates">UGC ad script templates</ArticleLink> has fill-in-the-blank formats, and the <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page has openers to adapt.
         </p>
 
         <ArticleH2>Step 5: Generate the video</ArticleH2>
-        <ArticlePrompt>Use UGC Pilot to generate a vertical UGC-style video for this script: a person talking to a phone camera at a desk. Tell me the credit cost before you start.</ArticlePrompt>
+        <ArticlePrompt>Use Vidmake to generate a vertical UGC-style video for this script: a person talking to a phone camera at a desk. Tell me the credit cost before you start.</ArticlePrompt>
         <p>
           Codex calls <ArticleCode>generate_video</ArticleCode>, then polls <ArticleCode>get_job</ArticleCode> until the file is ready. If you have a product image or clip you&apos;re allowed to use, upload it first with <ArticleCode>create_upload</ArticleCode> and <ArticleCode>confirm_upload</ArticleCode>, then ask Codex to use it as a reference.
         </p>
@@ -186,13 +186,13 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
             <strong className="font-semibold text-foreground-strong">Follow platform rules</strong> on AI-generated or synthetic media, and label it where required.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Download and upload it yourself.</strong> UGC Pilot gives you the file; you decide where it goes.
+            <strong className="font-semibold text-foreground-strong">Download and upload it yourself.</strong> Vidmake gives you the file; you decide where it goes.
           </li>
         </ul>
 
         <ArticleH2>A condensed prompt flow you can reuse</ArticleH2>
         <ol className="list-decimal space-y-2 pl-5">
-          <li>&quot;Check my UGC Pilot connection, plan and credits. Don&apos;t generate.&quot;</li>
+          <li>&quot;Check my Vidmake connection, plan and credits. Don&apos;t generate.&quot;</li>
           <li>&quot;Read README.md and write 5 hooks for [audience] about [one feature].&quot;</li>
           <li>&quot;Generate a 15-second vertical UGC-style video for hook #3. Show the credit cost first.&quot;</li>
           <li>&quot;Generate a casual voiceover and attach it.&quot;</li>
@@ -201,10 +201,10 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
         <p>You can save this as a markdown file in your repo so the whole team runs the same flow.</p>
 
         <ArticleH2>See what the output looks like</ArticleH2>
-        <p>Before you set anything up, it helps to see real clips. These are on UGC Pilot&apos;s own channels:</p>
+        <p>Before you set anything up, it helps to see real clips. These are on Vidmake&apos;s own channels:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            YouTube: <ArticleExternalLink href="https://www.youtube.com/watch?v=9bIweHdRdVw">UGC Pilot walkthrough</ArticleExternalLink> and Shorts like <ArticleExternalLink href="https://www.youtube.com/shorts/2P1whMHDqi8">this one</ArticleExternalLink>, with more on the <ArticleExternalLink href="https://www.youtube.com/@Teja.Chundu">@Teja.Chundu channel</ArticleExternalLink>.
+            YouTube: <ArticleExternalLink href="https://www.youtube.com/watch?v=9bIweHdRdVw">Vidmake walkthrough</ArticleExternalLink> and Shorts like <ArticleExternalLink href="https://www.youtube.com/shorts/2P1whMHDqi8">this one</ArticleExternalLink>, with more on the <ArticleExternalLink href="https://www.youtube.com/@Teja.Chundu">@Teja.Chundu channel</ArticleExternalLink>.
           </li>
           <li>
             TikTok: <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7698738756915907862">example clip</ArticleExternalLink> on <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm">@clara_iamm</ArticleExternalLink>.
@@ -298,7 +298,7 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/mcp/codex", title: "Connect Codex", description: "The config.toml route and OAuth login." },
           { href: "/docs/mcp-tools", title: "MCP tools reference", description: "Every public tool, with its description and permission scope." },
-          { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from UGC Pilot's own channel." },
+          { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from Vidmake's own channel." },
         ]}
       />
     </VideoMarketingPage>

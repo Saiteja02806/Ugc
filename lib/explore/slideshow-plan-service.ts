@@ -7,6 +7,7 @@ import { resolveOwnedPrivateMediaUrl } from "@/worker/src/lib/private-media";
 import { downloadReferenceImageContext } from "@/worker/src/lib/reference-image-download";
 import { SLIDESHOW_REQUEST_PLANNER_SYSTEM, SlideshowRequestPlanSchema, validateSlideshowRequestPlan, type SlideshowPlanningInput } from "./slideshow-request-plan";
 import { parseSlideshowBusinessContext, type SlideshowBusinessContext } from "../../worker/src/lib/slideshow-business-context";
+import { slideshowClarificationMessages } from "./slideshow-generation-recovery";
 
 export class SlideshowPlanError extends Error {
   constructor(message: string, public status = 422) { super(message); }
@@ -23,7 +24,7 @@ export async function planSlideshowRequest(owner: string, requestKey: string, in
   const model = process.env.OPENAI_SLIDESHOW_PLAN_MODEL?.trim() || process.env.OPENAI_SLIDESHOW_PROMPT_MODEL?.trim() || process.env.OPENAI_TEXT_REMIX_MODEL?.trim() || "gpt-5.6-luna";
   if (!parseSlideshowBusinessContext(businessContext)) throw new SlideshowPlanError("Could not confirm your saved business context. Review it in Settings before generating slides.", 503);
   // Fence both the model instructions and the server-owned facts, not browser-supplied context.
-  const planningInput = { ...input, businessContext, plannerVersion: 3, model };
+  const planningInput = { ...input, businessContext, plannerVersion: 4, model };
   const hash = createHash("sha256").update(JSON.stringify(planningInput)).digest("hex");
   const { data: claim, error } = await db.rpc("explore_claim_slideshow_plan", { p_user_id: owner, p_request_key: requestKey, p_payload_hash: hash, p_input: planningInput });
   if (error) throw new SlideshowPlanError(error.message.includes("slideshow_plan_conflict") ? "The selected images or instructions changed. Start a new generation."
@@ -57,6 +58,9 @@ export async function planSlideshowRequest(owner: string, requestKey: string, in
       response_format: zodResponseFormat(SlideshowRequestPlanSchema, "slideshow_execution_plan"),
     });
     output = validateSlideshowRequestPlan(response.choices[0]?.message.parsed, input);
+    // New planning responses get an English fallback without a second model call.
+    // Previously saved plans stay immutable; the UI also guards old feedback.
+    output = { ...output, clarifications: slideshowClarificationMessages(output.clarifications) };
     if (Date.now() > deadline) throw new Error("Planning deadline exceeded");
   } catch {
     // A failed/uncertain submission is never automatically submitted again.

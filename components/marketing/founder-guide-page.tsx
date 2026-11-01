@@ -1,6 +1,7 @@
 import { ArrowRight, ChevronRight, Clock3 } from "lucide-react";
 import Link from "next/link";
 import { practicalGuides } from "@/lib/marketing/practical-guides";
+import { publicOrigin } from "@/lib/marketing/public-origin";
 
 import { GuideContentBrief } from "@/components/marketing/guide-content-brief";
 import { LandingHeader } from "@/components/marketing/landing-header";
@@ -49,7 +50,7 @@ export const founderGuideOpenGraphImage = {
   url: "/guides/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "UGC Pilot founder marketing guides",
+  alt: "Vidmake founder marketing guides",
 };
 
 export const founderGuides = {
@@ -144,7 +145,7 @@ export const founderGuides = {
     description:
       "Plan useful organic SaaS content from customer questions, with a filled brief, video and slide examples, a weekly plan, and practical ways to review results.",
     readingTime: "10 min read",
-    author: "UGCPilot",
+    author: "Vidmake",
     audience: "For SaaS founders planning useful organic content",
     introduction:
       "SaaS content marketing means publishing explanations, examples, and resources that help the people your software serves. You do not need a new feature announcement every week. Start with a question those people ask, give a complete answer, and adapt it into formats that make the answer easier to use. This guide takes you from a question bank to three useful posts and a review process you can run with a document, spreadsheet, and your existing editor.",
@@ -664,7 +665,7 @@ export function getFounderGuide(slug: string): FounderGuide {
 }
 
 function toJsonLd(guide: FounderGuide) {
-  const url = `https://getugcpilot.com/guides/${guide.slug}`;
+  const url = `${publicOrigin}/guides/${guide.slug}`;
 
   return JSON.stringify({
     "@context": "https://schema.org",
@@ -676,17 +677,17 @@ function toJsonLd(guide: FounderGuide) {
         mainEntityOfPage: url,
         author: {
           "@type": "Organization",
-          name: guide.author ?? "UGC Pilot",
-          url: "https://getugcpilot.com",
-          logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
+          name: guide.author ?? "Vidmake",
+          url: publicOrigin,
+          logo: `${publicOrigin}/brand/vidmake-mark.png`,
         },
         publisher: {
           "@type": "Organization",
-          name: "UGC Pilot",
-          url: "https://getugcpilot.com",
-          logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
+          name: "Vidmake",
+          url: publicOrigin,
+          logo: `${publicOrigin}/brand/vidmake-mark.png`,
         },
-        image: `https://getugcpilot.com${founderGuideOpenGraphImage.url}`,
+        image: `${publicOrigin}${founderGuideOpenGraphImage.url}`,
       },
       {
         "@type": "BreadcrumbList",
@@ -695,7 +696,7 @@ function toJsonLd(guide: FounderGuide) {
             "@type": "ListItem",
             position: 1,
             name: "Guides",
-            item: "https://getugcpilot.com/guides",
+            item: `${publicOrigin}/guides`,
           },
           {
             "@type": "ListItem",

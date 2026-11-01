@@ -63,7 +63,7 @@ function characterHarness(skills = promptSkills.CHARACTER_PROMPT_SKILLS, clipboa
     "@/components/generation/ai-studio-composer": { AiStudioComposer: "Composer", AiStudioSetting: "Setting", AiStudioSettingSelect: "SettingSelect" },
     "@/components/generation/reference-media-upload": { ReferenceMediaUpload: "Upload" },
     "@/components/generation/reference-upload-preview": { ReferenceUploadPreview: "ReferencePreview" },
-    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], MAX_CHARACTER_REFERENCES, getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
+    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], CHARACTER_STUDIO_IMAGE_MODEL: "gemini_3_pro", MAX_CHARACTER_REFERENCES, getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
     "@/lib/characters/batch-progress": { characterBatchProgress },
     "@/lib/characters/result-groups": { characterResultGroups },
     "@/lib/characters/prompt-skills": { ...promptSkills, CHARACTER_PROMPT_SKILLS: skills, resolveCharacterPromptSkills: ids => promptSkills.resolveCharacterPromptSkills(ids, skills) },
@@ -71,6 +71,7 @@ function characterHarness(skills = promptSkills.CHARACTER_PROMPT_SKILLS, clipboa
     "./use-character-builder": { useCharacterBuilder: () => builder }, "./character-history": { CharacterHistory: "History" },
     "./image-download-button": { ImageDownloadButton: "Download" },
     "./character-workspace.module.css": { default: {} },
+    "@/components/video/lidar-point-cloud-canvas": { LidarPointCloudCanvas: "Lidar" },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogDescription: "DialogDescription", DialogHeader: "DialogHeader", DialogTitle: "DialogTitle" },
   }, { navigator: { clipboard: { writeText: clipboard } } });
   const render = () => h.render(() => {

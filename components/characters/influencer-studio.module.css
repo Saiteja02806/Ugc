@@ -1,0 +1,953 @@
+.studioRoot {
+  --app-primary: #0078d4;
+  --app-primary-hover: #005a9e;
+  --app-primary-rgb: 0, 120, 212;
+  --studio-bg: var(--background, #101014);
+  --dock-bg: var(--card, #222228);
+  --card-bg: var(--card-muted, #1a1a20);
+  --card-hover-bg: #1F2433;
+  --dock-border: rgba(255, 255, 255, 0.08);
+  --text-muted: #8E95A5;
+  --text-primary: #F0F2F7;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: var(--studio-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.studioLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+@media (max-width: 1023px) {
+  .studioRoot {
+    height: calc(100dvh - 64px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .studioLayout {
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+/* ==========================================================================
+   LEFT CUSTOMIZER DOCK
+   ========================================================================== */
+
+.customizerDock {
+  width: 440px;
+  flex-shrink: 0;
+  background-color: var(--dock-bg);
+  border-right: 1px solid var(--dock-border);
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 64px);
+  position: sticky;
+  top: 64px;
+  overflow: hidden;
+  z-index: 20;
+}
+
+@media (max-width: 1023px) {
+  .customizerDock {
+    width: 100%;
+    height: min(52dvh, 520px);
+    position: static;
+    order: 1;
+    border-right: none;
+    border-top: 1px solid var(--dock-border);
+  }
+
+  .canvasContainer {
+    flex: 1 1 auto;
+    min-height: 0;
+    order: 0;
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .resultsGrid,
+  .candidateResultCard {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .resultsGrid {
+    flex: 1;
+  }
+
+  .candidateImageFrame {
+    flex: 1 1 auto;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+}
+
+/* ==========================================================================
+   TOP HORIZONTAL PHOTO UPLOAD BANNER
+   ========================================================================== */
+
+.topUploadBanner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background-color: #171B26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.topUploadBanner:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.topUploadLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topUploadIconBubble {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.topUploadBanner:hover .topUploadIconBubble {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.topUploadIcon {
+  width: 20px;
+  height: 20px;
+  color: #A1A1AA;
+}
+
+.topUploadBanner:hover .topUploadIcon {
+  color: #f4f4f5;
+}
+
+.topUploadThumbnail {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  flex-shrink: 0;
+}
+
+.topUploadMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.topUploadTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topUploadSubtext {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.topUploadRight {
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.topUploadOptionalBadge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94A3B8;
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.topUploadRemoveBtn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #EF4444;
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.topUploadRemoveBtn:hover {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+.topUploadInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* Scrollable Accordion Area */
+.accordionScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #2A2E39 transparent;
+}
+
+.accordionScroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.accordionScroll::-webkit-scrollbar-thumb {
+  background: #2A2E39;
+  border-radius: 4px;
+}
+
+/* Accordion Section - Seamless Dark Minimal Flow matching Higgsfield Studio */
+.accordionSection {
+  background-color: transparent;
+  border: none;
+  overflow: visible;
+  padding-bottom: 24px;
+}
+
+.accordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 12px 0;
+  background: transparent;
+  border: none;
+  color: #E4E4E7;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.accordionTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.accordionIcon {
+  width: 18px;
+  height: 18px;
+  color: #F4F4F5;
+}
+
+.accordionCountBadge {
+  font-size: 15px;
+  font-weight: 500;
+  color: #71717A;
+  margin-left: 2px;
+}
+
+.accordionChevron {
+  width: 18px;
+  height: 18px;
+  color: #71717A;
+  transition: transform 0.2s ease;
+}
+
+.accordionChevronOpen {
+  transform: rotate(180deg);
+}
+
+.accordionContent {
+  padding: 0;
+}
+
+/* 3-Column Card Grid */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.traitCard {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 20px;
+  overflow: hidden;
+  background-color: #17181C;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+  padding: 0;
+  display: block;
+}
+
+.traitCard:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Active selected state — light ring, so the orchid stays on the action button */
+.traitCardSelected {
+  border: 2.5px solid rgba(255, 255, 255, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.cardImageWrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Upload Character Card Tile */
+.uploadCard {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 20px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  gap: 6px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.uploadCard:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.uploadIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.uploadCard:hover .uploadIcon {
+  color: #f4f4f5;
+  transform: translateY(-2px);
+}
+
+.uploadTitle {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.uploadSubtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.uploadFileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.removeUploadBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.15s ease;
+}
+
+.removeUploadBtn:hover {
+  background: #EF4444;
+  border-color: #EF4444;
+}
+
+/* Swatch Card (Color Circle / Hex) */
+.swatchCardContent {
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  gap: 8px;
+  background-color: #16181D;
+}
+
+.swatchCircle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.swatchLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Clean floating label on selected cards without dark overlay or black backing */
+.cardSelectedPill {
+  position: absolute;
+  bottom: 8px;
+  left: 6px;
+  right: 6px;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  animation: pillFadeIn 0.15s ease-out;
+}
+
+.cardSelectedPillText {
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+@keyframes pillFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   STICKY BOTTOM ACTION DOCK
+   ========================================================================== */
+
+.dockBottomAction {
+  padding: 12px 16px;
+  background-color: var(--dock-bg);
+  border-top: 1px solid var(--dock-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Picked Settings Bar */
+.pickedSettingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pickedSettingsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.resetAllButton {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.resetAllButton:hover {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
+
+.pickedPillsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 64px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.pickedPillsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.pickedPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background-color: #1A1D24;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #E2E6EE;
+  white-space: nowrap;
+}
+
+/* Batch Size Row */
+.batchSizeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.batchSizeLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.batchSizeControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #181A20;
+  border: 1px solid var(--dock-border);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+.batchSizeBtn {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.batchSizeBtn:hover:not(:disabled) {
+  background-color: #242833;
+}
+
+.batchSizeBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.batchSizeNumber {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 14px;
+  text-align: center;
+}
+
+.framingControl {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background-color: #181A20;
+  border: 1px solid var(--dock-border);
+  border-radius: 8px;
+}
+
+.framingOption,
+.framingOptionSelected {
+  min-width: 64px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.framingOption {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.framingOptionSelected {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+.framingOption:disabled,
+.framingOptionSelected:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Bottom CTA Row (Dice + Neon Generate) */
+.availabilityMessage {
+  margin: 0;
+  color: #fecaca;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.generateRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.diceButton {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background-color: #181A20;
+  border: 1px solid var(--dock-border);
+  color: var(--text-primary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diceButton:hover:not(:disabled) {
+  background-color: #222630;
+  border-color: #313745;
+  transform: rotate(15deg);
+}
+
+.diceButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.generateButton {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  background-color: var(--app-primary);
+  background-image: none;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: none;
+  transition: all 0.15s ease;
+}
+
+.generateButton:hover:not(:disabled) {
+  background-color: var(--app-primary-hover);
+  background-image: none;
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.generateButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.generateButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   CENTER WORKSPACE CANVAS
+   ========================================================================== */
+
+.canvasContainer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.canvasTopNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.canvasTabs {
+  display: flex;
+  gap: 12px;
+}
+
+.canvasTab {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.canvasTab:hover {
+  color: var(--text-primary);
+}
+
+.canvasTabActive {
+  background-color: #1A1D24;
+  color: #FFFFFF;
+}
+
+/* Empty Hero Studio State */
+.heroStudioStage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  position: relative;
+}
+
+
+.heroTitle {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+  margin-bottom: 10px;
+}
+
+.heroSubtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 520px;
+  line-height: 1.6;
+}
+
+/* Results Grid */
+.resultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.candidateResultCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.candidateImageFrame {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  width: min(100%, calc((100dvh - 300px) * 9 / 16));
+  margin-inline: auto;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: var(--card-bg);
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.candidateImageFrame:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.candidateImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Card Actions Overlay on Hover */
+.candidateActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.candidateError {
+  margin: 0 0 16px;
+  color: #fecaca;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.candidateTopActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.candidateBottomActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actionButtonSecondary {
+  height: 38px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.actionButtonSecondary:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.actionButtonPrimary {
+  height: 40px;
+  border-radius: 8px;
+  background-color: var(--app-primary);
+  background-image: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.actionButtonPrimary:hover {
+  background-color: var(--app-primary-hover);
+  background-image: none;
+}
+
+/* Generating State */
+.generatingState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px 20px;
+}
+
+.generatingPulse {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: #f4f4f5;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.generatingText {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.generatingSubtext {
+  font-size: 13px;
+  color: var(--text-muted);
+}

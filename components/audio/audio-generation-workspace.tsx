@@ -23,7 +23,7 @@ const TERMINAL = new Set(["completed", "failed", "uncertain", "cancelled"]);
 export function AudioGenerationWorkspace() {
   const { user, loading } = useAuth();
   if (loading) return <section className="p-8 text-sm text-muted" role="status">Loading audio workspace…</section>;
-  return user ? <AudioGenerationSession key={user.uid} uid={user.uid} /> : <section className="p-8 text-sm text-muted">Sign in to generate audio.</section>;
+  return user ? <AudioGenerationSession key={user.uid} uid={user.uid} /> : <section className="m-6 rounded-2xl border border-border bg-card p-8 text-sm text-muted">Sign in to generate audio.</section>;
 }
 function AudioGenerationSession({ uid }: { uid: string }) {
   const queryClient = useQueryClient();

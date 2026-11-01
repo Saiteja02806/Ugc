@@ -252,7 +252,7 @@ export function CreativeAssetsVideoPicker({
     null;
   const currentLabel = useMemo(() => {
     if (!selection) {
-      return "UGC Pilot library";
+      return "Vidmake library";
     }
 
     if (selection.selectionKind === "group") {
@@ -606,7 +606,7 @@ function VideoChoice({
       className={cn(
         "group relative aspect-[9/13] min-w-0 overflow-hidden rounded-lg border bg-muted text-left outline-none transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:hover:translate-y-0",
         selected
-          ? "border-primary ring-2 ring-primary/20"
+          ? "border-white ring-2 ring-white/25"
           : "border-border hover:border-foreground/30",
       )}
     >
@@ -631,7 +631,7 @@ function VideoChoice({
         </span>
       </span>
       {selected ? (
-        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full border border-white bg-black/70 text-white">
           <Check aria-hidden="true" />
         </span>
       ) : null}

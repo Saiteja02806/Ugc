@@ -25,7 +25,7 @@ export default function GlobalError({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>Something went wrong | UGC Pilot</title>
+        <title>Something went wrong | Vidmake</title>
         <script
           id="ugc-pilot-global-error-theme"
           dangerouslySetInnerHTML={{ __html: globalErrorThemeScript }}
@@ -33,8 +33,9 @@ export default function GlobalError({
       </head>
       <body className="instagram-theme flex min-h-dvh items-center justify-center bg-background px-5 py-12 font-sans text-foreground">
         <main className="w-full max-w-lg rounded-[var(--radius-modal)] border border-border bg-card p-7 text-center shadow-floating sm:p-10">
+          <img src="/brand/vidmake-mark.png" alt="" width={44} height={48} className="mx-auto mb-5 h-12 w-auto" />
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-error">
-            UGC Pilot needs a refresh
+            Vidmake needs a refresh
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
             The application could not load.

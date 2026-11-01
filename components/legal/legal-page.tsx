@@ -39,14 +39,10 @@ export function LegalPageShell({
           <Link
             href="/"
             className="inline-flex w-fit items-center gap-3 rounded-control font-semibold text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="UGC Pilot home"
+            aria-label="Vidmake home"
           >
-            <ProductLogoMark
-              className="size-9 rounded-control bg-primary p-2"
-              imageClassName="brightness-0 invert"
-              sizes="36px"
-            />
-            <span>UGCPilot</span>
+            <ProductLogoMark className="size-8" sizes="32px" />
+            <span>Vidmake</span>
           </Link>
           <nav
             className="-mx-2 flex w-full min-w-0 max-w-full gap-1 overflow-x-auto px-2 pb-1 text-sm font-semibold text-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:w-auto md:px-0 md:pb-0"
@@ -101,7 +97,7 @@ export function LegalPageShell({
         <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-muted">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <p className="font-semibold">
-              &copy; 2026 UGC Pilot. All rights reserved.
+              &copy; 2026 Vidmake. All rights reserved.
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-2 font-semibold text-foreground">
               <a
@@ -119,7 +115,7 @@ export function LegalPageShell({
             </div>
           </div>
           <p>
-            UGC Pilot is an independent service and is not affiliated with,
+            Vidmake is an independent service and is not affiliated with,
             endorsed by, or sponsored by Meta or Instagram.
           </p>
         </div>

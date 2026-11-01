@@ -150,11 +150,22 @@ test("connected Prepare final video and Schedule post forward real actions and r
   }
 });
 
+test("a default caption and an account selection compose in either order", () => {
+  const base = { platform: "instagram", caption: "", date: "", time: "", connectionId: "" };
+  const caption = current => ({ ...current, caption: "Default line", captionInitialized: true });
+  const account = current => schedulingDraft.selectWorkflowAccount(current, "instagram", "00000000-0000-4000-8000-000000000001");
+  const captionFirst = schedulingDraft.resolveWorkflowScheduleDraft(schedulingDraft.resolveWorkflowScheduleDraft(base, caption), account);
+  const accountFirst = schedulingDraft.resolveWorkflowScheduleDraft(schedulingDraft.resolveWorkflowScheduleDraft(base, account), caption);
+  assert.equal(captionFirst.caption, "Default line");
+  assert.equal(accountFirst.caption, "Default line");
+  assert.deepEqual(captionFirst.accountIds, accountFirst.accountIds);
+});
+
 test("Schedule uses enabled named platform icons and forwards draft fields verbatim", () => {
   const { WorkflowSchedulingPanel } = load(schedule);
   const original = { platform: "", caption: "", date: "", time: "" };
   const changes = [];
-  const tree = WorkflowSchedulingPanel({ draft: original, onChange: (draft) => changes.push(draft) });
+  const tree = WorkflowSchedulingPanel({ draft: original, onChange: (update) => changes.push(schedulingDraft.resolveWorkflowScheduleDraft(original, update)) });
   const platforms = nodes(tree).filter((node) => node.type === "button" && node.props["data-platform"]);
   assert.deepEqual(platforms.map((node) => [node.props["aria-label"], node.props["aria-pressed"]]), [["Instagram", false], ["YouTube", false]]);
   assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
@@ -183,7 +194,7 @@ test("named schedule time edits preserve other draft fields and support canonica
   const { WorkflowSchedulingPanel } = load(schedule);
   const draft = { platform: "instagram", caption: "Keep this caption", date: "2026-10-30", time: "21:30", connectionId: "owned-account", captionInitialized: true };
   const original = structuredClone(draft), changes = [];
-  const tree = WorkflowSchedulingPanel({ draft, timezone: "Asia/Kolkata", onChange: value => changes.push(value) });
+  const tree = WorkflowSchedulingPanel({ draft, timezone: "Asia/Kolkata", onChange: value => changes.push(schedulingDraft.resolveWorkflowScheduleDraft(draft, value)) });
   assert.equal(changes.length, 0, "Rendering must not submit or modify a draft");
   const timeField = nodes(tree).find(node => node.type === "time-picker");
   assert.equal(timeField.props.value, "21:30");

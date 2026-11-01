@@ -250,7 +250,7 @@ test("Save and review waits for successful recovery and never submits a schedule
   const h = await editor({ failFirst: true, onContinue: () => continued++ });
   await h.clickSave("Save & review post");
   assert.equal(continued, 0); assert.equal(h.saved.length, 0);
-  await h.clickSave("Save & review post");
+  await h.clickSave("Resume & review post");
   assert.equal(continued, 1); assert.equal(h.saved.length, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
@@ -284,7 +284,7 @@ test("Create preview shares the edited sequence, text and upload actions without
   let opened = 0; h.props.onEdit = () => opened++;
   h.props.previewActions = { type: "Button", props: { children: "Generated slides" } };
   const preview = nodes(h.render()).find(n => n.props?.["aria-label"] === "Slideshow edit preview");
-  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Generated slides.*Edit slides/s);
+  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Edit slides.*Save & review post.*More.*Generated slides/s);
   assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
   assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
   assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
@@ -497,7 +497,7 @@ test("moving then removing a slide preserves the selected identity, neighboring 
   h.control("Button", "Move slide 1 later").props.onClick();
   assert.equal(target(), retainedTarget);
   assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
-  h.control("button", "Preview slide 3").props.onClick(); h.control("Button", "Remove slide").props.onClick();
+  h.control("button", "Preview slide 3").props.onClick(); h.control("button", "Remove slide 3").props.onClick();
   assert.equal(target(), retainedTarget, "Removing the last slide selects the existing neighboring slide");
   assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Retained heading");
   assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
@@ -521,17 +521,44 @@ test("slide arrangement stays beside the preview while text tools remain in the 
   assert.equal(nodes(inspector).filter(node => node.type === "FormatSlideshowTextTools").length, 1);
   assert.equal(nodes(preview).some(node => node.type === "FormatSlideshowTextTools"), false);
 });
-test("the dedicated footer exposes exactly one save, resume or schedule action throughout recovery", async () => {
+
+test("simplified toolbar retains library background replacement, text and save invalidation", async () => {
+  const h = await editor();
+  h.heading("Keep my words");
+  await h.clickSave("Save slideshow");
+  assert.ok(h.control("Button", "Review post"));
+  assert.equal(h.control("Button", "Library backgrounds"), undefined);
+  assert.equal(h.control("Button", "Remove slide"), undefined);
+  h.control("Button", "Choose from library").props.onClick();
+  let picker = nodes(h.render()).find(node => node.type === "ImageLibraryPicker");
+  assert.equal(picker.props.mode, "background");
+  picker.props.onClose();
+  assert.ok(h.control("Button", "Review post"), "Cancel retains confirmed output");
+  h.control("Button", "Choose from library").props.onClick();
+  picker = nodes(h.render()).find(node => node.type === "ImageLibraryPicker");
+  const target = picker.props.selectedSlideId;
+  await picker.props.onApply({ assets: [{ id: id(808), collection: "image", status: "ready", url: "https://storage.test/library.png", title: "Library", createdAt: "" }], assignments: [{ slideId: target, assetId: id(808) }] });
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Keep my words");
+  assert.equal(h.control("Button", "Review post"), undefined);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).editorDraft.slides.map(slide => slide.mediaAssetId), [id(808), id(202)]);
+  assert.equal(h.requests.at(-1).editorDraft.slides[0].design.heading, "Keep my words");
+});
+test("the preview header exposes review and retains save-only under More throughout recovery", async () => {
   let continued = 0;
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
   const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Review post", "Saving…"].includes(text(node)));
   const assertAction = label => {
     assert.equal(primary().length, 1); assert.equal(text(primary()[0]), label);
-    const footer = nodes(h.render()).find(node => node.type === "portal" && node.props.target === h.props.actionsTarget);
-    assert.equal(nodes(footer).filter(node => node.type === "Button" && text(node) === label).length, 1);
+    const preview = nodes(h.render()).find(node => node.props?.["aria-label"] === "Slideshow edit preview");
+    const header = nodes(preview).find(node => node.type === "header");
+    assert.equal(nodes(header).filter(node => node.type === "Button" && text(node) === label).length, 1);
+    assert.equal(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
+    if (label !== "Review post") assert.ok(nodes(header).some(node => node.type === "details" && nodes(node).some(child => child.type === "Button" && text(child) === label)));
   };
   assertAction("Save slideshow"); await h.clickSave("Save slideshow"); assertAction("Resume save");
-  for (const label of ["Move slide 1 later", "Remove slide"]) assert.equal(h.control("Button", label).props.disabled, true);
+  assert.equal(h.control("Button", "Move slide 1 later").props.disabled, true);
+  assert.equal(h.control("button", "Remove slide 1").props.disabled, true);
   await h.clickSave("Resume save"); assertAction("Review post");
   h.control("Button", "Review post").props.onClick(); assert.equal(continued, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
@@ -569,7 +596,7 @@ test("Create preview saves and resumes the same draft before scheduling, then in
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true, "One remaining slide cannot be saved");
   h.props.active = true;
   assert.equal(actionNodes().length, 1);
-  assert.ok(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget));
+  assert.equal(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
 });
 test("saving edited text uploads its generated image with the owner and keeps untouched generated slides", async () => {
   const h = await editor(); h.heading("My heading"); await h.clickSave("Save slideshow");
@@ -634,11 +661,11 @@ test("loaded landscape images keep the preview and export overlay proportions, w
 test("repeated add-text-remove cycles retain only active text and reload both remaining slide edits", async () => {
   const h = await editor(); h.heading("Kept heading");
   h.control("button", "Preview slide 2").props.onClick();
-  h.control("Button", "Remove slide").props.onClick();
+  h.control("button", "Remove slide 2").props.onClick();
   const textKey = "ugc-explore:slideshow-draft:v2:owner:text";
   for (let n = 0; n < 14; n++) {
     h.useImage({ id: id(400 + n), url: `https://storage.test/temporary-${n}.png` });
-    h.heading(`Removed heading ${n}`); h.control("Button", "Remove slide").props.onClick();
+    h.heading(`Removed heading ${n}`); h.control("button", "Remove slide 2").props.onClick();
     assert.equal(Object.keys(JSON.parse(h.storage.get(textKey))).length, 1);
   }
   h.useImage({ id: id(500), url: "https://storage.test/final.png" }); h.heading("Newest heading");

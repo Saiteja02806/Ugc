@@ -18,6 +18,7 @@ import type {
   SocialPlatform,
   SocialProvider,
 } from "@/lib/social/types";
+import { resolvePrimaryAppOrigin } from "@/lib/marketing/public-origin";
 
 export async function handleSocialOAuthCallback(
   request: Request,
@@ -202,10 +203,7 @@ function renderCallbackPage(params: {
   };
   const safePayload = safeInlineJson(payload);
   const safeTargetOrigins = safeInlineJson(targetOrigins);
-  const returnUrl = new URL(
-    "/settings#instagram-publishing",
-    appBaseUrl,
-  ).toString();
+  const returnUrl = getSocialOAuthReturnUrl();
   const title = params.status === "success" ? "Account connected" : "Connection failed";
   const statusClass = params.status === "success" ? "success" : "error";
   const fallbackMessage =
@@ -218,7 +216,7 @@ function renderCallbackPage(params: {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)} | UGC Pilot</title>
+    <title>${escapeHtml(title)} | Vidmake</title>
     <style>
       :root { color-scheme: light; font-family: Arial, sans-serif; }
       body { align-items: center; background: #f4f4f5; color: #18181b; display: flex; justify-content: center; margin: 0; min-height: 100vh; padding: 24px; }
@@ -362,18 +360,35 @@ function hostMatchesCallback(value: string, callbackHost: string) {
   }
 }
 
-function getAllowedTargetOrigins(appBaseUrl: string) {
-  const appOrigin = new URL(appBaseUrl).origin;
-  const origins = new Set([appOrigin]);
-  const parsed = new URL(appOrigin);
+export function getSocialOAuthReturnUrl() {
+  const url = new URL("/settings", resolvePrimaryAppOrigin());
+  url.hash = "instagram-publishing";
+  return url.toString();
+}
 
-  if (parsed.hostname === "getugcpilot.com") {
-    origins.add(`${parsed.protocol}//www.getugcpilot.com`);
-  }
+export function getAllowedTargetOrigins(appBaseUrl: string) {
+  const origins = new Set<string>();
 
-  if (parsed.hostname === "www.getugcpilot.com") {
-    origins.add(`${parsed.protocol}//getugcpilot.com`);
-  }
+  try {
+    const appOrigin = new URL(appBaseUrl).origin;
+    origins.add(appOrigin);
+    const parsed = new URL(appOrigin);
+
+    if (parsed.hostname === "getugcpilot.com") {
+      origins.add(`${parsed.protocol}//www.getugcpilot.com`);
+    } else if (parsed.hostname === "www.getugcpilot.com") {
+      origins.add(`${parsed.protocol}//getugcpilot.com`);
+    } else if (parsed.hostname === "vidmake.io") {
+      origins.add(`${parsed.protocol}//www.vidmake.io`);
+    } else if (parsed.hostname === "www.vidmake.io") {
+      origins.add(`${parsed.protocol}//vidmake.io`);
+    }
+  } catch {}
+
+  origins.add("https://vidmake.io");
+  origins.add("https://www.vidmake.io");
+  origins.add("https://getugcpilot.com");
+  origins.add("https://www.getugcpilot.com");
 
   return [...origins];
 }
@@ -392,14 +407,14 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
   }
 
   if (errorCode === "invalid_or_expired_state") {
-    return "This connection request is invalid or has expired. Return to UGC Pilot and try again.";
+    return "This connection request is invalid or has expired. Return to Vidmake and try again.";
   }
 
   if (
     errorCode === "eligible_instagram_account_missing" ||
     errorCode === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR
   ) {
-    return "This Instagram profile must be switched to a Creator account before it can publish through UGC Pilot.";
+    return "This Instagram profile must be switched to a Creator account before it can publish through Vidmake.";
   }
 
   if (errorCode === "youtube_channel_missing") {
@@ -422,10 +437,10 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
     errorCode === "reconnect_connection_required" ||
     errorCode === "reconnect_connection_unavailable"
   ) {
-    return "That Instagram connection is no longer available. Return to UGC Pilot, refresh the account list, and try again.";
+    return "That Instagram connection is no longer available. Return to Vidmake, refresh the account list, and try again.";
   }
 
-  return `${getPlatformLabel(platform)} could not be connected. Return to UGC Pilot and try again.`;
+  return `${getPlatformLabel(platform)} could not be connected. Return to Vidmake and try again.`;
 }
 
 function getPlatformLabel(platform: SocialPlatform) {

@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/** Visible landing covers buffer once; galleries load only on sustained interest. */
-export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", warmCover = false) {
+/** Visible landing covers buffer once; galleries load only on sustained interest.
+ * Continuous covers play while they are on screen and do not pause when the pointer leaves. */
+export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", warmCover = false, continuous = false) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;
@@ -22,12 +23,12 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     };
     const sync = () => {
       if (!visible || preference.matches || document.visibilityState === "hidden") { stop(); return; }
-      if (warmCover) {
+      if (continuous || warmCover) {
         if (!video.hasAttribute("src")) {
           const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
           video.preload = connection?.saveData ? "metadata" : "auto"; video.src = source;
         }
-        if (interested) void video.play().catch(() => {});
+        if (continuous || interested) void video.play().catch(() => {});
         return;
       }
       if (!interested) { stop(); return; }
@@ -41,8 +42,8 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     };
     const enter = (event: PointerEvent) => { if (event.pointerType === "touch") return; interested = true; sync(); };
     const focus = () => { interested = true; sync(); };
-    const leave = () => { interested = false; stop(!warmCover); };
-    const ready = () => { if (interested && visible && !preference.matches && document.visibilityState !== "hidden") void video.play().catch(() => {}); };
+    const leave = () => { if (continuous) return; interested = false; stop(!warmCover); };
+    const ready = () => { if ((continuous || interested) && visible && !preference.matches && document.visibilityState !== "hidden") void video.play().catch(() => {}); };
     const observer = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); sync(); }, { rootMargin: "0px" });
     observer.observe(video);
     link.addEventListener("pointerenter", enter); link.addEventListener("pointerleave", leave);
@@ -57,6 +58,6 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
       link.removeEventListener("pointerdown", leave); link.removeEventListener("click", leave);
       preference.removeEventListener("change", sync); document.removeEventListener("visibilitychange", sync); video.removeEventListener("canplay", ready);
     };
-  }, [source, target, warmCover]);
+  }, [source, target, warmCover, continuous]);
   return ref;
 }

@@ -174,7 +174,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     if (next === "reference") setLoading(Boolean(owner && !localPreview && !(format === "slideshow" && selectedId && !selection.slideId)));
   }
   const availability = busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : localPreview ? "Preview" : !owner ? "Sign in" : loading ? "Loading…" : !enabled ? "Unavailable" : outcome === "failed" ? "Start a new remix" : !business?.ready ? "Add business context" : !startingText.trim() ? "Add text" : "Ready";
-  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : "Generate remix"}</Button>;
+  const generateButton = <Button variant="ghost" type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : "Generate remix"}</Button>;
   const flow = <div className={`${styles.flow} ${overview ? styles.overviewFlow : ""}`} aria-busy={busy || loading}>
         {!draft ? <>
           <label className={styles.label}><span className={overview ? styles.srOnly : undefined}>{editorNavigation ? "Text to remix" : "Reference text"}</span>

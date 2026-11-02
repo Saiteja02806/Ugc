@@ -30,11 +30,20 @@ export function ProductLogoMark({
   );
 }
 
-export function ProductWordmark({ className }: { className?: string }) {
+export function ProductWordmark({
+  className,
+  variant = "display",
+}: {
+  className?: string;
+  variant?: "display" | "ui";
+}) {
   return (
     <span
+      style={{ fontFamily: '"Vidmake DM Sans", sans-serif' }}
       className={cn(
-        "font-[family-name:var(--font-brand-serif)] font-normal leading-none tracking-[-0.03em]",
+        variant === "ui"
+          ? "text-[18px] font-medium leading-none tracking-[-0.02em]"
+          : "font-medium leading-none tracking-[-0.02em]",
         className,
       )}
     >

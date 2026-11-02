@@ -1,5 +1,53 @@
 # UGCPilot UI & Workflow Mistake Ledger (`clear.md`)
 
+### UGC-UI-097 — Explore catalog videos play only on hover, and Upgrade is a dark button
+- Date: 2026-11-02. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Verification: local http://localhost:3000/explore. Upgrade is `rgb(245, 243, 240)` with dark text. All five catalog videos were playing (`paused: false`) without a hover, and they stayed playing after pointer leave and pointer down. 20 cover tests passed. Production not checked.
+- Observed: USER REPORTED, screenshot of Explore. The Upgrade button in the page header is a dark outline. Workflow cover videos stay on their posters until the pointer hovers, then stop when the pointer leaves.
+- Expected: Upgrade is a white button. The Explore catalog videos play while they are on screen and keep playing when the pointer leaves. Reference galleries still play only on sustained hover.
+- Root cause: CODE CONFIRMED. Upgrade used the card fill. Catalog covers used the warm hover hook, which pauses when the pointer leaves.
+- Regression: `scripts/explore-navigation-ui.test.mjs` checks a continuous cover plays on visibility and does not pause on pointer leave, click, or pointer down. Hover-only gallery tests stay in `scripts/reference-cover-playback.test.mjs`.
+
+### UGC-UI-096 — In-app containers still read lighter than the page
+- Date: 2026-11-02. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED, screenshot of the expanded sidebar. The sidebar and the other container surfaces still stand out from the page. The user asked to make those containers a little blacker and then look at the UI.
+- Expected: In-app cards, the sidebar, muted surfaces, and the selected row are one step darker. The page stays `#101014`. Landing, blue actions, and white selection borders stay.
+- Root cause: CODE CONFIRMED. The app canvas card is `#222228` on a `#101014` page, and the sidebar uses that card color.
+- Regression: `lib/theme.test.ts` checks the app canvas card token is `#1a1a20` and the page background stays `#101014`.
+- Verification: local Explore at `/explore?preview=1`. Page is `rgb(16, 16, 20)`, sidebar `rgb(26, 26, 32)`, selected row `rgb(36, 36, 41)`. Slideshow controls use the same darker card. Theme tests 10/10. Production not checked. Light theme not checked.
+
+### UGC-UI-095 — Signed-in character Generate never reaches a portrait job
+- Date: 2026-11-02. Status: OPEN. Production NOT VERIFIED.
+- Observed: USER REPORTED. A signed-in Generate click did not create a character image. The local server recorded no `/api/characters/generate` request. The image worker has no character job after 30 October. The last jobs that arrived failed with provider HTTP 402 or Gemini 3 Pro ending incomplete with no image.
+- Expected: A signed-in Generate click prepares the selected looks and then admits a portrait job. The canvas shows the result or the provider error.
+- Root cause: CODE CONFIRMED. Generate uploaded each catalog photo at its original size, several of them 1–2.6 MB PNGs, before the job could be created. A failed or stalled upload never called the generation API.
+- Regression: `lib/characters/studio-references.test.mjs` checks the 1280px preparation size. `components/characters/influencer-studio.test.mjs` checks the studio prepares a JPEG and waits for the generation request.
+- Verification: studio reference tests 16/16 passed. A signed-in portrait was not generated, and this was not deployed.
+
+### UGC-UI-094 — Ordinary controls use the blue action color, and AI Studio’s empty panel boxes the canvas
+- Date: 2026-11-02. Status: PARTIAL. Production NOT VERIFIED.
+- Verification: Explore covers were checked locally at http://localhost:3000/explore. The 16% black overlay and darker quick-start cards are visible, and the workflow links still open. AI Studio, Demo footage, and the content calendar were not opened because this browser session is signed out. Those class changes are in source only.
+- Observed: USER REPORTED, annotated screenshots. AI Studio Pro and credits chips are blue. The empty “What will you create?” and “No generations yet” panels are large bordered boxes. The video reference tile is large. Demo footage uses a blue file icon and blue Edit buttons. The calendar publishing label and selected day are blue. Explore covers look too light. The user asked for blue only on important actions, gray or white elsewhere, the empty boxes removed, the reference tile smaller, and Explore covers a little darker as a look trial.
+- Expected: Pro and credits are gray. AI Studio empty and progress states have no bordered card. The video reference tile is smaller. Demo footage uses a gray play mark, Edit is white, and Upload demo stays blue. The calendar label and selected day are gray. Explore covers and quick-start cards are slightly darker. Generate stays blue.
+- Root cause: CODE CONFIRMED. The Pro badge used the purple plan variant and the credits chip used primary text. AI Studio empty and progress states rendered a bordered card. The video reference tile was `size-28`. Demo footage used a blue file icon and a primary Edit link. The calendar eyebrow and selected day used primary color. Explore covers used the plain card color.
+- Regression: Visual check of AI Studio images, AI Studio videos, Demo footage, the content calendar, and Explore.
+
+### UGC-UI-093 — Hook Your videos overview buttons use the blue action fill
+- Date: 2026-11-02. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED, screenshot of Explore → Hook video → Your videos. The header “Schedule video” button and both empty-card “Upload video” menus are filled blue. The user asked for those controls to be ordinary buttons, with no action color, so the quieter look can be compared.
+- Expected: In that overview, Schedule video and the empty Hook and Demo Upload video menus use the existing outline button. Generate video stays the blue action. Change stays an outline menu. Talking Head empty uploads stay filled. The buttons keep their current actions, menus, and disabled rules.
+- Root cause: CODE CONFIRMED. Empty upload menus used `variant="default"` and a primary shadow. The overview Schedule video button reused the filled Demo-step button.
+- Regression: `scripts/workflow-clip-source-actions.test.mjs` checks a neutral empty upload is outline and has no primary shadow, while the default empty upload stays filled. `scripts/explore-format-demo-state.test.mjs` checks the overview Schedule video button is outline and the Demo-step Schedule video button stays filled. `scripts/explore-format-source-workspace.test.mjs` checks the empty Hook card requests the neutral tone.
+- Verification: local preview Your videos shows Schedule video, Hook Upload video, and Demo Upload video at `rgb(34, 34, 40)` with a gray border. Generate video stays `rgb(0, 120, 212)`. The Hook menu still opens Upload, Creative Assets, and Generate. 149 focused tests passed. Production not checked. A 390px viewport was not screenshotted.
+
+### UGC-UI-092 — Character studio header, picked defaults, and outfit color cards
+- Date: 2026-11-02. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
+- Observed: USER REPORTED. The character studio top has no back control and no “AI character influencer” heading. Selected trait names and outlines are white. Picked settings shows the default traits before the user changes anything and fills the dock. Batch size and framing are stacked. Outfit colors sit in large labeled cards.
+- Expected: The studio shows Back and the heading “AI character influencer”. A selected trait name and outline use the studio blue. Picked settings appears only after a choice differs from the default. Batch size and framing share one row. Outfit colors are rectangles with no names and no large cards.
+- Root cause: CODE CONFIRMED. The canvas top bar was only “Studio Canvas”. The dock always rendered every compiled pill, including defaults. Outfit colors reused the tall trait card.
+- Regression: `components/characters/influencer-studio.test.mjs` checks hidden default pills, the heading, the blue selected outline, the shared row, and the color rectangles.
+- Verification: local `/explore/build-character?preview=1`. Header shows Back, “AI character influencer”, and History. Selected name and outline are `rgb(0, 120, 212)`. Picked settings is absent on load, shows only “Latina” after that choice, and disappears after Reset all. Batch size and Framing share y=984. Outfit colors are 34×24 rectangles with no visible labels, in one row. Phone width 390 keeps the heading on one line. No portrait was generated. Production not checked.
+
 ### UGC-UI-091 — App logo loses the orange play triangle
 - Date: 2026-11-01. Status: LOCALLY VERIFIED. Production NOT VERIFIED.
 - Observed: CODE CONFIRMED. Landing shows the white P with an orange play triangle. Sign-in, pricing, the sidebar, and the other app marks load the black logo file and run a brightness/invert filter, so the triangle becomes white.
@@ -1864,3 +1912,255 @@ UGC-VID-041 / UGC-UI-078-PRICE local verification: both existing Google operatio
 - RUNTIME MEASURED from this network: apex 307 to vidmake.io was 150–225ms on three tries. `/pricing` was 136–171ms. vidmake.io document headers were 225–325ms. `www.getugcpilot.com` first try spent 5.07s in DNS, then 308 to the apex; the next two tries were 114–125ms. The app then adds the 307.
 - Root cause of the slow sample: DNS for www, then one extra hop to the apex. The application redirect itself is not a multi-second wait. Status: MEASURED. No whole-domain Vercel redirect added.
 - Regression: scripts/domain-migration-phase1.test.mjs and lib/navigation/release-routing.test.mjs.
+
+## UGC-UI-082 — Slideshow Face Swap belongs in the Create composer (2026-11-02)
+- USER REPORTED / SCREENSHOT OBSERVED: on Explore → Slideshows Create, the circled spot beside the instructions attach button had no Face Swap control. The existing Swap Face button was on a finished slide card, so it could not appear before generation.
+- Expected: Face Swap opens from that composer spot. The user picks one face and turns on only the reference slides that should receive it. Every slide starts off, and the count shows how many can use the face. Clicking elsewhere restores the generation summary for the whole slideshow. Slides left off generate normally. Selected slides get the face after they generate.
+- Status: OPEN. Root cause: the first control was placed on generated cards, which the Create composer does not render.
+- Regression: scripts/slideshow-face-swap-ui.test.mjs.
+- 2026-11-02 follow-up: CODE CONFIRMED unfinished implementation stores planned swaps only in the mounted component and can select source slides excluded from normal generation; it dispatches a separate paid swap for each generated version. The face selection state did not disclose this cost. Status remains OPEN; do not treat current implementation as complete.
+- Local recheck: moved the Face Swap callback above its use to remove the declaration-order lint error. 18 slideshow/navigation tests pass, but the workspace lint still reports ref-access errors and a callback dependency warning. The local Hook editor fixture produced a screenshot before failing on the outdated “Back to previews” expectation; the Explore catalog fixture failed an outdated shortcut expectation. Face-swap job recovery, billing and all-workflow visual review remain unverified.
+
+## UGC-VID-045 — Starting-frame generation delay or failure reported again (2026-11-02)
+- USER REPORTED: starting-frame generation takes longer than expected and did not generate; screenshot shows the photo picker with Gemini 3 Pro selected, but no request ID or failure message.
+- Expected: a submitted request completes or reports a recoverable, accurate failure without duplicate paid submissions. Status OPEN; root cause UNKNOWN. Related: UGC-VID-041 and UGC-UI-075.
+- Read-only hosted evidence: latest identifiable Hook starting-frame job 02707612-221e-4ae1-b17c-c23f560a0dd7 completed in about 53 seconds; it is not linked to the screenshot. The older UGC-VID-041 Gemini failures are not established as this report's cause.
+- Regression: starting_frame_status_recovery_without_duplicate_submission and gemini_incomplete_reason_and_safe_retry; production acceptance requires the affected request ID and result.
+- USER REPORTED follow-up: saw “The request has not been confirmed. Keep its saved request ID and check again.” CODE CONFIRMED: the status query spreads a function instead of polling options, so automatic status recovery is absent; the existing status-recovery suite failed 7/7 before correction. A 404 also means no matching job was found at that check and its cause remains UNKNOWN; it does not establish that the polling defect caused the missing job.
+- Local follow-up: restored the status query's read-only polling policy; 67 status recovery and starting-frame UI tests passed, including 404 recovery and no duplicate POST. Scoped lint passed. The report remains OPEN until the affected request and hosted behavior are verified.
+
+## UGC-UI-098 — Explore dialog surfaces remain lighter than workspace (2026-11-02)
+- USER REPORTED / SCREENSHOT OBSERVED: starting-frame and image-library containers remain too light; the photo-picker Done action is blue rather than the requested white.
+- Expected: darker Explore workspace and dialog surfaces, with a white Done button and preserved photo-selection behavior. Status OPEN; root cause UNKNOWN pending code and visual verification.
+- Regression: dark Explore portal surfaces and photo_picker_done_selection_preserved.
+- CODE CONFIRMED: dialog and popover content is portaled outside `.app-canvas` and inherited the lighter root dark card token. Local styling now supplies app surfaces to those portals, and styles the existing Done button white. 104 theme, picker and starting-frame UI checks passed, including photo-selection and safe-recovery cases. Desktop/mobile visual acceptance and hosted acceptance remain NOT VERIFIED; status remains OPEN.
+
+### UGC-VID-041 — 2026-11-02 — Hook 59 mouth-cover timing
+Status OPEN. Source frame and local prompt review: Hook 59's hand reaches the mouth around 0.27–0.33s, closes eyes around 0.57–0.67s, leaves the mouth around 0.90–0.97s and the broad smile develops around 1.27–1.4s. Existing prompt placed these actions earlier. Root cause: authored source timing mismatch; model output unverified. Regression: source-bound prompt timings and user-edit preservation. Related UGC-VID-040.
+
+### UGC-VID-041 local verification update
+Corrected Hook 59 source-relative phases; compiled preview places hand raising at 0.21–0.34s and release at 0.89–1.01s. 39 targeted local prompt tests passed, including source binding and user-edit preservation. Typecheck and lint passed. Generated and live output remain unverified.
+
+### UGC-VID-042 — 2026-11-02 — Hooks 63 and 68 source action details
+Status OPEN. Frame and local prompt review: Hook 63's fingertips leave the eye around 1.4–1.5s and the view continues moving after 1.97s; previous prompt ended those movements early. Hook 68 fingertips meet in front of the mouth, but exact overlap cannot be established from the source. Root cause: authored timing and over-specific contact; generated outcome UNVERIFIED. Regression: source-bound prompt timing, hand wording and user-edit preservation. Related UGC-VID-041.
+
+### UGC-VID-042 local verification update
+Compiled Hook 63 preview keeps contact until 1.39–1.53s and continues viewpoint motion through 2.31s; Hook 68 describes fingertips meeting. 40 local prompt tests pass including explicit user-edit preservation. Production and generated-video visual quality remain unverified.
+
+UGC-UI-082 follow-up 2026-11-02: local changes preserve accepted job-to-face plans in owner-scoped browser storage, reuse a deterministic target/face idempotency key, restore the callback dependency, remove render-time ref reads, and block submission while selecting a face. Face-selected references join the generated source set when a face is chosen. TypeScript passes; workspace lint has zero errors and two existing unused-code warnings. Browser refresh recovery and provider/billing acceptance still require end-to-end verification.
+
+### UGC-VID-043 — 2026-11-02 — Hook 69 expression timing
+OPEN. Source contact-sheet review shows initial upward glance until about 0.7s, eye closure around 0.73–0.83s, second narrowing around 1.57–1.63s, then sideward turn and tooth-showing smile through the ending. Local phases placed these earlier. Root cause: authored phase timing mismatch; model adherence unverified. Regression: source-bound preview and preserved user instructions.
+
+### UGC-VID-043 local verification update
+Hook 69 phase timing corrected locally. 41 targeted prompt tests pass including user-instruction preservation. Real output and production activation remain unverified.
+
+## UGC-UI-099 — Face Swap chooser crowds the slideshow composer (2026-11-02)
+- USER REPORTED / SCREENSHOT OBSERVED: expanded face library and repeated selection/count explanations crowd the instructions and footer. Expected: the existing face icon opens a small anchored chooser, keeping one slide count and the existing generation behavior. Status OPEN. Root cause CODE CONFIRMED: face library rendered in the settings row. Regression: compact face chooser opens, dismisses, and preserves selection without shifting the composer.
+
+## UGC-UI-099 — Local starting-frame preparation reaches page error (2026-11-02)
+- RUNTIME OBSERVED during read-only local audit: at `/e2e/hook-keyframe-preview`, clicking Recreate Hook 14 opened the preparation loader, then the page error boundary displayed “Something interrupted this page.”
+- Console: `HookKeyframeDraftError: This starting-image preparation could not be verified. The source or saved inputs changed. Review them before continuing.` Stack includes `OwnedPreparation` preparedDraft useMemo, `updateHookKeyframeDraft`, and `parseDraft`.
+- Root cause UNKNOWN: fixture source metadata versus saved-input validation needs investigation; this observation does not establish a production generation failure. No generation was submitted.
+- Expected: local fixture opens preparation, or invalid inputs show recoverable validation inside the workspace rather than a page crash.
+- Evidence: `.tmp/local-explore-audit-2026-11-02/starting-frame-error-mobile.jpg`, measured CSS viewport 390x844.
+- Status OPEN. Related UGC-VID-045. Proposed regression: `local_keyframe_fixture_recreate_opens_without_page_error` plus invalid-source recovery.
+
+## UGC-UI-100 — Influencer studio empty canvas promises 4K (2026-11-02)
+- SCREENSHOT OBSERVED / CODE CONFIRMED: empty studio canvas says “bring them to life in 4K”; current Explore context records Gemini 3 Pro at 2K. Copy also says “left dock” on mobile although the dock is below the canvas.
+- Expected: resolution and layout guidance match the actual selected generation route and responsive layout.
+- Root cause of resolution discrepancy UNKNOWN pending provider-setting verification. Copy location: `components/characters/influencer-canvas.tsx:122`.
+- Evidence: `.tmp/local-explore-audit-2026-11-02/studio-desktop.jpg`, `studio-mobile-390.jpg`.
+- Status OPEN. Proposed regression: `studio_empty_copy_matches_route_and_mobile_layout`.
+
+## UGC-UI-101 — Invalid UTF-8 blocks local workflow compilation (2026-11-02)
+- RUNTIME OBSERVED: while auditing remaining mobile workflows, Next.js showed a Build Error: Reading source code for parsing failed, invalid UTF-8 at index 20157 in `components/workspace/ugc-chat-workspace.tsx`.
+- CODE CONFIRMED: Python strict UTF-8 decode raises UnicodeDecodeError at byte 20157 (0xB7), file size 87899 bytes at inspection. Existing file has uncommitted changes; audit did not alter it. Import trace runs through FormatWorkspace.
+- Expected: changed source remains valid UTF-8 and all workflow routes compile.
+- Status OPEN. Cause of invalid encoding UNKNOWN; malformed byte is confirmed. Screenshot `.tmp/local-explore-audit-2026-11-02/local-build-error.jpg`.
+- Proposed regression: strict UTF-8 decode for changed source plus successful local workflow navigation. Scheduling review and remaining fresh-route checks blocked at this point.
+
+## UGC-UI-100 — Editor navigation and action styling inconsistent (2026-11-02)
+- USER REPORTED / SCREENSHOT OBSERVED: Back to videos appears centered in the editor header; Sign up pill differs from Upgrade; brand too small; requested editor/remix/frame actions white. Status OPEN. Root cause UNKNOWN pending verification. Regression: editor header left-aligned back action and consistent neutral actions at desktop/mobile.
+
+UGC-UI-082 follow-up 2026-11-02: user explicitly requires Face Swap to preserve normal generation and count one swap per selected slide. Removed face selection from contextSlides generation inputs; eligible face marks are limited to generation-selected slides. Multiple-version policy awaiting user clarification; no silent repeated paid swaps should be released.
+
+### 2026-11-02 repair evidence — UGC-UI-099 (Local starting-frame preparation reaches page error)
+- Disambiguation: another entry also uses UGC-UI-099 for the Face Swap chooser. This follow-up refers only to the starting-frame crash.
+- CODE CONFIRMED cause in the development fixture: it passed historical curated frame index/time to a version-4 draft, which only accepts original t=0. `updateHookKeyframeDraft` threw inside render useMemo without a recovery boundary in the source panel.
+- Local repair: fixture uses the existing opening extraction endpoint and shared receipt/hash reader. Workspace catches invalid prepared-draft inputs, uses the established source error/Try again UI, blocks generation and approval, and preserves saved data on failure.
+- Tests: 69 starting-frame/status/encoding checks passed, including incompatible frame -> no crash, no saved-input overwrite, no POST -> valid frame recovery. 180 workflow/navigation/theme/source-reader tests passed. 34 schedule/timezone/persistence tests passed.
+- Local HTTP evidence: eight workflow routes returned 200 without parsing errors. Source PNG is 720x1280, index0/time0; actual and receipt SHA256 both d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451. Logs `.tmp/starting-frame-fix-http.txt`.
+- Status: CODE/HTTP/REGRESSION VERIFIED; browser visual acceptance NOT VERIFIED because local browser use is disabled in Work settings. No live paid image or deployed acceptance. UGC-VID-045 remains OPEN.
+
+### 2026-11-02 repair evidence — UGC-UI-101 (Invalid UTF-8 blocks local workflow compilation)
+- The file changed between audit and repair. On initial repair inspection, strict decoding found zero invalid bytes; no audit-agent encoding rewrite was performed. Newer user/worktree edits preserved.
+- Regression `scripts/source-utf8.test.mjs` strictly decodes tracked app/components/lib source; PASS. All eight checked local workflow pages compile/respond 200. Previously observed byte was real, but author/timing of correction remains UNKNOWN.
+- Status: local encoding/build blocker VERIFIED RESOLVED in current worktree. No production claim.
+
+### UGC-VID-044 — 2026-11-02 — Hooks 77 and 78 endings early
+OPEN. Ordered source frames show Hook 77 head tipping and finger slide continuing to the ending; Hook 78 retains its sideward stare until roughly 1.7s before looking toward lens. Previous prompts begin ending holds earlier. Root cause: authored timing mismatch. Regression: source-bound preview and saved user instruction preservation; generated output unverified.
+
+UGC-UI-082 policy correction: user selected Version 1 only. Planner now excludes version 2+ and deduplicates marked sources. Four regression tests pass for zero marks, mapping, duplicates, unchanged contextSlides and non-multiplied quote. Types pass; scoped lint has zero errors/two pre-existing warnings. Live provider charging remains NOT VERIFIED.
+
+Final local static verification for the starting-frame UGC-UI-099 / UTF-8 UGC-UI-101 repair: TypeScript noEmit and scoped ESLint exit0, scoped diff check clean. Receipt docs/starting-frame-crash-local-repair-2026-11-02.md. User reports local browser On, but fresh cua inventory still exposes no browsers and reports disabled; visual acceptance remains pending.
+
+UGC-UI-082 local browser evidence: .tmp/face-swap-final.cjs PASS toggle, disabled non-generation slide, outside-close, reopen retention and Clear. Captured slideshow-generation-updated.png, slideshow-face-updated.png and slideshow-selection-mobile-updated.png under .tmp/explore-review. Signed-out fixture has unavailable thumbnails and cannot select owned portraits; provider output and actual credit debits remain NOT VERIFIED.
+
+### UGC-VID-044 local verification update
+Local phase corrections for Hooks 77 and 78 compiled and 41 prompt tests passed; historical requests and user-written directions remain authoritative. Generated behavior and production activation unverified.
+
+## UGC-VID-046 — Pipeline completion does not prove Stage 2 and harmonizer success (2026-11-02)
+- CODE CONFIRMED / LOCAL FAULT INJECTION: `generateOpenRouterGeminiHookKeyframe` catches Stage 2 failure, logs a warning and returns Stage 1. Injecting a Stage 2 timeout produced returnedSuccess=true with requestId=stage-1-only. Evidence `.tmp/starting-frame-fallback-evidence.txt`.
+- Harmonizer failures are also caught in both starting-frame and standalone face-swap helpers, returning the unharmonized image. Worker saves one overall operation/result with model/request ID, without separate durable Stage 1/Stage 2/harmonizer receipts.
+- Expected: full-pipeline completion truthfully distinguishes all-stage success from partial output; recovery must not repeat paid stages without safe receipts. Status OPEN. Root cause: explicit fallback catches plus missing per-stage result contract, CODE CONFIRMED.
+- Proposed regression: `stage2_failure_cannot_claim_full_pipeline_success`, `harmonizer_failure_has_explicit_stage_state`, `resume_stage2_without_repeating_stage1`.
+- Scope finding: new Gemini Pro starting-frame API requests explicitly choose OpenRouter with scene + identity order, so the three stages are wired for that route. Alternate image models and legacy Google jobs bypass this helper. Historical receipt v4 has two scene references; helper assumes image2 is identity and has no receipt-version-aware offset. This is a legacy explicit-OpenRouter risk, not a demonstrated new v5 ordering defect.
+- Generated output read-only evidence: owned job 02707612-221e-4ae1-b17c-c23f560a0dd7 completed, output asset 00d04801-7f3f-4713-97bf-884a59c28b19 is decodable 720x1280. Visible lettering remains on a background object. Exact source/person comparison and actual stages for this hosted job NOT VERIFIED through safe operation/asset tools.
+
+UGC-UI-100 follow-up 2026-11-02: local screenshot confirmed Back to videos remains centered because its portal container occupies the right header column. User requests correction plus white Generate/Review actions and visual frame-approval check. Status OPEN pending local browser evidence.
+
+### UGC-VID-046 — 2026-11-02 local implementation evidence
+- Removed Stage 2 and harmonizer fallback-to-success catches from OpenRouter helper flows.
+- Added per-stage operation reservations and PNG persistence using the existing generation_provider_operations ledger/storage. Keys bind stage/version and exact inputs; completed images decode/checksum before reuse. Known pre-acceptance rejection can retry atomically; uncertain requests cannot make a second paid call. Saved bytes survive storage/DB acknowledgement failure. CPU harmonization may retry without image-provider calls.
+- Worker marks aggregate success only after all stages complete; metadata retains pipelineVersion1/stagesComplete. Existing unmarked accepted operations and completed outputs preserve legacy recovery and are not retroactively certified.
+- Historical v4 identity offset handled explicitly; v5 scene/main/support ordering retained. No UI/CSS/schema/billing changes by this patch.
+- Verification: 78 worker/provider/stage tests PASS; 101 API/billing retry/starting-frame UI/slideshow mapping tests PASS; worker build and project TypeScript pass; scoped lint and diff check clean.
+- Status LOCALLY VERIFIED for strict success and safe reuse. Hosted stage persistence, actual provider calls, real debit reconciliation and output fidelity NOT VERIFIED; no paid generation, deployment or database mutation executed.
+- Receipt docs/starting-frame-durable-stages-2026-11-02.md. UGC-VID-045 historical hosted report remains open.
+
+
+### UGC-VID-047 — 2026-11-02 — Hook 90 reaction and hand-lowering timing
+- OPEN / SOURCE-FRAME CONFIRMED: archived 136-frame source shows a further blink before eyes widen around 0.9–1.0s, repeated blinks while the hand remains beside the temple, and hand departure around 2.5–2.7s. Local prompt widens earlier and groups hand lowering into 1.84–2.44s. Root cause: authored beat boundaries and missing blink progression.
+- Scope: correct only Hook 90 motion beats; preserve source ID/hash, original opening, source-speed ending, saved instructions and historical jobs. Regression: Hook 90 preview retains late temple release and repeated blinks without replacing user edits. Generated behavior/production NOT VERIFIED.
+
+### UGC-VID-047 local verification
+Hook 90 revised beats compile in the exact source-bound opening preview and retain the 4.6s source ending plus hold to5s. Regression and related suites:42 passed. TypeScript and scoped ESLint passed. Explicit user instructions are preserved. Scope/frames/checks: outputs/hook-prompt-frame-audit-2026-10-30/review-batch-15.md. Local prompt issue corrected; generated quality and live activation remain NOT VERIFIED.
+
+
+### UGC-VID-048 — 2026-11-02 — Hook 105 early mouth cover and ending hold
+- OPEN / SOURCE-FRAME CONFIRMED: all 53 source frames plus enlarged transition/ending frames show hand rising around 0.2–0.33s, head tilt continuing past 1.1s and eyelids/gaze lowering toward laptop near 1.5–1.73s. Local prompt places mouth cover by0.2s and starts a final hold at1.12s. Root cause: authored event boundaries prematurely finish the visible action.
+- Scope: Hook 105 plan only; preserve source hash/first frame, full source endpoint, explicit user instructions and historical receipts. Regression: Hook 105 original-opening preview retains late laptop gaze and continuous hand contact. Generated fidelity/live activation NOT VERIFIED.
+
+### UGC-VID-048 local verification
+Hook105 preview now retains hand rise, continuing tilt, late lowered eyelids/laptop gaze and slight head settling through its1.833008s source. Full source timing and authoritative user instructions tested.43 prompt tests, TypeScript and scoped lint PASS; no neighboring plan entries changed by this correction. Receipt: outputs/hook-prompt-frame-audit-2026-10-30/review-batch-17.md. Local prompt correction verified; generated fidelity and live activation remain NOT VERIFIED.
+
+### UGC-VID-049 — 2026-11-02 — Real Gemini staged output changes crop; standalone swap copies identity room
+- OPEN / GENERATED-IMAGE OBSERVED: real authorized local current-worker test with Hook `explore-paired-hook-4585ee949081c4e5cd835cd3`, verified original frame0/time0 and existing main/support identity photos. Scene, identity and harmonizer all finish; both completed flows reuse identical saved bytes with zero additional provider calls. This adds real provider evidence to UGC-VID-046 but is not hosted storage acceptance.
+- FAILED: input720×1280, outputs928×1152; starting-frame framing changes and physical lettering remains. Standalone swap replaces source purple shelving with neutral room from identity photo. Root cause of room substitution/cleanup noncompliance UNKNOWN. CODE CONFIRMED: OpenRouter Gemini payload builder validates aspectRatio without including it in outgoing body; exact provider behavior beyond this omission not inferred.
+- Credential finding: local key is management/provisioning (GET key200, generation401); earlier successful test used existing Secret Manager inference credential. Inference credential verified and held only in memory for three authorized requests; no environment files changed.
+- Evidence: docs/starting-frame-real-test-2026-11-02.md; `.tmp/real-starting-frame-test-2026-11-02-inference/` contains source provenance, real stage images, local ledgers, request IDs and provider usage. Cost reported USD0.424130. No application-code fix or deployment in this check.
+- Expected/regressions: outgoing payload must express requested ratio; provider result must not silently accept a mismatched ratio; source room/framing/pose must survive identity replacement; cleanup must remove all lettering. Proposed tests: `gemini_payload_preserves_requested_ratio`, `reject_mismatched_generated_ratio`, source/identity/output visual review for starting-frame and standalone swap. Generative fidelity needs real reviewed outputs, not mocks alone.
+
+### UGC-VID-049 follow-up — caption retained in standalone swap (2026-11-02)
+- USER REPORTED / SCREENSHOT OBSERVED: user confirms the room replacement is wrong and requires caption removal in the shown swap result too. Prior statement that caption preservation alone was not a swap failure does not represent this user's acceptance requirement.
+- CODE CONFIRMED: test harness ran two independent branches. Starting-frame branch uses original t0 → cleanup/scene Stage1 → identity Stage2 → harmonizer. Standalone branch uses original captioned t0 directly → identity → harmonizer, NOT the cleaned starting-frame result. `buildHookKeyframeStage2Prompt` contains scene/background preservation instructions but no caption-removal instruction; test supplied no extra instructions. API's default Face Swap prompt also requests identity only. This establishes missing cleanup instructions/step for the tested standalone branch, not a failure of the first branch to pass its output into its own Stage2.
+- Background replacement already appears in saved face-swap identity output before harmonization; generation disregarded the requested source-background role and copied room elements visible in identity reference. Exact internal model cause UNKNOWN. Harmonizer performs luminance/grain processing, not caption inpainting or room reconstruction.
+- Expected: user's starting-frame/face-swap recreation result keeps source room/pose and removes captions. Regression required: `recreation_face_swap_cleans_caption_and_keeps_scene`, plus real source/identity/output visual acceptance. No application-code fix or additional paid requests in this diagnostic follow-up.
+
+### UGC-VID-049 production-caption follow-up (2026-11-02)
+- USER REPORTED: face replacement and harmonizer are acceptable; production starting-frame caption remains and must be removed during starting-frame generation. Production job inputs/output have not been independently retrieved; exact hosted cause UNKNOWN.
+- CODE CONFIRMED gap: current opening Stage1 prompt requests cleanup, but Stage2 identity prompt has no cleanup requirement. Custom starting-image prompts can also omit Stage1 cleanup. Scope: enforce cleanup in both stages of newly admitted Gemini starting-frame jobs, leaving standalone face swap/harmonizer and historical job fingerprints unchanged.
+- Regression: `new_starting_frame_enforces_cleanup_in_both_stages`, API admission freezes policy, worker dispatch carries it; unflagged historical prompts and standalone swaps unchanged. Status OPEN pending implementation and generated-output review; no production fix claimed.
+
+### UGC-VID-049 caption-policy implementation evidence (2026-11-02)
+- Locally added new-job-only startingFrameTextCleanup policy at API admission, validated/fingerprinted/passed by worker, and appended cleanup instructions to both scene and identity prompts. Absent policy retains historical behavior; standalone Face Swap and harmonizer unchanged. No UI/deployment change.
+- Workerbuild/typesPASS;80worker+103API/UI/UTF8testsPASS; scopedlint0errors/1existingwarning; diffcheckPASS. Receipt docs/starting-frame-caption-cleanup-2026-11-02.md.
+- Actual trial gen-1793598463-BPf3GXHvb6zhfq9FLCDM returnedHTTP200/no usable image, usagecost0; pipeline stopped submission_uncertain before Stage2, no final success/no retry. Root upstream cause UNKNOWN; caption removal from successful new output and production acceptance NOT VERIFIED. Status remains OPEN; local prompt-policy coverage does not certify generated pixels.
+
+### UGC-VID-051 — Starting-frame custom outfit request conflicts with source-clothing defaults (2026-11-02)
+- OPEN / USER REQUESTED AUDIT / CODE CONFIRMED: user expects the existing starting-image customization to allow the influencer's generated outfit instead of source-video clothing. Visible `Starting image prompt` editor stores `customImagePrompt`, is sent to API and frozen exactly. No dedicated outfit-source field/selector or separate garment-reference role exists in this workspace/draft/worker contract; AI Influencer Studio outfit settings belong to a different flow.
+- Default opening prompt and version7 image-role labels explicitly keep source clothing and reject identity-photo clothing. Custom prompt replaces Stage1 prose, but worker Stage2 uses only receipt.instructions, not customImagePrompt; it preserves Stage1 wardrobe without explicitly carrying the user's outfit choice. Therefore Stage1 might honor an outfit request, but end-to-end support is not reliably established.
+- CODE CONFIRMED regression risk in UGC-VID-049 caption-policy patch: cleanup clause appended after custom prompt and Stage2 instructions says `Keep the source room, objects, clothing`, potentially conflicting with an explicit influencer-outfit override. Root cause of prompt conflict VERIFIED; actual generated wardrobe failure/production output NOT VERIFIED.
+- Local mocked request probe: custom `Use the exact outfit from Image 2` present in Stage1, absent in Stage2; source-clothing cleanup present in both. No real requests or visual/browser acceptance in this audit. Existing palette/layout/implementation left unchanged; only incident recorded.
+- Expected regression: `custom_outfit_choice_survives_caption_cleanup_and_identity_stage`; explicit outfit source must remain separate from scene/background identity and caption removal. Current source-outfit default should remain when no override is requested. Scope/implementation decision pending; do not add duplicate UI automatically.
+
+### UGC-VID-051 local implementation and real outfit trial (2026-11-02)
+- New Gemini custom starting-frame job freezes the full custom prompt as startingFrameOutfitPrompt. Worker validates it against receipt.customImagePrompt, fingerprints it and sends it to both stages. Explicit wardrobe requests override source-clothing defaults; cleanup preserves the chosen outfit. No new selector, separate garment role, schema, billing, harmonizer or standalone Face Swap change. Unflagged historical jobs remain unchanged.
+- Workerbuild/typesPASS;81worker+103API/UI/UTF8testsPASS; lint0errors/1existingwarning; scoped diffcheckPASS. API custom prompt admission/recovery, worker propagation/tamper rejection, both-stage outfit/context/cleanup and default/legacy behavior tested. Fixture initially lacked canonical preparation key; corrected the fixture without weakening application validation.
+- REAL PROVIDER: gray top from existing main identity photo retained through scene, identity and harmonizer; source purple-shelf room remains; main creator caption removed. Two calls200, provider-reported USD0.286310. Saved-result replay0newcalls/samehash. Stage1/final images inspected. Evidence `.tmp/starting-frame-outfit-2026-11-02/`, report docs/starting-frame-outfit-2026-11-02.md. Outfit wiring/sample LOCALLY VERIFIED; production and general garment fidelity NOT VERIFIED.
+- UGC-VID-049 remains OPEN: full generated frame fails source-composition acceptance. Scene stage is portrait; Stage2 returns928x1152 with tighter crop and adds a microphone absent from the source/scene-stage image. Physical lettering also remains. Root internal generative cause UNKNOWN; no further generation or broader fix attempted. Do not call complete-image quality passed from the outfit improvement.
+
+### UGC-VID-051 user-requested background/outfit options (2026-11-02)
+- User clarifies BOTH default to source starting frame; independent switches may take background/outfit from the main selected image. Implemented two neutral checkbox controls in existing Your photos section, no new picker. Role choices persisted/canonicalized in draft/preparation/server receipt/fingerprints, invalidate old approval, checked before billing, carried to both Gemini stages and other model role labels. Old absent-options jobs unchanged. New API/worker/UI types tested; no deployment.
+- Verification:88worker+156API/draft/UI/credit/UTF8testsPASS; workerbuild/typesPASS; scopedlint0errors/1existingwarning. Desktop1440 browser checks: both initiallyoff, independentselection, bothon restored after reload, no-charge fixture submission, oldresult disabled after choice change. Screenshot .tmp/starting-frame-reference-options/desktop.jpg. Test fixture v4 receipt corrected to match actual current v5 preparation binding; old test checkbox selector narrowed by label after two requested controls were added.
+- Real background-photo/source-outfit trial:1call returnedHTTP200/no usable image, stopped submission_uncertain, no retry/no success; provider-reported cost0. Mobile browser check interrupted by disabled browser setting. Generated role fidelity/production/mobile acceptance NOT VERIFIED. Receipt docs/starting-frame-reference-options-2026-11-02.md. UGC-VID-049 stillOPEN; role wiring is not proof of correct pixels.
+
+### UGC-VID-051 UI disclosure clarification (2026-11-02)
+- User requests both controls hidden until Background and outfit is clicked. Existing fieldset now sits inside a native details/summary, collapsed by default; saved choices and handlers untouched.63component/UTF8testsPASS including collapsed state and nested controls; no application/backend scope expansion. Receipt docs/starting-frame-background-outfit-disclosure-2026-11-02.md.
+- Browser visual verification NOT TESTED: fresh inventory reports local browser use disabled and no browser surfaces. No deployment/generation; prior image-quality limitations remain open.
+
+### UGC-VID-052 — Character studio real Gemini inference returns402 (2026-11-02)
+- OPEN / REAL REQUEST OBSERVED: user asks to verify images follow character selections. Real current model request for half-body female/blackbob/navysuit/warmwoodroom with ten ordered catalog references submitted once using existing worker Google credential; failedHTTP402/noimage/nointeractionID. Independent local credential differs and same single test also fails402. Google read-only models endpoint200 for worker key. Exact cause UNKNOWN; do not label a billing/credit fix as established from402 alone.
+- CODE CONFIRMED: character UI compiler, named references, owned upload, modecustom/gemini_3_pro → generate_image → Google direct2K/9:16. Not the OpenRouter starting-frame route. Local55+1selection/generation/UIchecks and3workerdispatchtestsPASS(total59); these do not establish provider output quality. No application fix, key/config or deployment change.
+- Evidence docs/character-real-generation-check-2026-11-02.md and `.tmp/character-real-test-2026-11-02*/` receipts/prompts. No generated picture available; exact selected-trait fidelity and hosted flow NOT VERIFIED. Regression/acceptance: `character_selected_traits_reach_google_request` plus real successful owned job/image reviewed against selected face/background/garment/color/hair/framing. Existing tests cover request roles; real acceptance staysOPEN pending provider inference access.
+
+### UGC-VID-052 read-only bottleneck diagnosis (2026-11-02)
+- Both keys read exact gemini-3-pro-image metadataHTTP200. Active worker config in us-central1 references gemini-api-key:latest (revisionugc-ai-generation-worker-r-17fe15f2b). No further inference submitted.
+- Official Google Interactions API errors documentsHTTP402/payment_required as depletedPrepay credits; billing guide says zero Prepay balance blocks paid inference until restored. Observed rejection is billing-gate evidence. Exact user-account balance and whether keys share billing account NOT VERIFIED: API-key lookup403 for both keys, missingapikeys.keys.lookup, no permission changes. Current running-instance key bytes not inspected. Initial sparse SDK error was insufficient alone; official documentation now establishes code semantics.
+- Evidence docs/character-real-generation-check-2026-11-02.md follow-up and .tmp/character-402-diagnosis/read-only-results.json. StatusOPEN until billing gate cleared and real selected-trait output reviewed. No purchase, auto-reload, provider switch, prompt change or code fix performed.
+
+### UGC-VID-052 user-directed provider correction (2026-11-02)
+- User clarifies intended character provider is ReAPI or OpenRouter, not direct Google. New character Gemini jobs now pinOpenRouter using existing adapter; historical accepted Google operations unchanged, no auto-repurchase/fallback. Explicit2K/9:16 image configuration for character caller only; UI/palette/prompts/orderedreference/credits unchanged. ReAPI exists for video, not a character-image adapter.
+- RealOpenRouter requestgen-1793603644-OFlc99LoGbFcZVcb0OuS succeedsHTTP200/image1536x2752, costUSD0.146158. Navy suit, blackbob and warmwood room observed; exacthalfbody framing not met (crop below waist). This clears local provider access bottleneck through requested provider, not Google's billing state. Hosted generation not deployed/verified.
+- Additional user-requested prompt limit trialgen-1793603914-LdsPl8mHNpK7xc9zkeT5 succeedsHTTP200/image with13383promptcharacters/10references/8074inputtokens, costUSD0.145322. Exactsentlength/hash matches frozen text; no truncation. AppGemini accepts4001/13383/32000characters and rejects32001; Seedream app guard4000 unchanged. Official endpoint metadata has Gemini context131072tokens (AIStudio) and65536(Vertex), not a global4000character limit. Seedream upstream maximum was not independently determined by this trial.
+-119localchecksPASS(54character+64worker+1UTF8), workerbuild/types/lintPASS; safe historicalreplay tested. Receipt docs/character-openrouter-route-2026-11-02.md. Stage/UI unrelated changes preserved. No commit/push/deploy; full visualtrait fidelity and signed-inupload/job/savedresult path remain NOT VERIFIED.
+
+### 2026-11-02 combined release gate findings
+- User authorizes all current intentional changes and careful deployment order. Receipt docs/combined-release-2026-11-02.md. Audit includes all dirty paths; no selective omission of smaller fixes.
+- Existing billing policy test omitted Startup from already-shipped map; updated expectation only. Existing schedule-editor render harness lacked SocialAccountAvatar stub; added stub,114testsPASS. Root loader issue handled with existing testloader, no manifest change. Full lint4errors confirmed identicaltoHEAD in4unchangedcomponents; changedpaths0errors. Native walltext subprocess crash undercombinedload, isolated47testsPASS. No test suppression.
+- Local production build hadEPERM andcacheENOSPC; fresh isolated source build and native bundle checksPASS. Worker-first→website order required for newoptionalcontracts; noDBmigration. No production acceptance claimed before deployment evidence.
+
+
+### UGC-VID-050 — 2026-11-02 — Final public/account source timing corrections
+- OPEN / SOURCE-FRAME CONFIRMED: Hook107 places final blink near0.26s instead of near0.9s. Reclassified06 specifies palm toward camera although source supports a vertically raised hand with back/edge facing camera. Twelve private references reviewed through all1040 decoded frames; first creator six references contain early final holds or premature glasses/lip phases compared with elapsed source frames.
+- Scope: source-bound new-opening prompt overrides for affected private references; keep historical directions/selected-frame records immutable. Public107 timing and reclassified06 orientation only. Root cause: authored timing/description mismatches, not established provider failure.
+- Regression: original-opening overrides are source/hash/frame-bound, reject invalid/empty revisions, preserve legacy directions and appear in actual account gallery preparation; full-duration final holds remain after source endpoint. No deployment/generation authorized.
+
+
+### UGC-UI-102 — 2026-11-02 — Neutral AI Studio result and Settings actions
+- USER REPORTED: actions beneath images/videos and Settings should use gray/white rather than blue. Status OPEN; root cause initially UNKNOWN.
+- CODE CONFIRMED: result select/Edit and Settings primary actions inherit Button default bg-primary, whose app fill is hard-coded blue. Download/Open already neutral.
+- Scope: explicit white variant for these actions; preserve handlers, labels, disabled/loading, red destructive actions, authentication and saved preferences. Regression: local computed-color audit plus TypeScript/lint and source UTF-8 checks.
+
+UGC-UI-102 local verification: explicit neutral variant applied to Settings primary/media-library actions and image/video result Select/Edit; Download/Open already gray. Copy success icon changed to neutral foreground. TypeScript PASS, scoped ESLint zero errors (two existing unused-variable warnings), 7 workflow UI tests and strict UTF-8 PASS. Actual Settings shell isolated preview checks idle/hover at1440/390 in both themes PASS; screenshots visually inspected. Local video Edit gray computed style confirmed. Full signed-in AI Studio, deferred Settings sections, real account mutations and production NOT VERIFIED. Receipt: docs/neutral-actions-review-2026-11-02.md.
+
+
+### UGC-UI-103 — 2026-11-02 — Gray workflow scrubbers
+- SCREENSHOT OBSERVED: Hook preview playback thumb is blue; user requests gray across workflows. OPEN; initial root cause UNKNOWN. CODE CONFIRMED: clip-preview-controls.module.css uses accent-color:var(--primary); other players/adjustments use accent-primary.
+- Scope: app/dialog range accent only, neutral #a3a3a3. Keep handlers, steps, min/max, seeking, mute/play and geometry. Regression: computed accent at desktop/mobile and keyboard seeking in local workflow preview; no production behavior claim.
+
+UGC-UI-103 local verification: app/dialog range accent #a3a3a3 verified on actual ClipPreviewControls at1440/390, controlled keyboard seek still works; dialog range color PASS. TypeScript, CSS parse, diff check, 7 workflow UI + UTF8 +7 sequence playback checks PASS (sequence requires experimental-transform-types). Screenshots .tmp/gray-scrubbers/component-1440.png and component-390.png reviewed. Full local route timeout and production NOT VERIFIED. Receipt docs/gray-scrubbers-review-2026-11-02.md.
+
+### UGC-VID-050 local completion evidence
+Final public four/278 frames and both creators12/1040 frames reviewed. Two public plans and six private new-opening directions corrected.47 tests, TypeScript and scoped ESLint PASS.106 active public IDs/source hashes compiled with0 missing; existing-key encrypted private reader verifies2 creators/12 prompts/12 original frame-zero images and6 overrides. Historical private fields and saved instructions preserved; new-opening overrides cannot replace legacy continuations. Receipt docs/hook-account-source-audit-completion-2026-11-02.md. Local correction VERIFIED; production activation and generated fidelity NOT VERIFIED. No deployment or media generation.
+
+UGC-UI-103 Edit follow-up: actual local Hook workflow Edit ranges all five compute rgb(163,163,163); playback same gray, keyboard seeking PASS. Mobile Edit screenshot inspected at .tmp/gray-scrubbers/mobile.png. No additional application edit needed; existing shared rule applies. Hosted workflows remain NOT VERIFIED.
+
+
+### UGC-UI-104 — 2026-11-02 — Slideshow Face Swap audit gaps
+- CODE CONFIRMED during requested read-only implementation audit: Generate hasInsufficientCredits compares balance with normal generation requiredCredits only; planned follow-up Face Swap reserves credits separately after source images finish. A balance sufficient for base generation but insufficient for swaps can proceed then fail swapping. No paid reproduction performed.
+- CODE CONFIRMED: SlideshowFaceChoice queries do not render isError/retry states; failed library reads can fall through to the generic upload/save-influencer empty message. Backend cause UNKNOWN; no live failure injected. Status OPEN.
+- Regressions proposed: face_swap_total_affordability_precheck_preserves_base_credit_line; face_library_failed_read_shows_retry_without_clearing_selection. No application-code change in this audit.
+
+
+### UGC-UI-105 — 2026-11-02 — Slideshow Generate button inconsistent size
+- SCREENSHOT OBSERVED: slideshow Generate is small and right aligned compared with other workflows. OPEN; root cause CODE CONFIRMED: classic composer adds data-compact for Image prompt and flex justify-end, overriding full-width 44px primaryAction.
+- Scope: remove image compact override from workflow classic action; preserve label, footer, disabled/loading and normal generation. Regression: desktop/mobile full-width action measurement.
+- UGC-UI-104 remediation authorized in same user request: combined affordability check once per marked Version1 slide; face library errors and Retry without discarding selection.
+
+UGC-UI-104/105 local remediation verified: full-width white Generate measured at336/336px desktop and316/316px mobile, height44; Face Swap selection hides/restores action. Combined affordability precheck includes unique selected slide cost without multiplying versions; base quote retained; saved-request guards preserved. Independent face/portrait errors and Retry preserve chosen face in actual component browser regression. TypeScript and scoped lint PASS (existing unused warnings),6 focused/UTF8 checks PASS; diff check clean. Screenshots .tmp/slideshow-fixes/slideshow-1440.png, slideshow-390.png, library-error.png and library-recovered.png inspected. Client precheck is not atomic server reservation; hosted billing/provider behavior NOT VERIFIED. Receipt docs/slideshow-generate-recovery-2026-11-02.md.
+
+
+### UGC-UI-106 — 2026-11-02 — Pricing surfaces and inconsistent Vidmake type
+- SCREENSHOT OBSERVED / USER REPORTED: pricing cards too light compared with Explore; sidebar Vidmake too heavy, pricing serif inconsistent. OPEN; cause CODE CONFIRMED: pricing inherits #292929 global dark card while Explore overrides #17171c; shared wordmark ui uses DM Sans800 and display Instrument Serif400.
+- Scope: Pricing-only dark tokens matching Explore and shared DM Sans500 wordmark. Keep pricing/checkout, allowances, nav, icon, responsive dimensions and body typography. Regression: computed palette/font500 + font load and desktop/mobile screenshots.
+
+UGC-UI-106 local verification: Pricing dark card#17171c/background#101014 and actual loaded DM Sans500 confirmed at1440/390; initial inherited-Geist font binding corrected. TypeScript, scoped lint, CSS parse/diff and11 theme/UTF8 checks PASS. Pricing/Explore screenshots reviewed; account-loading state does not establish checkout acceptance. Receipt docs/pricing-palette-wordmark-2026-11-02.md. No deployment.
+
+
+### UGC-UI-107 — 2026-11-02 — Pricing neutral accents and allowance copy
+- USER REPORTED: Open workspace blue, allowance selector pills too large, annual2months-free badge unwanted, four workflow access/icon accents blue and20/50 slideshow concepts unwanted in all plan inclusions. OPEN. Source confirms explicit primary classes/padding/badge and display feature strings.
+- Scope: pricing presentation only; neutral Open workspace and workflow access/icons, smaller allowance selector, remove annual badge and paid20/50 claims from cards/table/FAQ. Keep Get Growth blue, prices, entitlements, checkout and billing interval behavior. Regression: pricing display/plan-action tests and desktop/mobile local appearance.
+
+UGC-UI-107 local verification:20pricing/checkout tests +12plan/UTF8 checks PASS; TypeScript/scoped lint/diff PASS. Browser compact allowance group30px, buttons24px/11px at1440/390; no annual badge or paid20/50claims. Neutral signed-in workspace state and blue GetGrowth verified in render tests; workflow gray styling/screenshot reviewed. Global inherit font override corrected via local module. No entitlements/prices/checkout handler changes; hosted billing NOT VERIFIED. Receipt docs/pricing-refinements-2026-11-02.md.

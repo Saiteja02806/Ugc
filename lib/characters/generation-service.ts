@@ -191,7 +191,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       generationId: (dependencies.createId ?? crypto.randomUUID)(),
       mode: request.mode,
       model: request.model,
-      ...(request.model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
+      ...(request.model === "seedream_5_pro" || request.model === "gemini_3_pro" ? { provider: "openrouter" } : {}),
       prompt: composeCharacterPrompt(request.prompt, skills),
       ...(skills.length ? { characterPromptPresentation: {
         userPrompt: request.prompt,

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
+import { ArrowLeft, History } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { CHARACTER_STUDIO_IMAGE_MODEL, getCharacterPromptLimit } from "@/lib/characters/image-models";
@@ -11,21 +13,44 @@ import {
   type InfluencerTrait,
 } from "@/lib/characters/influencer-registry";
 import { compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
-import { orderedStudioReferences, studioReferenceOrderLine } from "@/lib/characters/studio-references";
+import { orderedStudioReferences, studioReferenceOrderLine, studioReferenceSize } from "@/lib/characters/studio-references";
 import { useCharacterBuilder } from "./use-character-builder";
 import { InfluencerCustomizerDock } from "./influencer-customizer-dock";
 import { InfluencerCanvas } from "./influencer-canvas";
 import { CharacterHistory } from "./character-history";
 import styles from "./influencer-studio.module.css";
 
+async function studioReferenceFile(blob: Blob, filename: string) {
+  const fallbackType = blob.type.startsWith("image/") ? blob.type : "image/png";
+  const fallback = () => new File([blob], filename, { type: fallbackType });
+  try {
+    const bitmap = await createImageBitmap(blob);
+    try {
+      const size = studioReferenceSize(bitmap.width, bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = size.width;
+      canvas.height = size.height;
+      const context = canvas.getContext("2d");
+      if (!context) return fallback();
+      context.drawImage(bitmap, 0, 0, size.width, size.height);
+      const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+      if (!jpeg) return fallback();
+      const base = filename.replace(/\.[^.]+$/, "") || "reference";
+      return new File([jpeg], `${base}.jpg`, { type: "image/jpeg" });
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return fallback();
+  }
+}
+
 async function ownedStudioAssetId(imagePath: string, userId: string, cache: Map<string, string>) {
   const cached = cache.get(imagePath);
   if (cached) return cached;
   const response = await fetch(imagePath);
   if (!response.ok) throw new Error("A selected look could not be loaded.");
-  const blob = await response.blob();
-  const type = blob.type.startsWith("image/") ? blob.type : "image/png";
-  const file = new File([blob], imagePath.split("/").pop() || "reference.png", { type });
+  const file = await studioReferenceFile(await response.blob(), imagePath.split("/").pop() || "reference.png");
   const uploaded = await uploadAIStudioReferenceMedia(file, "image", undefined, userId, { purpose: "explore-catalog-reference" });
   cache.set(imagePath, uploaded.asset.id);
   return uploaded.asset.id;
@@ -128,6 +153,7 @@ function CharacterStudioScreen({
 
   const handleGenerate = useCallback(async () => {
     setErrorMessage(null);
+    builder.generate.reset();
     builder.touchSession();
 
     const compiled = compileInfluencerPrompt(selection, customCharacters);
@@ -142,6 +168,7 @@ function CharacterStudioScreen({
 
     setUploadingReferences(true);
     setReferencePending(true);
+    let submitted = false;
     try {
       let uploadedFaceAssetId: string | undefined;
       if (uploadedFaceId) {
@@ -149,14 +176,18 @@ function CharacterStudioScreen({
         if (!uploadedFaceAssetId) {
           const file = faceFiles.current.get(uploadedFaceId);
           if (!file) throw new Error("Upload the face photo again before generating.");
-          const uploaded = await uploadAIStudioReferenceMedia(file, "image", undefined, userId, { purpose: "image-library" });
+          const preparedFace = await studioReferenceFile(file, file.name);
+          const uploaded = await uploadAIStudioReferenceMedia(preparedFace, "image", undefined, userId, { purpose: "image-library" });
           uploadedFaceAssetId = uploaded.asset.id;
           faceAssetIds.current.set(uploadedFaceId, uploadedFaceAssetId);
         }
       }
       const references = orderedStudioReferences(selection, customCharacters, uploadedFaceAssetId ? 9 : 10)
         .filter((reference, index, list) => list.findIndex((item) => item.imagePath === reference.imagePath) === index);
-      const studioAssetIdList = await Promise.all(references.map((reference) => ownedStudioAssetId(reference.imagePath, userId, studioAssetIds.current)));
+      const studioAssetIdList: string[] = [];
+      for (const reference of references) {
+        studioAssetIdList.push(await ownedStudioAssetId(reference.imagePath, userId, studioAssetIds.current));
+      }
       const assetIds = [...(uploadedFaceAssetId ? [uploadedFaceAssetId] : []), ...studioAssetIdList];
       const labels = [
         ...(uploadedFaceAssetId ? ["uploaded face"] : []),
@@ -167,7 +198,8 @@ function CharacterStudioScreen({
         setErrorMessage("This combination is too long for Gemini 3 Pro. Remove an accessory and try again.");
         return;
       }
-      builder.generate.mutate({
+      submitted = true;
+      await builder.generate.mutateAsync({
         mode: "custom",
         model: CHARACTER_STUDIO_IMAGE_MODEL,
         imageCount: batchSize as 1 | 2 | 3,
@@ -177,7 +209,9 @@ function CharacterStudioScreen({
         ...(assetIds.length === 1 ? { referenceImageAssetId: assetIds[0] } : {}),
       });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "The selected looks could not be attached.");
+      if (!submitted) {
+        setErrorMessage(error instanceof Error ? error.message : "The selected looks could not be attached.");
+      }
     } finally {
       setUploadingReferences(false);
       setReferencePending(false);
@@ -209,7 +243,6 @@ function CharacterStudioScreen({
   ]);
 
   const access = builder.access.data?.access;
-  const creditCost = access?.imageCreditCost ?? 1;
   const generateBlocked = Boolean(userId && access && batchSize > access.affordableImageCount);
   const visitJobIds = new Set(builder.visibleJobs.map((job) => job.jobId));
   const sessionJobs = (builder.visibleStatuses ?? []).filter((job) => builder.historyImage || visitJobIds.has(job.id));
@@ -243,6 +276,18 @@ function CharacterStudioScreen({
         </div>
       )}
 
+      <header className={styles.studioHeader}>
+        <Link href={localPreview ? "/explore?preview=1" : "/explore"} className={styles.studioBack}>
+          <ArrowLeft aria-hidden="true" />
+          Back
+        </Link>
+        <h1 className={styles.studioTitle}>AI character influencer</h1>
+        <button type="button" className={styles.studioHistory} onClick={() => setHistoryOpen(true)}>
+          <History aria-hidden="true" />
+          History
+        </button>
+      </header>
+
       <div className={styles.studioLayout}>
         {/* Left Customizer Dock */}
         <InfluencerCustomizerDock
@@ -254,7 +299,6 @@ function CharacterStudioScreen({
           onBatchSizeChange={setBatchSize}
           isGenerating={isBusy}
           onGenerate={() => void handleGenerate()}
-          creditCost={creditCost}
           maxBatchSize={access?.affordableImageCount ?? 3}
           availabilityMessage={generateBlocked ? access?.message : null}
           generateDisabled={generateBlocked}
@@ -272,7 +316,6 @@ function CharacterStudioScreen({
           isGenerating={isBusy}
           onSaveCharacter={handleSaveCharacter}
           savingJobId={builder.select.isPending ? String(builder.select.variables) : null}
-          onOpenHistory={() => setHistoryOpen(true)}
           onReturnToSession={builder.historyImage ? builder.returnToSession : undefined}
           savedCharacterIds={savedCharacterIds}
           customCharacters={customCharacters}

@@ -103,7 +103,6 @@ export const pricingPlans: PricingPlan[] = [
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.starter),
       "Access to all available workflows",
-      "20 daily slideshow concepts to review",
       "Hooks, text-led videos & slideshows in Explore",
       "AI Studio image & video generation",
       "AI character creation with shared credits",
@@ -122,7 +121,6 @@ export const pricingPlans: PricingPlan[] = [
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.growth),
       "Access to all available workflows",
-      "50 daily slideshow concepts to review",
       "Hooks, text-led videos & slideshows in Explore",
       "AI Studio image & video generation",
       "AI character creation with shared credits",
@@ -140,7 +138,6 @@ export const pricingPlans: PricingPlan[] = [
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.startup),
       "Access to all available workflows",
-      "50 daily slideshow concepts to review",
       "Hooks, text-led videos & slideshows in Explore",
       "AI Studio image & video generation",
       "AI character creation with shared credits",

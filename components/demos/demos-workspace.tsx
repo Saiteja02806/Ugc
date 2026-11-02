@@ -971,8 +971,8 @@ function EmbeddedDemoWorkspace({
     >
       <header className="flex flex-col gap-3 border-b border-border/60 bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-primary ring-1 ring-inset ring-primary/10 shadow-xs">
-            <FileVideo className="size-4" aria-hidden="true" />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card-muted text-foreground ring-1 ring-inset ring-border shadow-xs">
+            <Play className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <h2
@@ -1798,7 +1798,7 @@ export function DemoCard({
             {demo.explore_edit ? <Link href={getContentDemoEditorHref(demo.id)} className="inline-flex min-h-9 items-center justify-center rounded-control border border-border px-3 text-xs font-semibold text-muted hover:bg-card-muted">Edit original</Link> : null}
             <Link
               href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
-              className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
+                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control bg-foreground px-3 text-xs font-semibold text-background transition-colors hover:bg-foreground/90"
             >
               <Pencil className="size-3" aria-hidden="true" />
               Edit

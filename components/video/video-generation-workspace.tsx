@@ -1968,7 +1968,7 @@ function VideoResultCard({
               ratio={video.ratio}
             />
           </div>
-          {onSelect ? <Button type="button" className="mt-3" disabled={!video.mediaAssetId} onClick={onSelect}>{selectLabel}</Button> : null}
+          {onSelect ? <Button type="button" variant="neutral" className="mt-3" disabled={!video.mediaAssetId} onClick={onSelect}>{selectLabel}</Button> : null}
           <AiStudioResultActions
             className="mt-3"
             kind="video"

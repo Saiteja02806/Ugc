@@ -13,7 +13,7 @@
   align-self: start;
   flex-direction: column;
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--card);
 }
 .controlContent { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 14px 16px; }
@@ -230,7 +230,7 @@
 .editorialLead { font-size: 10px; line-height: 12px; }
 .editorialHero { color: #85d0e8; font-size: 22px; line-height: 24px; font-weight: 900; }
 
-.main { display: flex; min-width: 0; min-height: 460px; flex-direction: column; align-self: start; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 16px; background: var(--card); }
+.main { display: flex; min-width: 0; min-height: 460px; flex-direction: column; align-self: start; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; background: var(--card); }
 .editWorkspace { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 24px; padding: 24px; }
 .editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
 .sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
@@ -341,3 +341,6 @@
 .connectedAccount { display: flex; width: 100%; min-width: 0; min-height: 44px; height: auto; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; text-align: left; white-space: normal; }
 .connectedAccount[aria-pressed="true"] { border-color: var(--foreground); background: var(--card-muted); }
 .connectedAccountLabel { min-width: 0; overflow-wrap: anywhere; }
+
+.whiteGenerate.whiteGenerate { background: #f5f3f0; color: #101014; }
+.whiteGenerate.whiteGenerate:hover { background: #dedbd7; color: #101014; }

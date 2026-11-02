@@ -58,3 +58,10 @@ textarea.field { resize: vertical; }
 }
 
 .section[data-remix-expanded="true"] .manual { margin: 0 0 16px; }
+
+.generate.generate, .overviewGenerate.overviewGenerate { background: #f5f3f0; color: #101014; }
+.generate.generate:hover, .overviewGenerate.overviewGenerate:hover { background: #dedbd7; color: #101014; }
+.context a { color: #f5f3f0; }
+
+.context a { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 6px 12px; border-radius: 10px; background: #f5f3f0; color: #101014; text-decoration: none; }
+.context a:hover { background: #dedbd7; }

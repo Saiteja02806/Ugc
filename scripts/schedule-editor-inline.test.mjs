@@ -46,6 +46,7 @@ function fixture(overrides = {}, instant = Date.now()) {
     "lucide-react": new Proxy({}, { get: (_, name) => name }),
     "@/components/ui/button": { Button: "SharedButton" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "SocialPlatformIcon" },
+    "@/components/social/social-account-avatar": { SocialAccountAvatar: "SocialAccountAvatar" },
     "@/components/social/instagram-caption-preview": { InstagramCaptionPreview: "InstagramCaptionPreview" },
     "@/components/ui/popover": new Proxy({}, { get: (_, name) => name }),
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },

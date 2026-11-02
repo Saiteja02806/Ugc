@@ -12,11 +12,11 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
-import { ONE_TIME_FREE_GENERATION_CREDITS } from "@/lib/billing/free-generation-credit-policy";
 import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "@/lib/billing/free-trial-policy";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
 import { buttonVariants } from "@/components/ui/button";
+import styles from "./pricing-page.module.css";
 import { useAuth } from "@/contexts/auth-context";
 import {
   displayedPricingPlans,
@@ -33,19 +33,19 @@ const platformFeatures = pricingWorkflows.map((workflow, index) => ({
 const faqs = [
   {
     question: "What does the free trial include?",
-    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
+    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification. The trial does not include AI credits. No payment card is required, and the trial does not automatically become a paid subscription.`,
   },
   {
     question: "What happens when my trial ends?",
-    answer: "Choose Starter, Growth, or Startup to keep receiving daily content. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. A paid plan adds a monthly AI credit allowance.",
+    answer: "Choose Starter, Growth, or Startup to keep receiving daily content. Signing in again does not restart an expired trial. A paid plan adds a monthly AI credit allowance.",
   },
   {
     question: "Are daily content concepts separate from AI credits?",
-    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day. Growth and Startup include 50. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
+    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
   },
   {
     question: "How do Vidmake credits work?",
-    answer: `Free accounts receive ${ONE_TIME_FREE_GENERATION_CREDITS} credits once; these do not refill monthly. Starter includes 360 credits each month, Growth includes 720, and Startup includes 1,800, including on annual subscriptions. One second of video costs 4 credits, so those allowances make 30, 60, or 150 three-second hooks, or 15, 30, or 75 six-second videos. Check the displayed credit cost before generating.`,
+    answer: `Free accounts do not include AI credits. Starter includes 360 credits each month, Growth includes 720, and Startup includes 1,800, including on annual subscriptions. One second of video costs 4 credits, so those allowances make 30, 60, or 150 three-second hooks, or 15, 30, or 75 six-second videos. Check the displayed credit cost before generating.`,
   },
   {
     question: "Which workflows and platforms are included?",
@@ -65,7 +65,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
   const { user, loading } = useAuth();
 
   return (
-    <div className="instagram-theme min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-foreground-strong">
+    <div className={`${styles.page} instagram-theme min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-foreground-strong`}>
       <Link
         href="#pricing-content"
         className="sr-only focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus:rounded-control focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground-strong focus:ring-2 focus:ring-focus"
@@ -94,7 +94,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 <Link
                   href="/dashboard"
                   className={buttonVariants({
-                    variant: "default",
+                    variant: "neutral",
                     size: "sm",
                     className: "h-8 rounded-lg text-xs font-semibold shadow-xs",
                   })}
@@ -175,7 +175,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 From the first idea to a finished asset
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Try daily slideshows for {FREE_TRIAL_CONTENT_DAYS} days and AI Studio with {ONE_TIME_FREE_GENERATION_CREDITS} free credits. Daily content allowances and custom AI credits are separate.
+                Try daily slideshows for {FREE_TRIAL_CONTENT_DAYS} days. Free accounts do not include AI credits. Daily content allowances and custom AI credits are separate.
               </p>
             </div>
 
@@ -188,7 +188,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                     key={item.title}
                     className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-border-strong"
                   >
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-card-muted text-muted">
                       <Icon className="size-4.5" aria-hidden="true" />
                     </div>
                     <h3 className="mt-3 text-base font-semibold leading-snug text-foreground-strong">
@@ -197,7 +197,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                     <p className="mt-1.5 text-xs font-normal leading-relaxed text-muted">
                       {item.description}
                     </p>
-                    <p className="mt-auto pt-4 text-[11px] font-medium leading-relaxed text-primary">{item.access}</p>
+                    <p className="mt-auto pt-4 text-[11px] font-medium leading-relaxed text-muted">{item.access}</p>
                   </div>
                 );
               })}

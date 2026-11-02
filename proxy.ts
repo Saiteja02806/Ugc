@@ -75,7 +75,10 @@ export function proxy(request: NextRequest) {
       const search = request.nextUrl.search || "";
       const targetUrl = new URL(pathname + search, primaryDomain);
       targetUrl.searchParams.set("moved", "1");
-      return NextResponse.redirect(targetUrl, 307);
+      // This is a permanent public-domain migration. A 308 keeps the method
+      // intact while telling crawlers and browsers to consolidate signals on
+      // Vidmake rather than treating the move as temporary.
+      return NextResponse.redirect(targetUrl, 308);
     }
   }
 

@@ -44,7 +44,7 @@ export function AiStudioCopyButton({ kind, value, className }: {
         className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait motion-reduce:transition-none", className)}
       >
         {status === "copying" ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          : status === "copied" ? <Check className="size-3.5 text-primary" aria-hidden="true" />
+          : status === "copied" ? <Check className="size-3.5 text-foreground" aria-hidden="true" />
             : <Copy className="size-3.5" aria-hidden="true" />}
       </button>
       {status === "error" ? (

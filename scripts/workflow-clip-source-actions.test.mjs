@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
-function harness(disabled = false, presentation = "menu", triggerLabel, library) {
+function harness(disabled = false, presentation = "menu", triggerLabel, library, tone) {
   let cursor = 0;
   const uploads = [], clicks = [], slots = [], ref = { current: { click: () => clicks.push("upload") } }, exports = {};
   const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
@@ -14,7 +14,7 @@ function harness(disabled = false, presentation = "menu", triggerLabel, library)
   }).outputText, { exports, require: name => name === "react" ? { useRef: () => ref, useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => slots[i] = value]; } } : name === "react/jsx-runtime" ? jsx
     : name === "lucide-react" ? { Upload: "upload-icon", FolderOpen: "folder-icon", Check: "check-icon", ChevronDown: "chevron", Sparkles: "generate-icon" }
     : name === "@/components/ui/popover" ? { Popover: "popover", PopoverContent: "content", PopoverTitle: "title", PopoverTrigger: "trigger" } : { Button: "button" } });
-  const render = () => { cursor = 0; return exports.WorkflowClipSourceActions({ label: "hook video", disabled, presentation, triggerLabel, library,
+  const render = () => { cursor = 0; return exports.WorkflowClipSourceActions({ label: "hook video", disabled, presentation, triggerLabel, library, tone,
     onUpload: async file => uploads.push(file), onChooseAssets: () => clicks.push("assets"), onGenerate: () => clicks.push("generate") }); };
   return { uploads, clicks, render, input: () => nodes(render()).find(n => n.type === "input"),
     option: label => nodes(render()).find(n => n.type === "button" && n.props["aria-label"] === label) };
@@ -33,6 +33,18 @@ test("one hover trigger exposes source choices and upload preserves the native g
   h.option("Generate hook video").props.onClick(); assert.deepEqual(h.clicks, ["upload", "assets", "generate"]);
   assert.equal(h.option("Generate hook video").props["aria-pressed"], true);
 });
+test("a neutral empty upload drops the blue fill and primary shadow", () => {
+  const quiet = harness(false, "menu", undefined, undefined, "neutral");
+  const trigger = nodes(quiet.render()).find(n => n.type === "trigger");
+  assert.equal(trigger.props.render.props.variant, "outline");
+  assert.equal(trigger.props.render.props["data-clip-tone"], "neutral");
+  assert.equal(String(trigger.props.render.props.className).includes("--primary"), false);
+  const filled = harness();
+  const filledTrigger = nodes(filled.render()).find(n => n.type === "trigger");
+  assert.equal(filledTrigger.props.render.props.variant, "default");
+  assert.equal(filledTrigger.props.render.props["data-clip-tone"], "primary");
+});
+
 test("pending inputs disable both choices and reject late file events", () => {
   const h = harness(true); assert.equal(h.input().props.disabled, true); assert.equal(nodes(h.render()).find(n => n.type === "trigger").props.render.props.disabled, true);
   h.option("Upload hook video").props.onClick(); h.option("Choose hook video from Creative Assets").props.onClick(); assert.deepEqual(h.clicks, []);

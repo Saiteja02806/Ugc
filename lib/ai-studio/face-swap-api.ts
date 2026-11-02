@@ -110,7 +110,7 @@ export async function handleAIStudioFaceSwap(request: Request) {
         referenceImageUrl: targetUrl,
         referenceImageUrls: [targetUrl, influencerUrl],
         creditCost,
-        ...(slideshowGeneration ? { slideshowGeneration } : {}),
+        ...(slideshowGeneration ? { slideshowGeneration, exploreFormat: "slideshow" } : {}),
       },
     });
 

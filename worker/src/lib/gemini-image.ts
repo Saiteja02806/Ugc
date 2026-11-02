@@ -188,7 +188,7 @@ function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<type
   if (receipt.version === 4 && !hookKeyframeAnchorBytesMatch(receipt, images[1])) {
     throw new ProviderRequestNotSubmittedError("The downloaded identity-clarity anchor does not match the reviewed source frame. No image generation request was sent.");
   }
-  return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion === 1 ? 2 : receipt.promptVersion);
+  return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion === 1 ? 2 : receipt.promptVersion, receipt.referenceOptions);
 }
 
 function getGoogleClient() {

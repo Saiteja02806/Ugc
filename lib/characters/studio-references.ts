@@ -7,6 +7,21 @@ import {
 
 const STUDIO_IMAGE_PREFIX = "/explore/influencer-studio/";
 const MAX_STUDIO_REFERENCES = 10;
+export const STUDIO_REFERENCE_MAX_SIDE = 1280;
+
+/** Longest side used when a catalog photo is prepared for a signed-in portrait. */
+export function studioReferenceSize(width: number, height: number, maxSide = STUDIO_REFERENCE_MAX_SIDE) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error("A selected look has no usable size.");
+  }
+  const longest = Math.max(width, height);
+  if (longest <= maxSide) return { width: Math.round(width), height: Math.round(height) };
+  const scale = maxSide / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
 
 const SINGLE_REFERENCES: readonly { field: keyof InfluencerSelectionState; role: string }[] = [
   { field: "characterTypeId", role: "character face" },

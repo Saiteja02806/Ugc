@@ -1,0 +1,10 @@
+:global(.dark) .page {
+  --background: #101014;
+  --card: #17171c;
+  --card-muted: #101016;
+  --surface-subtle: #202026;
+  --selected: #24242b;
+  --brand-soft: #202026;
+  --border: #2c2c34;
+  --border-strong: #41414b;
+}

@@ -69,12 +69,12 @@ export function AIStudioWorkspace({
               />
               <Link
                 href={hasBillingPlan ? "/settings#subscription-billing" : "/pricing"}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/40 text-foreground-strong px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-0.5 text-xs font-semibold text-foreground transition-colors hover:bg-card"
                 title="Manage AI generation credits"
               >
                 <CreditIcon />
                 <span>{subscription ? `${subscription.creditsRemaining} AI credits` : "Checking credits…"}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
                   · {subscription?.status === "on_hold" ? "Billing on hold" : hasBillingPlan ? "Manage" : "Upgrade"}
                 </span>
               </Link>
@@ -191,7 +191,7 @@ function AIStudioAccessBadge({ state, hasFreeCredits = false }: { state: AIStudi
   }
 
   return (
-    <Badge variant="pro" role="status" aria-live="polite">
+    <Badge variant="outline" className="border-border bg-card-muted text-foreground" role="status" aria-live="polite">
       {hasFreeCredits ? "Free credits" : "Pro"}
     </Badge>
   );

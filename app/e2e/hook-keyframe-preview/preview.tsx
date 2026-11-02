@@ -12,11 +12,10 @@ import { hookKeyframeVariationsKey, readHookKeyframeVariations } from "@/lib/exp
 import type { MediaAsset } from "@/lib/media/types";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import type { StartingFrameWorkflow } from "@/lib/explore/starting-frame-workflow";
-import { getCuratedHookFrame } from "@/worker/src/lib/hook-curated-frames";
+import { readVerifiedHookStartingFrame } from "@/lib/explore/hook-starting-frame-client";
 
 const scope = { ownerId: "local-ui-preview", draftId: "00000000-0000-4000-8000-000000000015",
   referenceId: "explore-paired-hook-43cc1dae0a6cfcb03e0a9333", sourceSha256: "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0" };
-const curatedFrame = getCuratedHookFrame(scope.referenceId, scope.sourceSha256)!;
 const photoId = "00000000-0000-4000-8000-000000000016";
 const samplePhoto = "/ai-studio/creator-references/creator-01.png";
 const samplePhotos = [{ url: samplePhoto, width: 275, height: 555 },
@@ -70,8 +69,9 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       const sample = samplePhotos[index % samplePhotos.length];
       outputPreviewUrls[resultId] = sample.url;
       const frozenInput = JSON.parse(checkpoint.inputKey);
-      return { jobId, resultId, width: sample.width, height: sample.height, receipt: { ...scope, version: frozenInput.version, imageModel: frozenInput.imageModel,
-        promptVersion: frozenInput.version === 1 ? 1 : 4, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey } };
+      return { jobId, resultId, width: sample.width, height: sample.height, receipt: { ...scope, version: frozenInput.version === 4 ? 5 : frozenInput.version, imageModel: frozenInput.imageModel,
+        promptVersion: frozenInput.version === 4 ? 7 : frozenInput.version === 1 ? 1 : 4, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey,
+        ...(frozenInput.version === 4 ? { preparationInputKey: checkpoint.inputKey, referenceOptions: frozenInput.referenceOptions } : {}) } };
     }
     return {
     outputPreviewUrl: samplePhoto,
@@ -81,10 +81,8 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       prompt: "Long image-generation instructions are hidden in this photo chooser.", model: "nano_banana_2",
       createdAt: asset.createdAt, saved: true })), nextCursor: null }),
     loadSource: async ({ signal }) => {
-      const response = await fetch(curatedFrame.publicPath, { signal });
-      const blob = await response.blob();
-      const sha256 = [...new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()))].map(x => x.toString(16).padStart(2, "0")).join("");
-      return { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, blob, frame: { index: curatedFrame.index, timeSeconds: curatedFrame.timeSeconds, width: curatedFrame.width, height: curatedFrame.height, sha256 } };
+      const response = await fetch(`/e2e/hook-keyframe-preview/source?referenceId=${encodeURIComponent(scope.referenceId)}`, { signal });
+      return readVerifiedHookStartingFrame(response, scope);
     },
     resolvePhoto: async id => {
       const selectedPhoto = [...fixturePersonPhotos, ...fixtureInfluencers].find(item => item.id === id);

@@ -938,3 +938,17 @@ test("Demo remix applies only to its own draft, retains trim, framing and sound,
   assert.equal(formatTextOverlays(h.draftSaves[0].editing)[0].value, "Try the demo");
   assert.ok(h.input("Demo trim start"));
 });
+
+test("Hook overview Schedule video is outline while the Demo step button stays filled", () => {
+  const h = harness();
+  const tree = h.render({ editActive: false, editPreviewActive: true, overviewScheduleTarget: { name: "overview" }, active: false });
+  const schedules = nodes(tree).filter(node => node.type === "Button" && text(node).trim() === "Schedule video");
+  const overview = schedules.find(node => node.props.variant === "outline");
+  const demoStep = schedules.find(node => node.props.variant !== "outline");
+  assert.ok(overview, "Missing the overview Schedule video button");
+  assert.equal(String(overview.props.className).includes("shadow"), false);
+  assert.ok(demoStep, "Missing the Demo step Schedule video button");
+  assert.equal(String(demoStep.props.className).includes("shadow-sm"), true);
+  const upload = nodes(tree).find(node => node.type === "WorkflowClipSourceActions" && !node.props.triggerLabel);
+  assert.equal(upload.props.tone, "neutral");
+});

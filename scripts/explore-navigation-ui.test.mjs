@@ -303,7 +303,7 @@ test("Explore covers warm metadata and start immediately on hover without changi
   const page = { visibilityState: "visible", activeElement: null, addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
   const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
     react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
-  }, "production", {}, { window: { matchMedia: () => preference }, document: page,
+  }, "production", {}, { window: { matchMedia: () => preference }, document: page, navigator: { connection: { saveData: true } },
     IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
     setTimeout() { throw Error("Explore covers must not delay playback"); }, clearTimeout() {} });
   useCoverPlayback("/cover.mp4", "a", true); const cleanup = effect();
@@ -311,11 +311,36 @@ test("Explore covers warm metadata and start immediately on hover without changi
   assert.equal(video.src, "/cover.mp4"); assert.equal(video.preload, "metadata"); assert.equal(plays, 0);
   handlers.get("pointerenter")({ pointerType: "touch" }); assert.equal(plays, 0);
   handlers.get("pointerenter")({ pointerType: "mouse" }); assert.equal(plays, 1);
-  handlers.get("pointerleave")(); assert.equal(video.src, null);
+  handlers.get("pointerleave")(); assert.equal(video.src, "/cover.mp4");
   handlers.get("focus")(); assert.equal(plays, 2);
   preference.matches = true; preferenceChanged(); assert.equal(video.src, null);
   handlers.get("focus")(); assert.equal(plays, 2);
   cleanup(); assert.equal(handlers.size, 0); assert.equal(pageHandlers.size, 0);
+});
+
+test("Explore catalog covers play while visible and keep playing after the pointer leaves", () => {
+  const handlers = new Map();
+  let effect, observe, plays = 0, paused = 0;
+  const link = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const video = { src: null, preload: "none", closest: () => link, hasAttribute: () => video.src !== null,
+    removeAttribute() { video.src = null; }, load() {}, pause() { paused++; }, play: async () => { plays++; }, addEventListener() {}, removeEventListener() {} };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) },
+    navigator: {},
+    document: { visibilityState: "visible", activeElement: null, addEventListener() {}, removeEventListener() {} },
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout() { throw Error("Catalog covers must not wait for hover"); }, clearTimeout() {},
+  });
+  useCoverPlayback("/cover.mp4", "a", true, true); const cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  assert.equal(video.src, "/cover.mp4"); assert.equal(plays, 1);
+  handlers.get("pointerleave")(); handlers.get("pointerdown")(); handlers.get("click")();
+  assert.equal(video.src, "/cover.mp4"); assert.equal(plays, 1); assert.equal(paused, 0);
+  observe([{ isIntersecting: false }]);
+  assert.equal(video.src, null); assert.ok(paused > 0);
+  cleanup();
 });
 
 test("gallery button hover releases video on hidden tab, offscreen scroll, dialog click and unmount", () => {

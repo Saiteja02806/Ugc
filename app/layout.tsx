@@ -107,12 +107,28 @@ const arialBoldWallText = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vidmake.io"),
+  applicationName: "Vidmake",
   title: {
     default: "Vidmake",
     template: "%s | Vidmake",
   },
   description:
     "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in Vidmake.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Vidmake",
+    title: "Vidmake",
+    description:
+      "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in Vidmake.",
+    url: "https://vidmake.io/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Vidmake",
+    description:
+      "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in Vidmake.",
+  },
   verification: {
     google: "X8wAlsUNDn-IxZoXdj-k5R1WhTKxO8Eb1GEJKzzFyvM",
   },

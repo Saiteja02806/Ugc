@@ -222,7 +222,7 @@ export function TikTokBetaAccountManager() {
             </div>
           </div>
 
-          <Button
+          <Button variant="neutral"
             type="button"
             size="sm"
             onClick={() => void connect()}

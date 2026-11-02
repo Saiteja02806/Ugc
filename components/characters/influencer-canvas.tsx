@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Bookmark, History, Sparkles } from "lucide-react";
+import { Bookmark, Sparkles } from "lucide-react";
 import type {
   InfluencerSelectionState,
   InfluencerTrait,
@@ -17,7 +17,6 @@ interface InfluencerCanvasProps {
   isGenerating: boolean;
   onSaveCharacter: (jobId: string) => void;
   savingJobId: string | null;
-  onOpenHistory: () => void;
   onReturnToSession?: () => void;
   savedCharacterIds?: Set<string>;
   customCharacters?: InfluencerTrait[];
@@ -30,7 +29,6 @@ export function InfluencerCanvas({
   isGenerating,
   onSaveCharacter,
   savingJobId,
-  onOpenHistory,
   onReturnToSession,
   savedCharacterIds = new Set(),
   customCharacters: _customCharacters = [],
@@ -44,30 +42,13 @@ export function InfluencerCanvas({
 
   return (
     <main className={styles.canvasContainer}>
-      {/* Canvas Top Bar */}
-      <div className={styles.canvasTopNav}>
-        <div className={styles.canvasTabs}>
-          <button type="button" className={`${styles.canvasTab} ${styles.canvasTabActive}`}>
-            Studio Canvas
+      {onReturnToSession ? (
+        <div className={styles.canvasTopNav}>
+          <button type="button" className={styles.canvasTab} onClick={onReturnToSession}>
+            Back to session
           </button>
         </div>
-
-        <div className="flex items-center gap-2">
-          {onReturnToSession ? (
-            <button type="button" className={styles.canvasTab} onClick={onReturnToSession}>
-              Back to session
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={`${styles.canvasTab} flex items-center gap-1.5`}
-            onClick={onOpenHistory}
-          >
-            <History className="w-4 h-4 text-neutral-400" />
-            History
-          </button>
-        </div>
-      </div>
+      ) : null}
 
       {/* Generating State */}
       {isGenerating && (

@@ -9,7 +9,7 @@ import {
   CATEGORY_DEFINITIONS,
 } from "../../lib/characters/influencer-registry.ts";
 import { CHARACTER_STUDIO_IMAGE_MODEL, getCharacterPromptLimit } from "../../lib/characters/image-models.ts";
-import { compileInfluencerPrompt } from "../../lib/characters/master-prompt-compiler.ts";
+import { changedInfluencerPills, compileInfluencerPrompt } from "../../lib/characters/master-prompt-compiler.ts";
 
 test("influencer registry has every category populated with traits", () => {
   assert.equal(CATEGORY_DEFINITIONS.length, 17);
@@ -114,10 +114,37 @@ test("randomizeInfluencerSelection returns a valid populated selection state", (
   assert.ok(compiled.prompt.length > 100);
 });
 
+test("picked settings stay hidden until a choice differs from the default", () => {
+  const compiled = compileInfluencerPrompt(DEFAULT_INFLUENCER_SELECTION);
+  assert.equal(changedInfluencerPills(DEFAULT_INFLUENCER_SELECTION, compiled.displayPills).length, 0);
+  const changed = changedInfluencerPills(
+    { ...DEFAULT_INFLUENCER_SELECTION, ethnicityId: "eth_latina", framing: "half" },
+    compiled.displayPills,
+  );
+  assert.deepEqual(changed.map((pill) => pill.category), ["Ethnicity", "Framing"]);
+});
+
+test("the character studio header, selection color, and outfit swatches stay compact", () => {
+  const workspace = readFileSync(new URL("./character-workspace.tsx", import.meta.url), "utf8");
+  const dock = readFileSync(new URL("./influencer-customizer-dock.tsx", import.meta.url), "utf8");
+  const canvas = readFileSync(new URL("./influencer-canvas.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("./influencer-studio.module.css", import.meta.url), "utf8");
+  assert.match(workspace, /AI character influencer/);
+  assert.match(workspace, /studioBack/);
+  assert.doesNotMatch(canvas, /Studio Canvas/);
+  assert.match(dock, /changedInfluencerPills/);
+  assert.match(dock, /colorSwatch/);
+  assert.match(dock, /generationOptions/);
+  assert.match(css, /\.traitCardSelected[\s\S]*var\(--app-primary\)/);
+  assert.match(css, /\.colorSwatch \{/);
+});
+
 test("the visual influencer studio generates with Gemini 3 Pro", () => {
   assert.equal(CHARACTER_STUDIO_IMAGE_MODEL, "gemini_3_pro");
   assert.equal(getCharacterPromptLimit(CHARACTER_STUDIO_IMAGE_MODEL), 32_000);
   const source = readFileSync(new URL("./character-workspace.tsx", import.meta.url), "utf8");
   assert.match(source, /model: CHARACTER_STUDIO_IMAGE_MODEL/);
+  assert.match(source, /studioReferenceFile/);
+  assert.match(source, /mutateAsync/);
   assert.doesNotMatch(source, /model:\s*"seedream_5_pro"/);
 });

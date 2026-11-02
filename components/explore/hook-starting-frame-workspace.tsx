@@ -325,20 +325,29 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   }, [frameQuery.data]);
 
   // The provenance comes from the extraction receipt, never from the poster.
-  const preparedDraft = useMemo(() => retainedFrame ? draft : frameQuery.data
-    ? updateHookKeyframeDraft(draft.version !== 4 && !draft.generatedImage && !draft.approval ? { ...draft, version: 4 } : draft, { sourceFrame: frameQuery.data.frame }) : draft, [draft, frameQuery.data,retainedFrame]);
+  const preparation = useMemo(() => {
+    try {
+      return { draft: retainedFrame ? draft : frameQuery.data
+        ? updateHookKeyframeDraft(draft.version !== 4 && !draft.generatedImage && !draft.approval ? { ...draft, version: 4 } : draft, { sourceFrame: frameQuery.data.frame }) : draft, error: null };
+    } catch (cause) {
+      // Reject incompatible extraction data without overwriting saved inputs or
+      // letting an expected validation failure reach the page error boundary.
+      return { draft, error: cause instanceof Error ? cause.message : "The source frame could not be verified." };
+    }
+  }, [draft, frameQuery.data, retainedFrame]);
+  const preparedDraft = preparation.draft;
   const currentInputKey = hookKeyframeInputKey(preparedDraft);
   const currentInput = useRef(currentInputKey);
   useEffect(() => { currentInput.current = currentInputKey; }, [currentInputKey]);
   useEffect(() => {
-    if (!restored) return;
+    if (!restored || preparation.error) return;
     let active = true;
     let message: string | null = null;
     try { localStorage.setItem(key, serializeHookKeyframeDraft(preparedDraft)); }
     catch { message = "Your choices could not be saved in this browser. Keep this screen open while you continue."; }
     queueMicrotask(() => { if (active) setStorageError(message); });
     return () => { active = false; };
-  }, [key, preparedDraft, restored]);
+  }, [key, preparedDraft, restored, preparation.error]);
 
   function changeImages(next: AIStudioReferenceMedia[]) {
     if (!restored || choosingInfluencer) return;
@@ -392,6 +401,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     }
   }
   function savePreparation() {
+    if (preparation.error) return;
     try { localStorage.setItem(key, serializeHookKeyframeDraft(preparedDraft)); setStorageError(null); setSaved(true); }
     catch { setStorageError("Your choices could not be saved in this browser. Keep this screen open while you continue."); }
   }
@@ -432,6 +442,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           const input = { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, draftId: scope.draftId,
             personImageAssetIds: frozen.imageAssetIds, instructions: frozen.instructions, idempotencyKey: saved.requestKey,
             ...(frozen.customImagePrompt !== undefined ? { customImagePrompt: frozen.customImagePrompt } : {}), imageModel: frozen.imageModel, preparationInputKey: saved.inputKey };
+          Object.assign(input, frozen.referenceOptions ? { referenceOptions: frozen.referenceOptions } : {});
           const response = previewRuntime ? await previewRuntime.submit(input) : await fetch("/api/explore/hook-keyframe", {
             method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(input) });
           const body = "value" in response ? response.value : await response.json();
@@ -466,7 +477,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     } catch { if (mounted.current) setGenerationError("This variation could not be selected. Reopen the preparation to recover your images."); }
   }
   function selectStartingFrame(job: HookKeyframeJob, target: HookKeyframeCheckpoint | null = checkpoint) {
-    if (!target || target.inputKey !== currentInput.current || !job.output || !previewReady(job) || !onUseStartingFrame || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim()) return;
+    if (preparation.error || !target || target.inputKey !== currentInput.current || !job.output || !previewReady(job) || !onUseStartingFrame || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim()) return;
     const verified = verifiedHookKeyframeJob(job, target);
     if (!verified.output) return;
     const approved = approveHookKeyframeImage(recordHookKeyframeImage(preparedDraft, { assetId: verified.output.mediaAssetId, inputKey: target.inputKey, promptVersion: verified.receipt.promptVersion ?? 1 }));
@@ -482,7 +493,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   // Upload/lookup warnings must not discard already accepted, owned photos.
   const maxPersonImages = hookKeyframeMaxPersonImages(draft.imageModel);
   const tooManyImages = images.length > maxPersonImages;
-  const ready = (draft.customImagePrompt === undefined || Boolean(draft.customImagePrompt.trim())) && restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
+  const ready = !preparation.error && (draft.customImagePrompt === undefined || Boolean(draft.customImagePrompt.trim())) && restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
   const creatorDirections = reference.creatorAccountId ? preparedDraft.version === 4 && preparedDraft.sourceFrame?.index === 0 ? reference.generationPrompt : preparedDraft.sourceFrame && preparedDraft.sourceFrame.sha256 !== reference.startingFrame?.sha256
     ? reference.legacyGenerationPrompt : reference.generationPrompt : undefined;
   const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections, reference.legacySelectedGenerationPrompt, reference.startingImagePrompt, reference.durationSeconds);
@@ -503,8 +514,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const resultStyle = { "--frame-ratio": imageJob?.output ? imageJob.output.width / imageJob.output.height : 9 / 16 } as CSSProperties;
   const selectedIndex = readableEntries.findIndex(entry => entry.checkpoint.requestKey === checkpoint?.requestKey);
   const historyCollapsed = !showPreviousGenerations && Boolean(checkpoint && restoredRequests.current.has(checkpoint.requestKey));
-  const cannotUseFrame = historyCollapsed || !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
-  const customPromptSize = draft.customImagePrompt === undefined ? 0 : draft.customImagePrompt.length + "\n\nIMAGE INPUT ORDER:\n".length + hookKeyframeProviderImageLabels(Math.max(1, draft.imageAssetIds.length), 7).join("\n").length;
+  const cannotUseFrame = Boolean(preparation.error) || historyCollapsed || !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
+  const customPromptSize = draft.customImagePrompt === undefined ? 0 : (promptPreview.imagePrompt ?? draft.customImagePrompt).length + "\n\nIMAGE INPUT ORDER:\n".length + hookKeyframeProviderImageLabels(Math.max(1, draft.imageAssetIds.length), 7, draft.referenceOptions).join("\n").length;
   const customPromptLimit = draft.imageModel === "seedream_5_pro" ? 4000 : 8000;
   const promptLimitError = customPromptSize > customPromptLimit ? `Shorten this prompt to fit ${customPromptLimit.toLocaleString()} characters including image labels for this model.` : null;
   const cannotGenerate = Boolean(promptLimitError) || Boolean(generationDisabledReason) || motionBlocked || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
@@ -516,8 +527,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     {!generationDisabledReason ? <p className={styles.resultCost}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : costQuery.error ? "Price could not be loaded." : "Checking price…"}</p> : null}
     {costQuery.error && costQuery.data === undefined ? <Button type="button" variant="ghost" size="sm" disabled={costQuery.isFetching} onClick={() => void costQuery.refetch()}>Retry price</Button> : null}
     <div className={styles.resultButtons}>
-      <Button type="button" aria-label={readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel} variant={readableEntries.length ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : readableEntries.length ? variationCount > 1 ? `Generate ${variationCount} more frames` : "Generate another" : variationCount > 1 ? `Generate ${variationCount} starting frames` : "Generate starting frame"}</Button>
-      {readableEntries.length && !historyCollapsed ? <Button type="button" aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
+      <Button type="button" aria-label={readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel} variant="ghost" className={styles.whiteFrameAction} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : readableEntries.length ? variationCount > 1 ? `Generate ${variationCount} more frames` : "Generate another" : variationCount > 1 ? `Generate ${variationCount} starting frames` : "Generate starting frame"}</Button>
+      {readableEntries.length && !historyCollapsed ? <Button type="button" variant="ghost" className={styles.whiteFrameAction} aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
     </div>
   </div> : null;
   const applicationPrompt = buildOriginalOpeningImagePrompt({ personImageCount: Math.max(1, draft.imageAssetIds.length), instructions: draft.instructions }).prompt;
@@ -575,7 +586,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         {readableEntries.length > 1 && !historyCollapsed ? <p className={styles.variationProgress} role="status">{imageJobQueries.filter(query => query.data?.output).length} of {readableEntries.length} ready · Choose an image to review.</p> : null}
         {imageJob?.output && !historyCollapsed ? <>
           {presentation !== "recreation" ? <p className={styles.caption}>Check face, pose and scene.</p> : null}
-          {presentation !== "recreation" ? <Button className={styles.useFrame} type="button" disabled={cannotUseFrame} onClick={() => selectStartingFrame(imageJob)}>Use as starting frame</Button> : null}
+          {presentation !== "recreation" ? <Button variant="ghost" className={`${styles.useFrame} ${styles.whiteFrameAction}`} type="button" disabled={cannotUseFrame} onClick={() => selectStartingFrame(imageJob)}>Use as starting frame</Button> : null}
         </> : null}
         {creatingImage || imageJobQuery?.error ? <Button type="button" variant="ghost" size="sm" disabled={submittingImage || imageJobQueries.some(query => query.isFetching)} onClick={() => { setGenerationError(null); void Promise.all(imageJobQueries.filter(query => !query.data?.isTerminal).map(query => query.refetch())); }}>Refresh status</Button> : null}
         {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s video instructions need review before its starting image can be used for animation.</p> : null}
@@ -592,15 +603,17 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       <section className={styles.scene} style={frameStyle} data-recreation-step={presentation === "recreation" ? "source" : undefined} aria-label="Selected source frame">
         <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">1</span> : null}Source frame</h2><p>{reference.title} · Original scene</p></div><ImageIcon aria-hidden="true" /></div>
         <div className={styles.frame} style={frameStyle}>
-          {frameQuery.data ? <button type="button" className={styles.enlargeButton} aria-label="Enlarge source frame" title="Enlarge source frame" disabled={!frameUrl}
+          {frameQuery.data && !preparation.error ? <button type="button" className={styles.enlargeButton} aria-label="Enlarge source frame" title="Enlarge source frame" disabled={!frameUrl}
             onClick={event => { if (!frameUrl || !frameQuery.data) return; previewTrigger.current = event.currentTarget;
               setEnlargedImage({ url: frameUrl, title: "Source frame", alt: `Selected source frame of ${reference.title}`, width: frameQuery.data.frame.width, height: frameQuery.data.frame.height }); }}>
             <img src={frameUrl ?? undefined} alt={`Selected source frame of ${reference.title}`} width={frameQuery.data.frame.width} height={frameQuery.data.frame.height} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
           </button>
             : frameQuery.isPending ? <p role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Preparing the source frame…</p>
-            : <div role="alert"><p>{frameQuery.error?.message || "The source frame could not be prepared."}</p><Button type="button" variant="outline" onClick={() => void frameQuery.refetch()}><RefreshCw aria-hidden="true" />Try again</Button></div>}
+            : <div role="alert"><p>{preparation.error || frameQuery.error?.message || "The source frame could not be prepared."}</p><Button type="button" variant="outline" onClick={() => void frameQuery.refetch()}><RefreshCw aria-hidden="true" />Try again</Button></div>}
         </div>
-        <p className={styles.caption}>{presentation === "recreation" ? "Keep scene, pose and clothing. Generate without on-screen captions; review the result." : "Keep this scene, pose and clothing. Remove the captions."}</p>
+        <p className={styles.caption}>{draft.referenceOptions?.background === "photo" || draft.referenceOptions?.outfit === "photo"
+          ? "Keep the source pose. Use your background and outfit choices below. Remove the captions."
+          : presentation === "recreation" ? "Keep scene, pose and clothing. Generate without on-screen captions; review the result." : "Keep this scene, pose and clothing. Remove the captions."}</p>
         {motionDraft?.requiresDecision && motionDraft.riskFlags.includes("no_person_in_opening_frame") ? <p className={styles.notice} role="status">This reference opens before the performer appears. Its starting image and reveal need review before it can be animated.</p> : null}
         {motionDraft?.requiresDecision && motionDraft.riskFlags.some(flag => flag === "jump_cut" || flag === "multiple_takes") ? <p className={styles.notice} role="status">This reference contains a cut. Its action sequence needs review for animation from one image.</p> : null}
       </section>
@@ -622,6 +635,18 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           <p>Your last photo selection is remembered in this browser.</p>
           {photoNotice ? <p role="status">{photoNotice}</p> : null}
         </div>
+        <details className="text-sm" aria-label="Background and outfit">
+          <summary className="cursor-pointer">Background and outfit</summary>
+        <fieldset className="mt-2 flex flex-col gap-2" aria-label="Background and outfit choices" disabled={busy || creatingImage || !restored || !images.length || Boolean(retainedFrame)}>
+          {([['background', 'Use background from my photo'], ['outfit', 'Use outfit from my photo']] as const).map(([role, label]) => <label key={role} className="flex items-center gap-2">
+            <input type="checkbox" className="accent-neutral-400" checked={draft.referenceOptions?.[role] === "photo"} onChange={event => {
+              const options = { background: draft.referenceOptions?.background ?? "source", outfit: draft.referenceOptions?.outfit ?? "source", [role]: event.target.checked ? "photo" as const : "source" as const };
+              setDraft(current => updateHookKeyframeDraft(current, { referenceOptions: options })); setSaved(false);
+            }} />{label}
+          </label>)}
+          <p className="text-xs text-muted">Off uses the source starting frame. On uses your first selected photo.</p>
+        </fieldset>
+        </details>
         {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, this model supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
         <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={styles.builder}>Create a new influencer <ExternalLink aria-hidden="true" /><span className="sr-only"> in a new tab; your preparation stays here</span></a>
         {presentation !== "recreation" ? optionalInstructions : null}
@@ -650,7 +675,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         {variations?.entries.some(entry => entry.state === "planned" || entry.state === "rejected") && !submittingImage ? <p className={styles.variationProgress} role="status">Some images were not submitted or were rejected. Accepted requests are preserved; remaining images will not retry automatically.</p> : null}
         {storageError ? <p role="alert" className="text-destructive">{storageError}</p> : saved ? <p role="status">Preparation saved on this browser.</p> : null}
       {presentation !== "recreation" ? <div className={styles.actionButtons}>{presentation === "dialog" && !imageJob?.output ? <Button type="button" variant="ghost" disabled={!ready} onClick={savePreparation}>Save preparation</Button> : null}
-        <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
+        <Button type="button" variant="ghost" className={styles.whiteFrameAction} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
         </div> : null}
         {promptPreview.reviewedWallMotion && promptPreview.animationPrompt ? <details open className={styles.promptDetails} data-reviewed-wall-video-prompt>
           <summary>Video prompt</summary>

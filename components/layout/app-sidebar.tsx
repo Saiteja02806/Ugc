@@ -183,7 +183,7 @@ export function AppSidebar({
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-sidebar/95 px-4 backdrop-blur md:hidden">
         <Brand />
         <button
           type="button"
@@ -201,7 +201,7 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-sidebar transition-[width] duration-200 ease-out motion-reduce:transition-none",
           !workflowNavigation?.enabled && "md:flex",
           collapsed ? "w-[60px]" : "w-[196px]",
         )}
@@ -255,7 +255,7 @@ export function AppSidebar({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${mobileNavigationId}-title`}
-            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-card shadow-floating"
+            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-sidebar shadow-floating"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
               <div id={`${mobileNavigationId}-title`}>
@@ -299,12 +299,12 @@ function Brand() {
   return (
     <Link
       href="/explore"
-      className="flex shrink-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      className="flex shrink-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-small">
         <ProductLogoMark className="size-6" sizes="24px" />
       </span>
-      <ProductWordmark className="text-[17px] text-foreground-strong" />
+      <ProductWordmark variant="ui" className="text-foreground-strong" />
     </Link>
   );
 }

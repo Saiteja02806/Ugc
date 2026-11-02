@@ -41,9 +41,12 @@ export function creatorAccountLegacySelectedDirections(referenceId: string, sour
 export function creatorAccountDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string, originalOpening = false) {
   const entry = getCreatorMiddleFramePrompt(referenceId, sourceSha256);
   const source = originalOpening ? getCreatorAccountSource(referenceId) : undefined;
-  if (entry && originalOpening && frameIndex === 0 && source?.sourceSha256 === sourceSha256 && frameSha256 === source.posterSha256) return buildSourceMotionDirections(entry);
   if (originalOpening) {
     if (frameIndex !== 0 || source?.sourceSha256 !== sourceSha256 || frameSha256 !== source.posterSha256) return undefined;
+    // New source reviews must not rewrite the directions recovered by older jobs.
+    const revised = reviewFor(source)?.originalOpeningDirections;
+    if (revised !== undefined) return revised.includes("PHASE [") ? revised : undefined;
+    if (entry) return buildSourceMotionDirections(entry);
     // New preparations must never silently use an older untimed package.
     const directions = entry ? undefined : reviewFor(source)?.directions;
     return directions?.includes("PHASE [") ? directions : undefined;

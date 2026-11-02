@@ -2366,35 +2366,35 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.06666666666666667]: From the couch smile open mouth and widen eyes as camera moves closer."
+            "action": "PHASE [0–0.105263]: From the couch smile open mouth and widen eyes as camera moves closer."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.06666666666666667–0.111111]: Raise screen-left hand across mouth and lower nose."
+            "action": "PHASE [0.105263–0.175439]: Raise screen-left hand across mouth and lower nose."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.111111–0.188889]: Hold the surprised cover."
+            "action": "PHASE [0.175439–0.298246]: Hold the surprised cover."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.188889–0.31111099999999997]: Briefly close eyes and glance sideways while keeping hand in place."
+            "action": "PHASE [0.298246–0.473684]: Briefly close eyes and glance sideways while keeping hand in place."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.31111099999999997–0.388889]: Lower hand to reveal a closed-lip grin."
+            "action": "PHASE [0.473684–0.526316]: Lower hand to reveal a closed-lip grin."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.388889–0.4444443333333334]: Return gaze toward lens and open into delighted broad smile."
+            "action": "PHASE [0.526316–0.684211]: Return gaze toward lens and open into delighted broad smile."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.4444443333333334–0.6333333333333333]: Hold the broad smile in closer couch selfie."
+            "action": "PHASE [0.684211–0.736842]: Hold the broad smile in closer couch selfie."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.6333333333333333–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.736842–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
           }
         ],
         "camera": "Move from a wider couch selfie into a closer face view and maintain a gentle natural drift.",
@@ -2631,23 +2631,23 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.31111099999999997–0.4444443333333334]: Close eyes, maintaining light outer-eye contact."
+            "action": "PHASE [0.31111099999999997–0.575]: Close eyes, maintaining light outer-eye contact."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4444443333333334–0.5444443333333333]: Release fingertip contact and lower hand."
+            "action": "PHASE [0.575–0.63]: Release fingertip contact and lower hand."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5444443333333333–0.6666666666666666]: Move face and viewpoint forward and sideways with brief handheld blur, leaving the pillow position."
+            "action": "PHASE [0.63–0.8]: Move face and viewpoint forward and sideways with brief handheld blur, leaving the pillow position."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.6666666666666666–0.811111]: Finish closer and shifted toward one edge, brows knitted and mouth strained; no invented tear streams."
+            "action": "PHASE [0.8–0.95]: Continue moving the close viewpoint and face toward the center, brows knitted and mouth strained; no invented tear streams."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.811111–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.95–1]: Finish with the face close and nearly centered as the movement settles, retaining the strained expression and lowered hand."
           }
         ],
         "camera": "Use a shaky close selfie perspective that moves forward and sideways in the latter part.",

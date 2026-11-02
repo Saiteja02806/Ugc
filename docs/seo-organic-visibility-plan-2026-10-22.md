@@ -1,10 +1,10 @@
-# UGC Pilot organic visibility plan
+# Vidmake organic visibility plan
 
 Updated: 25 October 2026 (IST)
 
 ## Focus
 
-Grow search and referral visibility by helping SaaS and mobile-app founders solve a real content problem: explaining an app clearly with useful, reviewable social content. The ReelFarm and other competitor comparisons are paused. This plan prioritizes UGC Pilot's own product evidence, existing search pages, and useful resources that founders may share naturally.
+Grow search and referral visibility by helping SaaS and mobile-app founders solve a real content problem: explaining an app clearly with useful, reviewable social content. The ReelFarm and other competitor comparisons are paused. This plan prioritizes Vidmake's own product evidence, existing search pages, and useful resources that founders may share naturally.
 
 ## What the current evidence says
 
@@ -148,3 +148,17 @@ Today's plan: verify the previous SEO release before adding more content, preser
 
 - Windsor Search Console, 1–27 Oct 2026: /ai-ugc-video-generator received 94 impressions, 0 clicks and average position 78.4149; the exact query “ai ugc video generator” produced 24 impressions and 0 clicks for that page. Page and query reports have different aggregation/privacy limits; do not infer conversions or causation from the small sample.
 - Next action: review the generator page’s existing copy and a verified original product walkthrough against this search intent, then compare a similarly defined later window. The latest guide wave needs substantive editorial and overlap review before further promotion; avoid repeated indexing requests. No deployment, outreach, paid research or indexing action performed.
+
+### Organic visibility research — 2 November 2026
+
+- Windsor connector tools were unavailable in this session; the latest recorded Search Console baseline remains 1–27 October, not fresh November data. A public search for combining AI UGC and a real product demo returned workflow resources including https://www.8frame.co/blog/how-to-make-product-demo-ugc-with-ai and https://www.capcut.com/features/ugc-video-ai-prompts. These are qualitative topic signals, not search-volume or performance evidence.
+- Reviewed Google's cached rendering of https://getugcpilot.com/ai-ugc-video-generator. It already distinguishes generated openings from a separate real product recording and links to the existing demo guide. The actionable gap is proof rather than another generic article: prepare an approved, sanitized original UGC Pilot walkthrough showing the actual hook-to-demo edit and its limitations, then consider placing it on the generator page and linking the existing hook-plus-demo guide. Verify permissions and current UI before any product claims; a site change and release would be needed to publish it.
+- No changes to routes, indexing, analytics, outreach, paid services or production. Recheck Windsor availability and the same settled date-window baseline next run. Search result snippets and cached rendering are not a fresh authenticated product walkthrough.
+
+### Brand migration SEO alignment — 2 November 2026
+
+- Audited the public SEO surface after the move from UGC Pilot to Vidmake. `publicOrigin`, canonical URL generation, sitemap URLs, robots sitemap output, page-level Open Graph metadata and homepage JSON-LD already point at `https://vidmake.io`; the hosted MCP endpoint remains `https://mcp.getugcpilot.com/mcp` intentionally because it is a live service endpoint, not a public SEO URL.
+- Changed legacy public-host redirects in `proxy.ts` from temporary `307` to permanent `308`, preserving the path and query string while allowing search engines to consolidate signals on Vidmake. Protected OAuth, API, webhook, asset and sitemap routes remain excluded from this redirect.
+- Added global Vidmake `applicationName`, canonical, Open Graph and Twitter metadata in `app/layout.tsx` so routes that inherit root metadata no longer emit an unlabeled brand surface.
+- Production release is required before Google can observe the redirect/metadata changes. After release, verify one old public URL and one current URL with a `curl -I`/URL Inspection check, submit only the Vidmake sitemap property if needed, and do not repeatedly request individual URLs. Search Console property ownership, old-domain redirect coverage and Google-selected canonicals remain NOT VERIFIED in this local task.
+- Audited public wording for stale brand terms. The public landing workflow now says “Vidmake studio” instead of the generic “content workspace,” and the cookie-policy description names `vidmake.io`. Internal route names, storage keys, legacy callback hosts and MCP service URLs were intentionally left unchanged because they are implementation/service contracts rather than search-facing brand copy.

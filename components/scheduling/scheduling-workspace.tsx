@@ -1300,7 +1300,7 @@ export function SchedulingWorkspace() {
     <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
       <header className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
             <SocialPlatformIcon className="size-4" platform="instagram" />
             {hasAdditionalPublishingPlatform
               ? `${publishingPlatformSummary} publishing`
@@ -2816,7 +2816,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
       className={cn(
         "min-h-[92px] border-b border-r border-border bg-card p-2 text-left transition hover:bg-card-muted focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-focus xl:min-h-[104px]",
         !day.isCurrentMonth && "bg-card-muted/45 text-muted",
-        selected && "relative z-10 bg-selected ring-2 ring-primary/35",
+        selected && "relative z-10 bg-selected ring-2 ring-foreground/30",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -2824,9 +2824,9 @@ const CalendarDayCell = memo(function CalendarDayCell({
           className={cn(
             "inline-flex size-7 items-center justify-center rounded-lg text-sm font-bold",
             day.isToday
-              ? "bg-brand-soft text-primary"
+              ? "bg-card-muted text-foreground"
               : selected
-                ? "bg-primary text-primary-foreground"
+                ? "bg-foreground text-background"
                 : "text-foreground",
           )}
         >
@@ -2872,8 +2872,8 @@ function CompactCalendarDay({
       className={cn(
         "relative flex min-h-11 items-center justify-center rounded-control text-xs font-bold text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         !day.isCurrentMonth && "text-muted-subtle",
-        day.isToday && !selected && "bg-brand-soft text-primary",
-        selected && "bg-primary text-primary-foreground shadow-sm",
+        day.isToday && !selected && "bg-card-muted text-foreground",
+        selected && "bg-foreground text-background shadow-sm",
       )}
     >
       {day.dayNumber}
@@ -2881,7 +2881,7 @@ function CompactCalendarDay({
         <span
           className={cn(
             "absolute bottom-1 size-1 rounded-full",
-            selected ? "bg-primary-foreground" : "bg-primary",
+            selected ? "bg-background" : "bg-foreground/55",
           )}
         />
       ) : null}

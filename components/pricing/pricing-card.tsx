@@ -193,6 +193,8 @@ export function PricingCard({
               "group flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default",
               isDisabled
                 ? "border border-border bg-card-muted text-muted cursor-default"
+                : action.destination === "workspace"
+                  ? "bg-foreground text-background hover:bg-foreground/90"
                 : isGrowth
                   ? "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm"
                   : "bg-foreground text-background hover:bg-foreground/90",

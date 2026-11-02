@@ -393,7 +393,7 @@ export function InstagramAccountManager() {
                 Plan limit reached
               </Badge>
             ) : (
-              <Button
+              <Button variant="neutral"
                 type="button"
                 size="sm"
                 onClick={() => void addInstagram()}

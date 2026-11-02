@@ -33,6 +33,6 @@ export function readCreatorPrivateJson<T>(relativePath: string, empty: T): T {
 export type CreatorFrame = {index: number; timeSeconds: number; sha256: string; width: number; height: number; bytes: number; reviewNote: string};
 export type CreatorVideo = {id: string; sourceFile: string; sourceSha256: string; posterSha256: string; width: number; height: number; durationSeconds: number; videoBytes: number; posterBytes: number; startingFrame: CreatorFrame};
 export type CreatorCatalog = {version: number; accounts: {id: string; label: string; items: CreatorVideo[]}[]};
-export type CreatorReviews = {reviewedAt: string; method: string; items: {id: string; caption: string; directions: string; sourceSha256: string; selectedFrameDirections: string; selectedFrameSha256: string}[]};
+export type CreatorReviews = {reviewedAt: string; method: string; items: {id: string; caption: string; directions: string; originalOpeningDirections?: string; sourceSha256: string; selectedFrameDirections: string; selectedFrameSha256: string}[]};
 export type CreatorSlide = {id: string; sourceFile: string; sha256: string; width: number; height: number; bytes: number; extension: "jpg" | "webp" | "png"; contentType: string};
 export type CreatorSlideshows = {version: number; id: string; label: string; items: {id: string; sourceFolder: string; title: string; sourceUrl?: string; slides: CreatorSlide[]}[]};

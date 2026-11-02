@@ -34,6 +34,8 @@ test("the app canvas retints inside the shell and the landing button stays white
 
   assert.match(shell, /className="app-canvas /);
   assert.match(css, /\.dark \.app-canvas \{[^}]*--background: #101014;/);
+  assert.match(css, /\.dark \.app-canvas \{[^}]*--card: #17171c;/);
+  assert.match(css, /\.dark:has\(\.app-canvas\)[^{]*\{[^}]*--card: #17171c;/);
   assert.match(css, /\.dark \.app-canvas \.bg-primary \{[^}]*background-color: #0078d4;/);
   assert.match(css, /\.bg-primary \{[^}]*background-color: #0078d4;/);
   assert.doesNotMatch(css, /#8b5cf6|#7c3aed|#c084fc/);
@@ -73,7 +75,7 @@ test("sidebar and workflow chrome stay neutral while the action button stays vio
   assert.match(styles, /\.sign-in-screen \.bg-primary \{[^}]*background-image: none;/);
 });
 
-test("the product mark is the blue play logo and the name uses the brand serif", () => {
+test("the product mark is the blue play logo and the shared name uses medium DM Sans", () => {
   const mark = readFileSync(new URL("../components/brand/product-logo.tsx", import.meta.url), "utf8");
   const signIn = readFileSync(new URL("../app/sign-in/page.tsx", import.meta.url), "utf8");
   const sidebar = readFileSync(new URL("../components/layout/app-sidebar.tsx", import.meta.url), "utf8");
@@ -81,12 +83,14 @@ test("the product mark is the blue play logo and the name uses the brand serif",
   const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 
   assert.match(mark, /vidmake-mark\.png/);
-  assert.match(mark, /--font-brand-serif/);
+  assert.match(mark, /fontFamily:.*Vidmake DM Sans/);
+  assert.match(mark, /font-medium/);
+  assert.doesNotMatch(mark, /font-extrabold|--font-brand-serif/);
   assert.doesNotMatch(mark, /brightness-0|ugc-pilot-icon-/);
   assert.match(layout, /--font-brand-serif/);
   assert.match(layout, /X8wAlsUNDn-IxZoXdj-k5R1WhTKxO8Eb1GEJKzzFyvM/);
   assert.match(signIn, /ProductWordmark/);
-  assert.match(sidebar, /ProductWordmark/);
+  assert.match(sidebar, /ProductWordmark variant="ui"/);
   assert.match(pricing, /ProductWordmark/);
 });
 

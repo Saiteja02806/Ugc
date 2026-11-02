@@ -1,5 +1,31 @@
 # Explore context and UI decision record
 
+## 2026-11-02 Starting-frame status polling repair (local)
+- Starting-frame status reads again poll the saved request or job, recover transient failures, and stop at a verified terminal result. A 404 stays unconfirmed; no replacement generation is submitted automatically. The cause of the reported missing request and hosted acceptance remain unknown.
+
+## 2026-11-02 Darker Explore surfaces and white photo-picker Done (local)
+- Dark in-app cards are a little blacker, and portaled dialogs and popovers inherit matching surfaces when the app shell is open. The existing photo-picker Done action is white. Selection, generation and navigation behavior are unchanged. Production visual acceptance remains pending.
+
+## 2026-11-02 Explore visual refinement (local)
+- The sidebar wordmark uses DM Sans 800. The sidebar uses the darker in-app sidebar surface, and Explore covers, quick-start tiles, and classic workflow panels have tighter corners. Existing workflow controls and layout remain unchanged. Visual and production acceptance are pending.
+
+## 2026-11-02 Explore catalog covers play while visible
+- The Explore catalog workflow and character covers start muted and loop while they are on screen. Leaving the pointer, pressing, or clicking does not pause them. They still stop offscreen, in a hidden tab, or when reduced motion is requested. Reference galleries stay hover-only. The Explore header Upgrade button is white.
+
+## 2026-11-02 In-app containers are one step blacker (local trial)
+- Inside the app, the card, muted surface, selected row, and sidebar token sit closer to the page. The page stays `#101014`. Landing, the blue action fill, and selection borders stay as they are. This is a look trial.
+
+## 2026-11-02 Explore covers are a little darker (local trial)
+- Workflow covers carry a 16% black overlay, and the quick-start cards mix 18% black into the card color. This is a look trial so the catalog can be compared before the darkness is locked.
+
+## 2026-11-02 Hook Your videos overview buttons are plain (local)
+- On Explore → Hook video → Your videos, the header Schedule video button and the empty Hook and Demo Upload video menus use the outline button. This is a look trial: no blue fill and no primary shadow on those controls.
+- Generate video stays the blue action. Change stays an outline menu. The Demo step’s Schedule video button stays filled. Talking Head empty Upload video menus stay filled.
+
+## 2026-11-02 Character studio layout (local)
+- The studio header is Back plus “AI character influencer”, with History on the right. The empty “Studio Canvas” tab is gone.
+- Selected trait names and outlines use the studio blue `#0078D4`. Picked settings stays hidden until a choice differs from the default. Batch size and framing share one row. Outfit colors are plain rectangles. Generation wiring is unchanged.
+
 ## 2026-11-01 Action fill is blue (local)
 - Violet is replaced with flat `#0078D4`, hover `#005A9E`, including pricing and the other pages that used the violet gradient. Explore selection borders stay white. The landing Start Creating button stays white.
 
@@ -72,6 +98,11 @@
   - `FaceSwapDialog`: Clean modal displaying target slide vs selected influencer preview, unified grid of saved AI Influencers and uploaded portraits, direct photo upload, and session 1-click swap preference checkbox.
   - Header indicator: Displays current active influencer badge with "Change" action in the version header for quick switching.
 - Local verification: All 142 worker image tests pass; `lib/ai-studio/image-presentation-ui.test.mjs` passes (5/5); 60 hook starting frame UI tests pass; non-incremental `npx tsc --noEmit` and worker build pass with 0 errors.
+
+## 2026-11-02 Slideshow Face Swap moves to the Create composer
+- The Face Swap control sits in the slideshow instructions box, beside the attach-images button. Opening it shows saved influencers and uploaded portraits, and the reference slides start unselected.
+- The slide strip then shows how many slides can use that face. The user turns on only the slides that should change. Clicking outside that selection closes it and restores the model, credit line, and source-slide selection for the whole generation.
+- A slide with no face selected generates normally. A selected slide receives the chosen face after that slide image exists, through the existing face-swap job. The per-slide Swap Face button and version-header Change control are no longer shown.
 
 ## 2026-11-01 AI Influencer Studio Redesign: Higgsfield-Style Visual Character Creation (local)
 - Completely redesigned the `/explore/build-character` workflow from a text-prompt textarea with 4 checkboxes into a full-featured zero-prompt Visual Influencer Studio inspired by Higgsfield's viral character customizer.
@@ -6560,3 +6591,75 @@ UGC-UI-077-SLIDESHOW-TOOLBAR: latest user request supersedes earlier below-seque
 30 October 2026 — Starting-frame restoration: Previous generations button above thumbnails reveals restored preview/rail on demand. Completed saved results and approval hidden on entry; pending status/recovery remains visible; new generations appear immediately. Owner/draft/reference localStorage records and verified backend job reads retained; existing12-entry chooser is not account-wide unlimited history.59localUItests/types/lintPASS; browser/production acceptance pending, not deployed.
 
 30 October 2026 — UGC-VID-041/UGC-UI-078-PRICE: actual saved Gemini incomplete operations include decodable final JPEGs. Accept incomplete final output only after strict full decode; no resubmission, invalid images stay failed and review remains required. Price query errors must show failure+Retry price, never indefinite Checking price; retain validated cost and pending-job safety.60UI+12worker tests/build/types/lintPASS; local only, no historical job/credit rewrite. Browser/hosted acceptance pending. Receipt docs/gemini-and-starting-price-fix-2026-10-30.md.
+
+## 2026-11-02 Face Swap recovery follow-up (local)
+- Face Swap is a composer selection state beside +; its submit action is hidden until selection closes. Marked references join generation when a face is chosen. Normal unmarked generation is preserved. The chosen face/source mapping is frozen in the saved request and accepted jobs are recorded in owner-scoped browser storage. Swaps reuse a target/face idempotency key and carry slideshow workflow metadata. Browser closure pauses client-side dispatch until recovery; there is no new server-side orchestration guarantee. Live provider output and credit acceptance remain pending.
+
+## 2026-11-02 Compact Face Swap chooser (local)
+- The existing composer face icon opens an anchored portrait chooser instead of rendering a face-library settings block below the instructions. Reference-slide selection keeps one count; the selection footer shows only swap cost. Closing the chooser preserves the chosen face and slide marks. Generation wiring is unchanged by this presentation correction.
+
+## 2026-11-02 Editor action consistency (local)
+- Editor navigation takes a full-width left-aligned action row. Save and return, remix action and starting-frame approval use neutral white fills. Explore Sign up matches Upgrade at 10px, and the sidebar Vidmake name is 18px DM Sans 800. Visual acceptance pending. Slideshow planning receipt: docs/slideshow-ui-plan-2026-11-02.md.
+
+## 2026-11-02 Local starting-frame preparation validation repair
+- UGC-UI-099 (Local starting-frame preparation reaches page error): the development fixture supplied a historical curated frame to a new version-4 opening-only draft. It now reads the existing original-opening extraction endpoint and verifies its receipt/hash with the shared reader.
+- Invalid extracted frame data is handled in the existing source error/retry area, blocks generation/approval, and does not autosave over the valid draft. Historical accepted jobs and timestamps remain unchanged. No layout or palette edit in this repair.
+- UGC-UI-101: the previously invalid UTF-8 source is valid in the newer worktree at repair time; no rewrite was needed. Strict source-decoding regression and local route compilation passed. Visual recheck is pending because local browser control is disabled in Work settings.
+
+## 2026-11-02 Face Swap generation and version policy correction
+- Face Swap never expands the generation source set. Only source slides already selected for generation are eligible for face marks; other reference slides are disabled in Face Swap. Quote counts one swap per unique marked slide when a face is chosen. User confirmed Version 1 only; later versions remain as generated. The job planner skips later versions and duplicate slide entries.
+
+## 2026-11-02 Remaining neutral actions correction (local)
+- Hook editor portal takes a full-width action row, placing Back to videos at the left edge below its title. Shared workflow Generate buttons and starting-frame Generate use neutral white fills. Remix Review keeps its settings destination with a white-filled control appearance. Existing callbacks/disabled guards are retained.
+
+## 2026-11-02 Starting-frame and Face Swap stage persistence (local)
+- New unsubmitted OpenRouter Gemini starting-frame and standalone Face Swap operations now use separate scene, identity and harmonize operation records with stable input fingerprints and persisted stage PNGs. Standalone Face Swap starts at identity using its existing base image.
+- Stage 2 and harmonizer failures propagate and cannot return partial success. Completed stages are reused; known rejected paid requests may retry through the existing atomic operation reservation. Ambiguous provider acceptance stays blocked to avoid duplicate paid submissions.
+
+## 2026-11-02 Starting-frame caption removal through final identity stage (local)
+
+### 2026-11-02 Explicit outfit instructions through both Gemini stages
+
+### 2026-11-02 Independent background/outfit photo options (local)
+
+### 2026-11-02 Character image provider correction and long-prompt verification
+
+User explicitly requires ReAPI or OpenRouter for character images. New gemini_3_pro character batches now pin existing OpenRouter adapter, same model/traits/reference order/credits. ReAPI existing integration is video-only; no new provider dependency or silent fallback introduced. Historical accepted Gemini jobs without provider retain Google recovery route/fingerprint. Existing worker has OpenRouter secret reference configured. Character OpenRouter request explicitly sends2K/9:16 image_config; absent config leaves earlier Hook/standalone callers unchanged. Real selected navy-suit/black-bob/warm-wood-room test completedHTTP200/image1536x2752; crop below waist fails exacthalf framing. Real long-prompt test13383characters+10refs also completed with8074inputtokens, exactsenthash/no truncation. Current app Gemini limit32000characters; app Seedream guard4000characters is not a universal OpenRouter limit.119localchecks/build/types/lintPASS. No deployment/hostedUX acceptance. Receipt docs/character-openrouter-route-2026-11-02.md.
+
+2026-11-02 user UI clarification: Background and outfit is now a native collapsed-by-default details/summary disclosure in the same Your photos location. Both existing controls/helper text reveal on click or keyboard activation. No preference, default, provider, billing or generation behavior change. Component regression asserts initial collapse and both controls nested inside; browser visual retest unavailable because local browser use is disabled. Receipt docs/starting-frame-background-outfit-disclosure-2026-11-02.md.
+
+User clarification: source starting frame supplies both background and outfit by default. Existing starting-frame Your photos section now has two independent checkboxes, Use background from my photo and Use outfit from my photo. Both off uses source; either on uses the FIRST selected owned influencer photo for that role. Supporting photos stay identity-only. No extra image chooser or separate garment/background upload role. Choices persist in browser draft, preparation input key, server receipt and paid fingerprints; changing a choice invalidates prior approval. Explicit UI roles override conflicting prompt defaults/custom prose; source t=0 pose/camera/hands/props/light and caption cleanup remain. New role-aware image labels reach Google, OpenRouter and GPT/Seedream paths; Gemini scene+identity both receive roles. Historical absent-options jobs remain immutable. Desktop1440 browser interaction/reload/mock submission/old-result invalidation verified; screenshot .tmp/starting-frame-reference-options/desktop.jpg.244tests/build/typesPASS. Mobile browser check stopped by disabled local browser setting; generated background acceptance unverified after real trial200/noimage, stopped uncertain/no retry. No deployment. Receipt docs/starting-frame-reference-options-2026-11-02.md.
+
+User authorizes completing the existing Starting image prompt flow for an influencer outfit or described garment. New Gemini/OpenRouter custom starting-frame jobs freeze `startingFrameOutfitPrompt` equal to receipt.customImagePrompt. Worker validates equality, scopes it to verified starting-frame jobs with cleanup enabled, fingerprints it and passes it to both stages. Explicit outfit requests override default source clothing; identity-photo backgrounds/pose/lighting remain excluded. Cleanup preserves the requested garment rather than reimposing source clothing. No custom outfit request retains source wardrobe. Absent field leaves historical stage inputs/fingerprints unchanged; standalone Face Swap/harmonizer/UI unchanged. One real two-stage trial retained requested gray top and source purple-shelf room and removed main caption; same saved result replay made0providercalls. Full-frame QA still FAILED due Stage2 crop/extra microphone and remaining physical lettering.184localtests/build/typesPASS. No deployment. Receipt docs/starting-frame-outfit-2026-11-02.md; UGC-VID-051 locally verified wiring/one garment sample, broader UGC-VID-049 remainsOPEN.
+
+User accepts face-swap/harmonizer behavior and requires captions removed during starting-frame generation. New Gemini/OpenRouter starting-frame admissions freeze `startingFrameTextCleanup: true` in internal job input. Worker validates it as starting-frame-only, includes it in provider fingerprint and applies the same text/logo cleanup to both scene and identity stages, including custom starting-image prompts. Preserve source room/pose/identity; reconstruct material under lettering. Standalone Face Swap and harmonizer are unchanged. Absent flag preserves historical prompts/fingerprints and recovered jobs are not rewritten. Existing completed images are not automatically regenerated. Both website/API and worker must contain this change for new jobs to use it. Local183tests, workerbuild/typesPASS; real trial returned200/noimage and stopped uncertain without retry. Generated cleanup and production acceptance NOT VERIFIED. Receipt docs/starting-frame-caption-cleanup-2026-11-02.md; UGC-VID-049 remains open.
+- The existing operation ledger is reused without schema/billing changes. Already recorded unmarked operations keep their prior recovery path; existing completed outputs are not retroactively certified. Historical v4 scene/clarity/person order uses the correct identity offset on the stage path.
+- Palette, layout and UI controls unchanged by this patch. Local fault-injection tests pass; real provider quality and hosted billing acceptance remain unverified. Receipt: docs/starting-frame-durable-stages-2026-11-02.md.
+
+
+### 2026-11-02 — Neutral media and Settings actions
+User requests gray/white buttons beneath AI Studio images/videos and white Settings primary actions. Explicit Button neutral variant uses #f5f3f0 with dark text; image/video result selection actions opt in. Download/Open stay gray, Copy success stays neutral. Settings Apply, Save defaults, billing/Upgrade, Connect and feedback Submit opt in, as do shared media-library Upload/Use/Save controls used by Settings. Existing destructive/outline actions and all handlers, persistence and payloads remain unchanged. Local visual checks and hosted acceptance are separate.
+
+
+### 2026-11-02 — Neutral workflow sliders
+User explicitly requests gray playback handles instead of blue across workflows. App-canvas and portaled dialog range inputs now share #a3a3a3 accent, overriding existing local primary accents. Color only: preserve seek clocks, boundaries, steps, handlers, keyboard/touch behavior, audio and layout. Browser-native media shadow controls remain browser-owned; this policy covers application-rendered range sliders.
+
+## 2026-11-02 — Final Hook/account source-to-prompt review (local)
+
+The current local active gallery contains106 public Hook references (including the three reclassified reaction clips); the two private creator accounts contain six videos each. All118 now have source-frame review coverage in outputs/hook-prompt-frame-audit-2026-10-30. This is not a generated-output pass or live deployment claim.
+
+Final corrections keep Hook107's blink near the source ending and remove an unsupported palm-facing instruction from reclassified06. Six private new-opening directions were corrected after review of all1040 private decoded frames. `CreatorReviews.originalOpeningDirections` is an optional source-hash-bound new-recreation override; `creatorAccountDirections(..., originalOpening=true)` resolves it only for verified frame0/poster input. An explicitly present empty/untimed override blocks rather than falling back. Historical `directions`, `selectedFrameDirections`, middle-frame entries and existing jobs remain unchanged. Explicit user motion instructions and empty drafts remain authoritative.
+
+The existing private package key was read only in memory to regenerate creator-account-reviews.json.enc locally. Production-mode reader verified two creators/12 prompts, original frame0 media and six new overrides; no environment settings, hosted database or deployment changed. Local tests and production-mode package reading do not establish hosted activation or model adherence. Receipt: docs/hook-account-source-audit-completion-2026-11-02.md.
+
+
+### 2026-11-02 — Slideshow Generate and Face Swap readiness
+Slideshows uses the same full-width44px white Generate action as classic video workflows; remove the Image prompt compact/right alignment override. Correct singular slide label. Face Swap selection still hides Generate and leaves source generation unchanged. Admission UI checks base generation plus one swap per distinct marked slide, independent of versions; ordinary generation cost summary remains base-only and face cost appears in Face Swap state. Show a separate insufficient-balance warning when selected swaps exceed balance. This is a client affordability precheck, not a server reservation of the whole batch; server per-job credit admission remains authoritative. Face library failures show separate saved-face/portrait Retry actions and preserve selected identity/cached faces. UGC-UI-104/105 track local verification.
+
+
+### 2026-11-02 — Lighter Vidmake wordmark and Pricing dark palette
+Explicit user preference supersedes earlier DM Sans800 sidebar and Instrument Serif display treatment: shared wordmark now DM Sans500 using existing local500 font asset; retain UI18px, icon and body fonts. Pricing-only dark tokens match Explore canvas#101014/card#17171c with darker inner surfaces; light theme and unrelated marketing palettes unchanged. Pricing amounts, allowances, billing/checkout and navigation remain unchanged. UGC-UI-106 tracks local acceptance.
+
+
+### 2026-11-02 — Pricing accent and inclusion simplification
+Explicit request: Pricing Open workspace actions neutral white/gray including current/complimentary Growth; Get Growth remains blue. Smaller hook/video/credit view pills; annual2months-free tag removed without changing annual prices/savings. Four workflow icon/access accents neutral gray. Paid20/50 daily concept claims removed from plan feature presentation, numerical comparison row and related FAQ; underlying dailyContentPieces/account entitlements retained. Clarify existing no-free-AI-credits policy in trial/credit copy, replacing misleading0free phrasing. UGC-UI-107.

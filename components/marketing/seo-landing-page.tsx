@@ -388,7 +388,7 @@ export const seoPageContent = {
         eyebrow: "Creation",
         title: "Choose the right content format",
         description:
-          "Work with carousel, hook-video, and text-led video formats from the same content workspace.",
+          "Work with carousel, hook-video, and text-led video formats in the same Vidmake studio.",
       },
       {
         eyebrow: "Decision",

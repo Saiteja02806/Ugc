@@ -127,7 +127,7 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedU
           event.currentTarget.value = "";
           void addFiles(files);
         }} />
-        <div data-reference-tile className="relative size-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card-muted">
+        <div data-reference-tile className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-card-muted">
         <div className={`absolute inset-0 grid gap-0.5 ${selections.length + pending.length > 4 ? "grid-cols-3" : selections.length + pending.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
         {selections.map((selection, index) => <ReferenceUploadPreview key={selection.asset.id} fillContainer kind={selection.kind} url={selection.asset.url} name={selection.asset.fileName || selection.asset.title} label={`${selection.kind === "image" ? "Image" : selection.kind === "video" ? "Video" : "Audio"} ${index + 1}`} disabled={disabled || busy} onRemove={() => { const next = selections.filter(item => item.asset.id !== selection.asset.id); selectionsRef.current = next; onChange(next); reportError(null); }} />)}
         {pending.map(preview => <ReferenceUploadPreview key={preview.index} fillContainer kind={preview.kind} url={preview.url} name={preview.file.name} label="Reference" pending queued={preview.index > uploadIndex} />)}

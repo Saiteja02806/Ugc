@@ -24,6 +24,18 @@ test("recreation prompt results can be approved and restored alongside earlier r
     assert.equal(restored?.approval?.assetId, imageId);
   }
 });
+
+test("source defaults and independent photo roles persist and invalidate an old approved frame", () => {
+  assert.equal(createHookKeyframeDraft(scope).referenceOptions, undefined);
+  const previous = approveHookKeyframeImage(generated());
+  for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) {
+    const changed = updateHookKeyframeDraft(previous, { referenceOptions: { background, outfit } });
+    assert.equal(changed.generatedImage, null);
+    assert.equal(changed.approval, null);
+    assert.notEqual(hookKeyframeInputKey(changed), hookKeyframeInputKey(previous));
+    assert.deepEqual(readHookKeyframeDraft(serializeHookKeyframeDraft(changed), scope)?.referenceOptions, { background, outfit });
+  }
+});
 const duration = 4;
 // This explicitly reviewed record exists only in this unit test. It promotes no
 // production Hook and makes no claim about generated-media visual acceptance.

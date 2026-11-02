@@ -651,7 +651,9 @@ for (const format of ["hook"]) {
   test(`${format}: an empty video preview offers direct source actions without an Edit tab`, () => {
     const h = harness(format, "", { selected: null }); nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
     const choose = nodes(h.render()).find(n => n.type === "WorkflowClipSourceActions");
-    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false); choose.props.onChooseAssets();
+    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false);
+    if (format === "hook") assert.equal(choose.props.tone, "neutral");
+    choose.props.onChooseAssets();
     assert.equal(nodes(h.render()).find(n => n.type === "WorkflowVideoAssetPicker").props.open, true);
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
   });

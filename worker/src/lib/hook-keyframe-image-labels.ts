@@ -1,6 +1,12 @@
 /** Browser-safe image-role instructions shared by preview and providers. */
-export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 = 2): string[] {
+import type { StartingFrameReferenceOptions } from "./starting-frame-reference-options.ts";
+export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 = 2, options?: StartingFrameReferenceOptions): string[] {
   if (!Number.isInteger(personImageCount) || personImageCount < 1 || personImageCount > 5) throw new Error("Choose one main face photo and up to four supporting views.");
+  if (promptVersion === 7 && options) return [
+    `IMAGE 1 — ORIGINAL_OPENING_SCENE. Source t=0 supplies camera, pose, expression, hands, props, occlusion and lighting.${options.background === "source" ? " Keep this background." : " Background comes from Image 2 instead."}${options.outfit === "source" ? " Keep this outfit." : " Outfit comes from Image 2 instead."} Remove all captions, logos and readable text.`,
+    `IMAGE 2 — MAIN_INFLUENCER. Sole facial identity authority.${options.background === "photo" ? " Also use this photo's background." : " Do not copy this photo's background."}${options.outfit === "photo" ? " Also use this photo's clothing." : " Do not copy this photo's clothing."} Keep source pose, camera and illumination.`,
+    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_IDENTITY. Same person's facial identity only; no background, outfit, pose or lighting.`),
+  ];
   if (promptVersion === 7) return [
     "IMAGE 1 — ORIGINAL_OPENING_SCENE. Source frame0 is the sole authority for lighting direction and color, exposure, shadows, outfit, camera, pose, hands, props and occlusion. Remove all captions, physical logos and readable text while restoring those surfaces; do not use the source person's identity.",
     "IMAGE 2 — INFLUENCER_IDENTITY. Depict this person's facial proportions and natural identity in Image1's scene, outfit and lighting. Do not import this photo's room, clothing, light, pose or expression.",

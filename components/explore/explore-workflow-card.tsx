@@ -8,7 +8,7 @@ import styles from "@/components/explore/explore-workspace.module.css";
 import type { ExploreWorkflow } from "@/lib/explore/workflows";
 
 export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: ExploreWorkflow; localPreview: boolean }) {
-  const videoRef = useCoverPlayback(workflow.coverVideo, "a", true);
+  const videoRef = useCoverPlayback(workflow.coverVideo, "a", true, true);
 
   return (
     <article className={styles.workflowCard}>

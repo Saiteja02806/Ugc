@@ -191,6 +191,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   }, [step]);
   const [slideIndex, setSlideIndex] = useState(() => { const value = Number(searchParams.get("slide")); return Number.isInteger(value) && value >= 1 && value <= 14 ? value - 1 : 0; });
   const [slideSelection, setSlideSelection] = useState<{ referenceId: string; ids: string[] } | null>(null);
+  const [faceSwapOpen, setFaceSwapOpen] = useState(false);
+  const [rawFaceSwapSlideIds, setFaceSwapSlideIds] = useState<string[]>([]);
+  const [faceSwapInfluencer, setFaceSwapInfluencer] = useState<{ id: string; url: string; title: string } | null>(null);
   const [pickedVideo, setSelectedVideo] = useState<FormatVideoSource | null>(localPreview ? previewVideo ?? null : null);
   const restoredVideo = useQuery({ queryKey: ["explore-edit-restore", user?.uid, format, initialMode, editVideoId], enabled: !localPreview && !pickedVideo && Boolean(user) && format !== "slideshow" && isExploreUuid(editVideoId), queryFn: async () => {
     const token = await getCurrentUserIdToken(user?.uid); if (!token || !editVideoId) throw new Error("Sign in to restore your video edit.");
@@ -312,11 +315,22 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
       : [reference.slides[activeSlideIndex]?.id].filter((id): id is string => Boolean(id))
     : [];
   // Selected slides generate in reference order, once per requested version.
+  const faceSwapSlideIds = rawFaceSwapSlideIds.filter(id => selectedSlideIds.includes(id));
   const contextSlides = reference?.slides.filter(slide => selectedSlideIds.includes(slide.id)) ?? [];
   const primarySlide = contextSlides.find(slide => slide.id === reference?.slides[activeSlideIndex]?.id) ?? contextSlides[0];
   const sourceSlides = slideshowRegenerationImage && primarySlide ? [primarySlide, ...contextSlides.filter(slide => slide.id !== primarySlide.id)] : contextSlides;
   const sourceImages = sourceSlides.map(slide => slide.generationUrl ?? slide.url);
   const sourceImage = format === "slideshow" ? sourceImages[0] : reference?.posterUrl;
+  useEffect(() => {
+    if (format !== "slideshow" || !faceSwapOpen) return;
+    function closeFaceSwap(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-face-swap-control]")) return;
+      setFaceSwapOpen(false);
+    }
+    document.addEventListener("pointerdown", closeFaceSwap);
+    return () => document.removeEventListener("pointerdown", closeFaceSwap);
+  }, [format, faceSwapOpen]);
   const resultLabel = format === "slideshow" ? "Your Slides" : "Your videos";
   // Returning from a finished video must keep each source clip editable.
   // The combined publishing file belongs to Schedule's final preview.
@@ -518,7 +532,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     setRegenerationSlideNumber(index + 1); setSlideshowRegenerationImage(image ?? null);
     setStep("edit");
   }
-  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} disabled={generating || slideshowSaving} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
+  const slideshowFaceSwap = format === "slideshow" && !slideshowRegenerationImage ? { open: faceSwapOpen, onOpenChange: setFaceSwapOpen, slideIds: faceSwapSlideIds, onSlideIdsChange: setFaceSwapSlideIds, influencer: faceSwapInfluencer, onInfluencerChange: setFaceSwapInfluencer, eligibleCount: selectedSlideIds.length } : undefined;
+  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} faceSwap={slideshowFaceSwap} disabled={generating || slideshowSaving} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
   const startingImageReference = startingFrameEnabled && Boolean(reference);
   const recreateView = {
     contextBanner: slideshowRegenerationImage ? <p className="text-sm text-muted">Describe the change for slide {regenerationSlideNumber}. Your current image and editable text stay in place until you choose a replacement.</p> : localPreview && previewContextBanner && reference?.pairedAudio ? <div data-music-layout-review>{previewContextBanner}</div> : contextBanner,
@@ -526,6 +541,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     referenceImageUrls: format === "slideshow" && !slideshowRegenerationImage && !slideshowUploadBusy ? sourceImages : undefined,
     slideshowSources: format === "slideshow" && !slideshowRegenerationImage && reference && !slideshowUploadBusy ? sourceSlides.map(slide => ({ referenceId: reference.id, slideId: slide.id, slideNumber: reference.slides.findIndex(original => original.id === slide.id) + 1 })) : undefined,
     slideshowSlideCount: format === "slideshow" && !slideshowRegenerationImage && sourceImages.length ? sourceImages.length : undefined,
+    slideshowFaceSwap,
     referenceImageAssetId: format === "slideshow" ? slideshowRegenerationImage?.mediaAssetId ?? slideshowRegenerationImage?.id : undefined,
     styleVideo: !startingImageReference && !startingFrame && format !== "slideshow" && reference?.videoUrl ? { id: reference.id, selectionRevision: referenceSelectionRevision, url: reference.videoUrl, name: reference.title, duration: reference.durationSeconds ?? null, generationPrompt: reference.generationPrompt } : undefined,
     startingFramePreparation: startingImageReference && !startingFrame && reference ? { referenceId: reference.id, onOpen: openHookPreparation } : undefined,
@@ -605,7 +621,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
                     <div className={styles.emptyClipTitle}><h3>Hook video</h3></div>
                     <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Upload or choose another video here." : demoSelected ? "You can schedule your demo on its own, or add an opening here." : "Upload or choose an opening video, a demo, or both."}</p>
                   </div>
-                  <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="hook video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onGenerate={chooseOpeningInCreate} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} /></div>
+                  <div className={styles.emptyClipActions} data-overview-upload="neutral"><WorkflowClipSourceActions tone="neutral" label="hook video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onGenerate={chooseOpeningInCreate} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} /></div>
                   {inlineOpeningError ? <p role="alert" className="col-span-full text-xs text-destructive">{inlineOpeningError}</p> : null}
                 </div> : null}
               </div>

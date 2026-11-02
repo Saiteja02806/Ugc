@@ -92,7 +92,7 @@ export function PublishingPreferencesSettings() {
     <p className="text-sm leading-6 text-muted">Comment moderation and age restrictions are managed on the destination platform.</p>
     {error ? <p role="alert" className="text-sm text-error">{error}</p> : null}
     {saved === null ? error ? <Button variant="outline" onClick={() => { setError(null); setRetry((current) => current + 1); }}>Retry loading defaults</Button> : <p role="status" className="text-sm text-muted">Loading your publishing defaults…</p>
-      : <Button disabled={busy || unchanged} onClick={save}>{busy ? "Saving…" : "Save publishing defaults"}</Button>}
+      : <Button variant="neutral" disabled={busy || unchanged} onClick={save}>{busy ? "Saving…" : "Save publishing defaults"}</Button>}
     {message ? <p role="status" className="text-sm text-muted">{message}</p> : null}
   </section>;
 }

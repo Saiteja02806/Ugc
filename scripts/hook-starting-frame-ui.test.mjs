@@ -24,7 +24,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
+function harness({ priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, frameOverride = {}, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = uuidStart;
   const jobs = new Map();
@@ -33,7 +33,7 @@ function harness({ priceError = false, captureCreatorDirections, referenceOverri
   const key = drafts.hookKeyframeDraftStorageKey(ownerId, draftId, referenceId);
   if (raw) stored.set(key, raw);
   const storage = { getItem: id => stored.get(id) ?? null, setItem: (id, value) => stored.set(id, value), removeItem: id => stored.delete(id) };
-  const frameData = frameError ? undefined : { referenceId, sourceSha256: sourceHash, frame: { index: 0, timeSeconds: 0, width: frameWidth, height: frameHeight, sha256: "b".repeat(64) }, blob: new Blob(["frame"]) };
+  let frameData = frameError ? undefined : { referenceId, sourceSha256: sourceHash, frame: { index: 0, timeSeconds: 0, width: frameWidth, height: frameHeight, sha256: "b".repeat(64), ...frameOverride }, blob: new Blob(["frame"]) };
   const historyData = { pages: [{ images: [{ mediaAssetId: secondId, jobId: "saved-influencer" }], nextCursor: null }] };
   const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
   const imports = {
@@ -107,6 +107,7 @@ function harness({ priceError = false, captureCreatorDirections, referenceOverri
     } },
     jobFor(id) { return jobs.get(id); },
     setStatusReadError(value) { statusReadError = value; },
+    repairFrame() { frameData = { ...frameData, frame: { ...frameData.frame, index: 0, timeSeconds: 0 } }; },
     render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime,
       reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) });
       for (const image of nodes(tree).filter(node => node.type === "img")) if (image.props.ref) image.props.ref.current = { src: "", removeAttribute() {} };
@@ -118,6 +119,24 @@ function harness({ priceError = false, captureCreatorDirections, referenceOverri
 }
 function find(tree, type) { return nodes(tree).find(node => node.type === type); }
 function button(tree, label) { return nodes(tree).find(node => node.type === "Button" && (node.props?.["aria-label"] === label || text(node).trim() === label)); }
+
+test("incompatible extracted frame stays recoverable without crashing, overwriting inputs or submitting", async () => {
+  const original = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: [photoId] });
+  const raw = drafts.serializeHookKeyframeDraft(original);
+  const h = harness({ raw, frameOverride: { index: 12, timeSeconds: 0.4 } });
+  h.render(); await h.settle(); let tree = h.render();
+  assert.match(text(tree), /could not be verified/);
+  assert.ok(button(tree, "Try again"));
+  assert.equal(h.stored.get(h.key), raw);
+  const generate = button(tree, "Generate starting image");
+  assert.equal(generate.props.disabled, true);
+  await generate.props.onClick();
+  assert.equal(h.submissions.length, 0);
+  h.repairFrame(); tree = h.render(); await h.settle(); tree = h.render();
+  assert.doesNotMatch(text(tree), /could not be verified/);
+  assert.equal(button(tree, "Generate starting image").props.disabled, false);
+  assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key), scope).imageAssetIds, [photoId]);
+});
 
 test("fresh recreation resolves remembered photos once without submitting generation", async () => {
   const first = harness(); first.render(); await first.settle();
@@ -897,7 +916,7 @@ test("full prompt editing, saving, default restoration and application reset use
  button(tree,"Save my prompt").props.onClick();tree=h.render();
  const prefKey="ugc-starting-image-prompt:v1:owner";
  assert.equal(JSON.parse(h.stored.get(prefKey)).text,custom);
- nodes(tree).find(n=>n.type==="input"&&n.props.type==="checkbox").props.onChange({target:{checked:true}});
+ nodes(nodes(tree).find(n=>n.type==="label"&&text(n).includes("Use as my default in this browser"))).find(n=>n.type==="input").props.onChange({target:{checked:true}});
  tree=h.render();assert.equal(JSON.parse(h.stored.get(prefKey)).useDefault,true);
  button(tree,"Use application prompt").props.onClick();h.render();assert.match(editor().props.value,/SOURCE SHOT/);
  const fresh=harness();fresh.stored.set(prefKey,h.stored.get(prefKey));fresh.render();await fresh.settle();
@@ -923,4 +942,24 @@ test("starting image prompt is collapsed by default with the full editor and pre
  assert.ok(text(hiddenPreferences).includes("Save my prompt"));
  assert.ok(text(hiddenPreferences).includes("Use as my default in this browser"));
  assert.equal(nodes(hiddenPreferences).some(n=>n.type==="textarea"),false,"editable prompt must remain outside hidden preferences");
+});
+
+test("background and outfit options default to source and persist independent photo roles into submission", async () => {
+ const h=harness();h.render();await h.settle();let tree=h.render();
+ find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
+ const choice=label=>nodes(nodes(h.render()).find(n=>n.type==="label"&&text(n).trim()===label)).find(n=>n.type==="input");
+ const disclosure=nodes(tree).find(n=>n.type==="details"&&n.props["aria-label"]==="Background and outfit");
+ assert.ok(disclosure);
+ assert.notEqual(disclosure.props.open,true,"background and outfit choices stay collapsed by default");
+ assert.equal(text(nodes(disclosure).find(n=>n.type==="summary")),"Background and outfit");
+ assert.equal(nodes(disclosure).filter(n=>n.type==="input"&&n.props.type==="checkbox").length,2);
+ assert.equal(choice("Use background from my photo").props.checked,false);
+ assert.equal(choice("Use outfit from my photo").props.checked,false);
+ choice("Use outfit from my photo").props.onChange({target:{checked:true}});tree=h.render();
+ assert.equal(choice("Use background from my photo").props.checked,false);
+ assert.equal(choice("Use outfit from my photo").props.checked,true);
+ await h.settle();tree=h.render();
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"photo"});
+ await button(tree,"Generate starting image").props.onClick();await h.settle();
+ assert.deepEqual(h.submissions[0].referenceOptions,{background:"source",outfit:"photo"});
 });

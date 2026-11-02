@@ -17,7 +17,7 @@ export default function CookiePolicyPage() {
     <LegalPageShell
       eyebrow="Cookie Policy"
       title="How Vidmake uses cookies"
-      description="This policy explains how Vidmake uses cookies and similar technologies on getugcpilot.com."
+      description="This policy explains how Vidmake uses cookies and similar technologies on vidmake.io."
     >
       <div className="flex flex-col gap-8">
         <LegalSection title="What cookies do">

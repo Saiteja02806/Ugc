@@ -22,8 +22,17 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 0;
-  border-radius: 16px;
-  background: var(--card-muted);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card-muted) 72%, black);
+}
+
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgb(0 0 0 / 16%);
+  pointer-events: none;
 }
 
 .cover video,
@@ -50,6 +59,7 @@
   height: 32px;
   align-items: center;
   justify-content: center;
+  z-index: 2;
   border-radius: 999px;
   background: rgb(16 16 20 / 62%);
   color: var(--foreground-strong);
@@ -112,8 +122,8 @@
   justify-content: space-between;
   gap: 8px;
   border: 0;
-  border-radius: 16px;
-  background: var(--card);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 82%, black);
   padding: 14px;
   text-align: left;
   transition: background-color 160ms ease;

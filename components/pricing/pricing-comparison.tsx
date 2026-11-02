@@ -176,27 +176,6 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     </td>
                   ))}
                 </tr>
-                <tr className="hover:bg-card-muted/30 transition-colors">
-                  <th
-                    scope="row"
-                    className="px-5 py-3.5 text-xs font-normal text-muted"
-                  >
-                    Daily slideshow concepts to review
-                  </th>
-                  {plans.map((plan) => (
-                    <td
-                      key={plan.slug}
-                      className={cn(
-                        "px-4 py-3.5 text-center text-xs font-medium text-foreground-strong",
-                        plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
-                      )}
-                    >
-                      {typeof plan.dailyContentPieces === "number"
-                        ? `${plan.dailyContentPieces} / day`
-                        : plan.dailyContentPieces}
-                    </td>
-                  ))}
-                </tr>
                 {featureMatrix.map((row) => (
                   <tr key={row.label} className="hover:bg-card-muted/30 transition-colors">
                     <th

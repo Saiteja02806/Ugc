@@ -148,3 +148,33 @@ export function compileInfluencerPrompt(
     displayPills,
   };
 }
+
+/** Pills for choices the user changed. Defaults stay off the strip so it does not fill the dock. */
+export function changedInfluencerPills(
+  selection: InfluencerSelectionState,
+  pills: CompiledInfluencerPayload["displayPills"],
+) {
+  const defaults = DEFAULT_INFLUENCER_SELECTION;
+  const categories = new Set<string>();
+  if (selection.characterTypeId !== defaults.characterTypeId) categories.add("Character");
+  if (selection.backgroundId !== defaults.backgroundId) categories.add("Background");
+  if (selection.genderId !== defaults.genderId) categories.add("Gender");
+  if (selection.ethnicityId !== defaults.ethnicityId) categories.add("Ethnicity");
+  if (selection.ageId !== defaults.ageId) categories.add("Age");
+  if (selection.skinToneId !== defaults.skinToneId) categories.add("Skin");
+  if (selection.headShapeId !== defaults.headShapeId) categories.add("Head");
+  if (selection.neckId !== defaults.neckId) categories.add("Neck");
+  if (selection.eyeShapeId !== defaults.eyeShapeId) categories.add("Eyes");
+  if (selection.eyeColorId !== defaults.eyeColorId) categories.add("Eye Color");
+  if (selection.hairStyleId !== defaults.hairStyleId) categories.add("Hairstyle");
+  if (selection.hairColorId !== defaults.hairColorId) categories.add("Hair Color");
+  if (selection.outfitId !== defaults.outfitId) categories.add("Outfit");
+  if (selection.outfitColorId !== defaults.outfitColorId) categories.add("Outfit Color");
+  if (selection.heightId !== defaults.heightId) categories.add("Height");
+  if (selection.buildId !== defaults.buildId) categories.add("Build");
+  if (selection.framing !== defaults.framing) categories.add("Framing");
+  const sameAccessories = selection.accessoryIds.length === defaults.accessoryIds.length
+    && selection.accessoryIds.every((id, index) => id === defaults.accessoryIds[index]);
+  if (!sameAccessories) categories.add("Accessory");
+  return pills.filter((pill) => categories.has(pill.category));
+}

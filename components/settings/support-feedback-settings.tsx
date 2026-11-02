@@ -288,7 +288,7 @@ export function SupportFeedbackSettings({
             ) : null}
 
             <div className="flex justify-end">
-              <Button
+              <Button variant="neutral"
                 type="submit"
                 size="lg"
                 disabled={

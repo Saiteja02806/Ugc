@@ -72,3 +72,8 @@
 .editorRoot .stylePanel > div > .fontControls { grid-column: 1 / -1; }
 .editorRoot[data-wall-mode="text"] .controlGrid > .remixControlSection,
 .editorRoot[data-wall-mode="text"] .controlGrid > .textControlSection { grid-column: 1; grid-row: auto; }
+
+.editorActions { width: 100%; }
+.editorActions .actionBar { flex: 1 0 100%; justify-content: flex-start; }
+.editorActions .actionBar button:not(:first-child) { background: #f5f3f0; color: #101014; }
+.editorActions .actionBar button:not(:first-child):hover { background: #dedbd7; color: #101014; }

@@ -31,14 +31,14 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
           <div className="flex shrink-0 items-center gap-2">
             <NextLink
               href="/pricing"
-              className="inline-flex h-9 items-center rounded-[10px] border border-border-strong bg-card px-3.5 text-sm font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-9 items-center rounded-[10px] bg-foreground-strong px-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Upgrade
             </NextLink>
             {user ? null : (
               <NextLink
                 href="/sign-in"
-                className="inline-flex h-9 items-center rounded-full bg-foreground-strong px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex h-9 items-center rounded-[10px] bg-foreground-strong px-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 Sign up
               </NextLink>

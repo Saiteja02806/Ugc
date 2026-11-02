@@ -1,4 +1,5 @@
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { startingFrameReferenceInstructions, withStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "./starting-frame-reference-options.js";
 import { AI_STUDIO_IMAGE_RATIOS, type AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { harmonizeStartingFrameImage, STARTING_FRAME_HARMONIZER_GRAIN } from "./image-harmonizer.js";
@@ -7,14 +8,34 @@ export const OPENROUTER_GEMINI_3_PRO_IMAGE_MODEL = "google/gemini-3-pro-image";
 const API_ROOT = "https://openrouter.ai/api/v1";
 const MAX_RESPONSE_BYTES = 48 * 1024 * 1024;
 
+export type ImageStageResult = { buffer: Buffer; model: string; requestId?: string };
+export type ImageStageRunner = (stage: "scene" | "identity" | "harmonize", input: unknown, action: () => Promise<ImageStageResult>) => Promise<ImageStageResult>;
+const directStage: ImageStageRunner = (_stage, _input, action) => action();
+
+const STARTING_FRAME_TEXT_CLEANUP = "STARTING-FRAME TEXT CLEANUP: Return a caption-free photograph. Remove every creator caption, subtitle, hook word, emoji, watermark and graphic overlay, including letter outlines, shadows and fragments. Also remove physical logos, branding and readable text on clothing, props, screens and background surfaces. Reconstruct the actual fabric, skin or scene material beneath the lettering with matching texture and light. Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity; do not blur, crop, cover text with a box, replace the background, or add replacement lettering. If the input is already clean, keep it clean. This cleanup requirement applies to the final image as well as the scene stage.";
+
+function startingFrameCleanup(outfitPrompt?: string, options?: StartingFrameReferenceOptions) {
+  if (options) return STARTING_FRAME_TEXT_CLEANUP.replace("Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity;",
+    "Preserve the background and outfit selected in USER-SELECTED IMAGE ROLES while reconstructing their surfaces. Keep source camera, crop, pose, hands, props and influencer identity;");
+  // Keep older accepted jobs' stage inputs byte-for-byte stable.
+  return outfitPrompt ? STARTING_FRAME_TEXT_CLEANUP.replace("Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity;",
+    "Preserve the user's explicitly requested outfit while removing its lettering. If no outfit change is requested, keep the source video's outfit. Keep the source room, objects, camera, crop, pose, hands, lighting and influencer identity;") : STARTING_FRAME_TEXT_CLEANUP;
+}
+
+function startingFrameOutfitInstructions(prompt?: string) {
+  return prompt ? `STARTING-FRAME CUSTOM INSTRUCTIONS:\n${prompt}\n\nOUTFIT PRIORITY: An explicit outfit request in these instructions overrides the default source wardrobe. If requested, use the outfit visible in the influencer reference (Image 2), adapted to the source pose and light. Otherwise retain Image 1's outfit. Identity/reference photos do not override the source room, camera, pose or lighting. Preserve the explicitly selected outfit through identity replacement. Caption and logo removal still applies.` : "";
+}
+
 export type OpenRouterGeminiImageInput = {
   prompt: string;
   aspectRatio: AIStudioImageRatio;
   referenceImages?: { data: string; mimeType: string }[];
   model?: string;
+  /** Explicit on new character jobs; absent preserves existing callers. */
+  imageSize?: "2K";
 };
 
-export function buildHookKeyframeStage2Prompt(input: { instructions?: string; supportingImageCount?: number } = {}) {
+export function buildHookKeyframeStage2Prompt(input: { instructions?: string; supportingImageCount?: number; startingFrameTextCleanup?: boolean; startingFrameOutfitPrompt?: string; referenceOptions?: StartingFrameReferenceOptions } = {}) {
   const instructions = input.instructions?.trim() ?? "";
   const supporting = Math.max(0, Math.floor(input.supportingImageCount ?? 0));
   const supportingLine = supporting === 0
@@ -30,12 +51,15 @@ export function buildHookKeyframeStage2Prompt(input: { instructions?: string; su
     "Replace the visible face in Image 1 with the person shown in Image 2. Copy the features that photo actually shows: face shape, eye shape, eye spacing, iris color, brows, nose, lips, jawline, hairline, and natural skin detail. Do not assign a brow color, lip shape, forehead size, freckles, or nose shape that Image 2 does not show.",
     "Relight that face to Image 1 so the face, neck, and hands share the scene light. Keep the identity from Image 2.",
     instructions ? `USER IMAGE INSTRUCTIONS:\n${instructions}` : "",
+    input.referenceOptions ? input.startingFrameOutfitPrompt ? `USER CUSTOM INSTRUCTIONS:\n${input.startingFrameOutfitPrompt}` : "" : startingFrameOutfitInstructions(input.startingFrameOutfitPrompt),
+    startingFrameReferenceInstructions(input.referenceOptions),
+    input.startingFrameTextCleanup ? startingFrameCleanup(input.startingFrameOutfitPrompt, input.referenceOptions) : "",
   ].filter(Boolean).join("\n\n");
 }
 
 export function buildOpenRouterGeminiImagePayload(input: OpenRouterGeminiImageInput) {
   const prompt = input.prompt.trim();
-  if (!prompt || prompt.length > 32_000 || !AI_STUDIO_IMAGE_RATIOS.includes(input.aspectRatio)) {
+  if (!prompt || prompt.length > 32_000 || !AI_STUDIO_IMAGE_RATIOS.includes(input.aspectRatio) || input.imageSize !== undefined && input.imageSize !== "2K") {
     throw new ProviderRequestNotSubmittedError("Gemini Pro requires a prompt of up to 32,000 characters and a supported aspect ratio.");
   }
 
@@ -59,6 +83,7 @@ export function buildOpenRouterGeminiImagePayload(input: OpenRouterGeminiImageIn
       },
     ],
     modalities: ["image"],
+    ...(input.imageSize ? { image_config: { aspect_ratio: input.aspectRatio, image_size: input.imageSize } } : {}),
   };
 }
 
@@ -92,7 +117,7 @@ export async function generateOpenRouterGeminiImage(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(`OpenRouter image generation failed with HTTP ${response.status}: ${errorText.slice(0, 500)}`);
+    throw Object.assign(new Error(`OpenRouter image generation failed with HTTP ${response.status}: ${errorText.slice(0, 500)}`), { status: response.status });
   }
 
   const data = (await response.json()) as {
@@ -142,69 +167,42 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
   prompt: string;
   aspectRatio: AIStudioImageRatio;
   referenceImages: { data: string; mimeType: string }[];
+  identityReferenceStartIndex?: number;
+  /** Frozen on new jobs only; absent preserves historical stage fingerprints. */
+  startingFrameTextCleanup?: boolean;
+  startingFrameOutfitPrompt?: string;
+  referenceOptions?: StartingFrameReferenceOptions;
+  runStage?: ImageStageRunner;
   instructions?: string;
   apiKey?: string;
   fetchImpl?: typeof fetch;
 }): Promise<{ buffer: Buffer; model: string; requestId?: string }> {
-  // Stage 1: Generate clean scene & pose base
-  const stage1 = await generateOpenRouterGeminiImage(
-    {
-      prompt: params.prompt,
-      aspectRatio: params.aspectRatio,
-      referenceImages: params.referenceImages,
-    },
-    { apiKey: params.apiKey, fetchImpl: params.fetchImpl },
-  );
-
-  let finalBuffer = stage1.buffer;
-  let finalModel = stage1.model;
-  let finalRequestId = stage1.requestId;
-
-  // Stage 2: Biometric Identity Lock (if influencer identity references are present)
-  if (params.referenceImages.length > 1) {
-    try {
-      const supporting = params.referenceImages.slice(2);
-      const stage2Prompt = buildHookKeyframeStage2Prompt({
-        instructions: params.instructions,
-        supportingImageCount: supporting.length,
-      });
-      const stage1B64 = stage1.buffer.toString("base64");
-      const influencerRef = params.referenceImages[1];
-
-      const stage2 = await generateOpenRouterGeminiImage(
-        {
-          prompt: stage2Prompt,
-          aspectRatio: params.aspectRatio,
-          referenceImages: [
-            { data: stage1B64, mimeType: "image/png" },
-            influencerRef,
-            ...supporting,
-          ],
-        },
-        { apiKey: params.apiKey, fetchImpl: params.fetchImpl },
-      );
-
-      finalBuffer = stage2.buffer;
-      finalModel = stage2.model;
-      if (stage2.requestId) finalRequestId = stage2.requestId;
-    } catch (stage2Error) {
-      console.warn("Stage 2 face lock encountered an issue, gracefully falling back to Stage 1:", stage2Error);
-    }
+  const identityIndex = params.identityReferenceStartIndex ?? 1;
+  if (!Number.isInteger(identityIndex) || identityIndex < 1 || !params.referenceImages[identityIndex]) {
+    throw new ProviderRequestNotSubmittedError("Choose a verified scene and influencer photo before preparing a starting frame.");
   }
-
-  // Harmonization: Tone balance & organic sensor grain
-  try {
-    const harmonized = await harmonizeStartingFrameImage(finalBuffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN });
-    finalBuffer = harmonized.buffer;
-  } catch (harmError) {
-    console.warn("Image harmonization warning, retaining raw buffer:", harmError);
-  }
-
-  return {
-    buffer: finalBuffer,
-    model: finalModel,
-    requestId: finalRequestId,
+  const run = params.runStage ?? directStage;
+  const scenePrompt = [withStartingFrameReferenceOptions(params.prompt, params.referenceOptions),
+    params.referenceOptions ? "" : startingFrameOutfitInstructions(params.startingFrameOutfitPrompt),
+    params.startingFrameTextCleanup ? startingFrameCleanup(params.startingFrameOutfitPrompt, params.referenceOptions) : ""].filter(Boolean).join("\n\n");
+  const sceneInput = { prompt: scenePrompt,
+    aspectRatio: params.aspectRatio, referenceImages: params.referenceImages };
+  const stage1 = await run("scene", sceneInput, () => generateOpenRouterGeminiImage(sceneInput,
+    { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));
+  const stage2Input = {
+    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions, supportingImageCount: params.referenceImages.length - identityIndex - 1,
+      startingFrameTextCleanup: params.startingFrameTextCleanup, startingFrameOutfitPrompt: params.startingFrameOutfitPrompt, referenceOptions: params.referenceOptions }),
+    aspectRatio: params.aspectRatio,
+    referenceImages: [
+      { data: stage1.buffer.toString("base64"), mimeType: "image/png" },
+      ...params.referenceImages.slice(identityIndex),
+    ],
   };
+  const stage2 = await run("identity", stage2Input, () => generateOpenRouterGeminiImage(stage2Input,
+    { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));
+  return run("harmonize", { image: stage2.buffer.toString("base64"), grain: STARTING_FRAME_HARMONIZER_GRAIN }, async () => ({
+    ...stage2, buffer: (await harmonizeStartingFrameImage(stage2.buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN })).buffer,
+  }));
 }
 
 /**
@@ -214,6 +212,7 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
  * Executes in a single fast pass (~8-9 seconds).
  */
 export async function performOpenRouterFaceSwap(params: {
+  runStage?: ImageStageRunner;
   baseImage: { data: string; mimeType: string };
   influencerImage: { data: string; mimeType: string };
   aspectRatio: AIStudioImageRatio;
@@ -221,29 +220,15 @@ export async function performOpenRouterFaceSwap(params: {
   apiKey?: string;
   fetchImpl?: typeof fetch;
 }): Promise<{ buffer: Buffer; model: string; requestId?: string }> {
-  const stage2Prompt = buildHookKeyframeStage2Prompt({ instructions: params.instructions });
-
-  const result = await generateOpenRouterGeminiImage(
-    {
-      prompt: stage2Prompt,
-      aspectRatio: params.aspectRatio,
-      referenceImages: [params.baseImage, params.influencerImage],
-    },
-    { apiKey: params.apiKey, fetchImpl: params.fetchImpl },
-  );
-
-  let finalBuffer = result.buffer;
-  try {
-    const harmonized = await harmonizeStartingFrameImage(result.buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN });
-    finalBuffer = harmonized.buffer;
-  } catch (harmError) {
-    console.warn("Face swap harmonization warning, retaining raw buffer:", harmError);
-  }
-
-  return {
-    buffer: finalBuffer,
-    model: result.model,
-    requestId: result.requestId,
+  const run = params.runStage ?? directStage;
+  const stage2Input = {
+    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions }),
+    aspectRatio: params.aspectRatio,
+    referenceImages: [params.baseImage, params.influencerImage],
   };
+  const result = await run("identity", stage2Input, () => generateOpenRouterGeminiImage(stage2Input,
+    { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));
+  return run("harmonize", { image: result.buffer.toString("base64"), grain: STARTING_FRAME_HARMONIZER_GRAIN }, async () => ({
+    ...result, buffer: (await harmonizeStartingFrameImage(result.buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN })).buffer,
+  }));
 }
-

@@ -30,7 +30,7 @@ import {
   type InfluencerTrait,
   type TraitCategory,
 } from "@/lib/characters/influencer-registry";
-import { compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
+import { changedInfluencerPills, compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
 import styles from "./influencer-studio.module.css";
 
 const CATEGORY_ICON_MAP: Record<string, typeof User> = {
@@ -58,7 +58,6 @@ interface InfluencerCustomizerDockProps {
   onBatchSizeChange: (size: number) => void;
   isGenerating: boolean;
   onGenerate: () => void;
-  creditCost: number;
   maxBatchSize?: number;
   availabilityMessage?: string | null;
   generateDisabled?: boolean;
@@ -77,7 +76,6 @@ export function InfluencerCustomizerDock({
   onBatchSizeChange,
   isGenerating,
   onGenerate,
-  creditCost,
   maxBatchSize = 3,
   availabilityMessage = null,
   generateDisabled = false,
@@ -243,6 +241,10 @@ export function InfluencerCustomizerDock({
     () => compileInfluencerPrompt(selection, customCharacters),
     [selection, customCharacters]
   );
+  const pickedSettings = useMemo(
+    () => changedInfluencerPills(selection, compiled.displayPills),
+    [selection, compiled.displayPills]
+  );
 
   return (
     <aside className={styles.customizerDock}>
@@ -344,7 +346,24 @@ export function InfluencerCustomizerDock({
                 />
               </button>
 
-              {isOpen && (
+              {isOpen && cat.id === "outfit_color" ? (
+                <div className={styles.colorSwatchGrid}>
+                  {categoryTraits.map((trait) => {
+                    const selected = isTraitSelected(trait);
+                    return (
+                      <button
+                        key={trait.id}
+                        type="button"
+                        className={`${styles.colorSwatch} ${selected ? styles.colorSwatchSelected : ""} ${trait.colorHex ? "" : styles.colorSwatchPlain}`}
+                        style={trait.colorHex ? { backgroundColor: trait.colorHex } : undefined}
+                        aria-label={trait.label}
+                        aria-pressed={selected}
+                        onClick={() => handleTraitClick(trait)}
+                      />
+                    );
+                  })}
+                </div>
+              ) : isOpen ? (
                 <div className={styles.accordionContent}>
                   <div className={styles.cardsGrid}>
                     {categoryTraits.map((trait, index) => {
@@ -367,7 +386,7 @@ export function InfluencerCustomizerDock({
                                 src={trait.imagePath}
                                 alt={trait.label}
                                 fill
-                                sizes="130px"
+                                sizes="110px"
                                 className={styles.cardImage}
                                 unoptimized={trait.isCustomUpload}
                               />
@@ -401,7 +420,7 @@ export function InfluencerCustomizerDock({
                     })}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
@@ -409,28 +428,30 @@ export function InfluencerCustomizerDock({
 
       {/* Sticky Bottom Action Dock */}
       <div className={styles.dockBottomAction}>
-        {/* Picked Settings Bar */}
-        <div className={styles.pickedSettingsHeader}>
-          <span className={styles.pickedSettingsTitle}>Picked settings</span>
-          <button
-            type="button"
-            className={styles.resetAllButton}
-            onClick={onResetAll}
-            disabled={disabled || isGenerating}
-          >
-            Reset all
-          </button>
-        </div>
+        {pickedSettings.length > 0 ? (
+          <>
+            <div className={styles.pickedSettingsHeader}>
+              <span className={styles.pickedSettingsTitle}>Picked settings</span>
+              <button
+                type="button"
+                className={styles.resetAllButton}
+                onClick={onResetAll}
+                disabled={disabled || isGenerating}
+              >
+                Reset all
+              </button>
+            </div>
+            <div className={styles.pickedPillsContainer}>
+              {pickedSettings.map((pill) => (
+                <span key={`${pill.category}-${pill.label}`} className={styles.pickedPill}>
+                  {pill.label}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
 
-        <div className={styles.pickedPillsContainer}>
-          {compiled.displayPills.map((pill, idx) => (
-            <span key={idx} className={styles.pickedPill}>
-              {pill.label}
-            </span>
-          ))}
-        </div>
-
-        {/* Batch Size Row */}
+        <div className={styles.generationOptions}>
         <div className={styles.batchSizeRow}>
           <span className={styles.batchSizeLabel}>Batch size</span>
           <div className={styles.batchSizeControl}>
@@ -479,6 +500,7 @@ export function InfluencerCustomizerDock({
             </button>
           </div>
         </div>
+        </div>
 
         {/* Bottom CTA Row (Dice + Primary Generate Button) */}
         {availabilityMessage ? <p className={styles.availabilityMessage}>{availabilityMessage}</p> : null}
@@ -499,9 +521,7 @@ export function InfluencerCustomizerDock({
             onClick={onGenerate}
             disabled={disabled || isGenerating || generateDisabled}
           >
-            {isGenerating
-              ? "Synthesizing..."
-              : `Generate (${creditCost * batchSize})`}
+            {isGenerating ? "Synthesizing..." : "Generate"}
           </button>
         </div>
       </div>

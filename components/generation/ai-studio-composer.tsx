@@ -57,6 +57,8 @@ export function AiStudioComposer({
   promptLabel,
   promptSupplement,
   promptAction,
+  promptCornerControl,
+  selectionOnly = false,
   promptFeedback,
   settingsSummary,
   actionsTarget,
@@ -98,6 +100,8 @@ export function AiStudioComposer({
   promptLabel?: string;
   promptSupplement?: ReactNode;
   promptAction?: ReactNode;
+  promptCornerControl?: ReactNode;
+  selectionOnly?: boolean;
   promptFeedback?: ReactNode;
   settingsSummary?: string;
   actionsTarget?: HTMLElement | null;
@@ -146,7 +150,7 @@ export function AiStudioComposer({
         {estimatedCredits !== undefined ? <p className={focused.estimate}>Estimated cost <strong>{estimatedCredits} credits</strong></p> : null}
         <div className={focused.statusRow}><p role="status">{accessMessage}</p>{secondaryActions}</div>
       </div>
-      <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={focused.generate}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="focused" noValidate onSubmit={onSubmit} className={focused.composer}>
       {contextBanner}
@@ -167,7 +171,7 @@ export function AiStudioComposer({
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
       <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
-      <div className={ariaLabel === "Image prompt" ? "flex justify-end" : undefined}><Button type="submit" form={formId} data-compact={ariaLabel === "Image prompt" || undefined} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
+      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
       {referenceControls}
@@ -177,7 +181,8 @@ export function AiStudioComposer({
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <div data-prompt-editor className={cn("relative", promptAction && creation.promptWithAction)}><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, (promptAttachmentControl || promptAction) && creation.promptWithAttachments)} />
-          {promptAttachmentControl ? <div className={promptAction ? "[&>div]:right-14" : undefined}>{promptAttachmentControl}</div> : null}
+          {promptAttachmentControl ? <div className={promptAction && promptCornerControl ? "[&>div]:right-28" : promptAction || promptCornerControl ? "[&>div]:right-14" : undefined}>{promptAttachmentControl}</div> : null}
+          {promptCornerControl ? <div className="absolute left-14 bottom-3">{promptCornerControl}</div> : null}
           {promptAction ? <div className="absolute right-3 bottom-3">{promptAction}</div> : null}
         </div>
         {promptFeedback}
@@ -203,7 +208,7 @@ export function AiStudioComposer({
         </PopoverContent>
       </Popover>
       {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
-      <Button type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className="h-11 w-full rounded-[10px]">{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
       <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
     </div>;
     const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">

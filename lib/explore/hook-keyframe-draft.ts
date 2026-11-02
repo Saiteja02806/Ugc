@@ -1,4 +1,5 @@
 import { matchesCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
+import { isStartingFrameReferenceOptions, canonicalStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "../../worker/src/lib/starting-frame-reference-options.ts";
 import { HOOK_KEYFRAME_MOTION_VERSION, type HookMotionCompilation } from "./hook-keyframe-motion.ts";
 import { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, isHookKeyframeImageModel, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 export { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, HOOK_KEYFRAME_IMAGE_MODELS, HOOK_KEYFRAME_IMAGE_MODEL_OPTIONS, hookKeyframeMaxPersonImages, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
@@ -30,6 +31,7 @@ export type HookKeyframeDraft = {
   imageAssetIds: string[];
   instructions: string;
   customImagePrompt?: string;
+  referenceOptions?: StartingFrameReferenceOptions;
   /** null uses this Hook's suggested motion; an empty string is an explicit edit. */
   motionInstructions: string | null;
   generateAudio: boolean;
@@ -77,18 +79,19 @@ export function createHookKeyframeDraft(scope: HookKeyframeScope): HookKeyframeD
 
 /** Exact, deterministic input binding; it is not a signature or ownership proof.
  * Sound belongs to animation and does not invalidate an already approved still. */
-export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "sourceFrame" | "imageAssetIds" | "instructions"> & Partial<Pick<HookKeyframeDraft, "version" | "imageModel" | "customImagePrompt">>) {
+export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "sourceFrame" | "imageAssetIds" | "instructions"> & Partial<Pick<HookKeyframeDraft, "version" | "imageModel" | "customImagePrompt" | "referenceOptions">>) {
   const { ownerId, draftId, referenceId, sourceSha256 } = draft.scope;
   const frame = draft.sourceFrame;
   return JSON.stringify({ version: draft.version === 4 ? 4 : draft.version === 3 ? 3 : draft.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
     sourceFrame: frame ? { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 } : null,
     imageAssetIds: draft.imageAssetIds, instructions: draft.instructions,
     ...(draft.customImagePrompt !== undefined ? { customImagePrompt: draft.customImagePrompt } : {}),
+    ...(draft.referenceOptions ? { referenceOptions: canonicalStartingFrameReferenceOptions(draft.referenceOptions) } : {}),
     ...(draft.version !== 1 ? { imageModel: draft.imageModel } : {}) });
 }
 
 function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft {
-  if (!validScope(scope) || !object(value) || !fields(value, ["version", "imageModel", "scope", "sourceFrame", "imageAssetIds", "instructions", "customImagePrompt", "motionInstructions", "generateAudio", "generatedImage", "approval"]) ||
+  if (!validScope(scope) || !object(value) || !fields(value, ["version", "imageModel", "scope", "sourceFrame", "imageAssetIds", "instructions", "customImagePrompt", "referenceOptions", "motionInstructions", "generateAudio", "generatedImage", "approval"]) ||
     value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 || (value.version === 2 || value.version === 3 || value.version === 4) && !isHookKeyframeImageModel(value.imageModel) ||
     value.version === 1 && value.imageModel !== undefined && value.imageModel !== "nano_banana_2" || !validScope(value.scope) ||
     Object.keys(scope).some(key => value.scope !== null && (value.scope as HookKeyframeScope)[key as keyof HookKeyframeScope] !== scope[key as keyof HookKeyframeScope]) ||
@@ -96,6 +99,7 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
     !Array.isArray(value.imageAssetIds) || value.imageAssetIds.length > HOOK_KEYFRAME_MAX_PERSON_IMAGES ||
     value.imageAssetIds.some(id => !assetId(id)) || new Set(value.imageAssetIds.map(id => (id as string).toLowerCase())).size !== value.imageAssetIds.length ||
     value.customImagePrompt !== undefined && (value.version !== 4 || typeof value.customImagePrompt !== "string" || value.customImagePrompt.length > 6000 || CONTROL.test(value.customImagePrompt)) ||
+    value.referenceOptions !== undefined && (value.version !== 4 || !isStartingFrameReferenceOptions(value.referenceOptions)) ||
     typeof value.instructions !== "string" || value.instructions.length > HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS || CONTROL.test(value.instructions) ||
     value.motionInstructions !== undefined && value.motionInstructions !== null && (typeof value.motionInstructions !== "string" ||
       value.motionInstructions.length > HOOK_KEYFRAME_MAX_MOTION_INSTRUCTIONS || CONTROL.test(value.motionInstructions)) ||
@@ -104,6 +108,7 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
     sourceFrame: value.sourceFrame === null ? null : { ...value.sourceFrame as HookSourceFrame },
     imageAssetIds: [...value.imageAssetIds as string[]], instructions: value.instructions as string,
     ...(value.customImagePrompt !== undefined ? { customImagePrompt: value.customImagePrompt as string } : {}),
+    ...(value.referenceOptions !== undefined ? { referenceOptions: canonicalStartingFrameReferenceOptions(value.referenceOptions as StartingFrameReferenceOptions) } : {}),
     motionInstructions: value.motionInstructions === undefined || value.motionInstructions === null ? null : value.motionInstructions as string,
     generateAudio: value.generateAudio as boolean, generatedImage: null, approval: null };
   if (value.generatedImage !== null) {
@@ -131,9 +136,9 @@ export function serializeHookKeyframeDraft(draft: HookKeyframeDraft): string {
   if (raw.length > MAX_DRAFT_LENGTH) invalid();
   return raw;
 }
-export function updateHookKeyframeDraft(draft: HookKeyframeDraft, patch: Partial<Pick<HookKeyframeDraft, "imageModel" | "sourceFrame" | "imageAssetIds" | "instructions" | "customImagePrompt" | "motionInstructions" | "generateAudio">>): HookKeyframeDraft {
+export function updateHookKeyframeDraft(draft: HookKeyframeDraft, patch: Partial<Pick<HookKeyframeDraft, "imageModel" | "sourceFrame" | "imageAssetIds" | "instructions" | "customImagePrompt" | "referenceOptions" | "motionInstructions" | "generateAudio">>): HookKeyframeDraft {
   const previous = parseDraft(draft, draft.scope);
-  if (!object(patch) || !fields(patch, ["imageModel", "sourceFrame", "imageAssetIds", "instructions", "customImagePrompt", "motionInstructions", "generateAudio"])) invalid();
+  if (!object(patch) || !fields(patch, ["imageModel", "sourceFrame", "imageAssetIds", "instructions", "customImagePrompt", "referenceOptions", "motionInstructions", "generateAudio"])) invalid();
   // Validate the new inputs independently of the old generated-image binding.
   const next = parseDraft({ ...previous, ...patch, ...(previous.version === 4 ? { version: 4 } : previous.version === 3 ? { version: 3 } : patch.imageModel === undefined ? {} : { version: 2 }), generatedImage: null, approval: null }, previous.scope);
   if (hookKeyframeInputKey(next) === hookKeyframeInputKey(previous)) {

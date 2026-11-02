@@ -265,3 +265,8 @@
   .clipEditorBody[data-editing="true"] .clipPreviews { position: sticky; top: 0; z-index: 5; background: var(--background); }
   .clipEditorBody[data-editing="true"] [data-clip-media] { max-width: min(100%, calc(32dvh * var(--clip-aspect))); }
 }
+
+/* Editing navigation starts at the left edge below the title. */
+.clipStage[data-editing="true"] .clipStageHeader { flex-wrap: wrap; }
+.clipStage[data-editing="true"] .clipActions { flex: 1 0 100%; width: 100%; max-width: none; margin-left: 0; }
+.clipStage[data-editing="true"] .clipActions > div { justify-content: flex-start; }

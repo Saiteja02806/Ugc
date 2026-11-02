@@ -259,7 +259,7 @@ export function BusinessContextSettings() {
       </div>
 
       <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
-        <Button type="button" disabled={busyAction !== null || !canApplyChanges} onClick={() => void runAction("apply")}>
+        <Button variant="neutral" type="button" disabled={busyAction !== null || !canApplyChanges} onClick={() => void runAction("apply")}>
           {busyAction === "apply" ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 data-icon="inline-start" aria-hidden="true" />}
           Apply changes to future content
         </Button>

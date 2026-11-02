@@ -11,6 +11,7 @@ test("Instagram connection limits allow Free one account and Starter three", () 
     free: 1,
     growth: 5,
     starter: 3,
+    startup: 5,
   });
   assert.equal(resolveInstagramAccountLimit("free", false), 1);
   assert.equal(resolveInstagramAccountLimit("starter", true), 3);

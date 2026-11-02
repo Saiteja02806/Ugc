@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isStartingFrameReferenceOptions, canonicalStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "./starting-frame-reference-options.ts";
 import { matchesCuratedHookFrame } from "./hook-curated-frames.ts";
 import { hookKeyframeMaxPersonImages, hookKeyframeReceiptImageModel, isHookKeyframeImageModel, type HookKeyframeImageModel } from "./hook-keyframe-image-model.ts";
 import { isHookFullRecreationPilotOpeningFrame, matchesHookFullRecreationPilotAnchor } from "./hook-full-recreation-pilot.ts";
@@ -20,6 +21,7 @@ export type HookKeyframeGenerationReceipt = {
   animationOpeningFrame?: { index: number; timeSeconds: number; width: number; height: number; sha256: string };
   preparationInputKey?: string;
   customImagePrompt?: string;
+  referenceOptions?: StartingFrameReferenceOptions;
   personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7;
   inputKey: string; promptSha256: string;
 };
@@ -38,7 +40,9 @@ export function hookKeyframeGenerationInputKey(receipt: Omit<HookKeyframeGenerat
     sourceFrame: canonicalFrame(sourceFrame),
     ...(receipt.version === 5 ? { preparationInputKey } : {}),
     ...(receipt.version === 4 ? { animationOpeningFrame: animationOpeningFrame ? canonicalFrame(animationOpeningFrame) : undefined, preparationInputKey } : {}),
-    imageAssetIds: personImageAssetIds, instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}), ...(receipt.version !== 1 && receipt.version !== undefined ? { imageModel: receipt.imageModel } : {}) });
+    imageAssetIds: personImageAssetIds, instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}),
+    ...(receipt.referenceOptions ? { referenceOptions: canonicalStartingFrameReferenceOptions(receipt.referenceOptions) } : {}),
+    ...(receipt.version !== 1 && receipt.version !== undefined ? { imageModel: receipt.imageModel } : {}) });
 }
 export function hookKeyframePreparationInputKey(receipt: HookKeyframeGenerationReceipt) {
   return receipt.version === 4 || receipt.version === 5 ? receipt.preparationInputKey! : receipt.inputKey;
@@ -54,7 +58,7 @@ export function hookKeyframeSourceRatio(width: number, height: number): "9:16" |
   return null;
 }
 export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframeGenerationReceipt | null {
-  if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "customImagePrompt", "promptVersion", "inputKey", "promptSha256"]) ||
+  if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "customImagePrompt", "referenceOptions", "promptVersion", "inputKey", "promptSha256"]) ||
     value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 && value.version !== 5 || value.version === 1 && value.imageModel !== undefined ||
     (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5, 7].includes(value.promptVersion as number)) ||
     value.version === 2 && ![2, 3, 4, 5].includes(value.promptVersion as number) ||
@@ -85,6 +89,7 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
     value.personImageAssetIds.some(id => typeof id !== "string" || !uuid.test(id)) ||
     new Set(value.personImageAssetIds.map(id => String(id).toLowerCase())).size !== value.personImageAssetIds.length ||
     value.customImagePrompt !== undefined && (value.version !== 5 || typeof value.customImagePrompt !== "string" || !value.customImagePrompt.trim() || value.customImagePrompt.length > 6000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.customImagePrompt)) ||
+    value.referenceOptions !== undefined && (value.version !== 5 || !isStartingFrameReferenceOptions(value.referenceOptions)) ||
     typeof value.instructions !== "string" || value.instructions.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.instructions) ||
     typeof value.inputKey !== "string" || value.inputKey.length > 64000 ||
     typeof value.promptSha256 !== "string" || !hash.test(value.promptSha256)) return null;
@@ -92,7 +97,8 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
   if (receipt.inputKey !== hookKeyframeGenerationInputKey(receipt)) return null;
   if ((receipt.version === 4 || receipt.version === 5) && receipt.preparationInputKey !== JSON.stringify({ version: receipt.version === 5 ? 4 : 3, ownerId: receipt.ownerId, draftId: receipt.draftId,
     referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: canonicalFrame(receipt.sourceFrame),
-    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}), imageModel: receipt.imageModel })) return null;
+    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, ...(receipt.customImagePrompt !== undefined ? { customImagePrompt: receipt.customImagePrompt } : {}),
+    ...(receipt.referenceOptions ? { referenceOptions: canonicalStartingFrameReferenceOptions(receipt.referenceOptions) } : {}), imageModel: receipt.imageModel })) return null;
   return { ...receipt, sourceFrame: { ...receipt.sourceFrame },
     ...(receipt.animationOpeningFrame ? { animationOpeningFrame: { ...receipt.animationOpeningFrame } } : {}),
     personImageAssetIds: [...receipt.personImageAssetIds] };

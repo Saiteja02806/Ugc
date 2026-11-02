@@ -500,7 +500,7 @@ export function FormatGenerationReferences({ startingFrame, startingFramePreview
                 </div>
                 {(Boolean(asset) || selectedImages.length > 0) && !startingFrame && activeImageTab !== "starting" ? <Button type="button" variant="ghost" size="sm" aria-label="Clear selected photos" disabled={disabled || Boolean(pending)} onClick={() => { if (onImagesChange) onImagesChange([]); else remove("image"); setOpenKind("image"); }}>Clear selection</Button> : null}
                 {onPrepareStartingFrame ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending)} onClick={() => { setOpenKind(null); onPrepareStartingFrame(); }}>Create starting frame</Button> : null}
-                <Button type="button" disabled={Boolean(pending)} onClick={() => setOpenKind(null)}>Done</Button>
+                <Button type="button" variant="ghost" className={picker.done} disabled={Boolean(pending)} onClick={() => setOpenKind(null)}>Done</Button>
               </footer>
               </> : <>
                 <PopoverTitle>{kind === "video" ? "Video reference" : "Audio reference"}</PopoverTitle>

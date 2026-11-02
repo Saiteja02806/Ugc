@@ -11,9 +11,10 @@ import creation from "./workflow-creation.module.css";
 import styles from "./format-workspace.module.css";
 import pickerStyles from "./slideshow-reference-picker.module.css";
 
-export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy }: {
+export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, faceSwap, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy }: {
   reference: RecreateReference | null; slideIndex: number; disabled: boolean; localPreview: boolean;
   selectedSlideIds: string[];
+  faceSwap?: { open: boolean; slideIds: string[]; onSlideIdsChange: (ids: string[]) => void };
   onPreview: () => void; onRemove: () => void; onUpload: (reference: RecreateReference) => void; onSelectionChange: (ids: string[], previewIndex?: number) => void; onBusy: (busy: boolean) => void;
 }) {
   const { user } = useAuth();
@@ -73,12 +74,15 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     <p className="text-xs leading-5 text-muted">Reference slides guide new images.</p>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload reference slides" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {reference ? <details className={pickerStyles.selection} open><summary>Source slides<span aria-live="polite">{selectedSlideIds.length} selected</span></summary><div>
-      <div className="mb-2 flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={disabled || busy || reference.slides.every(slide => selectedSlideIds.includes(slide.id))} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Select all</Button><span className="text-xs text-muted">Choose the slides to recreate. Generation starts separately.</span></div>
-      <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
+    {reference ? <details className={pickerStyles.selection} open data-face-swap-mode={faceSwap?.open ? "true" : "false"} data-face-swap-control={faceSwap?.open ? "" : undefined}><summary>{faceSwap?.open ? "Face swap" : "Source slides"}<span aria-live="polite">{faceSwap?.open ? `${faceSwap.slideIds.length} of ${selectedSlideIds.length} slide${selectedSlideIds.length === 1 ? "" : "s"}` : `${selectedSlideIds.length} selected`}</span></summary><div>
+      {faceSwap?.open ? <div className="mb-2 flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={disabled || busy || selectedSlideIds.every(id => faceSwap.slideIds.includes(id))} onClick={() => faceSwap.onSlideIdsChange([...selectedSlideIds])}>Select all</Button><Button type="button" variant="outline" size="sm" disabled={disabled || busy || faceSwap.slideIds.length === 0} onClick={() => faceSwap.onSlideIdsChange([])}>Clear</Button><span className="text-xs text-muted">{selectedSlideIds.length === 1 ? "1 slide can use this face." : `${selectedSlideIds.length} slides can use this face.`}</span></div> : <div className="mb-2 flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={disabled || busy || reference.slides.every(slide => selectedSlideIds.includes(slide.id))} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Select all</Button><span className="text-xs text-muted">Choose the slides to recreate. Generation starts separately.</span></div>}
+      <div className={styles.slideshowContextStrip} role="group" aria-label={faceSwap?.open ? "Select slides for face swap" : "Select reference slides"}>
         {reference.slides.map((slide, index) => {
-          const checked = selectedSlideIds.includes(slide.id);
-          return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={`Source slide ${index + 1} as generation reference`} title={`Source slide ${index + 1}`} aria-pressed={checked} disabled={disabled || busy} onClick={() => onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index)}>
+          const checked = faceSwap?.open ? faceSwap.slideIds.includes(slide.id) : selectedSlideIds.includes(slide.id);
+          return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={faceSwap?.open ? `Face swap for source slide ${index + 1}` : `Source slide ${index + 1} as generation reference`} title={`Source slide ${index + 1}`} aria-pressed={checked} disabled={disabled || busy || Boolean(faceSwap?.open && !selectedSlideIds.includes(slide.id))} onClick={() => {
+            if (!faceSwap?.open) { onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index); return; }
+            faceSwap.onSlideIdsChange(checked ? faceSwap.slideIds.filter(id => id !== slide.id) : [...faceSwap.slideIds, slide.id]);
+          }}>
             <img src={slide.url} alt="" width={48} height={64} loading="lazy" />
             <span className={styles.slideshowContextCheck} aria-hidden="true">{checked ? <Check className="size-3" /> : null}</span>
             <span className={styles.slideshowContextNumber} aria-hidden="true" title={`Source slide ${index + 1}`}>{index + 1}</span>

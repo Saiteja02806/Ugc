@@ -12,7 +12,7 @@ const CHARACTER_COVER = "/explore/characters/ai-character-create-yours-v5.mp4";
 const CHARACTER_POSTER = "/explore/characters/ai-character-create-yours-v5.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {
-  const videoRef = useCoverPlayback(CHARACTER_COVER, "a", true);
+  const videoRef = useCoverPlayback(CHARACTER_COVER, "a", true, true);
 
   return (
     <article aria-labelledby="explore-character-title" className={styles.workflowCard}>

@@ -216,3 +216,75 @@ test("Hook 51 retains the late laptop lid lift without imposing an unseen openin
  assert.doesNotMatch(preview.animationPrompt!, /partially open silver laptop/);
  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
 });
+
+test("Hook 59 retains the source mouth cover and later release without replacing edits", () => {
+ const id = "explore-paired-hook-bfd6368d9fc52f44c6422a2b";
+ const source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /0\.21–0\.34s: Raise screen-left hand/);
+ assert.match(preview.animationPrompt!, /0\.89–1\.01s: Lower hand/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("batch 11 keeps Hook 63 moving through the source ending and Hook 68 hand contact grounded", () => {
+ for (const [id, pattern] of [
+  ["explore-paired-hook-20446a41b05ed3e9fdb6af95", /1\.39–1\.53s: Release fingertip contact/],
+  ["explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82", /fingertips meeting across the mouth/],
+ ] as const) {
+  const source = hookKeyframeMotionCatalog[id];
+  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+  assert.match(preview.animationPrompt!, pattern);
+  if (id.includes("20446a")) assert.match(preview.animationPrompt!, /1\.95–2\.31s: Continue moving/);
+  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+ }
+});
+
+test("Hook 69 keeps the late second eye narrowing before the final smile", () => {
+ const id = "explore-paired-hook-c7ffd19dc027af1ff4034aeb", source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.match(preview.animationPrompt!, /Narrow eyes briefly again/);
+ assert.doesNotMatch(preview.animationPrompt!, /1\.2–1\.52s: Look up screen-right/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("Hook 90 retains the later eye widening and temple release without replacing user edits", () => {
+ const id = "explore-paired-hook-349e499826f7491d91f6b712", source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.ok(preview.animationPrompt, "corrected plan must remain admitted by the rewrite contract");
+ assert.match(preview.animationPrompt, /0\.69–0\.92s: Blink again, then reopen and widen/);
+ assert.match(preview.animationPrompt, /1\.43–2\.48s: Alternate the lens-directed stare with several brief blinks/);
+ assert.match(preview.animationPrompt, /2\.48–2\.67s: Close the eyes briefly as the fingertips leave the temple/);
+ assert.match(preview.animationPrompt, /FINAL HOLD 4\.6–5s/);
+ assert.doesNotMatch(preview.animationPrompt, /1\.84–2\.44s: Blink again, then lower hand/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("Hook 105 continues the head tilt and laptop gaze through its real source ending", () => {
+ const id = "explore-paired-hook-3cddc94937cdb32947f9e0c2", source = hookKeyframeMotionCatalog[id];
+ const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+ const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+ assert.ok(preview.animationPrompt);
+ assert.match(preview.animationPrompt, /1\.39–1\.63s: Lower the eyelids and gaze toward the laptop/);
+ assert.match(preview.animationPrompt, /1\.63–1\.83s: Ease the head slightly back toward upright/);
+ assert.match(preview.animationPrompt, /FINAL HOLD 1\.83–3s/);
+ assert.doesNotMatch(preview.animationPrompt, /1\.12–1\.83s: Sustain/);
+ assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
+});
+
+test("final public references keep the real last blink and avoid inventing a palm-facing gesture", () => {
+ for (const [id, expected] of [
+  ["explore-paired-hook-c15a0f9f2a7c4a28d5330825", /0\.88–1s: Begin a soft blink/],
+  ["explore-paired-hook-d426f4a2248708f61298bf7f", /hand vertically beside the face, fingers pointing upward/],
+ ] as const) {
+  const source = id.includes("c15a0f") ? hookKeyframeMotionCatalog[id] : { sourceSha256: "d426f4a2248708f61298bf7fc9a57500c3201811b2680509013680d177d40a1f", sourceDurationSeconds: 3.3 };
+  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
+  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+  assert.match(preview.animationPrompt!, expected);
+  assert.doesNotMatch(preview.animationPrompt!, /palm toward the camera/);
+  assert.equal(getHookKeyframePromptPreview({ ...opening, motionInstructions: "My own movement." }).directions, "My own movement.");
+ }
+});

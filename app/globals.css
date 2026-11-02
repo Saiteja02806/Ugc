@@ -4,6 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Vidmake DM Sans";
+  src: url("/explore-text-fonts/dmsans-500.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vidmake DM Sans";
+  src: url("/explore-text-fonts/dmsans-800.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
 :root,
 .instagram-theme {
   color-scheme: light;
@@ -424,19 +440,30 @@ p {
 /* In-app canvas only. Landing keeps the .dark tokens and the white landing button. */
 .dark .app-canvas {
   --background: #101014;
-  --card: #222228;
-  --card-muted: #1a1a20;
-  --surface-subtle: #1a1a20;
-  --selected: #2c2c31;
+  --card: #17171c;
+  --card-muted: #101016;
+  --surface-subtle: #101016;
+  --selected: #212126;
   --brand: #0078d4;
-  --brand-soft: #2a2a2e;
+  --brand-soft: #222226;
   --primary: #0078d4;
   --primary-hover: #005a9e;
   --focus: #f5f3f0;
   --accent: #2c2a36;
   --accent-foreground: #f5f3f0;
-  --sidebar: #16161a;
+  --sidebar: #121216;
   --ring: #f5f3f0;
+}
+
+/* Dialogs and popovers are portaled outside the app canvas. Give them the
+   same in-app surfaces without changing public pages or the light theme. */
+.dark:has(.app-canvas) :is([data-slot="dialog-content"], [data-slot="popover-content"]) {
+  --background: #101014;
+  --card: #17171c;
+  --card-muted: #101016;
+  --surface-subtle: #101016;
+  --selected: #212126;
+  --popover: var(--card);
 }
 
 .sign-in-screen .bg-primary {
@@ -465,6 +492,12 @@ p {
   background-image: none;
   color: #ffffff;
   box-shadow: none;
+}
+
+/* Keep workflow scrubbers and adjustments neutral, including portaled dialogs. */
+.app-canvas input[type="range"],
+[role="dialog"] input[type="range"] {
+  accent-color: #a3a3a3 !important;
 }
 
 @layer base {

@@ -13,6 +13,7 @@ import {
   parseBillingInterval,
 } from "@/lib/pricing/plans";
 import { cn } from "@/lib/utils";
+import styles from "./pricing-catalog.module.css";
 
 type PricingCatalogProps = {
   initialBillingInterval: BillingInterval;
@@ -77,7 +78,7 @@ export function PricingCatalog({
           <button
             type="button"
             aria-pressed={isYearly}
-            aria-label="Annual Billing — 2 months free"
+            aria-label="Annual Billing"
             onClick={() => updateBillingInterval("yearly")}
             className={cn(
               "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer",
@@ -87,23 +88,13 @@ export function PricingCatalog({
             )}
           >
             <span>Annual<span className="hidden sm:inline"> Billing</span></span>
-            <span
-              className={cn(
-                "whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                isYearly
-                  ? "bg-emerald-500 text-emerald-950"
-                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-              )}
-            >
-              2 months free
-            </span>
           </button>
         </div>
         <p className="text-center text-xs text-muted">
           {FREE_TRIAL_CONTENT_DAYS}-day trial · Change or cancel paid plans anytime
         </p>
         <div
-          className="mt-3 inline-flex flex-wrap items-center justify-center gap-1 rounded-full border border-border bg-card p-1 shadow-xs"
+          className="mt-3 inline-flex flex-wrap items-center justify-center gap-0.5 rounded-full border border-border bg-card p-0.5 shadow-xs"
           role="group"
           aria-label="Show plans as"
         >
@@ -116,7 +107,8 @@ export function PricingCatalog({
                 aria-pressed={selected}
                 onClick={() => setAllowanceView(option.value)}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer",
+                  styles.allowanceButton,
+                  "rounded-full px-2.5 py-1 text-[11px] leading-4 font-medium transition-all duration-150 cursor-pointer",
                   selected
                     ? "bg-foreground text-background shadow-xs"
                     : "text-muted hover:text-foreground",

@@ -12,6 +12,15 @@ export type RecreateGenerationView = {
   referenceImageUrls?: string[];
   slideshowSources?: import("@/lib/explore/slideshow-image-names").SlideshowSourceIdentity[];
   slideshowSlideCount?: number;
+  slideshowFaceSwap?: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    slideIds: string[];
+    onSlideIdsChange: (ids: string[]) => void;
+    influencer: { id: string; url: string; title: string } | null;
+    onInfluencerChange: (influencer: { id: string; url: string; title: string } | null) => void;
+    eligibleCount: number;
+  };
   referenceTitle?: string;
   styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null; generationPrompt?: string };
   startingFrame?: HookStartingFrameSelection;

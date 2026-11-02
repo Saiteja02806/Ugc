@@ -645,12 +645,33 @@ test("Gemini 3 Pro hook starting frame with openrouter provider routes to openro
     const receipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 4, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: createHash("sha256").update(prompt).digest("hex") };
     const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${selected.sourceSha256}/${selected.sha256}.png`, "https://media.example.test/person.png"];
     f.imageJob.input_json = { generationId: "fixture-generation", model: "gemini_3_pro", provider: "openrouter",
-      prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt };
+      startingFrameTextCleanup: true, prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt };
     const before = openrouterCalls.length;
     const result = await runGenerateImageJob(f.imageJob, f.context);
     assert.deepEqual(result.hookKeyframe, receipt);
     assert.equal(result.provider, "openrouter");
     assert.equal(openrouterCalls.length, before + 1);
+    assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
+    assert.equal(openrouterCalls.at(-1).identityReferenceStartIndex, 1);
+    assert.equal(openrouterCalls.at(-1).startingFrameTextCleanup, true);
+    const custom = "Use Image 2's gray shirt, keeping the source room.";
+    const customPartial = { ...partial, version: 5, sourceFrame: { ...partial.sourceFrame, index: 0, timeSeconds: 0 },
+      customImagePrompt: custom, referenceOptions: { background: "photo", outfit: "source" }, preparationInputKey: "fixture-custom-outfit" };
+    customPartial.preparationInputKey = JSON.stringify({ version: 4, ownerId: partial.ownerId, draftId: partial.draftId,
+      referenceId: partial.referenceId, sourceSha256: partial.sourceSha256, sourceFrame: customPartial.sourceFrame,
+      imageAssetIds: partial.personImageAssetIds, instructions: partial.instructions, customImagePrompt: custom, referenceOptions: customPartial.referenceOptions, imageModel: partial.imageModel });
+    const customReceipt = { ...customPartial, purpose: "hook_starting_frame", promptVersion: 7,
+      inputKey: hookKeyframeGenerationInputKey(customPartial), promptSha256: createHash("sha256").update(custom).digest("hex") };
+    const next = seedreamFixture();
+    next.imageJob.input_json = { ...f.imageJob.input_json, prompt: custom, hookKeyframe: customReceipt, startingFrameOutfitPrompt: custom };
+    await runGenerateImageJob(next.imageJob, next.context);
+    assert.equal(openrouterCalls.at(-1).startingFrameOutfitPrompt, custom);
+    assert.deepEqual(openrouterCalls.at(-1).referenceOptions, customPartial.referenceOptions);
+    const mismatch = seedreamFixture();
+    mismatch.imageJob.input_json = { ...next.imageJob.input_json, startingFrameOutfitPrompt: "Different outfit request" };
+    const beforeMismatch = openrouterCalls.length;
+    await assert.rejects(runGenerateImageJob(mismatch.imageJob, mismatch.context), /do not match the saved custom prompt/);
+    assert.equal(openrouterCalls.length, beforeMismatch);
   } finally { sceneBytes = originalBytes; }
 });
 
@@ -675,4 +696,63 @@ test("face_swap mode routes base and influencer images to performOpenRouterFaceS
   assert(openrouterCalls.at(-1).baseImage);
   assert(openrouterCalls.at(-1).influencerImage);
   assert.equal(openrouterCalls.at(-1).aspectRatio, "4:5");
+  assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
+  assert.equal(openrouterCalls.at(-1).startingFrameTextCleanup, undefined);
+});
+
+test("new character OpenRouter jobs preserve full prompts and all references without using direct Google", async () => {
+  const f = seedreamFixture();
+  const prompt = "Selected navy suit and black bob. ".repeat(100).trim();
+  const refs = ["https://media.example.test/character.png", "https://media.example.test/room.png", "https://media.example.test/outfit.png"];
+  f.imageJob.input_json = { generationId: "character-router-test", model: "gemini_3_pro", provider: "openrouter",
+    characterSource: "ugc-pilot-characters", characterVersion: 2, promptSource: "user", mode: "custom",
+    prompt, aspectRatio: "9:16", referenceImageUrl: refs[0], referenceImageUrls: refs };
+  const before = openrouterCalls.length, googleBefore = received.length;
+  const output = await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(output.provider, "openrouter");
+  assert.equal(openrouterCalls.length, before + 1);
+  assert.equal(received.length, googleBefore);
+  assert.equal(openrouterCalls.at(-1).prompt, prompt);
+  assert.equal(openrouterCalls.at(-1).referenceImages.length, 3);
+  assert.equal(openrouterCalls.at(-1).imageSize, "2K");
+});
+
+test("starting-frame cleanup policy cannot silently change standalone face swap", async () => {
+  const f = seedreamFixture();
+  Object.assign(f.imageJob.input_json, { model: "gemini_3_pro", provider: "openrouter", mode: "face_swap",
+    startingFrameTextCleanup: true });
+  const before = openrouterCalls.length;
+  await assert.rejects(runGenerateImageJob(f.imageJob, f.context), /Invalid starting-frame text cleanup policy/);
+  assert.equal(openrouterCalls.length, before);
+});
+
+test("stage-marked retries resume the pipeline, while unmarked uncertain jobs never submit again", async () => {
+  for (const metadata of [{ pipelineVersion: 1 }, {}]) {
+    const f = seedreamFixture({ shouldSubmit: false, metadata });
+    Object.assign(f.imageJob.input_json, { model: "gemini_3_pro", provider: "openrouter", mode: "face_swap",
+      referenceImageUrl: "https://media.example.test/base.png",
+      referenceImageUrls: ["https://media.example.test/base.png", "https://media.example.test/face.png"] });
+    const before = openrouterCalls.length;
+    if (metadata.pipelineVersion) {
+      await runGenerateImageJob(f.imageJob, f.context);
+      assert.equal(openrouterCalls.length, before + 1);
+      assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
+      assert.equal(f.events.find(event => event.name === "succeeded").metadata.stagesComplete, true);
+    } else {
+      await assert.rejects(runGenerateImageJob(f.imageJob, f.context), ProviderSubmissionUncertainError);
+      assert.equal(openrouterCalls.length, before);
+    }
+  }
+});
+
+test("a pipeline failure cannot write a successful aggregate operation or final output", async () => {
+  const f = seedreamFixture();
+  Object.assign(f.imageJob.input_json, { model: "gemini_3_pro", provider: "openrouter", mode: "face_swap",
+    referenceImageUrl: "https://media.example.test/base.png",
+    referenceImageUrls: ["https://media.example.test/base.png", "https://media.example.test/face.png"] });
+  try {
+    openrouterError = new Error("Image harmonization failed");
+    await assert.rejects(runGenerateImageJob(f.imageJob, f.context), /harmonization failed/);
+    assert.equal(f.events.some(event => event.name === "succeeded" || event.name === "persisted"), false);
+  } finally { openrouterError = undefined; }
 });

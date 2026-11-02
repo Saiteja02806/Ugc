@@ -8,6 +8,7 @@ import { getWallMoneyMotion } from "./wall-money-motion.ts";
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { buildSourceMotionDirections } from "./hook-middle-frame-motion.ts";
 import { formatGeneratedMotionPhases, formatMotionPromptTimes } from "./motion-phase-display.ts";
+import { withStartingFrameReferenceOptions } from "../../worker/src/lib/starting-frame-reference-options.ts";
 
 /** Preparation only. This is deliberately not a HookMotionCompilation ready receipt. */
 export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: StartingFrameWorkflow = "hook", creatorDirections?: string, legacyCreatorDirections?: string, assignedOpeningPrompt?: string, sourceDurationSeconds?: number) {
@@ -45,7 +46,7 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
     staticReview: suggestion?.staticReview ?? null,
     requiresDecision: format === "hook" && (suggestion?.requiresDecision ?? false),
     decisionIssues: suggestion?.staticReview?.issues ?? [],
-    imagePrompt,
+    imagePrompt: imagePrompt ? withStartingFrameReferenceOptions(imagePrompt, draft.referenceOptions) : null,
     directions, suggestedDirections, customized: draft.motionInstructions !== null,
     animationPrompt, animationError, durationSeconds,
     generateAudio: draft.generateAudio,

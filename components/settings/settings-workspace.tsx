@@ -473,7 +473,7 @@ export function SettingsWorkspace() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
                   {subscription?.isDodoManaged ? (
-                    <Button
+                    <Button variant="neutral"
                       type="button"
                       size="lg"
                       className="w-full sm:w-auto"
@@ -502,7 +502,7 @@ export function SettingsWorkspace() {
                     <Link
                       href="/pricing"
                       className={buttonVariants({
-                        variant: "default",
+                        variant: "neutral",
                         size: "lg",
                         className: "w-full sm:w-auto font-semibold",
                       })}

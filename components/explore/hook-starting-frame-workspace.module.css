@@ -238,3 +238,6 @@
   .workspace .actionButtons { margin-left: auto; }
   .workspace .actionButtons > button { flex: initial; }
 }
+
+.whiteFrameAction.whiteFrameAction { background: #f5f3f0; color: #101014; }
+.whiteFrameAction.whiteFrameAction:hover { background: #dedbd7; color: #101014; }

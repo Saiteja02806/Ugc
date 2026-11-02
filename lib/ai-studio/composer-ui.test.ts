@@ -88,7 +88,7 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
   assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
-  assert.match(imageWorkspace, /generateLabel=\{pendingSubmission \? "Recover saved request" : slideshowSlideCount \? `Generate \$\{outputCount\} slides` : "Generate image"\}/);
+  assert.match(imageWorkspace, /generateLabel=\{pendingSubmission \? "Recover saved request" : slideshowSlideCount \? `Generate \$\{outputCount\} slide\$\{outputCount === 1 \? "" : "s"\}` : "Generate image"\}/);
   assert.match(videoWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
 });
 
@@ -400,7 +400,7 @@ test("image previews remain compact and video results use the dedicated history 
     videoWorkspace,
     /getVideoResultWidthClassName\(video\.ratio\)/,
   );
-  assert.match(videoWorkspace, /<VideoPromptBubble createdAt=\{video\.createdAt\} prompt=\{video\.prompt\}/);
+  assert.match(videoWorkspace, /<VideoPromptBubble createdAt=\{video\.createdAt\} prompt=\{formatMotionTimes \? formatMotionPromptTimes\(video\.prompt\) : video\.prompt\}/);
   assert.match(videoWorkspace, /<VideoHistoryDrawer/);
 });
 

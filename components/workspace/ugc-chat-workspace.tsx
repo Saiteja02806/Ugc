@@ -656,7 +656,7 @@ export function ImageGenerationStudioPanel({
           [{ jobId: newJobId, slideshowGeneration: targetAsset.slideshowGeneration }],
           {
             aspectRatio: targetAsset.aspectRatio,
-            prompt: `Biometric face swap Â· ${targetAsset.slideshowGeneration ? `Slide ${targetAsset.slideshowGeneration.slideIndex}` : "Image"}`,
+            prompt: `Biometric face swap · ${targetAsset.slideshowGeneration ? `Slide ${targetAsset.slideshowGeneration.slideIndex}` : "Image"}`,
           },
           true,
         );
@@ -1037,7 +1037,7 @@ export function ImageGenerationStudioPanel({
   const resultsStatus: AiStudioResultsStatus | null = resultsErrorMessage
     ? { label: resultsErrorMessage, tone: "error" }
     : isGenerating
-      ? { label: "Creating your imageâ€¦", tone: "progress" }
+      ? { label: "Creating your image…", tone: "progress" }
       : actionNotice ?? durableNotice
         ? { label: actionNotice ?? durableNotice ?? "", tone: "neutral" }
         : null;
@@ -1289,7 +1289,7 @@ export function ImageGenerationStudioPanel({
                       {group.slot.versionCount > 1 ? `Slideshow Version ${group.slot.versionIndex}` : "Slideshow"}
                     </span>
                     <span className="text-xs text-muted font-medium">
-                      {group.slot.slideCount} slides Â· 4:5
+                      {group.slot.slideCount} slides · 4:5
                     </span>
                   </div>
                   <div className="flex items-center gap-2 pt-0.5">
@@ -1301,7 +1301,7 @@ export function ImageGenerationStudioPanel({
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
                         <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
-                        Generating slides Â· {images.length} of {group.slot.slideCount} ready
+                        Generating slides · {images.length} of {group.slot.slideCount} ready
                       </span>
                     )}
                   </div>
@@ -1367,7 +1367,7 @@ export function ImageGenerationStudioPanel({
           <div key={row.key}>
             {row.slideshowGeneration ? (
               <p className="mb-2 text-xs font-semibold text-muted">
-                Version {row.slideshowGeneration.versionIndex} Â· Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}
+                Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}
               </p>
             ) : null}
             <ImageGenerationCard
@@ -1407,7 +1407,7 @@ export function ImageGenerationStudioPanel({
         referenceControls={workflow ? recreateView?.contextBanner : undefined}
         settingsLabel="Image generation settings"
         settingsClassName={workflow ? creation.imageSettings : undefined}
-        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} Â· ${aspectRatio} Â· ${slideshowSlideCount ? `${slideshowSlideCount} slides Ã— ${quantity} versions` : `${quantity} image${quantity === 1 ? "" : "s"}`}` : undefined}
+        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${slideshowSlideCount ? `${slideshowSlideCount} slides × ${quantity} versions` : `${quantity} image${quantity === 1 ? "" : "s"}`}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
         accessMessage={tooManySlides ? "Select up to 10 slides per version." : tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Remove an attached image or select fewer slideshow references.` : composerMessage}
@@ -1468,8 +1468,8 @@ export function ImageGenerationStudioPanel({
           </PopoverContent>
         </Popover> : undefined}
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached imagesâ€¦</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
-        placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to createâ€¦"}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
+        placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
           submissionKeyRef.current = null;
@@ -1480,7 +1480,7 @@ export function ImageGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         secondaryActions={
           <>
-            {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requestsâ€¦" : "Check earlier requests"}</Button> : null}
+            {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requests…" : "Check earlier requests"}</Button> : null}
             {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
             {isGenerating ? (
               <Button
@@ -1618,7 +1618,7 @@ function ImageGenerationCard({
                     <span className="inline-flex size-9 items-center justify-center rounded-xl border border-amber-500/30 bg-black/60 text-amber-400 shadow-md mb-2">
                       <RefreshCw className="size-4 animate-spin text-amber-400" aria-hidden="true" />
                     </span>
-                    <p className="text-xs font-semibold text-amber-300">Swapping faceâ€¦</p>
+                    <p className="text-xs font-semibold text-amber-300">Swapping face…</p>
                     <p className="mt-0.5 text-[10px] text-muted">Locking biometric identity</p>
                   </div>
                 ) : null}
@@ -1676,7 +1676,7 @@ function ImageGenerationCard({
                   {isSwappingFace ? (
                     <>
                       <Loader2 className="size-3 animate-spin mr-1" aria-hidden="true" />
-                      Swappingâ€¦
+                      Swapping…
                     </>
                   ) : (
                     <>

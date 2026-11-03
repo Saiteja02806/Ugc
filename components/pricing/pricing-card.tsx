@@ -165,7 +165,7 @@ export function PricingCard({
       <div className="mt-4">
         <div className="flex items-baseline gap-1.5">
           <span className="font-mono text-4xl font-bold tracking-tight text-foreground-strong">
-            {formatPricingAmount(pricing.monthlyEquivalent)}
+            {formatPricingAmount(Math.round(pricing.monthlyEquivalent))}
           </span>
           <span className="text-xs font-medium uppercase tracking-wider text-muted">
             {isFree ? `for ${FREE_TRIAL_CONTENT_DAYS} days` : "/ month"}

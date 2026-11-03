@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     question: "Are daily content concepts separate from AI credits?",
-    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
+    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Text on screen creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
   },
   {
     question: "How do Vidmake credits work?",

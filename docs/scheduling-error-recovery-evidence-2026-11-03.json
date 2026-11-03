@@ -1,0 +1,145 @@
+{
+  "scope": "read-only active worker logs, eight days, 1500 row limit",
+  "tiktokJobTimeline": [
+    {
+      "time": "2026-10-27T12:21:17.717644Z",
+      "message": "Social publish worker started",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "jobId,targetId,userId"
+    },
+    {
+      "time": "2026-10-27T12:21:18.013565Z",
+      "message": "Social publish timing recorded",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "executionDelaySeconds,executionStartedAt,jobId,scheduledAt,targetId"
+    },
+    {
+      "time": "2026-10-27T12:21:22.66498Z",
+      "message": "Worker job scheduled for retry",
+      "attempt": 1,
+      "errorCode": "tiktok_internal_error",
+      "retryAt": "2026-10-27T12:21:52.279Z",
+      "status": null,
+      "keys": "attemptCount,error,errorCode,jobId,jobType,messageId,retryAt"
+    },
+    {
+      "time": "2026-10-27T12:21:33.157977Z",
+      "message": "Background job is already claimed; leaving message for retry",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "jobId,jobStatus,jobType,messageId,workerId"
+    },
+    {
+      "time": "2026-10-27T12:21:53.954548Z",
+      "message": "Social publish worker started",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "jobId,targetId,userId"
+    },
+    {
+      "time": "2026-10-27T12:21:54.215942Z",
+      "message": "Social publish timing recorded",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "executionDelaySeconds,executionStartedAt,jobId,scheduledAt,targetId"
+    },
+    {
+      "time": "2026-10-27T12:22:08.349589Z",
+      "message": "Social publish timing completed",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "executionDelaySeconds,executionStartedAt,instagramRequestStartedAt,jobId,publishedAt,scheduledAt,targetId"
+    },
+    {
+      "time": "2026-10-27T12:22:08.565337Z",
+      "message": "Worker job completed",
+      "attempt": null,
+      "errorCode": null,
+      "retryAt": null,
+      "status": null,
+      "keys": "jobId,jobType,messageId"
+    }
+  ],
+  "nearbyRequests": [
+    {
+      "time": "2026-10-27T12:21:17.524204Z",
+      "message": null,
+      "httpStatus": 503,
+      "latency": "5.174276584s",
+      "jobMatches": false,
+      "jobStatus": null,
+      "sameInstanceAsFailure": true,
+      "providerStatus": null,
+      "metadataKeys": ""
+    },
+    {
+      "time": "2026-10-27T12:21:32.735351Z",
+      "message": null,
+      "httpStatus": 503,
+      "latency": "0.489224740s",
+      "jobMatches": false,
+      "jobStatus": null,
+      "sameInstanceAsFailure": true,
+      "providerStatus": null,
+      "metadataKeys": ""
+    },
+    {
+      "time": "2026-10-27T12:21:33.157977Z",
+      "message": "Background job is already claimed; leaving message for retry",
+      "httpStatus": null,
+      "latency": null,
+      "jobMatches": true,
+      "jobStatus": "queued",
+      "sameInstanceAsFailure": true,
+      "providerStatus": null,
+      "metadataKeys": "jobId,jobStatus,jobType,messageId,workerId"
+    },
+    {
+      "time": "2026-10-27T12:21:53.437564Z",
+      "message": null,
+      "httpStatus": 200,
+      "latency": "15.177776830s",
+      "jobMatches": false,
+      "jobStatus": null,
+      "sameInstanceAsFailure": true,
+      "providerStatus": null,
+      "metadataKeys": ""
+    },
+    {
+      "time": "2026-10-27T12:21:57.576074Z",
+      "message": "TikTok Direct Post status",
+      "httpStatus": null,
+      "latency": null,
+      "jobMatches": false,
+      "jobStatus": null,
+      "sameInstanceAsFailure": true,
+      "providerStatus": "PROCESSING_DOWNLOAD",
+      "metadataKeys": "attempt,publishId,status"
+    },
+    {
+      "time": "2026-10-27T12:22:07.912468Z",
+      "message": "TikTok Direct Post status",
+      "httpStatus": null,
+      "latency": null,
+      "jobMatches": false,
+      "jobStatus": null,
+      "sameInstanceAsFailure": true,
+      "providerStatus": "PUBLISH_COMPLETE",
+      "metadataKeys": "attempt,publishId,status"
+    }
+  ]
+}

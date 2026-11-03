@@ -150,7 +150,7 @@ export default function UgcPilotVsHiringCreatorsPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong className="font-semibold text-foreground-strong">Hooks and concept videos.</strong> Problem statements, &quot;here&apos;s why this matters&quot; and simple explainers suit generated creator-style footage.</li>
           <li><strong className="font-semibold text-foreground-strong">Consistency.</strong> Vidmake lets you build a reusable AI character, so a series keeps the same presenter.</li>
-          <li><strong className="font-semibold text-foreground-strong">Formats.</strong> Vidmake&apos;s reference catalogue includes hook, wall-of-text and slideshow formats you can remix for your brand.</li>
+          <li><strong className="font-semibold text-foreground-strong">Formats.</strong> Vidmake&apos;s reference catalogue includes hook, text on screen and slideshow formats you can remix for your brand.</li>
           <li><strong className="font-semibold text-foreground-strong">Polish on your terms.</strong> You can add speech, edit drafts and export finished versions yourself.</li>
         </ul>
         <ArticleH3>Quality rules for AI UGC</ArticleH3>

@@ -88,6 +88,8 @@ variable "media_cors_origins" {
   description = "Allowed browser origins for direct media uploads."
   type        = list(string)
   default = [
+    "https://vidmake.io",
+    "https://www.vidmake.io",
     "https://getugcpilot.com",
     "https://www.getugcpilot.com",
     "http://localhost:3000",

@@ -21,7 +21,7 @@ export function createEditorialMeasurer(layout: SubtitleLayout, tools: SubtitleT
       const selected = font === "hero" ? "Black-Italic" : font === "lead" ? "Medium-Italic" : "Medium";
       return { width, height, header: editorialHeader({ width, height }),
         body: `{\\an7\\pos(64,64)\\fs${size}${editorialFontTags(font)}\\bord0\\shad0\\c&H00FFFFFF&}${escapeAssText(text)}`,
-        selectedFont: new RegExp(`Vidmake-Editorial-Study-${selected}`, "u") };
+        selectedFont: new RegExp(`UGCPilot-Editorial-Study-${selected}`, "u") };
     } });
   return Object.assign((text: string, size: number, font: EditorialFont) => batch({ text, size, font }),
     { preload: (texts: string[], size: number, font: EditorialFont) => batch.preload(texts.map(text => ({ text, size, font }))) });

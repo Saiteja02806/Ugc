@@ -52,7 +52,7 @@ test("marks a Wall database constraint rejection as terminal", () => {
   assert.deepEqual(publicFailure(error), {
     errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
     publicMessage:
-      "Wall-of-text could not be saved because a required update is missing.",
+      "Text on screen could not be saved because a required update is missing.",
     retryable: false,
   });
 });
@@ -67,7 +67,7 @@ test("marks a deterministic Wall replacement-count rejection as terminal", () =>
     {
       errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
       publicMessage:
-        "Wall-of-text could not be saved because a required update is missing.",
+        "Text on screen could not be saved because a required update is missing.",
       retryable: false,
     },
   );
@@ -78,7 +78,7 @@ test("keeps a timeout retryable", () => {
     publicFailure(new Error("Request timed out.")),
     {
       errorCode: "infrastructure_error",
-      publicMessage: "Wall-of-text preparation could not finish yet.",
+      publicMessage: "Text on screen preparation could not finish yet.",
       retryable: true,
     },
   );
@@ -102,7 +102,7 @@ test("marks a final Wall render-fit rejection as terminal", () => {
 
   assert.deepEqual(publicFailure(error), {
     errorCode: WALL_TEXT_RENDER_FIT_REJECTED,
-    publicMessage: "Wall-of-text could not be arranged safely inside the video.",
+    publicMessage: "Text on screen could not be arranged safely inside the video.",
     retryable: false,
   });
 });
@@ -116,7 +116,7 @@ test("marks exhausted candidate repair as terminal so a retry reserves new plan 
   assert.deepEqual(publicFailure(error), {
     errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
     publicMessage:
-      "Wall-of-text needs a different content idea before it can be prepared.",
+      "Text on screen needs a different content idea before it can be prepared.",
     retryable: false,
   });
   assert.equal(isWallTextGenerationFailureTerminalCode(error.code), true);
@@ -129,7 +129,7 @@ test("marks deterministic V9 fixed-layout fit failures as terminal", () => {
 
   assert.deepEqual(publicFailure(error), {
     errorCode: WALL_TEXT_RENDER_FIT_REJECTED,
-    publicMessage: "Wall-of-text could not be arranged safely inside the video.",
+    publicMessage: "Text on screen could not be arranged safely inside the video.",
     retryable: false,
   });
   assert.equal(isWallTextGenerationFailureTerminalCode(error.code), true);
@@ -146,7 +146,7 @@ test("marks a missing packaged Wall font as a terminal configuration error", () 
     {
       errorCode: WALL_TEXT_RUNTIME_CONFIGURATION_ERROR,
       publicMessage:
-        "Wall-of-text is unavailable because a required runtime dependency is not configured.",
+        "Text on screen is unavailable because a required runtime dependency is not configured.",
       retryable: false,
     },
   );
@@ -160,7 +160,7 @@ test("marks an unavailable Wall audio dependency as terminal", () => {
     {
       errorCode: WALL_TEXT_DEPENDENCY_UNAVAILABLE,
       publicMessage:
-        "Wall-of-text cannot be prepared because a required audio dependency is unavailable.",
+        "Text on screen cannot be prepared because a required audio dependency is unavailable.",
       retryable: false,
     },
   );
@@ -176,7 +176,7 @@ test("marks a database grounding contract rejection as terminal", () => {
     {
       errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
       publicMessage:
-        "Wall-of-text could not be saved because a required update is missing.",
+        "Text on screen could not be saved because a required update is missing.",
       retryable: false,
     },
   );

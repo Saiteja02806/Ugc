@@ -34,7 +34,7 @@ test("actual Next config externalizes both resolvers and removes decoder package
   vm.runInNewContext(source, { exports: exported, process,
     require(name) {
       if (name.endsWith("native-media-tracing.ts")) return { nativeMediaTracing };
-      if (name.endsWith("landing-preview-assets.json")) return {};
+      if (name.endsWith("landing-preview-assets.json")) return { default: JSON.parse(readFileSync(new URL("../lib/marketing/landing-preview-assets.json", import.meta.url), "utf8")) };
       throw new Error(`Unexpected config import ${name}`);
     },
   });

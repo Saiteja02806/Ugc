@@ -1,0 +1,14 @@
+{
+  "production_origin": "https://vidmake.io",
+  "scope": "Read-only public JavaScript; no authenticated session or account data",
+  "matches": [
+    {
+      "chunk": "/_next/static/chunks/a36bde72-63b3d0fa53412277.js",
+      "startup_restoration_method": "async reloadAndSetCurrentUserOrClear(e){try{await B(e)}catch(e){if(e?.code!==\"auth/network-request-failed\")return this.directlySetCurrentUser(null)}return this.directlySetCurrentUser(e)}useDeviceLanguage(){this.languageCode=function(){if(\"u\"<typeof navigator)return null;let e=navigator;return e.languages&&e.languages[0]||e.language||null}()}async _delete(){this._deleted=!0}async updateCurrentUser(e){if((0,i.xZ)(this.app))return Promise.reject(m(this));let t=e?(0,s.Ku)(e):null;return t&&I(t.auth.config.apiKey===this.config.apiKey,this,\"invalid-user-token\"),this._updateCurrentUser(t&&t._clone(this))}async _updateCurrentUser(e,t=!1){if(!this._deleted)return e&&I(this.tenantId===e.tenantId,this,\"tenant-id-mismatch\"),t||await this.beforeStateQue",
+      "contains_network_exception": true,
+      "contains_null_user_clear": true
+    }
+  ],
+  "errors": [],
+  "public_scripts_checked": 21
+}

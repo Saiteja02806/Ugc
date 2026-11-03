@@ -36,6 +36,7 @@ export function AiStudioComposer({
   contextBanner,
   generateDisabled,
   generateLabel,
+  generateTone,
   generationLocked,
   hasAttachments = true,
   isGenerating,
@@ -79,6 +80,7 @@ export function AiStudioComposer({
   contextBanner?: ReactNode;
   generateDisabled: boolean;
   generateLabel: string;
+  generateTone?: "blue";
   generationLocked: boolean;
   hasAttachments?: boolean;
   isGenerating: boolean;
@@ -115,6 +117,7 @@ export function AiStudioComposer({
   inlineReferences?: boolean;
   quiet?: boolean;
 }) {
+  const generateClass = generateTone === "blue" ? creation.blueGenerate : creation.whiteGenerate;
   const promptId = useId();
   const formId = useId();
   const promptHelperId = useId();
@@ -150,7 +153,7 @@ export function AiStudioComposer({
         {estimatedCredits !== undefined ? <p className={focused.estimate}>Estimated cost <strong>{estimatedCredits} credits</strong></p> : null}
         <div className={focused.statusRow}><p role="status">{accessMessage}</p>{secondaryActions}</div>
       </div>
-      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="focused" noValidate onSubmit={onSubmit} className={focused.composer}>
       {contextBanner}
@@ -171,7 +174,7 @@ export function AiStudioComposer({
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
       <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
-      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
+      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
       {referenceControls}
@@ -208,7 +211,7 @@ export function AiStudioComposer({
         </PopoverContent>
       </Popover>
       {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
-      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${creation.whiteGenerate}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
       <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
     </div>;
     const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">
@@ -262,7 +265,7 @@ export function AiStudioComposer({
                 ? "gap-y-1 px-4 pb-1.5 pt-3"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
-              !compact && layout === "unified" && leadingControl && (!hasAttachments || inlineReferences) && (inlineReferences ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3" : "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2"),
+              !compact && layout === "unified" && leadingControl && (!hasAttachments || inlineReferences) && (inlineReferences ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3" : "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2"),
             )}
           >
             {leadingControl && (!compact || hasAttachments) ? <div className={cn("min-w-0", !compact && layout === "unified" && (!hasAttachments || inlineReferences) && "col-start-1 row-start-1")}>{leadingControl}</div> : null}

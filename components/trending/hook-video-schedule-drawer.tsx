@@ -676,7 +676,7 @@ export function HookVideoScheduleDrawer({
                 aria-hidden="true"
               />
               <span>
-                Preparing this Wall-of-text Reel. You can finish the account and
+                Preparing this Text on screen Reel. You can finish the account and
                 time details now; confirmation unlocks as soon as the video is
                 ready.
               </span>

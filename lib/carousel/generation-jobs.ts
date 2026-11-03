@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticCarouselGenerationEnabled } from "./generation-hold";
 
 import {
   getMissingJobQueueEnvVars,
@@ -48,6 +49,7 @@ export class CarouselGenerationConfigurationError extends Error {
  * configuration error look like a content-generation failure.
  */
 export function assertCarouselGenerationRuntimeConfigured() {
+  assertAutomaticCarouselGenerationEnabled();
   const missingEnvVars = getMissingCarouselGenerationEnvVars();
 
   if (missingEnvVars.length > 0) {

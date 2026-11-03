@@ -164,3 +164,67 @@
     scroll-behavior: auto !important;
   }
 }
+.referenceRecreateButton {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  max-width: calc(100% - 24px);
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+.referenceRecreateButton svg { width: 16px; height: 16px; flex-shrink: 0; }
+.referenceRecreateButton:hover:not(:disabled) { background: rgba(0, 0, 0, 0.7); }
+.referenceRecreateButton:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.referenceRecreateButton[data-selected] { border-color: #fff; }
+.referenceRecreateButton:disabled { cursor: not-allowed; opacity: 0.55; }
+@media (pointer: coarse) { .referenceRecreateButton { min-height: 44px; } }
+/* Keep the source link separate when two cards share a very narrow phone. */
+@media (max-width: 359px) {
+  .referenceSourceOverlay { bottom: 64px; }
+  .referenceRecreateButton { gap: 4px; padding-inline: 8px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .referenceRecreateButton { transition: none; } }
+
+/* Status, not an action: readable on light and dark source thumbnails. */
+.referenceNewBadge {
+  pointer-events: none;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgb(102 186 255 / 42%);
+  border-radius: 999px;
+  background: rgb(12 17 26 / 90%);
+  color: #f5f8ff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  backdrop-filter: blur(8px);
+}
+.referenceNewDot { width: 4px; height: 4px; flex: none; border-radius: 50%; background: #66baff; }

@@ -97,7 +97,7 @@ const MIX_ROWS: Array<{
     icon: ScanText,
     iconClass: "text-accent-purple",
     iconSurfaceClass: "border-accent-purple/15 bg-accent-purple/10",
-    label: "Wall-of-Text",
+    label: "Text on screen",
     valueClass: "text-accent-purple",
   },
   {

@@ -104,7 +104,7 @@ export function LandingFormatsBento() {
           </div>
 
           <h3 className="mt-4 text-xl font-semibold text-foreground-strong">
-            Wall-of-Text Reels
+            Text on screen Reels
           </h3>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
             Create or choose background footage, then add and review your on-screen message.
@@ -116,7 +116,7 @@ export function LandingFormatsBento() {
           <div className="relative aspect-[9/13] w-full overflow-hidden rounded-card border border-border bg-black shadow-sm">
             <div className="absolute left-2.5 top-2.5 z-20 flex items-center gap-1 rounded-full border border-white/20 bg-black/65 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
               <ScanText className="size-3 text-primary" aria-hidden="true" />
-              <span>Wall of Text</span>
+              <span>Text on screen</span>
             </div>
 
             <video

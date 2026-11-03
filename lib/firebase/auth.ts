@@ -1,4 +1,3 @@
-import { FirebaseError } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
   EmailAuthProvider,
@@ -6,7 +5,7 @@ import {
   getRedirectResult,
   getIdToken,
   linkWithCredential,
-  onAuthStateChanged,
+  onIdTokenChanged,
   reload,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -244,6 +243,7 @@ export async function refreshCurrentFirebaseUser() {
     return e2eTestUser;
   }
 
+  await auth.authStateReady();
   const user = auth.currentUser;
 
   if (!user) {
@@ -251,7 +251,19 @@ export async function refreshCurrentFirebaseUser() {
   }
 
   await reload(user);
+  if (auth.currentUser !== user) {
+    throw new FirebaseAuthActionError(
+      "Your signed-in account changed. Reload to continue.",
+      "auth/user-changed",
+    );
+  }
   await getIdToken(user, true);
+  if (auth.currentUser !== user) {
+    throw new FirebaseAuthActionError(
+      "Your signed-in account changed. Reload to continue.",
+      "auth/user-changed",
+    );
+  }
 
   return mapFirebaseUser(user);
 }
@@ -333,7 +345,9 @@ export function listenToAuthState(
     return () => {};
   }
 
-  return onAuthStateChanged(
+  // Token notifications also publish same-account profile/verification changes
+  // after reload. Keep the SDK as the sole writer of the context's user state.
+  return onIdTokenChanged(
     auth,
     (user) => {
       if (user) {
@@ -355,7 +369,7 @@ export function getFirebaseAuthErrorMessage(error: unknown) {
     return error.message;
   }
 
-  if (error instanceof FirebaseError) {
+  if (hasFirebaseAuthErrorCode(error)) {
     switch (error.code) {
       case "auth/account-exists-with-different-credential":
         return "An account already exists for this email with another sign-in method. Sign in with that method first, then add email/password.";
@@ -470,5 +484,12 @@ function normalizeEmail(email: string) {
 }
 
 function isFirebaseError(error: unknown, code: string) {
-  return error instanceof FirebaseError && error.code === code;
+  return hasFirebaseAuthErrorCode(error) && error.code === code;
+}
+
+// Firebase packages can carry different copies of FirebaseError. Use the
+// documented auth code for presentation/flow decisions, never as authorization.
+function hasFirebaseAuthErrorCode(error: unknown): error is { code: string } {
+  return typeof error === "object" && error !== null && "code" in error &&
+    typeof error.code === "string" && error.code.startsWith("auth/");
 }

@@ -39,6 +39,10 @@ export async function handleAIStudioFaceSwap(request: Request) {
     return NextResponse.json({ message: "Invalid JSON request body.", ok: false }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ message: "Invalid request body.", ok: false }, { status: 400 });
+  }
+
   const targetAssetId = typeof body.targetAssetId === "string" ? body.targetAssetId.trim() : "";
   const influencerAssetId = typeof body.influencerAssetId === "string" ? body.influencerAssetId.trim() : "";
 
@@ -49,25 +53,22 @@ export async function handleAIStudioFaceSwap(request: Request) {
     );
   }
 
-  const [targetAsset, influencerAsset] = await Promise.all([
-    getMediaAssetForOwner({ assetId: targetAssetId, userId: user.uid }),
-    getMediaAssetForOwner({ assetId: influencerAssetId, userId: user.uid }),
-  ]);
-
-  if (!targetAsset || targetAsset.deleted_at !== null || targetAsset.status !== "ready") {
-    return NextResponse.json({ message: "Target image is unavailable.", ok: false }, { status: 404 });
+  // Supporting photos belong to the same identity. Validate every owned asset
+  // before reserving credits; legacy single-photo requests keep their order.
+  const extraIds = body.influencerReferenceAssetIds ?? [];
+  if (!Array.isArray(extraIds) || extraIds.length > 3 || extraIds.some(id => typeof id !== "string" || !UUID_PATTERN.test(id)) || new Set([targetAssetId, influencerAssetId, ...extraIds]).size !== 2 + extraIds.length) {
+    return NextResponse.json({ message: "Choose up to four distinct photos of the same person.", ok: false }, { status: 400 });
   }
-
-  if (!influencerAsset || influencerAsset.deleted_at !== null || influencerAsset.status !== "ready") {
-    return NextResponse.json({ message: "Influencer photo is unavailable.", ok: false }, { status: 404 });
+  const assets = await Promise.all([targetAssetId, influencerAssetId, ...extraIds].map(assetId => getMediaAssetForOwner({ assetId, userId: user.uid })));
+  if (assets.some(asset => !asset || asset.deleted_at !== null || asset.status !== "ready" || !["image", "influencer"].includes(asset.collection) || !asset.mime_type?.startsWith("image/"))) {
+    return NextResponse.json({ message: "A selected image is unavailable. Choose your photos again.", ok: false }, { status: 404 });
   }
-
-  const targetUrl = (await canonicalMediaReference(targetAsset.url, user.uid)) as string | null;
-  const influencerUrl = (await canonicalMediaReference(influencerAsset.url, user.uid)) as string | null;
-
-  if (!targetUrl || typeof targetUrl !== "string" || !isTrustedMediaReferenceUrl(targetUrl) || !influencerUrl || typeof influencerUrl !== "string" || !isTrustedMediaReferenceUrl(influencerUrl)) {
+  const urls = await Promise.all(assets.map(asset => canonicalMediaReference(asset!.url, user.uid)));
+  if (urls.some(url => !url || typeof url !== "string" || !isTrustedMediaReferenceUrl(url)) || new Set(urls).size !== urls.length) {
     return NextResponse.json({ message: "Reference media is not accessible.", ok: false }, { status: 400 });
   }
+  const [targetUrl] = urls as string[];
+  const targetAsset = assets[0]!;
 
   const rawRatio = typeof body.aspectRatio === "string" ? body.aspectRatio.trim() : targetAsset.ratio;
   const aspectRatio = SUPPORTED_RATIOS.has(rawRatio) ? rawRatio : "4:5";
@@ -108,7 +109,7 @@ export async function handleAIStudioFaceSwap(request: Request) {
         aspectRatio,
         prompt: instructions || "Apply exact biometric influencer identity to the target scene photograph.",
         referenceImageUrl: targetUrl,
-        referenceImageUrls: [targetUrl, influencerUrl],
+        referenceImageUrls: urls as string[],
         creditCost,
         ...(slideshowGeneration ? { slideshowGeneration, exploreFormat: "slideshow" } : {}),
       },

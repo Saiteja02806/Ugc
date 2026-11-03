@@ -103,7 +103,7 @@ const FORMAT: Record<
   },
   slideshow: { label: "Slideshow", tone: "blue" },
   wall: {
-    label: "Wall of Text",
+    label: "Text on screen",
     source: "/marketing/showcase-part2/wot2-preview.mp4",
     tone: "violet",
   },

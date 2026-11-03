@@ -64,7 +64,7 @@ export function getRecreateReferences(includeArchivedHooks = false): RecreateRef
     id: item.id,
     posterUrl: item.posterUrl,
     slides: [],
-    title: item.title ?? `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
+    title: item.title ?? `${item.pairedAudio ? "Text on screen" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
     ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
     ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),

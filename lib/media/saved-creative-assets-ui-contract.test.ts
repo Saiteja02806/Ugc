@@ -41,7 +41,7 @@ test("Saved includes every reviewed Trending format", () => {
   assert.match(savedTab, /<WallTextLibraryTab[\s\S]*embedded/);
   assert.match(savedTab, /<CarouselLibraryTab[\s\S]*embedded/);
   assert.match(savedTab, /Hook videos/);
-  assert.match(savedTab, /Wall-of-Text/);
+  assert.match(savedTab, /Text on screen/);
   assert.match(savedTab, /Carousels/);
 });
 

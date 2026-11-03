@@ -981,7 +981,7 @@ export function TrendingCreativeEditor({
       ? "Carousel"
       : item.format === "hook_video"
         ? "Hook video"
-        : "Wall of text"
+        : "Text on screen"
     : "Creative";
 
   return (

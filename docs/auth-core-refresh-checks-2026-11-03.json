@@ -1,0 +1,27 @@
+{
+  "sdk": "Actual installed Firebase SDK with controlled transport",
+  "results": [
+    {
+      "scenario": "500",
+      "errorCode": "auth/internal-error",
+      "userPresent": true,
+      "observerErrorCalls": 0
+    },
+    {
+      "scenario": "429",
+      "errorCode": "auth/too-many-requests",
+      "userPresent": true,
+      "observerErrorCalls": 0
+    },
+    {
+      "scenario": "recovery",
+      "userPresent": true
+    }
+  ],
+  "authEvents": [
+    false,
+    true
+  ],
+  "requests": 5,
+  "limitation": "No production/browser requests. Tests active-session refresh, not startup restoration."
+}

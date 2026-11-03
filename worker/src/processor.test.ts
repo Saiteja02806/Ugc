@@ -15,6 +15,85 @@ import { EmptyWallTextContentPlanResponseError } from "./lib/wall-text-content-p
 import { toWallTextContentPlanRetry } from "./jobs/generate-wall-text-content-plan.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
+import sharp from "sharp";
+import { createDurableImageStageRunner } from "./lib/durable-image-stages.js";
+import { generateOpenRouterGeminiHookKeyframe } from "./lib/openrouter-gemini-image.js";
+
+function resumeCarouselForTest(context: import("node:test").TestContext) {
+  const previous = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+  process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = "false";
+  context.after(() => {
+    if (previous === undefined) delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+    else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = previous;
+  });
+}
+
+test("starting-frame processor retries reuse paid stages after identity rejection or harmonizer failure", async () => {
+  for (const failure of ["identity", "harmonize"] as const) {
+    const job = createJob();
+    job.job_type = "generate_image";
+    job.max_attempts = 3; // The new Pro admission budget, asserted in the API suite.
+    const store = createJobStore(job);
+    const ops = new Map<string, Record<string, unknown>>(), objects = new Map<string, Buffer>();
+    Object.assign(store, {
+      async reserveGenerationProviderOperation(p: { operationKey: string; requestFingerprint: string; metadata: unknown }) {
+        const old = ops.get(p.operationKey);
+        if (old) {
+          assert.equal(old.request_fingerprint, p.requestFingerprint);
+          if (old.status === "failed" && old.retry_allowed) { old.status = "reserved"; old.retry_allowed = false; return { operation: old, shouldSubmit: true }; }
+          return { operation: old, shouldSubmit: false };
+        }
+        const row = { status: "reserved", metadata: p.metadata, request_fingerprint: p.requestFingerprint };
+        ops.set(p.operationKey, row); return { operation: row, shouldSubmit: true };
+      },
+      async markGenerationProviderSucceeded(p: { operationKey: string; metadata: unknown }) { Object.assign(ops.get(p.operationKey)!, { status: "provider_succeeded", metadata: p.metadata }); },
+      async markGenerationOutputPersisted(p: { operationKey: string; metadata: unknown }) { Object.assign(ops.get(p.operationKey)!, { status: "output_persisted", metadata: p.metadata }); },
+      async markGenerationProviderFailed(p: { operationKey: string; retryAllowed: boolean }) { Object.assign(ops.get(p.operationKey)!, { status: "failed", retry_allowed: p.retryAllowed }); },
+    });
+    const png = await sharp({ create: { width: 18, height: 32, channels: 3, background: "#a77c62" } }).png().toBuffer();
+    const image = { data: png.toString("base64"), mimeType: "image/png" };
+    let paidCalls = 0, delivery = 0;
+    const commands: string[] = [];
+    for (delivery = 0; delivery < 2; delivery++) {
+      job.next_attempt_at = null; // Advance the local simulated retry clock.
+      await processWorkerMessage({ config: createConfig(["generate_image"]), message: createMessage("generate_image"), queue: createQueue(commands), store,
+        dependencies: { async runJob() {
+          const run = createDurableImageStageRunner({ jobId: job.id, store, checkpoint: async () => {}, storage: {
+            get: async key => objects.has(key) ? { key, url: `https://fixture.invalid/${key}` } : null,
+            read: async key => objects.get(key)!,
+            write: async p => { objects.set(p.key, p.buffer); return { key: p.key, url: `https://fixture.invalid/${p.key}` }; },
+          } });
+          await generateOpenRouterGeminiHookKeyframe({ prompt: "Keep source scene", aspectRatio: "9:16", imageSize: "2K", apiKey: "fixture", referenceImages: [image, image],
+            runStage: (stage, input, action) => run(stage, input, async () => {
+              if (failure === "harmonize" && delivery === 0 && stage === "harmonize") throw Error("Temporary local CPU failure");
+              return action();
+            }),
+            fetchImpl: async () => { paidCalls++; if (failure === "identity" && paidCalls === 2) return new Response("Rate limit", { status: 429 });
+              return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${image.data}` }] } }] }); },
+          });
+          return { output: { completed: true } };
+        } },
+      });
+      assert.equal(job.status, delivery === 0 ? "queued" : "completed");
+    }
+    assert.equal(paidCalls, failure === "identity" ? 3 : 2);
+    assert.equal(objects.size, 3);
+    assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+  }
+});
+
+test("starting-frame recovery stops at its bounded attempt budget", async () => {
+  const job = createJob();
+  job.job_type = "generate_image"; job.max_attempts = 3; job.attempt_count = 2;
+  const store = createJobStore(job), commands: string[] = [];
+  store.markFailed = (async () => { job.status = "failed"; return { ...job }; }) as SupabaseJobStore["markFailed"];
+  await processWorkerMessage({ config: createConfig(["generate_image"]), message: createMessage("generate_image"), queue: createQueue(commands), store,
+    dependencies: { async runJob() { throw new RetryableJobError("Still unavailable", { code: "image_harmonization_failed", retryAfterSeconds: 30 }); } },
+  });
+  assert.equal(job.status, "failed");
+  assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+  assert.equal(commands.filter(command => command === "ChangeMessageVisibilityCommand").length, 0);
+});
 
 test("persists terminal provider reasons instead of JOB_FAILED without retrying the paid request", async () => {
   for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "THIRD_PARTY.UNAVAILABLE"]) {
@@ -520,7 +599,8 @@ test("retries an atomic completion failure without losing the saved output", asy
   );
 });
 
-test("Carousel completion dispatches reconciliation independently without claiming or waiting for feed admission", async () => {
+test("Carousel completion dispatches reconciliation independently without claiming or waiting for feed admission", async context => {
+  resumeCarouselForTest(context);
   const job = createJob(); job.job_type = "generate_carousel"; job.user_id = "owner";
   const store = createJobStore(job);
   store.claimTrendingFeedReconciliation = async () => { throw new Error("must not claim inside rendering request"); };
@@ -536,7 +616,8 @@ test("Carousel completion dispatches reconciliation independently without claimi
   assert.ok(commands.includes("DeleteMessageCommand"));
 });
 
-test("terminal Carousel failure dispatches feed recovery without holding the render request", async () => {
+test("terminal Carousel failure dispatches feed recovery without holding the render request", async context => {
+  resumeCarouselForTest(context);
   const job = createJob(); job.job_type = "generate_carousel";
   const store = createJobStore(job);
   store.markFailed = (async () => {
@@ -555,7 +636,8 @@ test("terminal Carousel failure dispatches feed recovery without holding the ren
   assert.ok(commands.includes("DeleteMessageCommand"));
 });
 
-test("a failed independent dispatch preserves terminal output and leaves durable recovery available", async () => {
+test("a failed independent dispatch preserves terminal output and leaves durable recovery available", async context => {
+  resumeCarouselForTest(context);
   const job = createJob(); job.job_type = "generate_carousel";
   const store = createJobStore(job);
   let synchronousClaims = 0;
@@ -684,7 +766,8 @@ test("keeps a completed Trending source job complete and reschedules its durable
   ]);
 });
 
-test("marks a failed content plan terminally failed only after the worker job fails", async () => {
+test("marks a failed content plan terminally failed only after the worker job fails", async context => {
+  resumeCarouselForTest(context);
   const job = createJob();
   const store = createJobStore(job);
   const failures: Array<{ planId: string; userId: string }> = [];
@@ -1029,3 +1112,27 @@ function createQueue(commands: string[]): WorkerQueueTransport {
     },
   };
 }
+
+
+test("Carousel hold preserves queued jobs and attempts without executing or reporting success", async () => {
+  const previous = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+  process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = "true";
+  try {
+    for (const type of ["generate_carousel", "carousel_content_plan_generation"] as const) {
+      const job = createJob(); job.job_type = type;
+      const original = structuredClone(job), commands: string[] = [];
+      const store = createJobStore(job);
+      store.claimJob = async () => { throw Error("Held job was claimed"); };
+      const dependencies = { runJob: async () => { throw Error("Provider handler ran"); } };
+      await processWorkerMessage({ config: createConfig([type]), dependencies,
+        message: createMessage(type), queue: createQueue(commands), store });
+      assert.deepEqual(job, original);
+      assert.deepEqual(commands, ["DeleteMessageCommand"]);
+      assert.equal(await processRecoveredWorkerJob({ config: createConfig([type]), dependencies, jobId: job.id, store }), false);
+      assert.deepEqual(job, original);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+    else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = previous;
+  }
+});

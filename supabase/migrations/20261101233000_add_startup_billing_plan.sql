@@ -300,7 +300,7 @@ exception
     where webhook_id = p_webhook_id;
     raise;
 end;
-$function$
+$function$;
 
 create or replace function public.grant_complimentary_plan(
   p_user_id text,

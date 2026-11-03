@@ -332,7 +332,7 @@ export function createCurrentTrendingFeedProviders(
   wallTextProvider: TrendingFeedProviderResult<TrendingWallTextFeedItem> =
     createUnavailableTrendingFeedProvider(
       "wall_text",
-      "Wall-of-text ideas are being prepared from the business profile.",
+      "Text on screen ideas are being prepared from the business profile.",
     ),
   options: { includeHookVideos?: boolean } = {},
 ): TrendingFeedProviderResult[] {

@@ -13,6 +13,7 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   background-color: var(--studio-bg);
@@ -29,18 +30,19 @@
 }
 
 @media (max-width: 1023px) {
-  .studioRoot {
-    height: calc(100dvh - 64px);
-    min-height: 0;
-    overflow: hidden;
-  }
-
   .studioLayout {
     flex: 1 1 auto;
     flex-direction: column;
     height: auto;
     min-height: 0;
     overflow: hidden;
+  }
+}
+
+/* The app shell's 64px mobile header is hidden from 768px upward. */
+@media (max-width: 767px) {
+  .studioRoot {
+    height: calc(100dvh - 64px);
   }
 }
 
@@ -285,6 +287,8 @@
 /* Scrollable Accordion Area */
 .accordionScroll {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   padding: 12px 16px;
   display: flex;
@@ -363,7 +367,7 @@
 /* Trait previews stay in three columns, a little shorter than the old 4:5 cards. */
 .cardsGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -377,6 +381,7 @@
 
 .traitCard {
   position: relative;
+  min-width: 0;
   aspect-ratio: 1 / 1;
   border-radius: 20px;
   overflow: hidden;
@@ -493,7 +498,7 @@
   border-color: #EF4444;
 }
 
-/* Swatch Card (Color Circle / Hex) */
+/* Icon-only trait cards, including keep-existing options. */
 .swatchCardContent {
   width: 100%;
   height: 100%;
@@ -505,13 +510,6 @@
   padding: 8px;
   gap: 8px;
   background-color: #16181D;
-}
-
-.swatchCircle {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .swatchLabel {
@@ -547,9 +545,16 @@
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.01em;
-  color: var(--app-primary);
-  text-shadow: 0 0 2px #fff, 0 1px 2px rgba(0, 0, 0, 0.85);
-  white-space: nowrap;
+  color: #fff;
+  -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.9);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
@@ -654,29 +659,67 @@
   min-width: 46px;
 }
 
-.colorSwatchGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0 10px;
+.colorTileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 8px;
+  padding: 4px 0 12px;
 }
 
-.colorSwatch {
-  width: 34px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
+.colorTile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
   cursor: pointer;
 }
 
-.colorSwatchPlain {
-  background: repeating-linear-gradient(135deg, #3a3f4b 0 4px, #23262e 4px 8px);
+.colorTile:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.colorSwatchSelected {
+.colorTileSelected {
+  border-color: var(--app-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.colorTile:focus-visible {
   outline: 2px solid var(--app-primary);
   outline-offset: 2px;
+}
+
+.colorTile:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.colorTilePreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.colorTilePreviewEmpty {
+  background: #17181c;
+  color: var(--text-muted);
+}
+
+.colorTileLabel {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 /* Batch Size Row */

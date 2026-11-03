@@ -68,7 +68,7 @@ export async function requestWallTextRender(params: {
 
   if (missingRuntimeEnv.length > 0) {
     throw new WallTextRenderRequestError(
-      "Wall-of-text video preparation is temporarily unavailable.",
+      "Text on screen video preparation is temporarily unavailable.",
       501,
     );
   }
@@ -92,14 +92,14 @@ export async function requestWallTextRender(params: {
 
     if (!isRenderableWallTextDuration(durationSeconds)) {
       throw new WallTextRenderRequestError(
-        "Wall-of-text background videos must be 60 seconds or shorter.",
+        "Text on screen background videos must be 60 seconds or shorter.",
         409,
       );
     }
 
     if (!isTrustedStorageUrl(sourceVideoUrl)) {
       throw new WallTextRenderRequestError(
-        "This Wall-of-text background is not available for rendering.",
+        "This Text on screen background is not available for rendering.",
         409,
       );
     }
@@ -171,7 +171,7 @@ export async function requestWallTextRender(params: {
       if (claimed.render_id) {
         await markWallTextRenderQueueFailed({
           assignmentId: claimed.id,
-          errorMessage: "The previous Wall-of-text render could not continue.",
+          errorMessage: "The previous Text on screen render could not continue.",
           renderId: claimed.render_id,
           userId: params.userId,
         });
@@ -186,7 +186,7 @@ export async function requestWallTextRender(params: {
 
     if (!claimed.render_id) {
       throw new WallTextRenderRequestError(
-        "Could not prepare this Wall-of-text video.",
+        "Could not prepare this Text on screen video.",
         409,
       );
     }
@@ -294,7 +294,7 @@ export async function requestWallTextRender(params: {
             jobId: job.id,
             onAttachmentError: (error) => {
               console.error(
-                "Wall-of-text render was sent without message metadata:",
+                "Text on screen render was sent without message metadata:",
                 error,
               );
             },
@@ -325,7 +325,7 @@ export async function requestWallTextRender(params: {
 
           console.error("Could not queue the Wall-of-text render:", error);
           throw new WallTextRenderRequestError(
-            "Could not start preparing this Wall-of-text video.",
+            "Could not start preparing this Text on screen video.",
           );
         }
       }
@@ -346,7 +346,7 @@ export async function requestWallTextRender(params: {
 
     console.error("Could not save the Wall-of-text video:", error);
     throw new WallTextRenderRequestError(
-      "Could not save and prepare this Wall-of-text video.",
+      "Could not save and prepare this Text on screen video.",
     );
   }
 }
@@ -366,7 +366,7 @@ async function getRequiredDraft(assignmentId: string, userId: string) {
 
   if (!draft) {
     throw new WallTextRenderRequestError(
-      "Selected Wall-of-text video could not be reloaded.",
+      "Selected Text on screen video could not be reloaded.",
       404,
     );
   }

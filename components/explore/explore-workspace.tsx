@@ -16,19 +16,19 @@ import { EXPLORE_WORKFLOWS } from "@/lib/explore/workflows";
 import { cn } from "@/lib/utils";
 
 const QUICK_START_ICONS = { studio: Sparkles, video: Video, image: ImageIcon, audio: Headphones };
-
 export function ExploreWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   const { user } = useAuth();
 
   return (
     <section className={cn(scrollbars.surface, scrollbars.page, "min-h-dvh bg-background px-4 py-7 text-foreground sm:px-6 lg:px-8 lg:py-8")}>
       <div className={styles.page}>
-        <header className="mb-7 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground-strong">Explore</h1>
-            <p className="mt-2 text-sm text-muted">Find your next format. Start with a workflow or a creation tool.</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+        <header className={styles.header}>
+          <h1 className={`${styles.heading} text-3xl font-semibold tracking-[-0.04em] text-foreground-strong`}>Explore</h1>
+          <div className={`${styles.headerActions} flex shrink-0 items-center gap-2`}>
+            <span className={styles.mcpComingSoon}>
+              <span>MCP</span>
+              <span className={styles.comingSoonLabel}>Coming soon</span>
+            </span>
             <NextLink
               href="/pricing"
               className="inline-flex h-9 items-center rounded-[10px] bg-foreground-strong px-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -44,6 +44,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
               </NextLink>
             )}
           </div>
+          <p className={`${styles.description} text-sm text-muted`}>Find your next format. Start with a workflow or a creation tool.</p>
         </header>
         <section aria-label="Workflows">
           <div className={styles.workflowGrid}>

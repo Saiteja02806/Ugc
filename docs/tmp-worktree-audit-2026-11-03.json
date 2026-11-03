@@ -1,0 +1,367 @@
+[
+  {
+    "path": ".tmp\\ai-studio-ui-refinement-20261001",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\audio-bookmarks-explore-fix",
+    "returncode": 0,
+    "changed_entries": 22,
+    "sample": [
+      " M components/audio/audio-generation-workspace.tsx",
+      " M components/audio/use-audio-bookmarks.ts",
+      " M components/explore/use-local-workflow-media.ts",
+      " M components/explore/workflow-audio-reference.tsx",
+      " M docs/audio-ugc-native-plan.md",
+      " M lib/audio/api.test.mjs",
+      " M lib/audio/bookmarks-db.test.mjs",
+      " M lib/firebase/auth.ts",
+      " M scripts/workflow-composition-panel.test.mjs",
+      "?? app/api/audio/selection/route.ts",
+      "?? app/api/audio/voices/[voiceId]/sample/route.ts",
+      "?? components/audio/use-audio-voice-selection.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\carousel-main-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\character-partial-generation-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\character-release-20261003",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\explore-cover-refresh-20261007",
+    "returncode": 0,
+    "changed_entries": 6,
+    "sample": [
+      " M docs/explore-launch-cards-design.md",
+      " M lib/explore/workflows.ts",
+      " M scripts/prepare-explore-recreate-cover.mjs",
+      "?? public/explore/covers/recreate-v4.json",
+      "?? public/explore/covers/recreate-v4.mp4",
+      "?? public/explore/covers/recreate-v4.webp"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\explore-preview-release-20261016",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\explore-release-20261016",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\hook-audio-production-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\hook-production-release-20260812",
+    "returncode": 0,
+    "changed_entries": 2,
+    "sample": [
+      "?? artifacts/hook-audio-canary/creator-022-three-line-emoji-reference-canary.mp4",
+      "?? artifacts/hook-audio-canary/creator-022-three-line-emoji-reference-canary.png"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\kling-3-release-20261001",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\main-merge-hook-audio-20260811",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\mcp-analytics-read-20261018",
+    "returncode": 0,
+    "changed_entries": 66,
+    "sample": [
+      " M .env.example",
+      " M CAROUSEL_CONTEXT.md",
+      " M EXPLORE_CONTEXT.md",
+      " M app/api/social/oauth/start/route.ts",
+      " M app/oauth/authorize/oauth-consent-view.tsx",
+      " M components/auth/google-auth-redirect-handler.tsx",
+      " M docs/ugc-pilot-plugin-context.md",
+      " M lib/analytics/site-analytics.test.mjs",
+      " M lib/mcp/clients.ts",
+      " M lib/mcp/deployment-routing.test.ts",
+      " M lib/mcp/oauth-validation.test.ts",
+      " M lib/mcp/scheduling-tools.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\mcp-explore-drafts-20261014",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\mcp-production-audit",
+    "returncode": 0,
+    "changed_entries": 30,
+    "sample": [
+      " M app/mcp/route.ts",
+      " M app/oauth/token/route.ts",
+      " M components/trending/trending-workspace.tsx",
+      " M docs/ugc-pilot-cloud-mcp-live-image-validation.md",
+      " M docs/ugc-pilot-cloud-mcp-phase5-audit.md",
+      " M lib/business-profiles/onboarding-access.test.ts",
+      " M lib/jobs/background-job-service.ts",
+      " M lib/jobs/background-jobs.ts",
+      " M lib/mcp/generation-tools.ts",
+      " M lib/mcp/http.ts",
+      " M lib/mcp/read-tools.ts",
+      " M lib/mcp/tool-auth-metadata.test.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\mcp-scheduling-parity-20261017",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\merge-instagram-insights-f062-20260907",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\merge-scheduling-main-20260809",
+    "returncode": 0,
+    "changed_entries": 1,
+    "sample": [
+      "?? infra/gcp/foundation/$planFile"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\oauth-release-c72efd8",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\oauth-release-ca57d96",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\onboarding-hotfix-20261026",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\pr71-release-repair-20261026",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-analytics-account-consistency-20260809",
+    "returncode": 0,
+    "changed_entries": 33,
+    "sample": [
+      " M components/generation/ai-studio-composer.tsx",
+      " M components/generation/ai-studio-workspace.tsx",
+      " M components/trending/trending-creative-editor.tsx",
+      " M components/video/video-generation-workspace.tsx",
+      " M components/workspace/ugc-chat-workspace.tsx",
+      " M lib/ai-studio/composer-ui.test.ts",
+      " M lib/ai-studio/image-generation-api.ts",
+      " M lib/ai-studio/media-client.ts",
+      " M lib/ai-studio/media-results.test.ts",
+      " M lib/ai-studio/media-results.ts",
+      " M lib/ai-studio/video-generation-api.ts",
+      " M lib/jobs/background-job-client.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-analytics-calendar-20260809",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-create-content-render-20260907",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-non-create-20260907",
+    "returncode": 0,
+    "changed_entries": 28,
+    "sample": [
+      " M CAROUSEL_CONTEXT.md",
+      " M REACTION_FORMAT_CONTEXT.md",
+      " M WALL_TEXT_CONTEXT.md",
+      " M app/api/trending/creatives/[format]/[creativeId]/edit/route.ts",
+      " M app/layout.tsx",
+      " M components/trending/creative-card-actions.tsx",
+      " M components/trending/trending-creative-editor.tsx",
+      " M lib/trending/creative-edit-schema-contract.test.ts",
+      " M lib/trending/generate-trending-wall-text-ideas.ts",
+      " M lib/trending/wall-layout-engine.ts",
+      " M lib/trending/wall-prompt.ts",
+      " M lib/trending/wall-text-copy-policy.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-non-create-final-20260907",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-scheduling-calendar-only-20260809",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\release-wall-text-audio",
+    "returncode": 0,
+    "changed_entries": 44,
+    "sample": [
+      " M app/api/internal/jobs/prepare-wall-text/route.ts",
+      " M app/api/trending/creatives/[format]/[creativeId]/edit/route.ts",
+      " M app/api/trending/wall-text/feed/prepare/route.ts",
+      " M components/trending/trending-creative-editor.tsx",
+      " M components/trending/trending-workspace.tsx",
+      " M components/trending/wall-text-overlay.tsx",
+      " M lib/trending/creative-edit-contract.test.ts",
+      " M lib/trending/creative-edit-contract.ts",
+      " M lib/trending/creative-edit-schema-contract.test.ts",
+      " M lib/trending/creative-edit-service.ts",
+      " M lib/trending/creative-edits.ts",
+      " M lib/trending/generate-trending-wall-text-ideas.ts"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\subtitle-position-20261007",
+    "returncode": 0,
+    "changed_entries": 63,
+    "sample": [
+      " M components/explore/hook-workflow-preview.tsx",
+      " M components/explore/phone-workflow-preview.tsx",
+      " M components/explore/use-workflow-finishing.ts",
+      " M components/explore/workflow-composition-panel.tsx",
+      " M components/explore/workflow-creation-panel.tsx",
+      " M components/explore/workflow-creation.module.css",
+      " M components/explore/workflow-edit-workspace.tsx",
+      " M lib/explore/workflow-finishing-api.ts",
+      " M lib/explore/workflow-finishing-client.ts",
+      " M package.json",
+      " M scripts/explore-finishing-job.test.mjs",
+      " M scripts/explore-finishing-receipts-db.test.mjs"
+    ],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\trending-layout-release-20261008",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\ugc-plugin-oauth-acceptance-20261017",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\ugc-plugin-oauth-staging-20261017",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\wall-early-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\wall-text-reference-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\worker-reliability-release",
+    "returncode": 0,
+    "changed_entries": 0,
+    "sample": [],
+    "error": ""
+  },
+  {
+    "path": ".tmp\\workflow-performance-release-20261014",
+    "returncode": 0,
+    "changed_entries": 2,
+    "sample": [
+      " M components/scheduling/schedule-editor.tsx",
+      " M scripts/schedule-editor-inline.test.mjs"
+    ],
+    "error": ""
+  }
+]

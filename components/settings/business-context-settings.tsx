@@ -210,14 +210,14 @@ export function BusinessContextSettings() {
             onChange={(event) => updateListField("targetAudience", event.target.value)}
           />
         </Field>
-        <Field label="Wall-of-Text primary reader" className="sm:col-span-2">
+        <Field label="Text on screen primary reader" className="sm:col-span-2">
           <Input
             value={context.wallTextPrimaryReader ?? ""}
             placeholder="Busy corporate professionals who want quick, effortless meal tracking"
             onChange={(event) => updateTextField("wallTextPrimaryReader", event.target.value)}
           />
         </Field>
-        <Field label="Wall-of-Text secondary reader (optional)" className="sm:col-span-2">
+        <Field label="Text on screen secondary reader (optional)" className="sm:col-span-2">
           <Input
             value={context.wallTextSecondaryReader ?? ""}
             placeholder="Athletes and bodybuilders tracking exact macros"

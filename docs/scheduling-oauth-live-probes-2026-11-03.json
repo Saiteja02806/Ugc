@@ -1,0 +1,47 @@
+[
+  {
+    "requested": "https://getugcpilot.com/api/social/instagram/callback",
+    "final": "https://getugcpilot.com/api/social/instagram/callback",
+    "status": 200,
+    "correct_callback_error_page": true,
+    "has_vidmake_return": true,
+    "posts_result_to_vidmake": true,
+    "cache_control": "no-store"
+  },
+  {
+    "requested": "https://www.getugcpilot.com/api/social/instagram/callback",
+    "final": "https://getugcpilot.com/api/social/instagram/callback",
+    "status": 200,
+    "correct_callback_error_page": true,
+    "has_vidmake_return": true,
+    "posts_result_to_vidmake": true,
+    "cache_control": "no-store"
+  },
+  {
+    "requested": "https://vidmake.io/api/social/instagram/callback",
+    "final": "https://vidmake.io/api/social/instagram/callback",
+    "status": 200,
+    "correct_callback_error_page": true,
+    "has_vidmake_return": true,
+    "posts_result_to_vidmake": true,
+    "cache_control": "no-store"
+  },
+  {
+    "requested": "https://getugcpilot.com/api/social/tiktok/callback",
+    "final": "https://getugcpilot.com/api/social/tiktok/callback",
+    "status": 200,
+    "correct_callback_error_page": true,
+    "has_vidmake_return": true,
+    "posts_result_to_vidmake": true,
+    "cache_control": "no-store"
+  },
+  {
+    "requested": "https://getugcpilot.com/api/social/youtube/callback",
+    "final": "https://getugcpilot.com/api/social/youtube/callback",
+    "status": 200,
+    "correct_callback_error_page": true,
+    "has_vidmake_return": true,
+    "posts_result_to_vidmake": true,
+    "cache_control": "no-store"
+  }
+]

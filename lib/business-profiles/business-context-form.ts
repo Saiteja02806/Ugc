@@ -17,8 +17,8 @@ export type BusinessContextListText = Record<BusinessContextListField, string>;
 const FIELD_LABELS: Record<string, string> = {
   businessName: "Business name", category: "Category", categories: "Category tags",
   productSummary: "Product summary", mainProblem: "Main customer problem", mainPromise: "Main promise",
-  targetAudience: "Target audience", wallTextPrimaryReader: "Wall-of-Text primary reader",
-  wallTextSecondaryReader: "Wall-of-Text secondary reader", painPoints: "Customer pain points",
+  targetAudience: "Target audience", wallTextPrimaryReader: "Text on screen primary reader",
+  wallTextSecondaryReader: "Text on screen secondary reader", painPoints: "Customer pain points",
   valueProps: "Approved capabilities / value", differentiators: "Differentiators", claimsToAvoid: "Claims to avoid",
 };
 

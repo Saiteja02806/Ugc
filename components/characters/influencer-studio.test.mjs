@@ -31,7 +31,8 @@ test("compileInfluencerPrompt compiles default selection into coherent master pr
 
   assert.ok(result.prompt.includes("South Asian") || result.prompt.includes("Middle Eastern"));
   assert.ok(result.prompt.includes("almond"));
-  assert.ok(result.prompt.includes("bob"));
+  assert.match(result.prompt, /Preserve the hairstyle from the selected character reference/);
+  assert.doesNotMatch(result.prompt, /chin-length natural bob|glossy jet-black hair|classic symmetrical oval/);
   assert.ok(result.prompt.includes("athletic"));
   assert.ok(result.prompt.includes("headphones"));
   assert.ok(result.prompt.includes("workspace") || result.prompt.includes("Authentic UGC"));
@@ -124,7 +125,7 @@ test("picked settings stay hidden until a choice differs from the default", () =
   assert.deepEqual(changed.map((pill) => pill.category), ["Ethnicity", "Framing"]);
 });
 
-test("the character studio header, selection color, and outfit swatches stay compact", () => {
+test("the character studio header, selection color, and color tiles stay compact", () => {
   const workspace = readFileSync(new URL("./character-workspace.tsx", import.meta.url), "utf8");
   const dock = readFileSync(new URL("./influencer-customizer-dock.tsx", import.meta.url), "utf8");
   const canvas = readFileSync(new URL("./influencer-canvas.tsx", import.meta.url), "utf8");
@@ -133,10 +134,10 @@ test("the character studio header, selection color, and outfit swatches stay com
   assert.match(workspace, /studioBack/);
   assert.doesNotMatch(canvas, /Studio Canvas/);
   assert.match(dock, /changedInfluencerPills/);
-  assert.match(dock, /colorSwatch/);
+  assert.match(dock, /colorTile/);
   assert.match(dock, /generationOptions/);
   assert.match(css, /\.traitCardSelected[\s\S]*var\(--app-primary\)/);
-  assert.match(css, /\.colorSwatch \{/);
+  assert.match(css, /\.colorTile \{/);
 });
 
 test("the visual influencer studio generates with Gemini 3 Pro", () => {

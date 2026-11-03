@@ -235,7 +235,7 @@ export async function createUserSchedule(params: {
 
     if (assignmentId !== normalized.source.id) {
       throw new SchedulingRequestError(
-        "The Wall-of-text video selection is invalid.",
+        "The Text on screen video selection is invalid.",
         409,
         "wall_text_assignment_mismatch",
       );
@@ -243,7 +243,7 @@ export async function createUserSchedule(params: {
 
     if (normalized.targets.length > 0) {
       throw new SchedulingRequestError(
-        "Wall-of-text videos must finish preparation before platform scheduling starts.",
+        "Text on screen videos must finish preparation before platform scheduling starts.",
         409,
         "wall_text_render_required",
       );
@@ -286,7 +286,7 @@ export async function createUserSchedule(params: {
           collection: "wall_text_pending",
           projectId: null,
           sourceType: "wall_text_pending",
-          title: normalized.title || "Wall-of-text Reel",
+          title: normalized.title || "Text on screen Reel",
         }
       : await resolveScheduleSource({
           sourceId: normalized.source.id,
@@ -1092,7 +1092,7 @@ export async function updateUserSchedule(params: {
 
   if (normalized.source.kind === "wall_text_pending") {
     throw new SchedulingRequestError(
-      "A Wall-of-text schedule cannot be edited while its video is being prepared.",
+      "A Text on screen schedule cannot be edited while its video is being prepared.",
       409,
       "schedule_source_not_editable",
     );
@@ -1314,9 +1314,9 @@ export function getSocialSchedulingMinimumLeadMinutes() {
 export async function finalizeWallTextSchedulesFromWorker(
   input: FinalizeWallTextSchedulesInput,
 ) {
-  assertUuid(input.assignmentId, "Wall-of-text assignment ID is invalid.");
-  assertUuid(input.mediaAssetId, "Wall-of-text media ID is invalid.");
-  assertUuid(input.renderId, "Wall-of-text render ID is invalid.");
+  assertUuid(input.assignmentId, "Text on screen assignment ID is invalid.");
+  assertUuid(input.mediaAssetId, "Text on screen media ID is invalid.");
+  assertUuid(input.renderId, "Text on screen render ID is invalid.");
 
   const schedules = await listWallTextSchedulesForRender({
     assignmentId: input.assignmentId,
@@ -1383,7 +1383,7 @@ async function finalizeWallTextScheduleFromWorker(params: {
   ) {
     return recordWallTextFinalizationFailure({
       errorCode: "wall_text_media_unavailable",
-      errorMessage: "The rendered Wall-of-text video is not available for scheduling.",
+      errorMessage: "The rendered Text on screen video is not available for scheduling.",
       schedule,
       userId: params.userId,
     });
@@ -1446,7 +1446,7 @@ async function finalizeWallTextScheduleFromWorker(params: {
       return recordWallTextFinalizationFailure({
         errorCode: "wall_text_schedule_version_conflict",
         errorMessage:
-          "The Wall-of-text schedule changed while its video was being attached.",
+          "The Text on screen schedule changed while its video was being attached.",
         schedule: current,
         userId: params.userId,
       });
@@ -1456,7 +1456,7 @@ async function finalizeWallTextScheduleFromWorker(params: {
   } else if (schedule.mediaAssetId !== mediaAsset.id) {
     return recordWallTextFinalizationFailure({
       errorCode: "stale_wall_text_media",
-      errorMessage: "This Wall-of-text schedule points to a different video.",
+      errorMessage: "This Text on screen schedule points to a different video.",
       schedule,
       userId: params.userId,
     });

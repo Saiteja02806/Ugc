@@ -414,7 +414,7 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
     errorCode === "eligible_instagram_account_missing" ||
     errorCode === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR
   ) {
-    return "This Instagram profile must be switched to a Creator account before it can publish through Vidmake.";
+    return "This Instagram profile must be a professional account (Creator or Business) before it can publish through Vidmake.";
   }
 
   if (errorCode === "youtube_channel_missing") {

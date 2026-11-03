@@ -151,9 +151,9 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     await reserveBillingCredits({ amount: creditCost, idempotencyKey: key, jobType: "generate_image", userId: ownerId });
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
-    const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: 1,
+    const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: model === "gemini_3_pro" ? 3 : 1,
       input: { generationId: crypto.randomUUID(), model, ...(model === "seedream_5_pro" || model === "gemini_3_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
-        referenceImageUrls, hookKeyframe: receipt, ...(model === "gemini_3_pro" ? { startingFrameTextCleanup: true } : {}),
+        referenceImageUrls, hookKeyframe: receipt, ...(model === "gemini_3_pro" ? { startingFrameTextCleanup: true, startingFramePipelineVersion: 2 } : {}),
         ...(model === "gemini_3_pro" && input.customImagePrompt !== undefined ? { startingFrameOutfitPrompt: input.customImagePrompt } : {}),
         exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
     }, { beforeDispatch: async stored => {

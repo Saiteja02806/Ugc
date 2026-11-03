@@ -1,12 +1,12 @@
 "use client";
 
-import { Check, ChevronDown, ChevronUp, History, ImageIcon, Images, Loader2, Plus, RefreshCw, UserRound } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, History, ImageIcon, Images, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
 import { LidarPointCloudCanvas } from "@/components/video/lidar-point-cloud-canvas";
-import { SlideshowFaceChoice } from "@/components/explore/slideshow-face-choice";
+import { SlideshowFaceSwapControl } from "@/components/explore/slideshow-face-swap-control";
 import { getSlideshowFaceSwapCredits, planSlideshowFaceSwaps } from "@/lib/explore/slideshow-face-swap";
 
 import {
@@ -24,7 +24,6 @@ import { ImageGenerationHistory } from "@/components/generation/image-generation
 import { ImagePreviewDialog } from "@/components/generation/image-preview-dialog";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger, PopoverTitle } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
@@ -317,7 +316,7 @@ export function ImageGenerationStudioPanel({
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [swappingAssetIds, setSwappingAssetIds] = useState<string[]>([]);
-  const faceSwapJobsRef = useRef(new Map<string, string>());
+  const faceSwapJobsRef = useRef(new Map<string, string[]>());
   const faceSwapTargetByJobRef = useRef(new Map<string, string>());
   const [planningQuestions, setPlanningQuestions] = useState<SlideshowClarification | null>(null);
   const storedJobIds = useStoredBackgroundJobIds(user ? `${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
@@ -398,7 +397,6 @@ export function ImageGenerationStudioPanel({
   const faceSwapCreditWarning = !pendingSubmission && hasInsufficientCredits && faceSwapCredits > 0
     ? "Not enough credits for generation and the selected face swaps. Add credits or clear Face Swap."
     : null;
-  const [faceLibraryOpen, setFaceLibraryOpen] = useState(false);
   const faceSwapOutputCount = faceSwap?.influencer ? new Set(faceSwap.slideIds).size : 0;
   const composerMessage = faceSwap?.open
     ? faceSwap.eligibleCount
@@ -591,7 +589,9 @@ export function ImageGenerationStudioPanel({
     try {
       const saved: unknown = JSON.parse(localStorage.getItem(`slideshow-face-jobs:${metadataOwnerId}`) ?? "[]");
       if (Array.isArray(saved)) for (const entry of saved) {
-        if (Array.isArray(entry) && entry.length === 2 && entry.every(value => typeof value === "string" && /^[a-f0-9-]{36}$/i.test(value))) faceSwapJobsRef.current.set(entry[0], entry[1]);
+        if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string" || !/^[a-f0-9-]{36}$/i.test(entry[0])) continue;
+        const photos = typeof entry[1] === "string" ? [entry[1]] : entry[1];
+        if (Array.isArray(photos) && photos.length >= 1 && photos.length <= 4 && photos.every(id => typeof id === "string" && /^[a-f0-9-]{36}$/i.test(id))) faceSwapJobsRef.current.set(entry[0], photos);
       }
     } catch { queueMicrotask(() => setActionError("Could not restore the selected face requests. Keep this page open while checking your images.")); }
   }, [metadataOwnerId]);
@@ -605,7 +605,7 @@ export function ImageGenerationStudioPanel({
     });
   }, [durableJobs]);
 
-  const executeFaceSwap = useCallback(async (targetAsset: AIStudioImageResult, influencerAssetId: string) => {
+  const executeFaceSwap = useCallback(async (targetAsset: AIStudioImageResult, influencerAssetIds: string[]) => {
     if (!user) {
       setActionError("Please sign in before starting a face swap.");
       return;
@@ -630,8 +630,9 @@ export function ImageGenerationStudioPanel({
         },
         body: JSON.stringify({
           targetAssetId,
-          influencerAssetId,
-          idempotencyKey: `slideshow-face:${targetAssetId}:${influencerAssetId}`,
+          influencerAssetId: influencerAssetIds[0],
+          influencerReferenceAssetIds: influencerAssetIds.slice(1),
+          idempotencyKey: `slideshow-face:${targetAssetId}:${influencerAssetIds.join(":")}`,
           aspectRatio: targetAsset.aspectRatio,
           slideshowGeneration: targetAsset.slideshowGeneration,
         }),
@@ -856,9 +857,9 @@ export function ImageGenerationStudioPanel({
           ...(workflowFormat === "slideshow" ? { slideshowContext: { version: 1, sources: recreateView?.slideshowSources ?? [], uploads: instructionReferences.map(selection => ({ assetId: selection.asset.id, name: selection.slideshowName })) } } : {}),
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageAssetId ? { regenerationImageAssetId: recreateView.referenceImageAssetId } : {}),
         }, acknowledge(result, input) {
-          const frozenFace = input.slideshowFaceSelection as { influencer: { id: string }; slideIds: string[]; sources: { slideId: string }[] } | undefined;
+          const frozenFace = input.slideshowFaceSelection as { influencer: { id: string; referencePhotos?: { id: string }[] }; slideIds: string[]; sources: { slideId: string }[] } | undefined;
           if (frozenFace?.influencer && Array.isArray(frozenFace.slideIds) && Array.isArray(frozenFace.sources)) {
-            for (const target of planSlideshowFaceSwaps({ jobs: result.jobs, sources: frozenFace.sources, slideIds: frozenFace.slideIds, influencerAssetId: frozenFace.influencer.id })) faceSwapJobsRef.current.set(target.jobId, target.influencerAssetId);
+            for (const target of planSlideshowFaceSwaps({ jobs: result.jobs, sources: frozenFace.sources, slideIds: frozenFace.slideIds, influencerAssetId: frozenFace.influencer.id, influencerReferenceAssetIds: frozenFace.influencer.referencePhotos?.map(photo => photo.id) })) faceSwapJobsRef.current.set(target.jobId, [target.influencerAssetId, ...(target.influencerReferenceAssetIds ?? [])]);
             localStorage.setItem(`slideshow-face-jobs:${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}`, JSON.stringify([...faceSwapJobsRef.current]));
           }
           if (!persistImageJobs(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, result.jobs, { aspectRatio: input.aspectRatio as AIStudioImageAspectRatio, prompt: String(input.prompt) })) throw new Error("Your generation is saved on the server. Its browser recovery record is preserved; recover it again.");
@@ -892,14 +893,15 @@ export function ImageGenerationStudioPanel({
         setSubmittedPrompts((current) => ({ ...current, ...Object.fromEntries(data.jobs.map((job) => [job.jobId, submittedPrompt])) }));
       }
       const jobIds = data.jobs.map((job) => job.jobId);
-      const faceSwapPlan = admitted.input.slideshowFaceSelection as { influencer: { id: string }; slideIds: string[]; sources: { slideId: string }[] } | undefined;
+      const faceSwapPlan = admitted.input.slideshowFaceSelection as { influencer: { id: string; referencePhotos?: { id: string }[] }; slideIds: string[]; sources: { slideId: string }[] } | undefined;
       if (faceSwapPlan?.influencer && faceSwapPlan.slideIds.length) {
         for (const target of planSlideshowFaceSwaps({
           jobs: data.jobs as { jobId: string; slideshowGeneration?: SlideshowGenerationSlot }[],
           sources: faceSwapPlan.sources,
           slideIds: faceSwapPlan.slideIds,
           influencerAssetId: faceSwapPlan.influencer.id,
-        })) faceSwapJobsRef.current.set(target.jobId, target.influencerAssetId);
+          influencerReferenceAssetIds: faceSwapPlan.influencer.referencePhotos?.map(photo => photo.id),
+        })) faceSwapJobsRef.current.set(target.jobId, [target.influencerAssetId, ...(target.influencerReferenceAssetIds ?? [])]);
       }
       if (metadataOwnerId) localStorage.setItem(`slideshow-face-jobs:${metadataOwnerId}`, JSON.stringify([...faceSwapJobsRef.current]));
       faceSwap?.onOpenChange(false);
@@ -1459,14 +1461,8 @@ export function ImageGenerationStudioPanel({
           />
         }
         name="imagePrompt"
-        selectionOnly={Boolean(faceSwap?.open)}
-        promptCornerControl={faceSwap ? <Popover open={faceSwap.open && faceLibraryOpen} onOpenChange={open => { setFaceLibraryOpen(open); if (open) faceSwap.onOpenChange(true); }}>
-          <PopoverTrigger render={<button type="button" data-face-swap-control="" aria-label="Face swap" title="Face swap" disabled={isGenerating || selectingImage} className={cn("inline-flex size-10 items-center justify-center rounded-lg border bg-transparent p-0 text-foreground focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50", faceSwap.open ? "border-foreground" : "border-transparent")} />}><UserRound className="size-5" aria-hidden="true" /></PopoverTrigger>
-          <PopoverContent onKeyDown={event => { if (event.key === "Escape") { setFaceLibraryOpen(false); faceSwap.onOpenChange(false); } }} data-face-swap-control="" side="top" align="start" className="w-[min(320px,calc(100vw-2rem))] max-h-[min(360px,var(--available-height))] overflow-y-auto p-3">
-            <PopoverTitle>Choose a face</PopoverTitle>
-            <SlideshowFaceChoice ownerId={user?.uid} selected={faceSwap.influencer} disabled={isGenerating || selectingImage} onSelect={faceSwap.onInfluencerChange} />
-          </PopoverContent>
-        </Popover> : undefined}
+        generateTone={workflowFormat === "slideshow" ? "blue" : undefined}
+        promptCornerControl={faceSwap ? <SlideshowFaceSwapControl value={faceSwap} ownerId={user?.uid} disabled={isGenerating || selectingImage} /> : undefined}
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
         promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
@@ -1506,7 +1502,7 @@ export function ImageGenerationStudioPanel({
             ) : null}
           </>
         }
-        settings={faceSwap?.open ? null : <>
+        settings={<>
             <AiStudioSettingSelect
               ariaLabel="Image model"
               fieldLabel={workflow ? "Model" : undefined}

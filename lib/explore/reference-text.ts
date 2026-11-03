@@ -57,7 +57,7 @@ export function validateRemixDraft(value: unknown, source: ReferenceText): Remix
   const output = structured ? WallHeadingBodyRemixOutputSchema.parse(value) : RemixOutputSchema.parse(value);
   if (source.format !== "wall_text" && output.blocks.some(block => block.length > 600)) throw new Error("The text exceeds this workflow's limit.");
   if (isWallHeadingBodySource(source) && output.blocks.length === 0) {
-    if (!output.heading.trim() || !output.body.trim()) throw new Error("Add both the Wall heading and body before applying it.");
+    if (!output.heading.trim() || !output.body.trim()) throw new Error("Add both the on-screen text heading and body before applying it.");
   } else if (source.format === "slideshow") {
     if (output.body.length > 600) throw new Error("The slide body exceeds its character limit.");
     if (output.blocks.length || !output.heading.trim() && !output.body.trim()) throw new Error("The remixed slide is empty.");

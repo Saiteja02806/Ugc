@@ -9,7 +9,7 @@ export function WallSchedulePreview({ preview, error, onBackToEdit }: {
   error: string | null;
   onBackToEdit: () => void;
 }) {
-  return <section aria-label="Wall of text post preview" className="flex min-w-0 flex-col items-center gap-4 p-5">
+  return <section aria-label="Text on screen post preview" className="flex min-w-0 flex-col items-center gap-4 p-5">
     <h2 className="text-base font-semibold">Post preview</h2>
     {preview ? <WorkflowSequencePreview key={JSON.stringify(preview)}
       segments={[{ ...preview.segment, referenceAudio: preview.referenceAudio }]}

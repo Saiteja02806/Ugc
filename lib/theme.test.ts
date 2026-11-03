@@ -44,7 +44,7 @@ test("the app canvas retints inside the shell and the landing button stays white
   assert.doesNotMatch(landing, /landing-mono|app-canvas/);
 });
 
-test("sidebar and workflow chrome stay neutral while the action button stays violet", () => {
+test("sidebar and workflow chrome retain neutral selected controls", () => {
   const sidebar = readFileSync(new URL("../components/layout/app-sidebar.tsx", import.meta.url), "utf8");
   const workflow = readFileSync(new URL("../components/explore/workflow-creation.module.css", import.meta.url), "utf8");
   const stages = readFileSync(new URL("../components/explore/workflow-section-layout.module.css", import.meta.url), "utf8");
@@ -59,7 +59,9 @@ test("sidebar and workflow chrome stay neutral while the action button stays vio
   assert.match(references, /\.tabs button\[aria-pressed="true"\] \{ border-color: var\(--foreground\); color: var\(--foreground-strong\); \}/);
   assert.doesNotMatch(recreate, /data-reference-new className="[^"]*bg-primary/);
   assert.doesNotMatch(recreate, /hover:bg-primary|border-primary bg-primary/);
-  assert.match(recreate, /isSelected \? "border-white bg-black\/60 text-white"/);
+  assert.match(recreate, /data-selected=\{isSelected \|\| undefined\}[\s\S]*className=\{studio\.referenceRecreateButton\}/);
+  const studio = readFileSync(new URL("../components/explore/workflow-studio.module.css", import.meta.url), "utf8");
+  assert.match(studio, /\.referenceRecreateButton\[data-selected\] \{ border-color: #fff; \}/);
   const slideshow = readFileSync(new URL("../components/explore/format-workspace.module.css", import.meta.url), "utf8");
   const audio = readFileSync(new URL("../components/audio/audio-generation.css", import.meta.url), "utf8");
   const photos = readFileSync(new URL("../components/explore/talking-head-photo-library.tsx", import.meta.url), "utf8");

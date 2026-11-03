@@ -66,10 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const refreshedUser = await refreshCurrentFirebaseUser();
-      setUser(refreshedUser);
-
-      return refreshedUser;
+      // The SDK observer publishes the refreshed snapshot. Writing an awaited
+      // result here could overwrite a newer account, sign-out or verification.
+      return await refreshCurrentFirebaseUser();
     } catch (refreshError) {
       const normalizedError = normalizeError(refreshError);
       setError(normalizedError);

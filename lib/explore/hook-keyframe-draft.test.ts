@@ -26,7 +26,7 @@ test("recreation prompt results can be approved and restored alongside earlier r
 });
 
 test("source defaults and independent photo roles persist and invalidate an old approved frame", () => {
-  assert.equal(createHookKeyframeDraft(scope).referenceOptions, undefined);
+  assert.deepEqual(createHookKeyframeDraft(scope).referenceOptions, { background: "source", outfit: "source", hairstyle: "source" });
   const previous = approveHookKeyframeImage(generated());
   for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) {
     const changed = updateHookKeyframeDraft(previous, { referenceOptions: { background, outfit } });
@@ -88,7 +88,7 @@ test("new drafts default to Pro and model changes invalidate the generated image
 });
 
 test("legacy drafts retain their Flash identity, accepted input key and approval until a deliberate new model selection", () => {
-  const legacy = { ...generated(), version: 1, imageModel: undefined, generatedImage: null };
+  const legacy = { ...generated(), referenceOptions: undefined, version: 1, imageModel: undefined, generatedImage: null };
   const restored = readHookKeyframeDraft(JSON.stringify(legacy), scope)!;
   assert.equal(restored.version, 1); assert.equal(restored.imageModel, "nano_banana_2");
   const oldKey = hookKeyframeInputKey(restored);
@@ -209,4 +209,22 @@ test("full custom prompt survives draft storage and is bound to the generated fr
  assert.notEqual(hookKeyframeInputKey(custom),hookKeyframeInputKey(original));
  assert.equal(readHookKeyframeDraft(serializeHookKeyframeDraft(custom),scope)?.customImagePrompt,custom.customImagePrompt);
  assert.equal(updateHookKeyframeDraft(custom,{customImagePrompt:undefined}).customImagePrompt,undefined);
+});
+
+
+test("hairstyle persists independently and invalidates an already approved frame", () => {
+  const approved = approveHookKeyframeImage(generated());
+  for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) for (const hairstyle of ["source", "photo"] as const) {
+    const input = updateHookKeyframeDraft(approved, { referenceOptions: { background, outfit, hairstyle: hairstyle === "photo" ? "source" : "photo" } });
+    const previous = approveHookKeyframeImage(recordHookKeyframeImage(input, { assetId: imageId, inputKey: hookKeyframeInputKey(input), promptVersion: 7 }));
+    assert.ok(previous.approval);
+    const changed = updateHookKeyframeDraft(previous, { referenceOptions: { background, outfit, hairstyle } });
+    assert.notEqual(hookKeyframeInputKey(changed), hookKeyframeInputKey(previous));
+    assert.equal(changed.generatedImage, null); assert.equal(changed.approval, null);
+    assert.deepEqual(readHookKeyframeDraft(serializeHookKeyframeDraft(changed), scope)?.referenceOptions, { background, outfit, hairstyle });
+  }
+  const legacy = {...approved, referenceOptions: undefined, generatedImage:null, approval:null};
+  const restored = readHookKeyframeDraft(serializeHookKeyframeDraft(legacy),scope)!;
+  assert.equal(restored.referenceOptions,undefined);
+  assert.equal(hookKeyframeInputKey(restored),hookKeyframeInputKey(legacy));
 });

@@ -291,7 +291,7 @@ export function TryUgcPilotDemo() {
   const [skippedCount, setSkippedCount] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
-  const [notice, setNotice] = useState("Loaded Cal AI Wall-of-Text content.");
+  const [notice, setNotice] = useState("Loaded Cal AI Text on screen content.");
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const [isMediaMuted, setIsMediaMuted] = useState(true);
@@ -402,7 +402,7 @@ export function TryUgcPilotDemo() {
           setSkippedCount(restored.skippedCount);
           setNotice(
             restored.businessContext
-              ? `Restored your saved Wall-of-Text deck for ${restored.businessContext.brand}.`
+              ? `Restored your saved Text on screen deck for ${restored.businessContext.brand}.`
               : "Restored your saved demo deck.",
           );
         }
@@ -599,7 +599,7 @@ export function TryUgcPilotDemo() {
     refillAttemptFor.current = refillKey;
     refillInFlight.current = true;
     setIsRefilling(true);
-    setNotice("Generating 10 more Wall-of-Text posts in the background…");
+    setNotice("Generating 10 more Text on screen posts in the background…");
 
     void fetch("/api/try-ugcpilot/next", {
       method: "POST",
@@ -622,7 +622,7 @@ export function TryUgcPilotDemo() {
         setGeneratedCount((count) => count + data.posts.length);
         setRecentHooks((current) => [...current, ...data.posts.map((post) => post.hook)].slice(-32));
         setNextPostNumber(startNumber + data.posts.length);
-        setNotice("10 more Wall-of-Text posts are ready.");
+        setNotice("10 more Text on screen posts are ready.");
       })
       .catch((error: unknown) => {
         if (refillRequestId.current === requestId && deckVersion.current === requestDeckVersion) {
@@ -688,7 +688,7 @@ export function TryUgcPilotDemo() {
     refillInFlight.current = false;
     setIsRefilling(false);
     setIsAnalyzing(true);
-    setNotice("Reading the website and generating 16 Wall-of-Text posts…");
+    setNotice("Reading the website and generating 16 Text on screen posts…");
     try {
       const response = await fetch("/api/try-ugcpilot/analyze", {
         method: "POST",
@@ -699,7 +699,7 @@ export function TryUgcPilotDemo() {
       if (!response.ok) throw new Error(errorMessage(payload));
       const data = payload as AnalyzeResponse;
       if (!data.businessContext || !Array.isArray(data.posts) || data.posts.length !== 16) {
-        throw new Error("The analysis did not return enough Wall-of-Text posts. Please try again.");
+        throw new Error("The analysis did not return enough Text on screen posts. Please try again.");
       }
 
       refillAttemptFor.current = null;
@@ -713,7 +713,7 @@ export function TryUgcPilotDemo() {
       setPostedCount(0);
       setSkippedCount(0);
       setMobileControlsOpen(false);
-      setNotice(`16 tailored Wall-of-Text posts are ready for ${data.businessContext.brand}.`);
+      setNotice(`16 tailored Text on screen posts are ready for ${data.businessContext.brand}.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The analysis is temporarily unavailable. Please try again.");
     } finally {
@@ -739,7 +739,7 @@ export function TryUgcPilotDemo() {
     setExitDirection(null);
     setIsRefilling(false);
     setMobileControlsOpen(false);
-    setNotice("Loaded Cal AI Wall-of-Text content.");
+    setNotice("Loaded Cal AI Text on screen content.");
     try {
       window.localStorage.removeItem(TRY_UGCPILOT_BROWSER_SESSION_KEY);
       setBrowserStorageAvailable(true);
@@ -858,7 +858,7 @@ export function TryUgcPilotDemo() {
         >
           <DialogHeader className="sr-only">
             <DialogTitle>Product controls</DialogTitle>
-            <DialogDescription>Enter a product website to generate Wall-of-Text content.</DialogDescription>
+            <DialogDescription>Enter a product website to generate Text on screen content.</DialogDescription>
           </DialogHeader>
           <ProductControlPanel
             inputId="mobile-product-url"
@@ -1041,7 +1041,7 @@ function ProductControlPanel({
         <StatusRow
           done={!isRefilling}
           loading={isAnalyzing || isRefilling}
-          label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"}
+          label={isRefilling ? "Generating 10 more posts…" : "Text on screen posts ready"}
         />
       </div>
 

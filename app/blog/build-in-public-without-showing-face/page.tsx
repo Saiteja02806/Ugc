@@ -86,7 +86,7 @@ export default function BuildInPublicWithoutShowingFacePage() {
           Instead of recording yourself, select a photorealistic tech avatar from the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink>. The avatar acts as your narrator, delivering your thoughts, customer problem hooks, or launch announcements. At second 3.0, the video cuts to your software screen recording.
         </p>
 
-        <ArticleH3>Format 2: The Wall-of-Text POV Rant</ArticleH3>
+        <ArticleH3>Format 2: The Text on screen POV Rant</ArticleH3>
         <p>
           Overlay high-contrast, relatable founder stories or technical rants on top of ambient coding or desk background video. Viewers pause to read the story, generating massive watch time that triggers recommendation algorithms.
         </p>

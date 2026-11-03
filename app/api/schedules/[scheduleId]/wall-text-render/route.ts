@@ -62,7 +62,7 @@ export async function POST(
 
     console.error("Could not retry Wall-of-text preparation:", error);
     return json(
-      { message: "Could not retry Wall-of-text preparation.", ok: false },
+      { message: "Could not retry Text on screen preparation.", ok: false },
       500,
     );
   }

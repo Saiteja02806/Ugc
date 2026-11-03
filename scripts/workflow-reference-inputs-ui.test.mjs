@@ -16,6 +16,7 @@ function load(file, imports = {}, globals = {}) {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
     if (name in imports) return imports[name];
+    if (name === "@/components/generation/model-provider-logos") return load("components/generation/model-provider-logos.tsx", imports, globals);
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
     if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);
     if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);

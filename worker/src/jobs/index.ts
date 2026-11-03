@@ -22,6 +22,8 @@ import { runGenerateHookSuggestionsJob } from "./generate-hook-suggestions.js";
 import { runAnalyticsSyncJob } from "./sync-analytics.js";
 import { runMediaAnalysisJob } from "./process-media-analysis.js";
 import { runPreparePaidTrendingJob } from "./prepare-paid-trending.js";
+import { isCarouselGenerationJobHeld } from "../lib/carousel-generation-hold.js";
+import { DeferredJobError } from "../retryable-job-error.js";
 import { isTrendingGenerationJobDisabled } from "../lib/trending-format-policy.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
@@ -39,6 +41,11 @@ export async function runWorkerJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
 ) {
+  if (isCarouselGenerationJobHeld(job.job_type)) {
+    throw new DeferredJobError("Automatic Carousel generation is temporarily on hold.", {
+      code: "carousel_generation_paused", retryAfterSeconds: 43_200,
+    });
+  }
   // Settle already queued Trending video generation without paid calls. Saved
   // content and publishing/render jobs still retain their existing handlers.
   if (isTrendingGenerationJobDisabled(job.job_type)) {

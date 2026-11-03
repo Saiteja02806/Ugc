@@ -499,7 +499,7 @@ test("changing the selected model invalidates approval of a completed image", as
 });
 
 test("a new submission from a restored legacy draft upgrades to an explicit Flash request", async () => {
-  const legacy = { ...drafts.createHookKeyframeDraft(scope), version: 1, imageModel: "nano_banana_2", imageAssetIds: [photoId] };
+  const legacy = { ...drafts.createHookKeyframeDraft(scope), referenceOptions: undefined, version: 1, imageModel: "nano_banana_2", imageAssetIds: [photoId] };
   const h = harness({ raw: drafts.serializeHookKeyframeDraft(legacy) }); h.render(); await h.settle(); let tree = h.render();
   assert.equal(nodes(tree).find(node => node.type === "AiStudioSettingSelect").props.value, "nano_banana_2");
   button(tree, "Generate starting image").props.onClick(); await h.settle(); tree = h.render();
@@ -511,7 +511,7 @@ test("a new submission from a restored legacy draft upgrades to an explicit Flas
 
 test("a completed legacy image remains usable even when its old photo count exceeds the new Flash limit", async () => {
   const ids = [photoId, secondId, ...[4, 5, 6].map(n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`)];
-  const legacy = { ...drafts.createHookKeyframeDraft(scope), version: 1, imageModel: "nano_banana_2", imageAssetIds: ids,
+  const legacy = { ...drafts.createHookKeyframeDraft(scope), referenceOptions: undefined, version: 1, imageModel: "nano_banana_2", imageAssetIds: ids,
     sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } };
   const h = harness({ raw: drafts.serializeHookKeyframeDraft(legacy) });
   const checkpoint = keyframeClient.createHookKeyframeCheckpoint(legacy, draftId);
@@ -948,18 +948,47 @@ test("background and outfit options default to source and persist independent ph
  const h=harness();h.render();await h.settle();let tree=h.render();
  find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
  const choice=label=>nodes(nodes(h.render()).find(n=>n.type==="label"&&text(n).trim()===label)).find(n=>n.type==="input");
- const disclosure=nodes(tree).find(n=>n.type==="details"&&n.props["aria-label"]==="Background and outfit");
+ const disclosure=nodes(tree).find(n=>n.type==="details"&&n.props["aria-label"]==="Background and appearance");
  assert.ok(disclosure);
- assert.notEqual(disclosure.props.open,true,"background and outfit choices stay collapsed by default");
- assert.equal(text(nodes(disclosure).find(n=>n.type==="summary")),"Background and outfit");
- assert.equal(nodes(disclosure).filter(n=>n.type==="input"&&n.props.type==="checkbox").length,2);
+ assert.notEqual(disclosure.props.open,true,"appearance choices stay collapsed by default");
+ assert.equal(text(nodes(disclosure).find(n=>n.type==="summary")),"Background and appearance");
+ assert.equal(nodes(disclosure).filter(n=>n.type==="input"&&n.props.type==="checkbox").length,3);
  assert.equal(choice("Use background from my photo").props.checked,false);
  assert.equal(choice("Use outfit from my photo").props.checked,false);
  choice("Use outfit from my photo").props.onChange({target:{checked:true}});tree=h.render();
  assert.equal(choice("Use background from my photo").props.checked,false);
  assert.equal(choice("Use outfit from my photo").props.checked,true);
  await h.settle();tree=h.render();
- assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"photo"});
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"photo",hairstyle:"source"});
  await button(tree,"Generate starting image").props.onClick();await h.settle();
- assert.deepEqual(h.submissions[0].referenceOptions,{background:"source",outfit:"photo"});
+ assert.deepEqual(h.submissions[0].referenceOptions,{background:"source",outfit:"photo",hairstyle:"source"});
+ assert.equal(choice("Use hairstyle from my photo").props.checked,false);
+ choice("Use hairstyle from my photo").props.onChange({target:{checked:true}});await h.settle();tree=h.render();
+ assert.equal(choice("Use outfit from my photo").props.checked,true);
+ assert.equal(choice("Use background from my photo").props.checked,false);
+ assert.equal(choice("Use hairstyle from my photo").props.checked,true);
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"photo",hairstyle:"photo"});
+ const restored=harness({raw:h.stored.get(h.key)});restored.render();await restored.settle();
+ const restoredChoice=nodes(restored.render()).find(n=>n.type==="label"&&text(n).trim()==="Use hairstyle from my photo");
+ assert.equal(nodes(restoredChoice).find(n=>n.type==="input").props.checked,true);
+ choice("Use outfit from my photo").props.onChange({target:{checked:false}});await h.settle();
+ assert.equal(choice("Use hairstyle from my photo").props.checked,true);
+ choice("Use hairstyle from my photo").props.onChange({target:{checked:false}});await h.settle();
+ assert.equal(choice("Use hairstyle from my photo").props.checked,false);
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"source",hairstyle:"source"});
+ assert.equal(h.submissions.length,1,"Selection changes do not auto-submit a paid request");
+
+});
+
+test("anonymous preview temporary photos show sign-in guidance without changing the draft or crashing", async () => {
+  const h = harness({ previewRuntime: { generationDisabledReason: "Sign in to generate starting images." } });
+  for (let i = 0; i < 3; i++) { h.render(); await h.settle(); }
+  const before = h.stored.get(h.key);
+  const temporary = photo(photoId); temporary.asset.id = "local:blob:preview-photo";
+  find(h.render(), "FormatGenerationReferences").props.onImagesChange([temporary]);
+  await h.settle(); const tree = h.render();
+  assert.match(text(tree), /Sign in to upload and use your photos/);
+  assert.equal(h.stored.get(h.key), before);
+  assert.equal(h.submissions.length, 0);
+  assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections.length, 0);
 });

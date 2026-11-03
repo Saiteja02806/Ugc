@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import sharp from "sharp";
 import {
   buildHookKeyframeStage2Prompt,
   buildOpenRouterGeminiImagePayload,
@@ -13,6 +14,33 @@ import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 const apiKey = "test-openrouter-key";
 const testPrompt = "A photorealistic starting frame recreation with influencer identity.";
 const dummyBase64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+test("versioned starting frames explicitly configure both paid stages while legacy stages stay unchanged", async () => {
+  const png = await sharp({ create: { width: 32, height: 18, channels: 3, background: "#987654" } }).png().toBuffer();
+  for (const imageSize of [undefined, "2K"] as const) {
+    const payloads: Array<Record<string, unknown>> = [];
+    await generateOpenRouterGeminiHookKeyframe({
+      prompt: testPrompt, aspectRatio: "16:9", apiKey, ...(imageSize ? { imageSize } : {}),
+      referenceImages: [1, 2].map(() => ({ data: dummyBase64Image, mimeType: "image/png" })),
+      fetchImpl: async (_url, init) => {
+        payloads.push(JSON.parse(String(init?.body)));
+        return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${png.toString("base64")}` }] } }] });
+      },
+      runStage: async (stage, _input, action) => stage === "harmonize" ? { buffer: Buffer.from(dummyBase64Image, "base64"), model: "test" } : action(),
+    });
+    assert.equal(payloads.length, 2);
+    for (const payload of payloads) assert.deepEqual(payload.image_config, imageSize ? { aspect_ratio: "16:9", image_size: "2K" } : undefined);
+  }
+});
+
+test("versioned scene shape drift stops before another paid stage", async () => {
+  let calls = 0;
+  await assert.rejects(generateOpenRouterGeminiHookKeyframe({ prompt: testPrompt, aspectRatio: "9:16", imageSize: "2K", apiKey,
+    referenceImages: [1, 2].map(() => ({ data: dummyBase64Image, mimeType: "image/png" })),
+    fetchImpl: async () => { calls++; return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${dummyBase64Image}` }] } }] }); },
+  }), error => error instanceof Error && "code" in error && error.code === "image_aspect_ratio_mismatch");
+  assert.equal(calls, 1);
+});
 
 test("a failed Stage 2 cannot return the Stage 1 image as success", async () => {
   let calls = 0;
@@ -237,20 +265,22 @@ test("custom outfit requests survive caption cleanup and identity replacement wi
 });
 
 test("independent background and outfit roles reach both stages with caption cleanup", async () => {
-  for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) {
+  for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) for (const hairstyle of ["source", "photo"] as const) {
     const bodies: Array<{ messages: Array<{ content: Array<{ text?: string }> }> }> = [];
     await generateOpenRouterGeminiHookKeyframe({
       prompt: "Keep source wardrobe and source room by default.", aspectRatio: "9:16", apiKey,
-      referenceOptions: { background, outfit }, startingFrameTextCleanup: true,
+      referenceOptions: { background, outfit, hairstyle }, startingFrameTextCleanup: true,
       referenceImages: [1, 2].map(() => ({ data: dummyBase64Image, mimeType: "image/png" })),
       fetchImpl: async (_url, init) => { bodies.push(JSON.parse(String(init?.body)));
         return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${dummyBase64Image}` }] } }] }); },
     });
+    assert.equal(bodies.length, 2);
     for (const body of bodies) {
       const text = body.messages[0].content[0].text ?? "";
-      assert.match(text, background === "photo" ? /BACKGROUND: Use the environment visible in the main influencer photo/ : /BACKGROUND: Keep the source starting frame's environment/);
-      assert.match(text, outfit === "photo" ? /OUTFIT: Use the clothing visibly worn in the main influencer photo/ : /OUTFIT: Keep the source starting frame's clothing/);
-      assert.match(text, /Preserve the background and outfit selected/);
+      assert.match(text, background === "photo" ? /BACKGROUND: Use Image2's environment/ : /BACKGROUND: Keep Image1's environment/);
+      assert.match(text, outfit === "photo" ? /OUTFIT: Use Image2's clothing/ : /OUTFIT: Keep Image1's clothing/);
+      assert.match(text, /Preserve the background, outfit and hairstyle selected/);
+      assert.match(text, hairstyle === "photo" ? /HAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume/ : /HAIRSTYLE: Keep Image1's hairstyle/);
       assert.match(text, /caption, subtitle, hook word/);
       assert.match(text, /original source t=0 pose/);
     }
@@ -301,4 +331,43 @@ test("generateOpenRouterGeminiHookKeyframe sends supporting photos to stage 2", 
   assert.match(bodies[1].messages[0].content[0].text ?? "", /Images 3 through 4/);
   assert.doesNotMatch(bodies[1].messages[0].content[0].text ?? "", /dark-brown|pillowy|bridge freckles/);
   assert.equal(result.requestId, "stage-2");
+});
+
+test("face swap forwards primary and supporting same-person photos without changing scene authority", async () => {
+  const refs = ["scene", "primary", "support-1", "support-2", "support-3"].map(data => ({ data: Buffer.from(data).toString("base64"), mimeType: "image/png" }));
+  let calls = 0;
+  let identityInput: unknown;
+  await performOpenRouterFaceSwap({ baseImage: refs[0], influencerImage: refs[1], supportingIdentityImages: refs.slice(2), aspectRatio: "4:5", apiKey,
+    runStage: async (stage, input, action) => { if (stage === "identity") { identityInput = input; return action(); } return { buffer: Buffer.from(dummyBase64Image, "base64"), model: "test" }; },
+    fetchImpl: async (_url, init) => {
+      calls++;
+      const body = JSON.parse(String(init?.body));
+      const content = body.messages[0].content;
+      assert.equal(content.length, 6);
+      assert.match(content[0].text, /SAME person/);
+      assert.match(content[0].text, /Preserve Image 1 scene, clothing, composition and pose/);
+      for (let index = 0; index < refs.length; index++) assert.equal(content[index + 1].image_url.url, `data:image/png;base64,${refs[index].data}`);
+      return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${dummyBase64Image}` }] } }] });
+    },
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual((identityInput as { referenceImages: unknown[] }).referenceImages, refs);
+});
+
+
+test("legacy two-role canonical data, image labels and identity-stage prompt remain byte-identical", async () => {
+  const { createHash } = await import("node:crypto");
+  const { canonicalStartingFrameReferenceOptions, startingFrameReferenceInstructions } = await import("./starting-frame-reference-options.js");
+  const { hookKeyframeProviderImageLabels } = await import("./hook-keyframe-image-labels.js");
+  const expected = {
+    "source/source": "abb107c438a2a97673bd1928909a8dadf33b81fc8a4b750c7bba1c9d38391212",
+    "source/photo": "c3a671e243ba83dfc15c029721a24abe0389bd9b7ee2d1e074027468ecc08f34",
+    "photo/source": "17d0784e92d3cdac2c31add1f10ae3679e4aeed4be9e774c354c9c646481103b",
+    "photo/photo": "103c2a3ce7c4edd89f9652ea99d82a228022a1ac68b5e67b31c504b6182dd4d7",
+  };
+  for (const background of ["source", "photo"] as const) for (const outfit of ["source", "photo"] as const) {
+    const referenceOptions = { background, outfit };
+    const digest = createHash("sha256").update(JSON.stringify([canonicalStartingFrameReferenceOptions(referenceOptions), startingFrameReferenceInstructions(referenceOptions), hookKeyframeProviderImageLabels(2,7,referenceOptions), buildHookKeyframeStage2Prompt({referenceOptions,startingFrameTextCleanup:true})])).digest("hex");
+    assert.equal(digest,expected[`${background}/${outfit}`]);
+  }
 });

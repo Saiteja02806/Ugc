@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticCarouselGenerationEnabled } from "./generation-hold";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
@@ -11,6 +12,7 @@ export async function ensureCarouselContentPlanGeneration(params: {
   profile: BusinessProfileRecord;
   timezone: string;
 }) {
+  assertAutomaticCarouselGenerationEnabled();
   const plan = await ensureCurrentCarouselContentPlan(params);
 
   if (plan.status !== "generating") {

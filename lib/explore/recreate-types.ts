@@ -2,7 +2,7 @@ export const RECREATE_FORMATS = ["slideshow", "wall_text", "hook"] as const;
 export type RecreateFormat = (typeof RECREATE_FORMATS)[number];
 
 export const RECREATE_FORMAT_LABELS: Record<RecreateFormat, string> = {
-  wall_text: "Wall of Text",
+  wall_text: "Text on screen",
   hook: "Hook videos",
   slideshow: "Slideshows",
 };

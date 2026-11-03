@@ -3,6 +3,7 @@ import { beforeEach, mock, test } from "node:test";
 import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey } from "../../dist/lib/hook-keyframe-generation-contract.js";
 import { creatorSceneCanonicalUrl, verifyCreatorSceneDelivery } from "../../dist/lib/creator-scene-delivery.js";
 import creatorFrames from "../../dist/lib/creator-source-frames.json" with { type: "json" };
+import { assertImageOutputAspectRatio } from "../../dist/lib/image-output.js";
 const local = file => new URL(file, import.meta.url);
 const calls = [], storedImage = Buffer.from("generated fixture pixels"); let existingOutput;
 mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, database or storage network calls"));
@@ -17,6 +18,7 @@ mock.module(local("../../dist/lib/gemini-image.js"), { namedExports: {
 mock.module(local("../../dist/lib/seedream-image.js"), { namedExports: { SEEDREAM_5_PRO_IMAGE_MODEL: "seedream-fixture", generateSeedreamImageBuffer: async () => assert.fail("Wrong provider") } });
 mock.module(local("../../dist/lib/openrouter-seedream-image.js"), { namedExports: { generateOpenRouterSeedreamImage: async () => assert.fail("Wrong provider") } });
 mock.module(local("../../dist/lib/image-output.js"), { namedExports: {
+  assertImageOutputAspectRatio,
   AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["9:16", "16:9", "4:5", "1:1"], getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
   prepareAIStudioImageOutput: async (buffer, ratio, options) => { calls.push({ prepare: { ratio, options } }); return buffer; },
 } });

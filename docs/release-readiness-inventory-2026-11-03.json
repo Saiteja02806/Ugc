@@ -1,0 +1,3902 @@
+{
+  "createdAt": "2026-11-03T11:07:10.672Z",
+  "head": "b9becb4e48642131bd50f5b81274d0d0adbd85e3",
+  "files": [
+    {
+      "file": ".env.example",
+      "state": " M",
+      "bytes": 16945,
+      "sha256": "4094bd7e07d83f9ff6f402c2aede56929e496f5c3d5df553361b8a25c6539d3e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": ".vercelignore",
+      "state": " M",
+      "bytes": 1908,
+      "sha256": "6447d1273083b60fef3c99498ffda558b47e1ff1d89c8402917b36f9602bce40",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "CAROUSEL_CONTEXT.md",
+      "state": " M",
+      "bytes": 574958,
+      "sha256": "2b7ce50a73b9a9df0de77a4473f2e0dbe33c982d6cef01b77eafce62cc0e89a7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "EXPLORE_CONTEXT.md",
+      "state": " M",
+      "bytes": 646214,
+      "sha256": "2879790b65d604d2487f9e3d093b583728ec1e65e66cb83c067f768b848ab78e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/schedules/[scheduleId]/wall-text-render/route.ts",
+      "state": " M",
+      "bytes": 2449,
+      "sha256": "d2e04e2a2aa9995bec6af2beac87bbae412096115c76ff0e5d3d8b2887de8fb9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/trending/video-source-selection/route.ts",
+      "state": " M",
+      "bytes": 4516,
+      "sha256": "240ee6ffc1529d8937f0de155df1fcb7fda19a803150514900050e853cb87093",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/trending/wall-text/drafts/route.ts",
+      "state": " M",
+      "bytes": 3636,
+      "sha256": "f4221672d4bdaa5000e144ffc78bbe55ca65bd02789c75264f4d45303d7911e1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/trending/wall-text/feed/actions/route.ts",
+      "state": " M",
+      "bytes": 1934,
+      "sha256": "cbb382ffe6af7b6e2457ac308ebf6786c3140eba7a20e696c54b0a50f4b9d389",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/trending/wall-text/feed/prepare/route.ts",
+      "state": " M",
+      "bytes": 3101,
+      "sha256": "50e61381f5cd43f98d7a7df37849d1600bbe997119fd6a42d51b4d2ca3797e42",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/api/trending/wall-text/schedules/route.ts",
+      "state": " M",
+      "bytes": 5142,
+      "sha256": "9244829815c0554e5483ad565a5fcb8e883444e26cac3ecd2038ec19cf75cd3f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/ai-ugc-video-generator-how-it-works/page.tsx",
+      "state": " M",
+      "bytes": 15664,
+      "sha256": "62cc4317eca7c2e151e26751e5fc8809b64fc51b5dc708703a477806d50d3350",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/ai-video-generator-for-saas/page.tsx",
+      "state": " M",
+      "bytes": 12206,
+      "sha256": "26bdeca56d024faf0ac329efd1eabe6fc76f744ebe28cb0a007644bcc245dd8e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/build-in-public-without-showing-face/page.tsx",
+      "state": " M",
+      "bytes": 10949,
+      "sha256": "9a193ebf1ad1174a48b98b6f1409afcae0e12da4290d19fa2ffd1c9b73b43aa5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/short-form-video-marketing-saas/page.tsx",
+      "state": " M",
+      "bytes": 11856,
+      "sha256": "1e8c1727ab8b5c693c0ea07148046a97accb119a98ffefda971350189d2008eb",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/ugc-ads-with-claude-mcp/page.tsx",
+      "state": " M",
+      "bytes": 15132,
+      "sha256": "52fc639da3e7a648341248aca090cc31aa36cab00052e7f54150f3ae805ce75c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/blog/ugc-pilot-vs-hiring-ugc-creators/page.tsx",
+      "state": " M",
+      "bytes": 16185,
+      "sha256": "af9be794b6da40bfae7208b69db6b60eb605305f03d618e39ce37c91fa0f16f4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/e2e/explore-format-preview/page.tsx",
+      "state": " M",
+      "bytes": 5342,
+      "sha256": "15dc32b18f9c1275351efc4ce8de3145fcc4cf05020bdaed10b566b0bf9e801c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/e2e/trending-feed-preview/preview.tsx",
+      "state": " M",
+      "bytes": 10435,
+      "sha256": "62d48c17ebe3a8185f3d7bd17205e57be5905c205537dae2af9e2350f4ca1eb3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/e2e/trending-walkthrough-preview/page.tsx",
+      "state": " M",
+      "bytes": 2549,
+      "sha256": "fdef335d4ef36f63165bd03994ffcd5e6577fdc9d192215c98848c14cf92eb45",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/explore/wall-of-text/page.tsx",
+      "state": " M",
+      "bytes": 1519,
+      "sha256": "4d77e4a769c2775625dc299b73e59c58e3cc876ff7247984eeed646cb9d665dd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/try-ugcpilot/page.tsx",
+      "state": " M",
+      "bytes": 998,
+      "sha256": "e8b3a2ef76deee8c04c5e6716df7e25cbc368aa077d9d16643b7c3f55f9ca5a7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "app/viral/page.tsx",
+      "state": " M",
+      "bytes": 328,
+      "sha256": "e5d5b84f223f8fb698c922cc84c60791b2f4a9be6a3fd2abe9e24878dd57bafd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/avatars/saved-creative-assets-tab.tsx",
+      "state": " M",
+      "bytes": 6395,
+      "sha256": "4a6ebcd738b45030ee80bf48438de6f2211a6facce15a77ddd765569d7104944",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/business-profiles/background-business-onboarding.tsx",
+      "state": " M",
+      "bytes": 41740,
+      "sha256": "03efdf64c675797347bf816f37ed20f605f645a6d3d1ac96de4482548fbd42b3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/characters/influencer-studio.module.css",
+      "state": " M",
+      "bytes": 19595,
+      "sha256": "3bcbe678ad0b723d1a8b8417a2e8600e896572000f4e7458a6dcfb07bf79d208",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/ai-character-card.tsx",
+      "state": " M",
+      "bytes": 2197,
+      "sha256": "3c0bc9a0ebb0dd942f2936402187e0d14663def25e4c60502050b3e684d39eff",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/explore-workspace.module.css",
+      "state": " M",
+      "bytes": 5687,
+      "sha256": "b3d93e5823e392a369eb9a23cb35e5d257a0da63f38fbc1f6c2246009307f11a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/explore-workspace.tsx",
+      "state": " M",
+      "bytes": 4642,
+      "sha256": "8ee8a5c3a15c92da0a7b226e3fc95f33d32baee7002921b5ef96f76ac7bc2369",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/format-demo-section.tsx",
+      "state": " M",
+      "bytes": 81004,
+      "sha256": "d47fcc6aa6d152f1ffb20f7296f0d3393fc67ae83d70f89f19c5b9d6452ce93a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/format-text-overlays-editor.tsx",
+      "state": " M",
+      "bytes": 10032,
+      "sha256": "5be428d20e0007f9f53902f4cc031380433a01fb56ab4120a4db92b14ea41770",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/format-video-editor.tsx",
+      "state": " M",
+      "bytes": 46414,
+      "sha256": "fa42d0da403c1e304035e6b207472d01fc76f30664c2ce1e75d4e241cc9134c4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/format-workspace.tsx",
+      "state": " M",
+      "bytes": 75543,
+      "sha256": "c729e05dfb6acbedbb86f85c380577e63ddb0f204a492e21875edeac4f4cdf60",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/hook-starting-frame-workspace.tsx",
+      "state": " M",
+      "bytes": 65581,
+      "sha256": "5eba2a5749245caa79dfc4cecab1b5354e7a99589abfbafa0b58e6fad4e38ce9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/recreate-generation-panel.tsx",
+      "state": " M",
+      "bytes": 7208,
+      "sha256": "004a7e69d1c80129394944c7287d544a49c0510ec7706ddc104c7109f23803b0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/recreate-generation-view.ts",
+      "state": " M",
+      "bytes": 2435,
+      "sha256": "c75392d02edea7ddbfab48b2d7a591e1ca4c7d7e99c48d81c509fbda0eb55668",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/recreate-workspace.tsx",
+      "state": " M",
+      "bytes": 26913,
+      "sha256": "f524a9bab8cb8dc65db154258f0f968a8c16bb43bc47a4c020918d848a9b98c9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/slideshow-face-choice.tsx",
+      "state": " M",
+      "bytes": 8055,
+      "sha256": "144f652923b5fe004220c640384c3d4bdd32f74ea2262614e9747de6b94b1070",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/talking-head-references.module.css",
+      "state": " M",
+      "bytes": 1520,
+      "sha256": "bb84427fb916c86340518bf5aa09d85817ba4d4696f71783e22bb70b751f5eba",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/talking-head-references.tsx",
+      "state": " M",
+      "bytes": 3315,
+      "sha256": "9e0c2ea5954fe99d776be59400ed7bb4bbfd8f8551ed874ef0dd6be91944fd5d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/wall-schedule-preview.tsx",
+      "state": " M",
+      "bytes": 1328,
+      "sha256": "f13902e352b91d0a2b81e997d5b887f57d2ce1c2e8b47db6e2e359efdd95d8d3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/workflow-creation.module.css",
+      "state": " M",
+      "bytes": 28796,
+      "sha256": "ce72592e9219d96fff6c5bca49d48f48e07b9ce2e80dc6d08c2c6b84619a75fd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/workflow-studio.module.css",
+      "state": " M",
+      "bytes": 5833,
+      "sha256": "bdac4fd86de25f31c9fdbfad14c678cd17b85b68662b57a454c988d500a85526",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/workflow-video-layout.module.css",
+      "state": " M",
+      "bytes": 12411,
+      "sha256": "4812ef386015eb49e2072763e957cf72c104df689970323e974384260ac7ee39",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/generation/ai-studio-composer.tsx",
+      "state": " M",
+      "bytes": 34630,
+      "sha256": "cb0045e84f0c44aa51abd0915e7fb521267ff8e5a9683fb57941e242e7d3f06a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/layout/workspace-route-boundary.tsx",
+      "state": " M",
+      "bytes": 926,
+      "sha256": "18b2caf5c44c39bc2d5558c3474c799a6fca148c0091dc01b39cb79e2adcb330",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/marketing/founder-guide-page.tsx",
+      "state": " M",
+      "bytes": 58246,
+      "sha256": "6256baa1f0be482fede2c6b52f3f7dee4a7b6787dfa1c24194db626c5b1f3a06",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/marketing/landing-format-shelf.tsx",
+      "state": " M",
+      "bytes": 6887,
+      "sha256": "0e799fbdb8b3c040a9ea94bcbb80d44556c60cc5af93a9981962da9b5ea3fda9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/marketing/landing-formats-bento.tsx",
+      "state": " M",
+      "bytes": 12989,
+      "sha256": "528c2415c1ff22afe2320f1ea7d4b27e7ae7b69d04662743cde48faf198ab58e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/marketing/landing-hero-gallery.tsx",
+      "state": " M",
+      "bytes": 11726,
+      "sha256": "fb86ce0e15ff75f72bf4c8695de6cc9c851925c14d6802de4d534563b89129da",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/marketing/try-ugcpilot-demo.tsx",
+      "state": " M",
+      "bytes": 48434,
+      "sha256": "06635b581dd7ec0090e462c37db1e598fa6ca14eb3bfc9ed4b07b27cb869c4a4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/pricing/pricing-page.tsx",
+      "state": " M",
+      "bytes": 13216,
+      "sha256": "f8e2901f7e347922f5b7736fca6143989b6c1b5248827f88c36fc127ae35d84b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/scheduling/schedule-editor.tsx",
+      "state": " M",
+      "bytes": 111940,
+      "sha256": "17079c0348f2adb0f93b5a98b8db1ed8dfcac409177016a342cf2971013baa87",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/scheduling/scheduling-workspace.tsx",
+      "state": " M",
+      "bytes": 160656,
+      "sha256": "ea5e436c95567b00dad353dcf988cf7fcbfde32c8c5b9cecd07b54208c4af85f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/settings/business-context-settings.tsx",
+      "state": " M",
+      "bytes": 14504,
+      "sha256": "c701a09dd1837f372d95b61035834b33281af4d5f029f01e959ff3e7821ede1e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/settings/instagram-account-manager.tsx",
+      "state": " M",
+      "bytes": 27448,
+      "sha256": "e90cda38b7434d5e4d13552bb8ce8413783ba3049e8297b9e35240aaa4079322",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/social/instagram-professional-account-guide.tsx",
+      "state": " M",
+      "bytes": 4336,
+      "sha256": "f68e18a9298cf07904f861ebec3117dcb7521a886138a3688d771dbd54e26a59",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/social/use-social-oauth-popup.ts",
+      "state": " M",
+      "bytes": 13200,
+      "sha256": "2371a5b24862806b9cb1a6e84129825975aff549ca7cd9a3d3762f4d8c1a4c18",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/creative-assets-video-picker.tsx",
+      "state": " M",
+      "bytes": 22333,
+      "sha256": "2d0b5688166113209c83d946a02b203399da517963a21acb27a543d1dd78fdd9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/hook-video-schedule-drawer.tsx",
+      "state": " M",
+      "bytes": 42227,
+      "sha256": "bc6d45fe998f6fbe42233bae4f877bfb8589d388b6ebe2edb4f2516dfebb5ca1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/trending-content-mix-dialog.tsx",
+      "state": " M",
+      "bytes": 25530,
+      "sha256": "f5dc9f6c7009ad1085c6031b51870b5c086db6f3bf8a91c13f3ec2b989954a2c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/trending-creative-editor.tsx",
+      "state": " M",
+      "bytes": 118734,
+      "sha256": "9920fd5e6daeff865f62a567a674c5427fea85fe67728ef7b3820b5583a5ec78",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/trending-first-visit-walkthrough.tsx",
+      "state": " M",
+      "bytes": 29530,
+      "sha256": "105c899a6455f4f28002bc9a8c4a910065bdef5816f767a4b4a70c0672b92999",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/trending-workspace.tsx",
+      "state": " M",
+      "bytes": 171461,
+      "sha256": "27d0abb02a42333c138ebd0f5d756ac4ac72cfe9eb0d66d5a3f4b5df4c1e174d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/wall-text-detail-view.tsx",
+      "state": " M",
+      "bytes": 8705,
+      "sha256": "594c05ea4b1a3196a791bce808a03d8e00c0901a81ac2c715e65ac75dd94ac05",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/trending/wall-text-edit-overlay.tsx",
+      "state": " M",
+      "bytes": 7414,
+      "sha256": "13586998992d7cc0152d86c5ee0a5d5ef0cfd5d474984d3e7ad76ec391c0d45f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/video/video-generation-workspace.tsx",
+      "state": " M",
+      "bytes": 109183,
+      "sha256": "35ef5d7f6f320d35a6d65916542b780bd5bf272697e8f2151e3fbd89da06197f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/viral/viral-workspace.tsx",
+      "state": " M",
+      "bytes": 22310,
+      "sha256": "c51a44e78ed78bf7aff601d25656a9108770eaeff554ea503b85ec48ca9f58c7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/workspace/ugc-chat-workspace.tsx",
+      "state": " M",
+      "bytes": 88127,
+      "sha256": "f559ae6be99845259ece003e14ed61491940f58edf5d35cafb223b723961e948",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "contexts/auth-context.tsx",
+      "state": " M",
+      "bytes": 2482,
+      "sha256": "92c466384578c7132c44ab982e2709a2fba4bc559edd29bfb1b5426ca7f442d3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-context/clear.md",
+      "state": " M",
+      "bytes": 541225,
+      "sha256": "20f8f7c0ce97a6661ed217a4e860f96cb3a4d724e47a5d41876c4741d4bf4669",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-context/nonnegotiables.md",
+      "state": " M",
+      "bytes": 13121,
+      "sha256": "90fc0c9c63a4206f176d945560a5c5697b706b4051946298e500e6dec652b591",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "infra/gcp/foundation/variables.tf",
+      "state": " M",
+      "bytes": 4139,
+      "sha256": "88b27df85f32ec542441da850733218094612c365e5e98c2f6a0b2ab10f1dbbe",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/ai-studio/face-swap-api.ts",
+      "state": " M",
+      "bytes": 5799,
+      "sha256": "5664f36e053e22d3cb29c059969349f4e7e5937b4a9dd8558df6742f05c27ca9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/email-client.test.mjs",
+      "state": " M",
+      "bytes": 3229,
+      "sha256": "2a7c2ac62e927fde6e52d08397b5fbe528ab7594e9631e4652d31ad2f7cc1b24",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/email-service.test.mjs",
+      "state": " M",
+      "bytes": 5987,
+      "sha256": "759400ad9612bf6c27ae01980dfdc58ea8e5d28e4a6cb3c61e47e12d399514ff",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/email-service.ts",
+      "state": " M",
+      "bytes": 3393,
+      "sha256": "571cc89991f8a000b279d8f61d9db281f8d7360ecf8ae45be80cf073a6bac63a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/signup-analytics.test.mjs",
+      "state": " M",
+      "bytes": 2475,
+      "sha256": "b0eb7ffd96d23d65d6793d60a74fc85f767a09c48e37f60fbd8a45f285e5ebb9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/business-profiles/business-context-form.ts",
+      "state": " M",
+      "bytes": 2963,
+      "sha256": "3eea18ce1d12fa978e4781419d3dbf01f713776354b1c601472f58a3e66c13d7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/carousel/content-plan-generation-job.ts",
+      "state": " M",
+      "bytes": 1444,
+      "sha256": "755be20daaf318b2680d934a8961165cbfc5cfd6d5f283d38fbcecf281709000",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/carousel/generation-jobs-behavior.test.ts",
+      "state": " M",
+      "bytes": 5156,
+      "sha256": "60fc2c806c1a0acdd7c38660046014c34ba8863a4491def2de37b4eae506b82c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/carousel/generation-jobs.ts",
+      "state": " M",
+      "bytes": 9212,
+      "sha256": "69269f86f975585dc95e856cecae6c51e2507da2afae8cb2fff316a70aa54465",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/characters/influencer-registry.ts",
+      "state": " M",
+      "bytes": 51519,
+      "sha256": "e4f8e5a625407e490b0b12e248df8f9fd5ac55d77044d10b4984284c8d3eda24",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/characters/studio-references.test.mjs",
+      "state": " M",
+      "bytes": 11272,
+      "sha256": "8434f56ca525f73b8f79da2e9c6f7b6506dd8bbc78ff3d2374c865f8cca6005e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-curated-frames.test.ts",
+      "state": " M",
+      "bytes": 10574,
+      "sha256": "e9e7d19f9eab413411302fd1094b801ababe378e580d9031bdff7dc841f3f611",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-keyframe-client.test.ts",
+      "state": " M",
+      "bytes": 3497,
+      "sha256": "7ab03e6ef1f9d184446ff4e22470d286780b6f3da1c348296b9311609136d845",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-keyframe-draft.test.ts",
+      "state": " M",
+      "bytes": 16617,
+      "sha256": "505018e24dbb9c5e089f21300ba2e0083f4359b61c1d738e50edc058eeae45b0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-keyframe-draft.ts",
+      "state": " M",
+      "bytes": 13961,
+      "sha256": "7197d8fa7e34cf635437876218a31938bf4f486d6f0687b45ac2e3bf175bf1b2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-keyframe-generation-api.test.mjs",
+      "state": " M",
+      "bytes": 41927,
+      "sha256": "6f50ad5d3c2582ffb72443813f10657370e177235b03fde7f6d534ce8be81396",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-keyframe-generation-api.ts",
+      "state": " M",
+      "bytes": 22004,
+      "sha256": "16b850ba98ed690b1dab0e12bdb2fb64760c2b64906166658827afef57e309b2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-source-frame.test.ts",
+      "state": " M",
+      "bytes": 13191,
+      "sha256": "6895feef97678e8ba56c4aaa528820494676c1dc6af557a56dd39eb219fe9a1f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/hook-source-frame.ts",
+      "state": " M",
+      "bytes": 17028,
+      "sha256": "93bd14d18d27a62b8207fbccac876f214a17a9cf20a96f1c0be9489ff5fc305b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/recreate-catalog.ts",
+      "state": " M",
+      "bytes": 7100,
+      "sha256": "c74c28cb1f628c67831f8562fbb1602945f14fa796bdf8bd5718cf520224e86b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/recreate-types.test.ts",
+      "state": " M",
+      "bytes": 8048,
+      "sha256": "2c34bdfe2a2d3be0897f84d5d48fa44da7479da73c4b11bdf48f9c30c6148e78",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/recreate-types.ts",
+      "state": " M",
+      "bytes": 6502,
+      "sha256": "7995c29a9d68afebe617d8916a746b3a82b93588bf99a02f8cc808d7fb423902",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/reference-text.ts",
+      "state": " M",
+      "bytes": 5682,
+      "sha256": "f511c05a8d82f274b5b6a742eaf73ac0162faac0d4870a0abe8864ca8a027a85",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/remix-text-edit.ts",
+      "state": " M",
+      "bytes": 6025,
+      "sha256": "569bf69d6f07863407e4e6344d34c8f284077b5fab9ff5a64b4749ef2b8f3086",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/slideshow-face-swap.ts",
+      "state": " M",
+      "bytes": 1656,
+      "sha256": "6bc3ea0a816e183338f2f99d23e840097b7e2f480e727b30a45605fd86b0531b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/wall-pending-composition.ts",
+      "state": " M",
+      "bytes": 2602,
+      "sha256": "283c11ad3361eafed91b40a55ba1c874f770c24cf693ab30e8d496e36cca0b2d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/workflows.ts",
+      "state": " M",
+      "bytes": 1975,
+      "sha256": "4ba54828918918a39b945dd053e28c04b2811593ffafc65ac519cf480e52d32e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/firebase/auth.ts",
+      "state": " M",
+      "bytes": 14947,
+      "sha256": "63962109bcd9487bd24c4cf9d063e9efdc0d92c41054bf903880d8cf7f2c8557",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/marketing/founder-workflow-guides.json",
+      "state": " M",
+      "bytes": 292104,
+      "sha256": "d25cc4b3814a5c272b681cc370044575dc496cdc10620ed61d87b8121fde80f8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/marketing/mcp-public.ts",
+      "state": " M",
+      "bytes": 14577,
+      "sha256": "25d5726e018b85c32bf95fe62a260fbf9bd2fd902376f92085d47b0be25ae04c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/marketing/mcp-tool-catalog.json",
+      "state": " M",
+      "bytes": 47719,
+      "sha256": "3a22235b77f1d3ab9b37c7d1e63c3f808118337f30c41ea89678616bea316969",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/marketing/practical-guides.ts",
+      "state": " M",
+      "bytes": 21413,
+      "sha256": "2e0293b2df177cacc5a7f0db4ddab665ec752cc11e84dc8ec6faa9113ebcd70d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/mcp/reference-tools.ts",
+      "state": " M",
+      "bytes": 11975,
+      "sha256": "820b8fe0fabbbdceeeaef43460e5c1e95ba1c0e0d19f19cba89e57b2fce29a08",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/media/saved-creative-assets-ui-contract.test.ts",
+      "state": " M",
+      "bytes": 5002,
+      "sha256": "4e5c5e1d868d1daeb5a5a07553ddb97824899cbd2a029b4b98317d85b006d198",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/scheduling/render-finalization-policy.ts",
+      "state": " M",
+      "bytes": 4491,
+      "sha256": "f2a76454e3153575f1773c10ba945058621d341c91db93bde750ab4fa404f0bc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/scheduling/service.ts",
+      "state": " M",
+      "bytes": 86591,
+      "sha256": "c64e95e56ce6962b9f9e12bd4bac0d2d1b03efd0dcda10efe687efc0913c1bed",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/scheduling/wall-text-render-start.ts",
+      "state": " M",
+      "bytes": 6256,
+      "sha256": "78072ec562dbdf1f2da9a0e8f76c9b8746650ff887cc131feb99689ba2fe1208",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/social/instagram-professional-account.test.ts",
+      "state": " M",
+      "bytes": 4255,
+      "sha256": "b476ab64873dda962b24d6ced0bde5755c7c188d630dfd60c89faea3250698d7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/social/oauth-callback.ts",
+      "state": " M",
+      "bytes": 15784,
+      "sha256": "1c20fac059ecf6be055a3460a76b8bd19f6a18dab3385c79607a6fdf063a835c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/social/oauth.ts",
+      "state": " M",
+      "bytes": 75910,
+      "sha256": "1785a65f6f486dc17c50a954f4a33aa32d347cb06da97ec641b67025ff93bb2e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/theme.test.ts",
+      "state": " M",
+      "bytes": 8268,
+      "sha256": "60ebe428fa0334c1e35029ce532e8e03d66cd3f0745dcf98880217d997125985",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/creative-card-actions-ui.test.ts",
+      "state": " M",
+      "bytes": 37467,
+      "sha256": "24e3b7f42cc59e179cb05c4545806e30bc647a1d13ea2b2ce051b4de2ac2bf50",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/feed-items.ts",
+      "state": " M",
+      "bytes": 13063,
+      "sha256": "98d1af17450671e0f17645c58bfbdccc99d9db4b4dca9a1736cacab90ac9f0b7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/hook-video-library-render-contract.test.ts",
+      "state": " M",
+      "bytes": 7767,
+      "sha256": "74f25b35ad46c6e409fd7988afbf66fe4ed90306321526e42620bcf1af01e67f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/onboarding-prebuild.ts",
+      "state": " M",
+      "bytes": 1249,
+      "sha256": "e015a62aadf342b5fcf0e3663ace78625cdef8239f52fbe09846d4bbad91e4f0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/unified-daily-feed.ts",
+      "state": " M",
+      "bytes": 40188,
+      "sha256": "5ebe8a1fed5e879dfd5fc636cde73311b5fdba0b49898dbe87bb088ef34e3aae",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/wall-text-generation-failure.test.ts",
+      "state": " M",
+      "bytes": 7830,
+      "sha256": "7f5ed3ff1374b3e2c73df3bcd20c6eeb904f91bdda4543bd33de7150f62b0d2e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/wall-text-generation-failure.ts",
+      "state": " M",
+      "bytes": 14788,
+      "sha256": "fe266423ea4504e45d906a760fd41841e9a5e1fb18170771b6b8df470378aadc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/wall-text-pending-scheduling-contract.test.ts",
+      "state": " M",
+      "bytes": 6409,
+      "sha256": "41464d3fe82968ccfa8643db9aab622e1c6681ce440ff9a285ef5048b8c12aee",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/trending/wall-text-render-request.ts",
+      "state": " M",
+      "bytes": 13063,
+      "sha256": "0027f1e3cd04af29d554ad0d4532da11d55848ca150f34b27f98b4d4a6b7b504",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/viral/viral-isolation-contract.test.ts",
+      "state": " M",
+      "bytes": 7329,
+      "sha256": "149f8914a5649314cb33cd163e950a1d71e9e7433e9cdcbbff1cd08b87d5e843",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "next.config.ts",
+      "state": " M",
+      "bytes": 6667,
+      "sha256": "dd4e2a2c05d0761f98094d230378682e2f1df10e30d914a472c8b326b33659bf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "package-lock.json",
+      "state": " M",
+      "bytes": 560110,
+      "sha256": "eee95a786867f11ca9db84b2f4702fbc9ea0f221ea3e7a70685672bad290e3e4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "package.json",
+      "state": " M",
+      "bytes": 55899,
+      "sha256": "30aa51a1f171cc243144d44fd6ee2962454b7d8eba82183ba49c5e4999649c0d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/characters/ai-character-create-yours-v5.mp4",
+      "state": " M",
+      "bytes": 6585318,
+      "sha256": "8537f7eb4fd9c8fa2e65427699fa9624d711c8f52299039d5aab3350b6572fda",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/characters/ai-character-create-yours-v5.webp",
+      "state": " M",
+      "bytes": 105046,
+      "sha256": "2f03e6253d30ab30ddec858acfcbffc30ab4f0d4e2781cecc909e865e04c7ba3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/preview.html",
+      "state": " M",
+      "bytes": 7493,
+      "sha256": "9c3dac030d797941e40b117b334b193d502b8cf4f34c9467b618f422ad8241f7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/WOTExploreCover.tsx",
+      "state": " M",
+      "bytes": 22716,
+      "sha256": "ae46085a732d228141628386648f21cf877c72a6cfd9c64d564cfbce0583d298",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/index.tsx",
+      "state": " M",
+      "bytes": 1917,
+      "sha256": "54c3836bdf2081ad62c706f6c68a49441d761717a23e157c50a1976bef4fa9c4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/check-hook-frame-bundles.mjs",
+      "state": " M",
+      "bytes": 2093,
+      "sha256": "cf8429f90fd642c833d1360938d49aa1d9425d751ea25794e807f2f348f9ee9e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-clip-live-controls.test.mjs",
+      "state": " M",
+      "bytes": 26552,
+      "sha256": "a50c05fbac3b8d8a22326f5e954b58fcb0064b5d7e9f4a0a1debd647d646ac39",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-demo-loading.browser.cjs",
+      "state": " M",
+      "bytes": 29564,
+      "sha256": "f4872826534513aebce898e2267f63ca353b093fea778c6998d80d3726722fec",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-format-generation-ui.test.mjs",
+      "state": " M",
+      "bytes": 81183,
+      "sha256": "c9641f076e8c71c394baba7265ecf84e66466635bdd546c70e35f0192650ab25",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-format-source-workspace.test.mjs",
+      "state": " M",
+      "bytes": 95722,
+      "sha256": "d6338a5fccb4dde69bbd4bf607772cdcc918a604137a3f62ff8fe0d5370ca4e2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-format-ui.browser.cjs",
+      "state": " M",
+      "bytes": 27883,
+      "sha256": "8031d8591999fa2f2875c8ba8e47b405ebe9ac2a93a78cc9f860f7c17b1d4c0f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-navigation-ui.test.mjs",
+      "state": " M",
+      "bytes": 25996,
+      "sha256": "875762cb9c0a3eaa3cd33f526ece0e6d1115051b7c5acdcce9a8d43dac1380f1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-reference-preview.test.mjs",
+      "state": " M",
+      "bytes": 9039,
+      "sha256": "462036e0b571485a66d4881363192bb7bb97fd58d448f0303ff3493b7acc941b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-text-fonts.test.mjs",
+      "state": " M",
+      "bytes": 16352,
+      "sha256": "7fdbbc112dcbdd3c202681575400f697e64dbe2a6e15f5908a92cdb416cf3a9c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/explore-workflow-job-recovery.test.mjs",
+      "state": " M",
+      "bytes": 20983,
+      "sha256": "ccd4de11388eacab7178d19f4c2a74332ffc811e05def49b5822fc0dda056439",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/hook-starting-frame-ui.test.mjs",
+      "state": " M",
+      "bytes": 76644,
+      "sha256": "95e73052ae373949372de748ee3499fb28610c1dc23e8589a7811c242e19a08e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/hook-video-bundle-access.test.mjs",
+      "state": " M",
+      "bytes": 2435,
+      "sha256": "b49aa61976d49c81a1daa5ba45b64b77a87072cc37588113cd23de9231526477",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/native-media-tracing.test.mjs",
+      "state": " M",
+      "bytes": 3443,
+      "sha256": "f75d9b34a391cd8cdc51ed616a202bc9bde16ae455bef4a35a4dd3ea8df96c19",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/onboarding-background-db.test.mjs",
+      "state": " M",
+      "bytes": 16181,
+      "sha256": "68de9d43562e95a8dad647b1118a42c40829a95c2a45b9ecdd5cfebad0636aa2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/slideshow-card-ui.test.mjs",
+      "state": " M",
+      "bytes": 3678,
+      "sha256": "165aee26326682ef075f5cebd722ffc8d952da9701acbe8d9abb4648e79d1207",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/slideshow-face-swap-ui.test.mjs",
+      "state": " M",
+      "bytes": 4370,
+      "sha256": "cbdc1b756014d583b37c4ec549b34d7ecbb2d556221953fbfbb715508b79b4a0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/talking-head-references.test.mjs",
+      "state": " M",
+      "bytes": 14579,
+      "sha256": "feac87e3b5027eef209051147cc238c741951b6894a4b303dda44b9a26a5912a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/workflow-reference-inputs-ui.test.mjs",
+      "state": " M",
+      "bytes": 18836,
+      "sha256": "05347645a8027a22e38bae18f2f08fbc212ac28a8491a6e61738f4c0c469dbe0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "supabase/migrations/20261101233000_add_startup_billing_plan.sql",
+      "state": " M",
+      "bytes": 21747,
+      "sha256": "04ca26a9b864a477269ff129367c3013c27ad342f2ca5a083636ca77dcfafe6d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/jobs/generate-image.hook-keyframe.test.mjs",
+      "state": " M",
+      "bytes": 15897,
+      "sha256": "a4c5157f91f424fc2d3df7e76200d84056a0c212dce3e890df1624c3c7267462",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/jobs/generate-image.test.mjs",
+      "state": " M",
+      "bytes": 57270,
+      "sha256": "f8d72a959bd6bc0c092adcacecf2a2b5ece8cdc1954ce46abaf02c8a819ae3a3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/jobs/generate-image.ts",
+      "state": " M",
+      "bytes": 35229,
+      "sha256": "414d5bd4ff0dc0b539b6737336b4f18ad0a730f5ff063cc9a52a589c362abfef",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/jobs/index.ts",
+      "state": " M",
+      "bytes": 6015,
+      "sha256": "d55b51f9e7b6370740951cf8c081230c816f39c6ca7e31f44572f8608e5ff387",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/carousel-manual-render.ts",
+      "state": " M",
+      "bytes": 3736,
+      "sha256": "e3eca56959a12eadefce0fd9b3cce5ff5ebf14fa03a3f1da62ea0d638fafadb9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/carousel-manual-text.test.ts",
+      "state": " M",
+      "bytes": 12207,
+      "sha256": "66041c0ccc410d4b485e10fd47da14a449d5155433209fd730ebbe0b08d84655",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/durable-image-stages.test.ts",
+      "state": " M",
+      "bytes": 7574,
+      "sha256": "4a7eded2cae85a768d850faa737dbbc67a7e11682fdce113c7d3d12b64191db7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/durable-image-stages.ts",
+      "state": " M",
+      "bytes": 4926,
+      "sha256": "0f9c28b89e2764df5de728a51a78afe1663fe4e366038b47867b96bfedcedf6a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/hook-keyframe-image-labels.ts",
+      "state": " M",
+      "bytes": 6684,
+      "sha256": "52f9246d44920298bd2f5e664bf320bc26a79e0255b7f8bdec196eb6ff826629",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/image-output.test.ts",
+      "state": " M",
+      "bytes": 7865,
+      "sha256": "296827e2824b445386893b9b0ac2ee7d990fb0f959c77deeec02da58138226ff",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/image-output.ts",
+      "state": " M",
+      "bytes": 3160,
+      "sha256": "73923de3831f86f46534316622dacc05ee313a5df83af96f3b32c45e278fb7fc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/openrouter-gemini-image.test.ts",
+      "state": " M",
+      "bytes": 18940,
+      "sha256": "eaaa3e57715d7bd0f6b007105f1420315fdd3f8446162b44296ec42661fc7467",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/openrouter-gemini-image.ts",
+      "state": " M",
+      "bytes": 14466,
+      "sha256": "a9e93a2fa554f0dfaa7f4f1f8bcd9cac9d10a175a718aadf35e60728fb7a59dc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/starting-frame-reference-options.ts",
+      "state": " M",
+      "bytes": 4069,
+      "sha256": "8e1bb3d66ecf93a4bbc2eec7e37c34247148ac8e6113bb0529d2d6e6a4907176",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/processor.test.ts",
+      "state": " M",
+      "bytes": 40671,
+      "sha256": "01a1219d9972ffb98640b10fd4716a768acc42c062325ae976d9a14290900c1e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/processor.ts",
+      "state": " M",
+      "bytes": 29370,
+      "sha256": "d68aaccbce0fdcbdecba6ff8f5ceb38f3544b73a5950ab456dbb185a9cab3e4c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/subtitles/editorial-media.ts",
+      "state": " M",
+      "bytes": 2084,
+      "sha256": "d4b486e246b772cc6d9ac1e20a72518d88c2b027c34c616872bd9f35f69995fa",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/subtitles/editorial.ts",
+      "state": " M",
+      "bytes": 9176,
+      "sha256": "f8b51bfd5b5bead7a3e782e5e730ccb1bf79241e79d8549d7502aa98e0748ae0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/explore/slideshow-face-swap-control.tsx",
+      "state": "??",
+      "bytes": 5387,
+      "sha256": "bc9267885fce7509c267c2316695596f242047096b2ca118d01085a58f739d42",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "components/social/use-social-oauth-popup.test.mjs",
+      "state": "??",
+      "bytes": 5612,
+      "sha256": "5a85bcc663f59ac97b0aa5936760bf9b3b4437cf3c670953b134a06fe82292ee",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "contexts/auth-context.test.mjs",
+      "state": "??",
+      "bytes": 3518,
+      "sha256": "74e1ed2c85104805fab394a1dccfecbfc8722987990f5140bf28b9991cb6b867",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/aichar/ChatGPT Image Nov 2, 2026, 11_48_01 PM.png",
+      "state": "??",
+      "bytes": 2485482,
+      "sha256": "d0ea8831bafc81822eca18f6bf63207a82f32abeaac9ebd2a1651dcdc7bf7817",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/hook/Explore.mp4",
+      "state": "??",
+      "bytes": 1992274,
+      "sha256": "d12f92b5a902a80f6bfbfe7565fa31254ca265a3cb48db95ab12dcfd101ca3ed",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/hook/Screenshot_2026-07-23_001927.png_7b716002 (1).jpg",
+      "state": "??",
+      "bytes": 16679,
+      "sha256": "9445932e693745f27e8a27f9c7a2c1a15e42650f8158228ca421081e89114acf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/hook/Woman_putting_on_glasses_18692f00_1.mp4",
+      "state": "??",
+      "bytes": 2862667,
+      "sha256": "3401d2df7a8065b7a0f82844e4a1fd80e4c9dc3098506bd2ef46a17a2e2f3daf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/hook/demo.mp4",
+      "state": "??",
+      "bytes": 5280714,
+      "sha256": "1c1a47a09185ac7d08536e2e1a0a505bf17c3876543320d702e13cc02c5f9ba2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/hook/middle (online-video-cutter.com).mp4",
+      "state": "??",
+      "bytes": 823437,
+      "sha256": "a32cbcd4db82e831b321da1c9074704af28f1577a89af0e882a0b787c33a4c46",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/1.5.png",
+      "state": "??",
+      "bytes": 2427902,
+      "sha256": "65f672aa40065648976749ecba9d4492177c63faf1611b500e28816f3e2e41f0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/1.png",
+      "state": "??",
+      "bytes": 2295954,
+      "sha256": "f2e09f4e23d554b5afed2f2ebc74fca6a3f8f3be4534a5d1f9c9f222b4881359",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/2.png",
+      "state": "??",
+      "bytes": 2429245,
+      "sha256": "7d66d7568ebcf31d3d7ee66f078e40f6b352dde237615b3e27731c2d7cb57168",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/3.png",
+      "state": "??",
+      "bytes": 1834283,
+      "sha256": "a07aeb14ffb9254be6ab78c1eee2325f6fb15acf29e7dbbf201e940eeb12ec58",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/4.png",
+      "state": "??",
+      "bytes": 2835726,
+      "sha256": "30e44d09be2a882a4ee3d1ad5abb30c63fbd2250ecf369fea5984d50020bbe98",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/ouput generation/5.png",
+      "state": "??",
+      "bytes": 2029265,
+      "sha256": "85f2b266478ee0649f13c4a526481775d278004d6df6a8f81eb166f868a29968",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/1.jpg",
+      "state": "??",
+      "bytes": 260698,
+      "sha256": "245da69e5521a47c77fde06e4c86e902353012027143d43f88c3cda58d5271a5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/2.jpg",
+      "state": "??",
+      "bytes": 168329,
+      "sha256": "584f7a665b4820bd399fbd4a58d9a3cfee489dd71b827b18ba9726a3990f0827",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/3.jpg",
+      "state": "??",
+      "bytes": 185948,
+      "sha256": "0301122280346e3f2e55797c66c438e8fdb5766690064514c915c097d508ce3b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/4.jpg",
+      "state": "??",
+      "bytes": 117560,
+      "sha256": "63d001b6c1714e2a8ac5f75ef22d17d8e4d2068667b11b0c9096fe08e6075fc1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/5.jpg",
+      "state": "??",
+      "bytes": 443651,
+      "sha256": "d41d2110c59c365d82833cd51bfde7e5219cc1ad7b320599cf97eab1440f2e6b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/ss/sourcegeneration/6.jpg",
+      "state": "??",
+      "bytes": 203677,
+      "sha256": "4199f634ef7c85894d0292e8410302fe9ff8b9aead4a61afaa1388fcdc86be84",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/wot/920b-6dd6-4a4a-acc9-7b684d63d6c4_583fe237.mp4",
+      "state": "??",
+      "bytes": 2659812,
+      "sha256": "63327ab5a508f15697f332d8146b9978acbb3cc0f4cc5df5391a6120396f719a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/wot/Screenshot 2026-07-23 001934.png",
+      "state": "??",
+      "bytes": 62461,
+      "sha256": "df4f7ef41c57e94823ccc0f11f8a80f48dcba7f0dcb323274f6f5a7ad3080d4d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "design/explore-hook-motion/Media/v6/wot/Swap_face_in_video_2f7ff69d (1).mp4",
+      "state": "??",
+      "bytes": 3595281,
+      "sha256": "d8ce288cb8c430d1944a0738743c7301031b064c642dc08dbb45fe1951286413",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-character-button-typography-v5-2026-11-03.md",
+      "state": "??",
+      "bytes": 10861,
+      "sha256": "ee49f7d857030150af01a89476f308a02df981d36eaa72d8d9a6ddb93e6f8223",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-character-continuous-cover-v4-2026-11-03.md",
+      "state": "??",
+      "bytes": 11252,
+      "sha256": "e2c12c18fad46f439427ff2908cc7e107029ab95bd2f1e9ddd0d3dac252086ec",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-character-cover-refinement-2026-11-03.md",
+      "state": "??",
+      "bytes": 9406,
+      "sha256": "983d2d3a728e1f0156665281355dfbc552dccea43a2324cd58467e4d240f2fa0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-character-cover-v3-2026-11-03.md",
+      "state": "??",
+      "bytes": 8467,
+      "sha256": "d791c620d8c92ff8c003c3f9946f22ded2d8ef05be03573dbf68eaa19a461851",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/ai-character-outfits-2026-11-02.md",
+      "state": "??",
+      "bytes": 3925,
+      "sha256": "6dfc9ae236efed82ef6ddda6788c508d472a1628c459caed6752afa77af7f1f9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-checks-2026-11-03.md",
+      "state": "??",
+      "bytes": 8106,
+      "sha256": "369daca3f9c9867800765c0d980a9a31384f5832b966b03b5fa6d92c7a7e3008",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-client-helper-checks-2026-11-03.json",
+      "state": "??",
+      "bytes": 1204,
+      "sha256": "069e6de4c0835e2afc3818f1b1c2e52a55f4182d37984e9df0b37426f9984c19",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-live-sdk-check-2026-11-03.json",
+      "state": "??",
+      "bytes": 1171,
+      "sha256": "5434ec19945b33f003d7007f9d9c64e603f9c4d480bb6b6843354469345979ac",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-refresh-checks-2026-11-03.json",
+      "state": "??",
+      "bytes": 601,
+      "sha256": "7a13ada25f8374beb0b80e1fa0253db41f21dcf4e9585eabb22a15efc65625c9",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-restoration-checks-2026-11-03.json",
+      "state": "??",
+      "bytes": 1413,
+      "sha256": "a5af97552379464404868a5537ca63af4e1f687b5ccd6e1e1c40eea12d390e3d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-core-sdk-checks-2026-11-03.json",
+      "state": "??",
+      "bytes": 1715,
+      "sha256": "988d3456fc07c90d4addb6fcf7716158ebc3d542cf16d9ad006700900e6e5a05",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-email-domain-2026-11-02.md",
+      "state": "??",
+      "bytes": 3001,
+      "sha256": "c3f9e98e99d7c2cb77bb91f65d917f43dd9b92aec42d1b80c166069944e79e4a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-email-hello-sender-2026-11-02.md",
+      "state": "??",
+      "bytes": 3114,
+      "sha256": "c1d000c12e2104f60456502d6f165d4f39d535046b7dd701f06e1c5ed37b421c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-local-fix-2026-11-03.md",
+      "state": "??",
+      "bytes": 7859,
+      "sha256": "67111e243913566919ee357cab5e6221fe7b1903acac4c57832c048a987b373d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-production-public-trace-2026-11-03.json",
+      "state": "??",
+      "bytes": 14021,
+      "sha256": "73fbe7b7f94a6b9350a1195b67e19fbb1324b1df56d056b9cdfcd750384d39e6",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/auth-signout-investigation-2026-11-03.md",
+      "state": "??",
+      "bytes": 6332,
+      "sha256": "44ef66e842844482396d2583c57f4472bbafb3325649564d3314f3224415a45e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/character-contrast-overflow-2026-11-02.md",
+      "state": "??",
+      "bytes": 3815,
+      "sha256": "889f4d7921175f9bdd38c6bcc60be80cf1ef46b20390038490cd965b4560b15f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/character-hairstyles-2026-11-03.md",
+      "state": "??",
+      "bytes": 4404,
+      "sha256": "b753af162b8ce35e7feb4847553b776429af2f78ca48d3fc9dcaa744bdbecf0e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/character-image-inventory-2026-11-03.md",
+      "state": "??",
+      "bytes": 3942,
+      "sha256": "f24ab3218bd2cd42a775501da2e379554d610ddfc04ae04b2ac3290dde78f105",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/character-missing-options-2026-11-03.md",
+      "state": "??",
+      "bytes": 6275,
+      "sha256": "d85a37ef78d2933d790cb593d1824e54b80b1c43d0d238ef3bd59cbf17b34f05",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/disk-cleanup-2026-11-03.json",
+      "state": "??",
+      "bytes": 3011870,
+      "sha256": "28e7c99caa6106392d77543fb26ebc6eb7c3d7c00e286cacf94051a1761a14fe",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/disk-cleanup-2026-11-03.md",
+      "state": "??",
+      "bytes": 2335,
+      "sha256": "4d7e4e9890d35da2793dccffbb361918a9ce72cbbbd72051c286b0d3017df020",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/email-current-production-audit-2026-11-02.md",
+      "state": "??",
+      "bytes": 4916,
+      "sha256": "20f6e480350b2b69216e4cfdac6abde190d063248fc0a59cf6e8cdf365456000",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/explore-cover-activation-2026-11-03.md",
+      "state": "??",
+      "bytes": 7326,
+      "sha256": "1b77a6685a8d0a5c3841df8253864cb0476e4a8d25ff35567a61ff92aa71eadb",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/explore-deep-audit-2026-11-02.md",
+      "state": "??",
+      "bytes": 12751,
+      "sha256": "1185e678b34a599e6981a5a41a8846f3cb040b9c74e2b3a39b9257eb5432095e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/explore-header-mcp-2026-11-02.md",
+      "state": "??",
+      "bytes": 3334,
+      "sha256": "136fa51f81cd673f7ce79134f83e20490f2fc7adcdac4ce3d4812d5e533fd8d4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/explore-header-shortcuts-hidden-2026-11-03.md",
+      "state": "??",
+      "bytes": 2035,
+      "sha256": "4d146919244e011104a8449e187580d1a346b15addbd09066eb7621698bb5554",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/explore-new-pill-2026-11-02.md",
+      "state": "??",
+      "bytes": 4055,
+      "sha256": "f20fb0f899c530f4350bf609735d70fdbcd2f538a7ddf2bef4f0254a20120a22",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/function-bundle-media-review-2026-11-03.md",
+      "state": "??",
+      "bytes": 7292,
+      "sha256": "dbf86ad7c198568285c15229cbd064e05436f00466fa4ddb4f5c51c795a5fc42",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/hook-function-tracing-2026-11-03.md",
+      "state": "??",
+      "bytes": 9313,
+      "sha256": "df712c96944e4f35d84f8b905f11b1dd31cc27534bfa3862addde2ec57ec5276",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/hook-workflow-route-fix-2026-11-02.md",
+      "state": "??",
+      "bytes": 4787,
+      "sha256": "2e4e059a20625ba1e32172876fdbc65fa3c91f9d014beae9f3c50493712241b0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/linux-bundle-media-verification-2026-11-03.md",
+      "state": "??",
+      "bytes": 11211,
+      "sha256": "54f1fed396ebc0d4b18457f998e5055e2ff1159c986d4f1c6e8ee7c4b5529c26",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/local-email-failure-2026-11-02.md",
+      "state": "??",
+      "bytes": 4848,
+      "sha256": "9c01eb64320d454cae3509415498dfe007a6262358bc8cacdc16a37ecea27a08",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/onboarding-data-carousel-hold-2026-11-02.md",
+      "state": "??",
+      "bytes": 6000,
+      "sha256": "ab746708edd1bfc35579b5f9cd85d42f965cf09bb0a4bdd9d70b9a6d918a3ba0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/onboarding-migration-local-2026-11-02.md",
+      "state": "??",
+      "bytes": 7733,
+      "sha256": "7918c16744c893d146c8fcfcf60d802d9f7f53620d83f3bb7cfcaf6971f03ca5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/prompt-clearance-explore-shortcuts-2026-11-02.md",
+      "state": "??",
+      "bytes": 2676,
+      "sha256": "0fbc1c001f854db62676a52f357935d4ab5c4ac08dc57cb9aa36e0fbb4605fe8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/recreate-button-standardization-2026-11-02.md",
+      "state": "??",
+      "bytes": 5037,
+      "sha256": "4deb46b1970215c6c301bc2a008fa8222922e2174497ffdede7e55bd4d4e1301",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/release-gates-2026-11-03.md",
+      "state": "??",
+      "bytes": 10802,
+      "sha256": "aa34273d0eaf84c81053d14abe65f9c2784d07b0a666e7a67008989e02d561ad",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/release-readiness-2026-11-03.md",
+      "state": "??",
+      "bytes": 11068,
+      "sha256": "444bbb42a1ecbeb1c84d673658ac3f2451164f8af8ce19cede4fa911c6b8489f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/release-readiness-inventory-2026-11-03.json",
+      "state": "??",
+      "bytes": null,
+      "sha256": null,
+      "include": true,
+      "reason": "Intentional preservation receipt; self size/hash omitted to avoid recursion"
+    },
+    {
+      "file": "docs/scheduling-error-recovery-evidence-2026-11-03.json",
+      "state": "??",
+      "bytes": 4388,
+      "sha256": "eb02c5729b25f1da197c93063d34e3632cb9850bc7c0fb7af951c2251bd40d0a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/scheduling-instagram-audit-2026-11-03.md",
+      "state": "??",
+      "bytes": 11076,
+      "sha256": "9af2606c39d62dd273fa47983a2a8d2cc2313bbb2c5bd81f47f32605d1cb42cf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/scheduling-live-worker-evidence-2026-11-03.json",
+      "state": "??",
+      "bytes": 1284,
+      "sha256": "d27572d0bfeb44ba21bf4046c9c52237a2e28c8a72b554d54dd3f703462a1868",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/scheduling-oauth-live-probes-2026-11-03.json",
+      "state": "??",
+      "bytes": 1602,
+      "sha256": "f3cddd16031b5c68d738f2eaa68336801adedad2be176ea26415d897e47409d1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/scheduling-oauth-local-fix-2026-11-03.md",
+      "state": "??",
+      "bytes": 7134,
+      "sha256": "33adb0386453782157c931ad263596ebfcb8a26a4bfc230c36615d86d31276a7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/slideshow-face-swap-clarity-2026-11-02.md",
+      "state": "??",
+      "bytes": 10022,
+      "sha256": "62866c0b6d513efb7392644654fc572dd27916748448ae5749cde09f20d56049",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/slideshow-push-button-v2-2026-11-03.md",
+      "state": "??",
+      "bytes": 8305,
+      "sha256": "05845b960bacc72bc26827e45a0000567a80a1edd41c68a22da8a181c77472f6",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/starting-frame-hair-options-audit-2026-11-02.md",
+      "state": "??",
+      "bytes": 4747,
+      "sha256": "0c03d78a674a4b5fb052b346206d9c86e0620b825815b1fc9284337c31b3843a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/starting-frame-hairstyle-implementation-2026-11-02.md",
+      "state": "??",
+      "bytes": 8075,
+      "sha256": "9cb53d50d582f9b42e00653544b8993dec4b90b5ead65f4710fa6aa7effdc093",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/starting-frame-reliability-local-fixes-2026-11-02.md",
+      "state": "??",
+      "bytes": 8858,
+      "sha256": "aac9e9650cd4cfbc166d37c52bd31e353706b3d1da05feffebde6cc390afdf92",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/startup-billing-mapping-2026-11-02.md",
+      "state": "??",
+      "bytes": 2519,
+      "sha256": "fac838bdcd1428324b78d0e0f7da91e09821ce16f2f9c31170df6fd7aba7a7dc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/text-on-screen-app-rename-2026-11-02.md",
+      "state": "??",
+      "bytes": 8236,
+      "sha256": "1530519e1ceb8078b6ab2bcd72344c988ecc623b2a326ffe99034fc7302c73d1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/text-on-screen-explore-rename-2026-11-02.md",
+      "state": "??",
+      "bytes": 4396,
+      "sha256": "4d9325d476567f9f07f1cdceec9317c60d8a0c06a609abb0b1935e2acdfebf30",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/tmp-dependency-cleanup-2026-11-03.json",
+      "state": "??",
+      "bytes": 205334,
+      "sha256": "0ab12d193a78ee5f000d735b3da9cb86f072dea6713d58252c621b99d5cd2fef",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/tmp-dependency-cleanup-2026-11-03.md",
+      "state": "??",
+      "bytes": 3786,
+      "sha256": "721f26b6283e957f612ce9a221500b81d7fb030ff146a3c1f4bb6f9ba1fd0cf1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/tmp-storage-audit-2026-11-03.json",
+      "state": "??",
+      "bytes": 1675285,
+      "sha256": "c094c3a356895e4798c0a1dc54fcaf31921fcd84b4e5760abeda344e038780f4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/tmp-storage-audit-2026-11-03.md",
+      "state": "??",
+      "bytes": 6098,
+      "sha256": "877d0bd99bb4f4cdae332329ade33287e987a580b66f4a62ae58d3a9af8cd12c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "docs/tmp-worktree-audit-2026-11-03.json",
+      "state": "??",
+      "bytes": 10464,
+      "sha256": "a1fbd23eb38766ba0fa26ae40e794020d0cd125a9acd9a53e1c7e16a77c84f3a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/ai-studio/face-swap-api.test.mjs",
+      "state": "??",
+      "bytes": 3916,
+      "sha256": "967ff377dcc924431f8833454d14931e41fc61c9e8a54dc5b695372fdeac51b8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/session-refresh.test.mjs",
+      "state": "??",
+      "bytes": 4033,
+      "sha256": "357527256c265d74352452a384e558c9ce1db0931d8dd6cf3f687abc2ffddd19",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/auth/session-sdk.test.mjs",
+      "state": "??",
+      "bytes": 6044,
+      "sha256": "228c46828cba9381ce59508ea3da688bdef73feec9b243b0aae96458d0bdaedc",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/carousel/generation-hold.test.mjs",
+      "state": "??",
+      "bytes": 3281,
+      "sha256": "60cfdad88ba49b8e80fc028535ef778de1fa0cc07d511675e9ebf797104cb61b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/carousel/generation-hold.ts",
+      "state": "??",
+      "bytes": 523,
+      "sha256": "c4cb37c3d57c597935b43818651f4ac810df8627088ef45dd09fb8ee7c0309ee",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/explore/starting-frame-appearance.test.ts",
+      "state": "??",
+      "bytes": 3008,
+      "sha256": "f117bda40a3cf8d48f120c4a0b6a8cd279b7bbe9e15750d140567a702bec785a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "lib/social/oauth-token-deadline.test.mjs",
+      "state": "??",
+      "bytes": 1805,
+      "sha256": "8f126177be03e38f2eecad23092d59a85b4c45354a1b012b0bdde003ed41fb30",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/ai-character-promo-2f03e6253d30.webp",
+      "state": "??",
+      "bytes": 105046,
+      "sha256": "2f03e6253d30ab30ddec858acfcbffc30ab4f0d4e2781cecc909e865e04c7ba3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/ai-character-promo-contact-sheet.png",
+      "state": "??",
+      "bytes": 1686121,
+      "sha256": "e8fa815e222b322195aa16dd0288bea1eeae383ef725d69bacb0026382762572",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/ai-character-promo-v1.mp4",
+      "state": "??",
+      "bytes": 6585318,
+      "sha256": "8537f7eb4fd9c8fa2e65427699fa9624d711c8f52299039d5aab3350b6572fda",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/ai-character-promo-v1.webp",
+      "state": "??",
+      "bytes": 105046,
+      "sha256": "2f03e6253d30ab30ddec858acfcbffc30ab4f0d4e2781cecc909e865e04c7ba3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/hook-video-promo-v1.mp4",
+      "state": "??",
+      "bytes": 7262456,
+      "sha256": "0b70104d431fc6084925c4b7eed222c6c0b63d1d6ab26e86678d4718497cb111",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/hook-video-promo-v1.webp",
+      "state": "??",
+      "bytes": 131700,
+      "sha256": "d2ca35d8b00fe07c0a39ae89676f6e4cd9b596768a530de86116ddb780e54406",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/slideshow-promo-contact-sheet.png",
+      "state": "??",
+      "bytes": 3437737,
+      "sha256": "f3cf05d3b45dca1078466bdab8711d73d9291d44c7685a081af88f1dc4ae32b3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/slideshow-promo-v1.mp4",
+      "state": "??",
+      "bytes": 7484342,
+      "sha256": "16991cb0a2b739354bf98fae6ee3dddd3d6920f530e4797392ea8815ae18e12d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/slideshow-promo-v1.webp",
+      "state": "??",
+      "bytes": 156662,
+      "sha256": "5bd86885449452b709fddbcad3a199390aea361c865510a099649d696e383aec",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/acc-glasses.png",
+      "state": "??",
+      "bytes": 2180621,
+      "sha256": "d5a881aba933ebcd65ad806239c9ebf18a35a45d39ddb4c123cb127288d35565",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/acc-headphones.png",
+      "state": "??",
+      "bytes": 2341937,
+      "sha256": "7b443a36f24e9a4373dc1519bb21989c4b10c59149dc32a0006edb429895ccaa",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/aichar-final-outcome.png",
+      "state": "??",
+      "bytes": 2485482,
+      "sha256": "d0ea8831bafc81822eca18f6bf63207a82f32abeaac9ebd2a1651dcdc7bf7817",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/bg-bedroom.png",
+      "state": "??",
+      "bytes": 2150685,
+      "sha256": "50ae424d0ac6ef15cab044f70aa8b9c665df74f35b8a130c1d31999b81cd2705",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/bg-cream-room.png",
+      "state": "??",
+      "bytes": 2119189,
+      "sha256": "c84f4d6d837c2ae2e67bd0353e1b2cf9fb656352988288d0f643fe0b97c87f42",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/bg-normal-wall.png",
+      "state": "??",
+      "bytes": 1573880,
+      "sha256": "3941b49aae1c14e87ba95270cfae8cb7b33374b0e8c9846760f7622d5233afdf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/bg-workspace.png",
+      "state": "??",
+      "bytes": 2024441,
+      "sha256": "74fd709f1a161426982c474d4e3a2b7cc1d3b9660a2430df2c3729e40f1b0d24",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/build-athletic.png",
+      "state": "??",
+      "bytes": 1559231,
+      "sha256": "60dbe3e0d2b717d25982aa6c4de244f2909300db4d613e6d9d67c5bb5797e3ea",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/build-muscular.png",
+      "state": "??",
+      "bytes": 1717351,
+      "sha256": "2280c575ac7cc88202b5db0861b4e4deec594e0483ebc00fee76a7ab4b8d6551",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/char-average.png",
+      "state": "??",
+      "bytes": 2038566,
+      "sha256": "143599beb3beb65ea3bdb89b7e0de65b40adadef6c1330df76b20cc2ab432372",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/char-bold.png",
+      "state": "??",
+      "bytes": 1963787,
+      "sha256": "5d6c2855ace8670d52246b704d1d43fb51f5f1d1107e875bc680b1028a1151b3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/char-extreme.png",
+      "state": "??",
+      "bytes": 2296846,
+      "sha256": "7ca8214fc2e6bcc4b8ac50b14a1d3dbe0e0d8edb940e4d8c7b1d5bd582a04613",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-african.png",
+      "state": "??",
+      "bytes": 2221015,
+      "sha256": "0ec363331f016c23a0458bc82051ae09a90530af98596ca64fb4c676cb1cca12",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-caucasian.png",
+      "state": "??",
+      "bytes": 2325897,
+      "sha256": "d3f8c4d6a34f85736d3ba4ac443351117fb57c142834dc72a3a60a85310068bd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-east-asian.png",
+      "state": "??",
+      "bytes": 2227409,
+      "sha256": "c7a2b7bbb460c8814a9763495860d7f9bfb07602d58ef0eb19e86ebad654c6fd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-indian.png",
+      "state": "??",
+      "bytes": 2404429,
+      "sha256": "c795f5a814db689b4e8bd24948aa4aab6f7c2987eb9974ffd9029bd9d3191000",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-latina.png",
+      "state": "??",
+      "bytes": 2474472,
+      "sha256": "d718692c0a723a9a448495ce65744ddf07cd853d37bd64d858a5b542aa494eb5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eth-middle-eastern.png",
+      "state": "??",
+      "bytes": 2327304,
+      "sha256": "b9fec6e6205a596a1d968f5d81d4192a1e7f70b89db1c6280d36d9b971deec67",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eye-almond.png",
+      "state": "??",
+      "bytes": 330010,
+      "sha256": "31530a8af31571d5aad99ce4b773b6bc943007a7cd3454161ffc0b29b1313332",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eye-deep-set.png",
+      "state": "??",
+      "bytes": 324920,
+      "sha256": "53d4aca9f6db49542d9698c7b682fa06f3ab4f762b1c79496f4ffb729da79ae2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eye-round.png",
+      "state": "??",
+      "bytes": 340749,
+      "sha256": "fd00787790240a5dfdf1d899851aa86584f8dd4c74bb164cb67e7af63c56052b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/eye-wide-doe.png",
+      "state": "??",
+      "bytes": 337745,
+      "sha256": "4cbe93c607cf86bdcf07cd3d1c42f6aa84a4e2db8c63d9a98810f70511254477",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/hair-bob.png",
+      "state": "??",
+      "bytes": 686530,
+      "sha256": "b08ff15d18956338f1e44acb770c1e9249bf0614ee89f9fb3a11fc4f4ff9378c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/hair-textured-crop.png",
+      "state": "??",
+      "bytes": 702431,
+      "sha256": "fd95855219963f961f2169aced1af8a075ebe4e2ac6667407209120e999594ad",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/hair-voluminous-curls.png",
+      "state": "??",
+      "bytes": 697891,
+      "sha256": "2e1464c7016766ef7c106d75da506a8a3c6ee5947412f69b7fc8fe1122e0ceaa",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/hair-wavy-textured.png",
+      "state": "??",
+      "bytes": 490698,
+      "sha256": "c209d0720f2b67115ef89944ef92d19a2bd0a0c3a95d5fbcf9cafe48a32a3bb8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/head-chiseled.png",
+      "state": "??",
+      "bytes": 772757,
+      "sha256": "26e8091ea90fccca9a1cb6c90d57ebb7623b237ad7f7e098b821fbc2208bcb55",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/head-diamond.png",
+      "state": "??",
+      "bytes": 570255,
+      "sha256": "5bf73e518055e06cfb89a58c5e36fffaa3cbe75665d3b298bc363d9b48f98b14",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/head-oval.png",
+      "state": "??",
+      "bytes": 642691,
+      "sha256": "1b316e450dd5ce64fa9aeaa118375aa9dbb99dc8f02f1a385232b09ac0fa147f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/head-square.png",
+      "state": "??",
+      "bytes": 720853,
+      "sha256": "48d6fb444c9828542284b6fd8100ccd3388a10e3242b3b155396e61e63ff0328",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/height-tall.png",
+      "state": "??",
+      "bytes": 463980,
+      "sha256": "a88e77254e81db8ae4f39a88eb8812ab1208f3161759a7c28abbe7a98c65eedb",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/neck-athletic.png",
+      "state": "??",
+      "bytes": 1993566,
+      "sha256": "10499ca1d46b14a22baf95e9aa05975a5fd68bdb643b1fed2cf5190656c1e6ee",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/neck-muscular.png",
+      "state": "??",
+      "bytes": 2712329,
+      "sha256": "89560fb0b5476a9c7f1fe097b6ec9cc56564ee46267d6c049377e5dd4288766a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/outfit-knit-layer.png",
+      "state": "??",
+      "bytes": 747373,
+      "sha256": "f73812c87668ef6486c0f2af29a522d3f356aa4ade18407a7ee9aa75b457273e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/outfit-leather-jacket.png",
+      "state": "??",
+      "bytes": 894075,
+      "sha256": "600eb1da599bbebc73db67656a2491b38fabdc225b8be68029e896d8efb63025",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/outfit-streetwear.png",
+      "state": "??",
+      "bytes": 813618,
+      "sha256": "bf84a2d74b17aa83806e290faa8c14cec35688f457c5e4d623cd1c7b2b972df8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/aichar/outfit-white-tee.png",
+      "state": "??",
+      "bytes": 698872,
+      "sha256": "1a470fa76524559e1de6d3820572a4cdb178785041cad35ccbbb260ef71e4bd5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/audio-wave.mp4",
+      "state": "??",
+      "bytes": 174052,
+      "sha256": "cdbeef94dd25faea922844eb634afe8a1a8badb5b98f32886730c6fafbf4f3a5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/custom-cursor.png",
+      "state": "??",
+      "bytes": 6781,
+      "sha256": "e75deb1312188375879fbbed50cb6af4ca82080a15b09013430ee8d377c6a184",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/hook-demo-video.mp4",
+      "state": "??",
+      "bytes": 5031976,
+      "sha256": "329e4e7a80188e4e99a137644a0c29c8371f38c3700837a8a66f358fed6599c4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/hook-explore-video.mp4",
+      "state": "??",
+      "bytes": 988162,
+      "sha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/hook-influencer-face.jpg",
+      "state": "??",
+      "bytes": 16679,
+      "sha256": "9445932e693745f27e8a27f9c7a2c1a15e42650f8158228ca421081e89114acf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/hook-influencer-face.png",
+      "state": "??",
+      "bytes": 77719,
+      "sha256": "72806f462722fe271762bfe3fa271676554c8051b27941dc3ee9d5a30ab3f9e8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/hook-recreated-video.mp4",
+      "state": "??",
+      "bytes": 3810227,
+      "sha256": "09c7636db70304afda9aa37fcd660aa5a3e6f643e72f283fafc833d4e4a32040",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/mesh-gradient-bg.mp4",
+      "state": "??",
+      "bytes": 16375088,
+      "sha256": "0eeee2a08a871dde7978408aa8f34076340bdf2e6df232b3c9f410edc2eee466",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/plus-symbol.png",
+      "state": "??",
+      "bytes": 19794,
+      "sha256": "e5deba8713009c39b5616317a3cfa7421d7060e467b8e2f1685e2655d1e5a021",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/product-demo-source.mp4",
+      "state": "??",
+      "bytes": 5280714,
+      "sha256": "1c1a47a09185ac7d08536e2e1a0a505bf17c3876543320d702e13cc02c5f9ba2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-0.jpg",
+      "state": "??",
+      "bytes": 577734,
+      "sha256": "40a01facd926c3b1a3ab77f31b47fcd7e2b5681f3fcf9a455d148d13943adedd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-0.png",
+      "state": "??",
+      "bytes": 2295954,
+      "sha256": "f2e09f4e23d554b5afed2f2ebc74fca6a3f8f3be4534a5d1f9c9f222b4881359",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-1.jpg",
+      "state": "??",
+      "bytes": 672285,
+      "sha256": "7e75a18eee438ead24a754f8bc38ecd8da1d5806f0677c592f0c058783bc9b56",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-1.png",
+      "state": "??",
+      "bytes": 2427902,
+      "sha256": "65f672aa40065648976749ecba9d4492177c63faf1611b500e28816f3e2e41f0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-2.jpg",
+      "state": "??",
+      "bytes": 412377,
+      "sha256": "2801e1f7fc8ae5222076f01e424ee200551f1943c72eb8591aad3b78ac1a7562",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-2.png",
+      "state": "??",
+      "bytes": 2429245,
+      "sha256": "7d66d7568ebcf31d3d7ee66f078e40f6b352dde237615b3e27731c2d7cb57168",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-3.jpg",
+      "state": "??",
+      "bytes": 604352,
+      "sha256": "15eabffde6901c1a7c3265a9a052b3f2392be9c6b09e10f10b28e00063568382",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-3.png",
+      "state": "??",
+      "bytes": 1834283,
+      "sha256": "a07aeb14ffb9254be6ab78c1eee2325f6fb15acf29e7dbbf201e940eeb12ec58",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-4.jpg",
+      "state": "??",
+      "bytes": 506229,
+      "sha256": "a7cd5243aae8aca1b5d5c20d700b2c19e9933cc361c459d72effecc4284b0b4f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-4.png",
+      "state": "??",
+      "bytes": 2835726,
+      "sha256": "30e44d09be2a882a4ee3d1ad5abb30c63fbd2250ecf369fea5984d50020bbe98",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-5.jpg",
+      "state": "??",
+      "bytes": 402843,
+      "sha256": "ff582d41b187572017a9edd37f3b1151584315937debab6e2177d412d42c72f1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-result-5.png",
+      "state": "??",
+      "bytes": 2029265,
+      "sha256": "85f2b266478ee0649f13c4a526481775d278004d6df6a8f81eb166f868a29968",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-0.jpg",
+      "state": "??",
+      "bytes": 260698,
+      "sha256": "245da69e5521a47c77fde06e4c86e902353012027143d43f88c3cda58d5271a5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-1.jpg",
+      "state": "??",
+      "bytes": 168329,
+      "sha256": "584f7a665b4820bd399fbd4a58d9a3cfee489dd71b827b18ba9726a3990f0827",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-2.jpg",
+      "state": "??",
+      "bytes": 185948,
+      "sha256": "0301122280346e3f2e55797c66c438e8fdb5766690064514c915c097d508ce3b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-3.jpg",
+      "state": "??",
+      "bytes": 117560,
+      "sha256": "63d001b6c1714e2a8ac5f75ef22d17d8e4d2068667b11b0c9096fe08e6075fc1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-4.jpg",
+      "state": "??",
+      "bytes": 443651,
+      "sha256": "d41d2110c59c365d82833cd51bfde7e5219cc1ad7b320599cf97eab1440f2e6b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/slideshow-source-5.jpg",
+      "state": "??",
+      "bytes": 203677,
+      "sha256": "4199f634ef7c85894d0292e8410302fe9ff8b9aead4a61afaa1388fcdc86be84",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/solar-light-bg.mp4",
+      "state": "??",
+      "bytes": 19057502,
+      "sha256": "8ede6d5752849a5478daf649aaff40310bf6e229cb23cf3cf6ce0154727a48f4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/talking-head-source.mp4",
+      "state": "??",
+      "bytes": 3408557,
+      "sha256": "8a1b1c8ea47e9be91c51442590459c60d5b904516914cbbe25c0673cf7367d14",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/talking-head-start.png",
+      "state": "??",
+      "bytes": 381464,
+      "sha256": "844ec7fe3bed21af2b76f8fb3786a34a650cb15dde5e98162930841c34e32a2c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/wot-reference-face.png",
+      "state": "??",
+      "bytes": 62461,
+      "sha256": "df4f7ef41c57e94823ccc0f11f8a80f48dcba7f0dcb323274f6f5a7ad3080d4d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/wot-result-video.mp4",
+      "state": "??",
+      "bytes": 1571286,
+      "sha256": "2f4dc2ebc0955aa56544922ad479e8ea273a674e2393d4371fa2a6d6e9fa1cba",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/sources/wot-source-video.mp4",
+      "state": "??",
+      "bytes": 1922316,
+      "sha256": "1692a33aa61a545c07961af6248686310bd80d22f7c825ccceed229f75859391",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/talking-head-demo-promo-v1.mp4",
+      "state": "??",
+      "bytes": 7882706,
+      "sha256": "c884002f37d51bf13bc27edee9fbc76a0885069c8d2cef6bd3a7089816b32db1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/talking-head-demo-promo-v1.webp",
+      "state": "??",
+      "bytes": 104522,
+      "sha256": "d8842fd9396f04d44c094ad3487054c98fc6551b6fa7573ddbcbd2bc22ea8d53",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/talking-head-promo-contact-sheet.png",
+      "state": "??",
+      "bytes": 2093352,
+      "sha256": "ea1069432c206366821a2eb6fde02a40c57b6f0791c6d57289bc9ce2d9ca595b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/wall-of-text-promo-v1.mp4",
+      "state": "??",
+      "bytes": 6248533,
+      "sha256": "2dc0589f0496af92bb16b0753d8ffa82ecb382c3d0ba4017fab2445bfde13922",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/covers/wall-of-text-promo-v1.webp",
+      "state": "??",
+      "bytes": 122208,
+      "sha256": "0f5b3272be23bfa1902b240e05b1d5218678f6e67e4cb9de576021acc9e17afd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/accessories/amber-aviators.png",
+      "state": "??",
+      "bytes": 2073702,
+      "sha256": "d8fb0446d120e9386a873a8acb63386906376f33f8a4e0a23d3bd0fc8e857758",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/accessories/black-sunglasses.png",
+      "state": "??",
+      "bytes": 2059420,
+      "sha256": "8c78290071156386c4c6093638d7dcffbd7f34d8c68e004e13e840157764d5b5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/accessories/pink-star-patches.png",
+      "state": "??",
+      "bytes": 1146085,
+      "sha256": "767133ac24a6259669242be463f18cd42ffa1dcf8c003cb5d9b11c38b89951e6",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/characters/playful-mustache.png",
+      "state": "??",
+      "bytes": 812829,
+      "sha256": "6eb5daed8ee42cdd2d58996c0408fcd96392e72c1dad4584a57fd6c44afb244f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/characters/wide-eyed-mustache.png",
+      "state": "??",
+      "bytes": 2311837,
+      "sha256": "90c87155e5ebce2931fd35595b514015db19b61777c036925d243420c523e27c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/hair-style/curly-mullet.png",
+      "state": "??",
+      "bytes": 2486085,
+      "sha256": "d4707dbd7f5785ce11e8fb6aca77a9c8cc392f9c4c42d6bc986a2c7fdef56b2a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/hair-style/spiky-high-top.png",
+      "state": "??",
+      "bytes": 2357038,
+      "sha256": "85bd913996d5b5bdfc68c5b6ebbdf640eaff6d47a8fdd67269b1d080eadf9bd2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/hair-style/tall-flat-top.png",
+      "state": "??",
+      "bytes": 2155936,
+      "sha256": "95b58c923b2756ff27ecf044832c095e50f2909091f53a9282a4ad4a3fe46678",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/hair-style/tousled-shag.png",
+      "state": "??",
+      "bytes": 2358837,
+      "sha256": "0d7656564f5d0a6e433765e174c3df014db4d1dae2d0f409b3dc58adb1384257",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/hair-style/wavy-bowl-cut.png",
+      "state": "??",
+      "bytes": 2484169,
+      "sha256": "0e962d54cfb0276130bd72c63278ad6b353e256bd89fadfa7236e06b1316bf3e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/head-shape/broad-square-jaw.png",
+      "state": "??",
+      "bytes": 2559565,
+      "sha256": "edf12bb808e49dd700e9f9ec1b3f3b2df5f0b85a3ad0935b923fd4e327c1976e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1950s-cardigan-capris.png",
+      "state": "??",
+      "bytes": 1319531,
+      "sha256": "5af537fdcf3a1d7f8d3fbb24f0fadbb215dfe21693179091e95da5cbf456bc20",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1950s-floral-swing-dress.png",
+      "state": "??",
+      "bytes": 1664283,
+      "sha256": "c1fc0fe5948be8961a024273aaa33591b1431644e4311698d70d93c093218844",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1950s-pencil-skirt.png",
+      "state": "??",
+      "bytes": 1379928,
+      "sha256": "17585c0b9ed5509c2288db108756b0d5f040a2693af8b3d577fe648ded64d3fe",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1980s-colorblock-sweater.png",
+      "state": "??",
+      "bytes": 451429,
+      "sha256": "308d26ce68f96fbee74e17c5eb82a32395bcfdf6100f4eec942665dbd1006007",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1980s-denim-graphic-tee.png",
+      "state": "??",
+      "bytes": 547187,
+      "sha256": "b552df1c2e1731cbbfff44bc4a2fbe44f37a0afda964aa991d6c228cf083e079",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1980s-pink-blouse-skirt.png",
+      "state": "??",
+      "bytes": 512578,
+      "sha256": "ce58e5377e2a8137404ecda384063028ae2d9412ab87b6697e65c28f3cb753ce",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1980s-retro-denim.png",
+      "state": "??",
+      "bytes": 1692897,
+      "sha256": "e366c5adf54d5ed8e3b829b737e78a0e937c7b372f4c8ed35ed8f81ab60fd359",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/1980s-vintage-denim.png",
+      "state": "??",
+      "bytes": 2100777,
+      "sha256": "07a4c425e344c57833f19034024630582596ea6706ce526de720b05cba7012bf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-baggy-denim-shirt.png",
+      "state": "??",
+      "bytes": 1630333,
+      "sha256": "69b1df6fad667315483c329262bec6830cec9521828ad261d323690879b06beb",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-denim-mini-skirt.png",
+      "state": "??",
+      "bytes": 1394091,
+      "sha256": "49c71065bda736c328ded0360c382ced3b00b8a38b82b50885003d8c4fa3dab3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-layered-polo.png",
+      "state": "??",
+      "bytes": 1557023,
+      "sha256": "97c61305eece69ad3661a4bde9f056be309b488d581397edd65bfc1e3699995c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-pink-cardigan.png",
+      "state": "??",
+      "bytes": 1473363,
+      "sha256": "2c220d65c61a77e6a4aed4e3a3f22f3fa5f9f5fd8dd81b3f86943fc308b3989f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-pink-tracksuit.png",
+      "state": "??",
+      "bytes": 1401607,
+      "sha256": "edecae7fa19a227d5f11209390cc81ac98bb986748cd497f0edf250b1a56501b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2000s-relaxed-striped-polo.png",
+      "state": "??",
+      "bytes": 1574891,
+      "sha256": "230ef9f4a78ca2421e93f4efbdca1732e13d3cadda36f2f67b3052ba431085e1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2025-cargo-tank.png",
+      "state": "??",
+      "bytes": 1655738,
+      "sha256": "680a412de250da83068b7a6f04e37aefa0f1777df00a45584ca772918827384b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2025-floral-maxi-dress.png",
+      "state": "??",
+      "bytes": 1598843,
+      "sha256": "3a184d56a4c531efa65a2e7b354a8ba9a6ae3a4d49ab30683dd64cb638013612",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2025-plaid-pajamas.png",
+      "state": "??",
+      "bytes": 1399280,
+      "sha256": "b2b2ff4a0158ffa90f902222eafb1c721e2cd45bf05ed17285cd08f974edb4b3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "public/explore/influencer-studio/outfits/2025-white-tee-jeans.png",
+      "state": "??",
+      "bytes": 698872,
+      "sha256": "1a470fa76524559e1de6d3820572a4cdb178785041cad35ccbbb260ef71e4bd5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/AICharacterPromo.tsx",
+      "state": "??",
+      "bytes": 53895,
+      "sha256": "8924e56b22802c1427ffeef33e498f286395e21f48f5c67b13e9cc870f7a57c2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/AICharacterSelectionStudy.tsx",
+      "state": "??",
+      "bytes": 26386,
+      "sha256": "83faf49d6c98a7cfe60be92a12c9aff22debd6bde8910a499d55cda4d2638b67",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/HookVideoPromo.tsx",
+      "state": "??",
+      "bytes": 31358,
+      "sha256": "397c210cdf3d2c4b7284b6943e257ca086f675ba29d2b3c90fac2c859340fcba",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/SlideshowPromo.tsx",
+      "state": "??",
+      "bytes": 29993,
+      "sha256": "f5fa24b1819bd032d3180bf3152840b5d71dbefaf3d5f55460b1e89f6e4d4b23",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/TalkingHeadDemoPromo.tsx",
+      "state": "??",
+      "bytes": 27530,
+      "sha256": "8d3dd8b92e5cb07bd48dbb04422bd1b26719c93a061d9cfb72ac655c9fd78d31",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/WallOfTextPromo.tsx",
+      "state": "??",
+      "bytes": 32391,
+      "sha256": "e8c51bde24be4b19d68ba39e14c3fe62563a95b68194a58f4eefdbe70c78281d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/__fixtures__/ai-character-v3-ending.json",
+      "state": "??",
+      "bytes": 12071,
+      "sha256": "40faeae7b6e181efb95347c7b19e6c41c4f9b9346e8352c64c6d73b8baa84bf1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/__fixtures__/ai-character-v4-selection.json",
+      "state": "??",
+      "bytes": 23809,
+      "sha256": "e40681ddf4c66feb9efb36d2564b511bbdffee8b61f1b82ed94431f1dddef490",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/__fixtures__/slideshow-v1-preserved-frames.json",
+      "state": "??",
+      "bytes": 11638,
+      "sha256": "0e0338bc9e5bca2802e5c8075f88baab5b637d96acc9f5460c98a78a7be55934",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/AudioActivationPulse.tsx",
+      "state": "??",
+      "bytes": 3920,
+      "sha256": "df746e8785465e454d5424e9d1b460b82ad2c944d088269941978c0b6d293641",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/CursorActor.tsx",
+      "state": "??",
+      "bytes": 3551,
+      "sha256": "d774234b1e5dbbad0b1c9d689b4155d07711d19016934669818f17e612d8df2d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/LuminousMistEffect.tsx",
+      "state": "??",
+      "bytes": 3019,
+      "sha256": "a98d886f0fd0b6c816cbbf30a8069b73a15c6e6655857959ccfbd30cb2cdca01",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/PerspectiveFoldTypography.tsx",
+      "state": "??",
+      "bytes": 13269,
+      "sha256": "cc3c8919ec0ca37e572016b2e01eba11b29de6c388757258ba86c9b0fda05a46",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/SplashRecreateEffect.tsx",
+      "state": "??",
+      "bytes": 2671,
+      "sha256": "e2769e3f82cc965bb3cc9b80efe1d5ee636ebb7158600dfcac99c12c442db33c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/effects/StackedKineticTypography.tsx",
+      "state": "??",
+      "bytes": 6196,
+      "sha256": "5e88ebea3e8f2c7edb481b0b583267032b84e719973f2f6de0b90320fecfc2f4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/acc-glasses.png",
+      "state": "??",
+      "bytes": 2180621,
+      "sha256": "d5a881aba933ebcd65ad806239c9ebf18a35a45d39ddb4c123cb127288d35565",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/acc-headphones.png",
+      "state": "??",
+      "bytes": 2341937,
+      "sha256": "7b443a36f24e9a4373dc1519bb21989c4b10c59149dc32a0006edb429895ccaa",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/aichar-final-outcome.png",
+      "state": "??",
+      "bytes": 2485482,
+      "sha256": "d0ea8831bafc81822eca18f6bf63207a82f32abeaac9ebd2a1651dcdc7bf7817",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/bg-bedroom.png",
+      "state": "??",
+      "bytes": 2150685,
+      "sha256": "50ae424d0ac6ef15cab044f70aa8b9c665df74f35b8a130c1d31999b81cd2705",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/bg-cream-room.png",
+      "state": "??",
+      "bytes": 2119189,
+      "sha256": "c84f4d6d837c2ae2e67bd0353e1b2cf9fb656352988288d0f643fe0b97c87f42",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/bg-normal-wall.png",
+      "state": "??",
+      "bytes": 1573880,
+      "sha256": "3941b49aae1c14e87ba95270cfae8cb7b33374b0e8c9846760f7622d5233afdf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/bg-workspace.png",
+      "state": "??",
+      "bytes": 2024441,
+      "sha256": "74fd709f1a161426982c474d4e3a2b7cc1d3b9660a2430df2c3729e40f1b0d24",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/build-athletic.png",
+      "state": "??",
+      "bytes": 1559231,
+      "sha256": "60dbe3e0d2b717d25982aa6c4de244f2909300db4d613e6d9d67c5bb5797e3ea",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/build-muscular.png",
+      "state": "??",
+      "bytes": 1717351,
+      "sha256": "2280c575ac7cc88202b5db0861b4e4deec594e0483ebc00fee76a7ab4b8d6551",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/char-average.png",
+      "state": "??",
+      "bytes": 2038566,
+      "sha256": "143599beb3beb65ea3bdb89b7e0de65b40adadef6c1330df76b20cc2ab432372",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/char-bold.png",
+      "state": "??",
+      "bytes": 1963787,
+      "sha256": "5d6c2855ace8670d52246b704d1d43fb51f5f1d1107e875bc680b1028a1151b3",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/char-extreme.png",
+      "state": "??",
+      "bytes": 2296846,
+      "sha256": "7ca8214fc2e6bcc4b8ac50b14a1d3dbe0e0d8edb940e4d8c7b1d5bd582a04613",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-african.png",
+      "state": "??",
+      "bytes": 2221015,
+      "sha256": "0ec363331f016c23a0458bc82051ae09a90530af98596ca64fb4c676cb1cca12",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-caucasian.png",
+      "state": "??",
+      "bytes": 2325897,
+      "sha256": "d3f8c4d6a34f85736d3ba4ac443351117fb57c142834dc72a3a60a85310068bd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-east-asian.png",
+      "state": "??",
+      "bytes": 2227409,
+      "sha256": "c7a2b7bbb460c8814a9763495860d7f9bfb07602d58ef0eb19e86ebad654c6fd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-indian.png",
+      "state": "??",
+      "bytes": 2404429,
+      "sha256": "c795f5a814db689b4e8bd24948aa4aab6f7c2987eb9974ffd9029bd9d3191000",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-latina.png",
+      "state": "??",
+      "bytes": 2474472,
+      "sha256": "d718692c0a723a9a448495ce65744ddf07cd853d37bd64d858a5b542aa494eb5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eth-middle-eastern.png",
+      "state": "??",
+      "bytes": 2327304,
+      "sha256": "b9fec6e6205a596a1d968f5d81d4192a1e7f70b89db1c6280d36d9b971deec67",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eye-almond.png",
+      "state": "??",
+      "bytes": 330010,
+      "sha256": "31530a8af31571d5aad99ce4b773b6bc943007a7cd3454161ffc0b29b1313332",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eye-deep-set.png",
+      "state": "??",
+      "bytes": 324920,
+      "sha256": "53d4aca9f6db49542d9698c7b682fa06f3ab4f762b1c79496f4ffb729da79ae2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eye-round.png",
+      "state": "??",
+      "bytes": 340749,
+      "sha256": "fd00787790240a5dfdf1d899851aa86584f8dd4c74bb164cb67e7af63c56052b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/eye-wide-doe.png",
+      "state": "??",
+      "bytes": 337745,
+      "sha256": "4cbe93c607cf86bdcf07cd3d1c42f6aa84a4e2db8c63d9a98810f70511254477",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/hair-bob.png",
+      "state": "??",
+      "bytes": 686530,
+      "sha256": "b08ff15d18956338f1e44acb770c1e9249bf0614ee89f9fb3a11fc4f4ff9378c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/hair-textured-crop.png",
+      "state": "??",
+      "bytes": 702431,
+      "sha256": "fd95855219963f961f2169aced1af8a075ebe4e2ac6667407209120e999594ad",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/hair-voluminous-curls.png",
+      "state": "??",
+      "bytes": 697891,
+      "sha256": "2e1464c7016766ef7c106d75da506a8a3c6ee5947412f69b7fc8fe1122e0ceaa",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/hair-wavy-textured.png",
+      "state": "??",
+      "bytes": 490698,
+      "sha256": "c209d0720f2b67115ef89944ef92d19a2bd0a0c3a95d5fbcf9cafe48a32a3bb8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/head-chiseled.png",
+      "state": "??",
+      "bytes": 772757,
+      "sha256": "26e8091ea90fccca9a1cb6c90d57ebb7623b237ad7f7e098b821fbc2208bcb55",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/head-diamond.png",
+      "state": "??",
+      "bytes": 570255,
+      "sha256": "5bf73e518055e06cfb89a58c5e36fffaa3cbe75665d3b298bc363d9b48f98b14",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/head-oval.png",
+      "state": "??",
+      "bytes": 642691,
+      "sha256": "1b316e450dd5ce64fa9aeaa118375aa9dbb99dc8f02f1a385232b09ac0fa147f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/head-square.png",
+      "state": "??",
+      "bytes": 720853,
+      "sha256": "48d6fb444c9828542284b6fd8100ccd3388a10e3242b3b155396e61e63ff0328",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/height-tall.png",
+      "state": "??",
+      "bytes": 463980,
+      "sha256": "a88e77254e81db8ae4f39a88eb8812ab1208f3161759a7c28abbe7a98c65eedb",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/neck-athletic.png",
+      "state": "??",
+      "bytes": 1993566,
+      "sha256": "10499ca1d46b14a22baf95e9aa05975a5fd68bdb643b1fed2cf5190656c1e6ee",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/neck-muscular.png",
+      "state": "??",
+      "bytes": 2712329,
+      "sha256": "89560fb0b5476a9c7f1fe097b6ec9cc56564ee46267d6c049377e5dd4288766a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/outfit-knit-layer.png",
+      "state": "??",
+      "bytes": 747373,
+      "sha256": "f73812c87668ef6486c0f2af29a522d3f356aa4ade18407a7ee9aa75b457273e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/outfit-leather-jacket.png",
+      "state": "??",
+      "bytes": 894075,
+      "sha256": "600eb1da599bbebc73db67656a2491b38fabdc225b8be68029e896d8efb63025",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/outfit-streetwear.png",
+      "state": "??",
+      "bytes": 813618,
+      "sha256": "bf84a2d74b17aa83806e290faa8c14cec35688f457c5e4d623cd1c7b2b972df8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/aichar/outfit-white-tee.png",
+      "state": "??",
+      "bytes": 698872,
+      "sha256": "1a470fa76524559e1de6d3820572a4cdb178785041cad35ccbbb260ef71e4bd5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/audio-wave.mp4",
+      "state": "??",
+      "bytes": 174052,
+      "sha256": "cdbeef94dd25faea922844eb634afe8a1a8badb5b98f32886730c6fafbf4f3a5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/custom-cursor.png",
+      "state": "??",
+      "bytes": 6781,
+      "sha256": "e75deb1312188375879fbbed50cb6af4ca82080a15b09013430ee8d377c6a184",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/hook-demo-video.mp4",
+      "state": "??",
+      "bytes": 5031976,
+      "sha256": "329e4e7a80188e4e99a137644a0c29c8371f38c3700837a8a66f358fed6599c4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/hook-explore-video.mp4",
+      "state": "??",
+      "bytes": 988162,
+      "sha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/hook-influencer-face.jpg",
+      "state": "??",
+      "bytes": 16679,
+      "sha256": "9445932e693745f27e8a27f9c7a2c1a15e42650f8158228ca421081e89114acf",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/hook-influencer-face.png",
+      "state": "??",
+      "bytes": 77719,
+      "sha256": "72806f462722fe271762bfe3fa271676554c8051b27941dc3ee9d5a30ab3f9e8",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/hook-recreated-video.mp4",
+      "state": "??",
+      "bytes": 3810227,
+      "sha256": "09c7636db70304afda9aa37fcd660aa5a3e6f643e72f283fafc833d4e4a32040",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/mesh-gradient-bg.mp4",
+      "state": "??",
+      "bytes": 16375088,
+      "sha256": "0eeee2a08a871dde7978408aa8f34076340bdf2e6df232b3c9f410edc2eee466",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/plus-symbol.png",
+      "state": "??",
+      "bytes": 19794,
+      "sha256": "e5deba8713009c39b5616317a3cfa7421d7060e467b8e2f1685e2655d1e5a021",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/product-demo-source.mp4",
+      "state": "??",
+      "bytes": 5280714,
+      "sha256": "1c1a47a09185ac7d08536e2e1a0a505bf17c3876543320d702e13cc02c5f9ba2",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-0.jpg",
+      "state": "??",
+      "bytes": 577734,
+      "sha256": "40a01facd926c3b1a3ab77f31b47fcd7e2b5681f3fcf9a455d148d13943adedd",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-0.png",
+      "state": "??",
+      "bytes": 2295954,
+      "sha256": "f2e09f4e23d554b5afed2f2ebc74fca6a3f8f3be4534a5d1f9c9f222b4881359",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-1.jpg",
+      "state": "??",
+      "bytes": 672285,
+      "sha256": "7e75a18eee438ead24a754f8bc38ecd8da1d5806f0677c592f0c058783bc9b56",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-1.png",
+      "state": "??",
+      "bytes": 2427902,
+      "sha256": "65f672aa40065648976749ecba9d4492177c63faf1611b500e28816f3e2e41f0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-2.jpg",
+      "state": "??",
+      "bytes": 412377,
+      "sha256": "2801e1f7fc8ae5222076f01e424ee200551f1943c72eb8591aad3b78ac1a7562",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-2.png",
+      "state": "??",
+      "bytes": 2429245,
+      "sha256": "7d66d7568ebcf31d3d7ee66f078e40f6b352dde237615b3e27731c2d7cb57168",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-3.jpg",
+      "state": "??",
+      "bytes": 604352,
+      "sha256": "15eabffde6901c1a7c3265a9a052b3f2392be9c6b09e10f10b28e00063568382",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-3.png",
+      "state": "??",
+      "bytes": 1834283,
+      "sha256": "a07aeb14ffb9254be6ab78c1eee2325f6fb15acf29e7dbbf201e940eeb12ec58",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-4.jpg",
+      "state": "??",
+      "bytes": 506229,
+      "sha256": "a7cd5243aae8aca1b5d5c20d700b2c19e9933cc361c459d72effecc4284b0b4f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-4.png",
+      "state": "??",
+      "bytes": 2835726,
+      "sha256": "30e44d09be2a882a4ee3d1ad5abb30c63fbd2250ecf369fea5984d50020bbe98",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-5.jpg",
+      "state": "??",
+      "bytes": 402843,
+      "sha256": "ff582d41b187572017a9edd37f3b1151584315937debab6e2177d412d42c72f1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-result-5.png",
+      "state": "??",
+      "bytes": 2029265,
+      "sha256": "85f2b266478ee0649f13c4a526481775d278004d6df6a8f81eb166f868a29968",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-0.jpg",
+      "state": "??",
+      "bytes": 260698,
+      "sha256": "245da69e5521a47c77fde06e4c86e902353012027143d43f88c3cda58d5271a5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-1.jpg",
+      "state": "??",
+      "bytes": 168329,
+      "sha256": "584f7a665b4820bd399fbd4a58d9a3cfee489dd71b827b18ba9726a3990f0827",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-2.jpg",
+      "state": "??",
+      "bytes": 185948,
+      "sha256": "0301122280346e3f2e55797c66c438e8fdb5766690064514c915c097d508ce3b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-3.jpg",
+      "state": "??",
+      "bytes": 117560,
+      "sha256": "63d001b6c1714e2a8ac5f75ef22d17d8e4d2068667b11b0c9096fe08e6075fc1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-4.jpg",
+      "state": "??",
+      "bytes": 443651,
+      "sha256": "d41d2110c59c365d82833cd51bfde7e5219cc1ad7b320599cf97eab1440f2e6b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/slideshow-source-5.jpg",
+      "state": "??",
+      "bytes": 203677,
+      "sha256": "4199f634ef7c85894d0292e8410302fe9ff8b9aead4a61afaa1388fcdc86be84",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/solar-light-bg.mp4",
+      "state": "??",
+      "bytes": 19057502,
+      "sha256": "8ede6d5752849a5478daf649aaff40310bf6e229cb23cf3cf6ce0154727a48f4",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/talking-head-source.mp4",
+      "state": "??",
+      "bytes": 3408557,
+      "sha256": "8a1b1c8ea47e9be91c51442590459c60d5b904516914cbbe25c0673cf7367d14",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/talking-head-start.png",
+      "state": "??",
+      "bytes": 381464,
+      "sha256": "844ec7fe3bed21af2b76f8fb3786a34a650cb15dde5e98162930841c34e32a2c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/wot-reference-face.png",
+      "state": "??",
+      "bytes": 62461,
+      "sha256": "df4f7ef41c57e94823ccc0f11f8a80f48dcba7f0dcb323274f6f5a7ad3080d4d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/wot-result-video.mp4",
+      "state": "??",
+      "bytes": 943045,
+      "sha256": "6e7f967ed24f3a70d268436c7eb33b2fff9156612324321fa1426c3e36be6166",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/explore/covers/sources/wot-source-video.mp4",
+      "state": "??",
+      "bytes": 1939044,
+      "sha256": "502ffed6d01ac2ce52f4a55d8804b801dbcc664a53437c28bdb9bf5bf4077126",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/fonts/Anton-OFL.txt",
+      "state": "??",
+      "bytes": 4390,
+      "sha256": "9267baca92b7a7ce9db6dd9e6cc32c9fe3ddf1ac96e421d5f87c5746b9089d6a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/fonts/InstrumentSerif-OFL.txt",
+      "state": "??",
+      "bytes": 4532,
+      "sha256": "b6106a757902d2d412e09d94dc4a226fe3da80485208a98003969f1b8b6b1d74",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/fonts/anton-latin-400-normal.woff2",
+      "state": "??",
+      "bytes": 18612,
+      "sha256": "d0fa07ff63dd60cbc0e2f58e29c802dca2a5ae0276c999f59c6111ab7bbaec3b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/public/fonts/instrument-serif-latin-400-italic.woff2",
+      "state": "??",
+      "bytes": 22128,
+      "sha256": "5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "remotion/selection-study-index.tsx",
+      "state": "??",
+      "bytes": 704,
+      "sha256": "2af95981e18e3644f5091c8883a133b4feb3ae053a40fc6ea85b37ae7d875c3c",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/ai-studio-prompt-layout.browser.mjs",
+      "state": "??",
+      "bytes": 6747,
+      "sha256": "94b8dbde1d00d9f3a1bbb56e12d1a0d78e3d3a3e55a0488bb505d5530ca8da3a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/character-studio-layout.browser.mjs",
+      "state": "??",
+      "bytes": 7055,
+      "sha256": "ef560e4ad4c7b40c2b105b00a8411b8a0a3d0cfb379614cc6aaeb5f66d7c6d4a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/check-hook-public-traces.mjs",
+      "state": "??",
+      "bytes": 1880,
+      "sha256": "7ea73707a4bd981764057603416470b2da6f5d1949f94125798dcafb6bf17a13",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/check-hook-public-traces.test.mjs",
+      "state": "??",
+      "bytes": 3290,
+      "sha256": "3af30fe77a5e41215af54a6aced37fd390086aa3a61d1edb475ceeee72f1144e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/check-lightweight-catalogue-traces.mjs",
+      "state": "??",
+      "bytes": 1171,
+      "sha256": "5c55d2098cbdd29ffed0dee4c153e2d75cc25128d79e65d55b8bb148a39123d5",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/deployment-media-budget.test.mjs",
+      "state": "??",
+      "bytes": 5722,
+      "sha256": "bd8928461bf776346723a0c4bca2ccb21353767ce075f19ce445c64c5faa2611",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/media-upload-cors.test.mjs",
+      "state": "??",
+      "bytes": 1906,
+      "sha256": "0f2e5512b0178aaaf03001f17b15e4f302708bc63480b894dfd6355a11a57a0d",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/onboarding-local.browser.mjs",
+      "state": "??",
+      "bytes": 14659,
+      "sha256": "d54363f4a13dc8b9eb850ca1816e5c929bfd199c9eebd4f3754c041c593fb84e",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/onboarding-route-local.test.mjs",
+      "state": "??",
+      "bytes": 7982,
+      "sha256": "85bfb9a7c691f3596438cbbc8b1f626e3fdc7e8a52b0324c0dee12d1d886b354",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/prepare-media-upload-cors.mjs",
+      "state": "??",
+      "bytes": 1406,
+      "sha256": "ad126c1556c9d77ba345769a6d9f5353323b682129d0e2471b77b03581b916c6",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/recreate-actions.browser.mjs",
+      "state": "??",
+      "bytes": 14063,
+      "sha256": "9c0e89bdc0a186ead8b7de879319a43b30884dfc9b47f64d81addacaa0a726a1",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-ai-character-promo.mjs",
+      "state": "??",
+      "bytes": 6891,
+      "sha256": "4d536560ab069dc29504ef90b167ab7056303b1eddfb98a9909f05568c49114f",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-ai-character-selection-study.mjs",
+      "state": "??",
+      "bytes": 2605,
+      "sha256": "10afb1c00c2a9d723effb5f82560c27d43798bc08e5e89f045b7cb3c16a58b83",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-hook-video-promo.mjs",
+      "state": "??",
+      "bytes": 5805,
+      "sha256": "a7385e2fcdb8e2821073c7430a0fb8ef2ca39c9f20b47f9f808196b01ce41471",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-slideshow-promo.mjs",
+      "state": "??",
+      "bytes": 5975,
+      "sha256": "0cdd9b053a40472449e8b73e429f3dcb9780505b949c36052754a545857462c0",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-talking-head-promo.mjs",
+      "state": "??",
+      "bytes": 5299,
+      "sha256": "e3c20a3812682d8c2ec6c46134c016a3e4eb90be93f416dedcd9652ec1bd4291",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/render-wall-of-text-promo.mjs",
+      "state": "??",
+      "bytes": 5925,
+      "sha256": "4251b1850010aed6e4d686b3c8e482e67bdba66a63d7217b66d8d575a18cd4da",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/slideshow-face-swap.browser.mjs",
+      "state": "??",
+      "bytes": 11249,
+      "sha256": "415c491c9fc3d4a7fae311c3fbdaa97349ecc904076be6dcbf0a3cf603720168",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/verify-ai-character-promo.test.mjs",
+      "state": "??",
+      "bytes": 19649,
+      "sha256": "ebc5a29fdabf2d222034ec58b9babe1a80fc96dd10c3494a9f4d25845124678a",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/verify-hook-video-promo.test.mjs",
+      "state": "??",
+      "bytes": 4352,
+      "sha256": "982afc16a2843fb61801c121a559eb56aae62bef62c7ba891ee4d7fa24e06059",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/verify-slideshow-promo.test.mjs",
+      "state": "??",
+      "bytes": 8607,
+      "sha256": "1727e1dbe55aa2eb2586666f6dbfa769d2cd681552f87d1418fafbd72aef3d2b",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/verify-talking-head-promo.test.mjs",
+      "state": "??",
+      "bytes": 2497,
+      "sha256": "5205ec4d4c67e621bd75e983cc45482864f26c45e24deaf07335a721d3b2e743",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "scripts/verify-wall-of-text-promo.test.mjs",
+      "state": "??",
+      "bytes": 3676,
+      "sha256": "304d31ed92c21259b4229c3d1f68f95c5d9394b0e1ab7e543130e2276005d014",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/carousel-generation-hold.test.ts",
+      "state": "??",
+      "bytes": 2167,
+      "sha256": "19536210051e3323dc4ccf2c3566df821ad26e5298f119622c07ef75792ac276",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    },
+    {
+      "file": "worker/src/lib/carousel-generation-hold.ts",
+      "state": "??",
+      "bytes": 736,
+      "sha256": "88671e609469e8eec15fa2725df59fb0bb3ac560334e55d3e0d21e04d033e2ce",
+      "include": true,
+      "reason": "Intentional current project work; preserve in combined release"
+    }
+  ]
+}

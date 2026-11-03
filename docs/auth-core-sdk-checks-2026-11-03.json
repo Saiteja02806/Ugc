@@ -1,0 +1,83 @@
+{
+  "sdk": "Installed firebase/auth @firebase/auth1.13.3 real implementation; fake transport and account only",
+  "checks": [
+    {
+      "case": "empty initialization",
+      "result": "PASS",
+      "userPresent": false
+    },
+    {
+      "case": "sign-in and observer update",
+      "result": "PASS",
+      "userPresent": true
+    },
+    {
+      "case": "token-refresh network outage retains user",
+      "result": "PASS",
+      "userPresent": true
+    },
+    {
+      "case": "healthy refresh after outage",
+      "result": "PASS",
+      "userPresent": true
+    },
+    {
+      "case": "rejected expired refresh token clears user",
+      "result": "PASS",
+      "userPresent": false
+    },
+    {
+      "case": "disabled account clears user",
+      "result": "PASS",
+      "userPresent": false
+    },
+    {
+      "case": "refresh failures do not call auth-observer error callback",
+      "result": "PASS",
+      "observerErrorCalls": 0
+    }
+  ],
+  "events": [
+    false,
+    true,
+    false,
+    true,
+    false
+  ],
+  "requests": [
+    {
+      "endpoint": "sign-in",
+      "mode": "healthy"
+    },
+    {
+      "endpoint": "lookup",
+      "mode": "healthy"
+    },
+    {
+      "endpoint": "refresh",
+      "mode": "network"
+    },
+    {
+      "endpoint": "refresh",
+      "mode": "healthy"
+    },
+    {
+      "endpoint": "refresh",
+      "mode": "expired"
+    },
+    {
+      "endpoint": "sign-in",
+      "mode": "healthy"
+    },
+    {
+      "endpoint": "lookup",
+      "mode": "healthy"
+    },
+    {
+      "endpoint": "refresh",
+      "mode": "disabled"
+    }
+  ],
+  "observerErrors": [],
+  "limitations": "Node SDK build with in-memory persistence; not browser IndexedDB, Google popup or live-account acceptance"
+}

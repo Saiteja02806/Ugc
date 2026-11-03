@@ -48,7 +48,7 @@ test("historical curated PNGs, browser drafts, worker receipts and motion previe
     const bytes=await readFile(`public${selected.publicPath}`);assert.deepEqual(bytes,frame.png);
     const scope={ownerId,draftId,referenceId:selected.referenceId,sourceSha256:selected.sourceSha256};
     const sourceFrame={index:frame.frameIndex,timeSeconds:frame.frameTimeSeconds,width:frame.width,height:frame.height,sha256:frame.frameSha256};
-    const historical={...createHookKeyframeDraft(scope),version:3 as const};
+    const historical={...createHookKeyframeDraft(scope),referenceOptions:undefined,version:3 as const};
     const draft=updateHookKeyframeDraft(historical,{sourceFrame,imageAssetIds:[photo]});assert.equal(draft.version,3);assert.equal(readHookKeyframeDraft(serializeHookKeyframeDraft(draft),scope)?.sourceFrame?.index,selected.index);
     const preview=getHookKeyframePromptPreview(draft);assert.ok(preview.animationPrompt);assert.equal(preview.animationError,null);assert.equal(preview.requiresDecision,false);assert.doesNotMatch(preview.imagePrompt!,/VERIFIED OPENING SCENE/);
     const partial={version:3 as const,imageModel:draft.imageModel,...scope,sourceFrame,personImageAssetIds:[photo],instructions:""};
@@ -67,7 +67,7 @@ test("Hook 100 keeps old approved opening receipts recoverable while new prepara
   const selected = catalog.frames.find(row => row.number === 100)!;
   const scope = { ownerId, draftId, referenceId: selected.referenceId, sourceSha256: selected.sourceSha256 };
   const opening = { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "9eb3c117dbf181a870d89fb3c4b3f4495e10cfe435aa035140e079d4e1218f26" };
-  const legacy: HookKeyframeDraft = { ...createHookKeyframeDraft(scope), version: 2, sourceFrame: opening, imageAssetIds: [photo] };
+  const legacy: HookKeyframeDraft = { ...createHookKeyframeDraft(scope), referenceOptions: undefined, version: 2, sourceFrame: opening, imageAssetIds: [photo] };
   const approved = approveHookKeyframeImage(recordHookKeyframeImage(legacy, {
     assetId: "00000000-0000-4000-8000-000000000003", inputKey: hookKeyframeInputKey(legacy), promptVersion: 4,
   }));

@@ -45,7 +45,7 @@ export async function startWallTextScheduleRender(params: {
 
   if (!assignmentId || !UUID_PATTERN.test(assignmentId)) {
     throw new WallTextScheduleRenderStartError(
-      "This Wall-of-text schedule is missing its video selection.",
+      "This Text on screen schedule is missing its video selection.",
       409,
     );
   }
@@ -170,7 +170,7 @@ async function markWallTextRenderStartFailed(params: {
 }) {
   const message = getErrorMessage(
     params.error,
-    "Could not start Wall-of-text video preparation.",
+    "Could not start Text on screen video preparation.",
   );
 
   try {

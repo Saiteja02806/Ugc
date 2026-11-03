@@ -39,7 +39,7 @@ export default async function ExploreFormatPreview({ searchParams }: { searchPar
   previewAssets.push({ ...previewAssets[0], id: "00000000-0000-4000-8000-000000000020", sourceType: "demo_upload", title: "Saved demo footage" });
   const previewFinalVideo = query.finished === "1" && format !== "slideshow" && portrait ? { id: "prepared-local-sample",
     url: format === "hook" ? "/e2e/explore-format-preview/final-video" : clip.url,
-    title: format === "hook" ? "Prepared hook and demo sample" : "Wall of text sample footage" } : undefined;
+    title: format === "hook" ? "Prepared hook and demo sample" : "Text on screen sample footage" } : undefined;
   const previewFinalSlideshow = query.finished === "1" && sample ? { id: "local-slideshow-sample", title: "Slideshow sample images", slides: sample.slides.slice(0, 2).map(slide => slide.url) } : undefined;
   const openingClip = previewFinalVideo && format === "hook" ? { ...clip, url: "/marketing/showcase-part2/hook2-preview.mp4", duration: 2.837 } : clip;
   return <AppShell activeKey="explore" focusNavigation><FormatWorkspace format={format} previewContextBanner={query.music === "1" && format === "hook" ? <MusicChoicePreview referenceTitle={sampleReference?.title ?? "Hook 61"} /> : undefined} previewFinalVideo={previewFinalVideo} previewFinalSlideshow={previewFinalSlideshow} previewText={previewText} previewReferences={references} previewSlideshow={previewSlideshow} previewAssets={previewAssets} previewVideo={format === "slideshow" || query.sources === "1" ? undefined : {

@@ -38,20 +38,20 @@ const animatedProductUrls = [
 
 const contentSetupTimeline = [
   {
-    label: "Understanding your brand",
-    description: "Analyzing your brand, audience and style",
+    label: "Understanding your business",
+    description: "Reviewing your product, audience and brand details",
   },
   {
-    label: "Building content strategy",
-    description: "Defining formats, themes and content direction",
+    label: "Saving your business context",
+    description: "Keeping useful facts for your content and remixes",
   },
   {
-    label: "Creating automation",
-    description: "Connecting your content generation workflow…",
+    label: "Preparing your data",
+    description: "Organizing your saved business details for your workspace",
   },
   {
-    label: "Preparing first ideas",
-    description: "Generating your initial content ideas…",
+    label: "Getting ready for Explore",
+    description: "Choose a workflow for videos, images or AI characters",
   },
 ] as const;
 
@@ -603,8 +603,8 @@ export function StreamlinedProgressStep({
     <section className="relative mx-auto w-full max-w-[500px] self-center px-5 py-4 sm:px-0">
       <header className="text-center">
         <h2 className="mx-auto max-w-[480px] text-balance text-[clamp(1.85rem,3.15vw,2.65rem)] font-medium leading-[1.06] tracking-[-0.045em] text-foreground-strong">
-          <span className="block">Setting up your</span>
-          <span className="mt-1 block">content engine for</span>
+          <span className="block">Preparing your</span>
+          <span className="mt-1 block">workspace for</span>
         </h2>
 
         <StreamlinedBusinessIdentity
@@ -805,13 +805,13 @@ function StreamlinedSetupTimeline({
             <Clock3 className="size-5" />
           </span>
           <p>
-            <span className="block text-[15px] font-medium tracking-[-0.015em] text-foreground-strong">{completed ? "Your content system is ready." : "We’re building your content system."}</span>
-            <span className="mt-0.5 block text-[13px] leading-5 text-muted">{completed ? "Continue when you are ready to start creating." : "This usually takes less than a minute."}</span>
+            <span className="block text-[15px] font-medium tracking-[-0.015em] text-foreground-strong">{completed ? "Your workspace is ready." : "We’re preparing your workspace."}</span>
+            <span className="mt-0.5 block text-[13px] leading-5 text-muted">{completed ? "Open Explore to choose a workflow and start creating." : "You choose what to create in Explore after setup."}</span>
           </p>
         </div>
         {completed && onContinue ? (
           <Button type="button" size="lg" onClick={onContinue} className="h-10 min-w-28 px-4 text-sm">
-            Continue
+            Open Explore
           </Button>
         ) : null}
       </div>

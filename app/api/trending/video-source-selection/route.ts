@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const format = new URL(request.url).searchParams.get("format");
 
     if (!isTrendingVideoSourceFormat(format)) {
-      return json({ error: "Choose Hook video or Wall of text.", ok: false }, 400);
+      return json({ error: "Choose Hook video or Text on screen.", ok: false }, 400);
     }
 
     const selection = await getTrendingVideoSourceSelection({
@@ -124,7 +124,7 @@ export async function DELETE(request: Request) {
     const format = new URL(request.url).searchParams.get("format");
 
     if (!isTrendingVideoSourceFormat(format)) {
-      return json({ error: "Choose Hook video or Wall of text.", ok: false }, 400);
+      return json({ error: "Choose Hook video or Text on screen.", ok: false }, 400);
     }
 
     await clearTrendingVideoSourceSelection({

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return json(
-      { message: "Choose an account and a valid Wall-of-text video.", ok: false },
+      { message: "Choose an account and a valid Text on screen video.", ok: false },
       400,
     );
   }
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       userId,
     });
     if (!assignment) {
-      return json({ message: "This Wall-of-text video is no longer available.", ok: false }, 404);
+      return json({ message: "This Text on screen video is no longer available.", ok: false }, 404);
     }
 
     // Confirm selection on the server before requiring a selected draft. The
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     if (!draft) {
       return json(
-        { message: "This Wall-of-text video is no longer available.", ok: false },
+        { message: "This Text on screen video is no longer available.", ok: false },
         404,
       );
     }
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
 
     console.error("Could not create pending Wall-of-text schedule:", error);
     return json(
-      { message: "Could not save this Wall-of-text schedule.", ok: false },
+      { message: "Could not save this Text on screen schedule.", ok: false },
       500,
     );
   }
@@ -136,7 +136,7 @@ function authErrorResponse(error: unknown) {
       {
         message:
           error.status === 401
-            ? "Sign in before scheduling Wall-of-text videos."
+            ? "Sign in before scheduling Text on screen videos."
             : error.message,
         ok: false,
       },

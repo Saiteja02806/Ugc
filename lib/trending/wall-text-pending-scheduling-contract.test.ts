@@ -23,6 +23,7 @@ const schedulingWorkspace = readProjectFile(
 );
 const scheduleDetailRoute = readProjectFile("app/api/schedules/[scheduleId]/route.ts");
 const renderStarter = readProjectFile("lib/scheduling/wall-text-render-start.ts");
+const refreshPolicy = readProjectFile("lib/scheduling/schedule-refresh-policy.ts");
 
 test("permits a real MP4-free Wall pending source and nothing else", () => {
   assert.match(migration, /'wall_text_pending'/);
@@ -122,8 +123,10 @@ test("finalizes rendered Wall MP4s automatically and preserves retry paths", () 
   assert.match(schedulingWorkspace, /sourceKind === "wall_text_pending"/);
   assert.match(
     schedulingWorkspace,
-    /isAwaitingWallRenderStart[\s\S]*renderStatus === "not_requested"/,
+    /getScheduleRefreshDelay\(schedules\)/,
   );
+  assert.match(refreshPolicy, /isWallText && renderStatus === "not_requested"/);
+  assert.match(refreshPolicy, /now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS/);
 });
 
 test("shows a pending Wall video as preparation, not a missing Reel", () => {
@@ -133,7 +136,7 @@ test("shows a pending Wall video as preparation, not a missing Reel", () => {
     )?.[0] ?? "";
 
   assert.match(selectedDayCard, /draft\.sourceType === "wall_text_render"/);
-  assert.match(selectedDayCard, /\? "Wall video"/);
+  assert.match(selectedDayCard, /\? "Text on screen video"/);
   assert.match(selectedDayCard, /\? "Preparation failed"[\s\S]*: "Preparing"/);
   assert.match(
     selectedDayCard,

@@ -117,7 +117,7 @@ export default function AiVideoGeneratorForSaasPage() {
           Review the generated video in your private library. Check font sizes, adjust captions for readability on mobile devices, and download the finished MP4 file ready for organic posting or paid ads.
         </p>
 
-        <ArticleH2>Feature Comparison: Creator Avatars vs Wall-of-Text Videos</ArticleH2>
+        <ArticleH2>Feature Comparison: Creator Avatars vs Text on screen Videos</ArticleH2>
         <div className="overflow-x-auto rounded-[22px] border border-border">
           <table className="w-full min-w-[500px] border-collapse text-left text-sm leading-6">
             <caption className="sr-only">Comparing creator avatar hooks and text-led video formats for SaaS</caption>
@@ -137,7 +137,7 @@ export default function AiVideoGeneratorForSaasPage() {
                 <td className="p-4 align-top">3 to 5 minutes</td>
               </tr>
               <tr className="border-t border-border">
-                <th scope="row" className="p-4 font-semibold text-foreground-strong">Wall-of-Text Video</th>
+                <th scope="row" className="p-4 font-semibold text-foreground-strong">Text on screen Video</th>
                 <td className="p-4 align-top">POV stories, relatable founder rants, thought leadership</td>
                 <td className="p-4 align-top">Curiosity-driven reading with ambient background video</td>
                 <td className="p-4 align-top">2 to 3 minutes</td>

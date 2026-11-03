@@ -30,6 +30,9 @@ function load(file, imports = {}, globals = {}) {
     if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
     if (name === "@/lib/explore/slideshow-generation-recovery") return load("lib/explore/slideshow-generation-recovery.ts");
     if (name in imports) return imports[name];
+    if (name === "@/components/explore/slideshow-clarification-notice") return load("components/explore/slideshow-clarification-notice.tsx", imports, globals);
+    if (name === "@/components/generation/model-provider-logos") return load("components/generation/model-provider-logos.tsx", imports, globals);
+    if (name === "@/lib/explore/slideshow-face-swap") return load("lib/explore/slideshow-face-swap.ts", imports, globals);
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
     if (name === "@/lib/explore/slideshow-composer-draft") return load("lib/explore/slideshow-composer-draft.ts");
@@ -201,7 +204,7 @@ test("Hook and Wall default to Sound off and submit the explicitly toggled choic
   assert.equal(harness("studio").composer.props.promptAction, undefined);
 });
 
-test("approved Hook starting-frame handoff preserves face photos and submits separate first-frame and identity roles", async () => {
+test("approved Hook starting-frame handoff rejects unsupported face photos and submits only the owned first frame", async () => {
   for (const sound of [false, true]) {
     const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
     const controls = h.render().composer.props.referenceControls.props;
@@ -218,22 +221,23 @@ test("approved Hook starting-frame handoff preserves face photos and submits sep
     assert.equal(composer.props.referenceControls.props.frame.assetId, "approved-scene");
     assert.equal(composer.props.prompt, selection.motionInstructions);
     assert.equal(composer.props.promptAction.props["aria-checked"], sound);
-    assert.match(composer.props.settingsSummary, /Google Omni.*3s/);
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*4s/);
     const settings = composer.props.settings.props.children;
     const duration = settings.find(node => node?.props?.ariaLabel === "Video duration");
-    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 8 }, (_, i) => i + 3));
+    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 12 }, (_, i) => i + 4));
     duration.props.onChange("30");
-    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "3");
+    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "4");
     assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
+    assert.deepEqual(Array.from(composer.props.referenceControls.props.photos), [], "Unsupported face photos are not retained as generation input");
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 1);
     const body = h.requests[0].body;
     assert.equal(body.startingFrameAssetId, selection.assetId); assert.equal(body.startingFrameJobId, selection.jobId);
-    assert.equal(body.referenceId, "hook-15"); assert.equal(body.model, "google_omni");
-    assert.equal(body.durationSeconds, 3); assert.equal(body.generateAudio, sound); assert.equal(body.prompt, selection.motionInstructions);
-    assert.deepEqual(body.referenceImageUrls, ["https://owned.test/old.png"]);
-    assert.equal(body.imageReferencePurpose, "person");
+    assert.equal(body.referenceId, "hook-15"); assert.equal(body.model, "seedance_2_5");
+    assert.equal(body.durationSeconds, 4); assert.equal(body.generateAudio, sound); assert.equal(body.prompt, selection.motionInstructions);
+    assert.equal("referenceImageUrls" in body, false);
+    assert.equal("imageReferencePurpose" in body, false);
     for (const key of ["avatarImageUrl", "referenceVideoUrl", "referenceAudioUrls", "referenceVideoMode", "useGalleryVideoReference"]) {
       assert.equal(key in body, false, `${key} must not accompany first-frame animation`);
     }
@@ -276,7 +280,7 @@ test("approved starting frames retain model choices and submit each model with t
     setting("Video model").props.onChange(model);
     assert.equal(setting("Video model").props.value, model);
     const duration = setting("Video duration");
-    assert.equal(duration.props.value, model === "seedance_2_5" ? "4" : "3", "Model switch uses the requested initial duration");
+    assert.equal(duration.props.value, model === "wan_3_0" ? "3" : "4", "Model switch uses a supported initial duration");
     const seconds = model === "google_omni" ? 10 : 15;
     const switched = h.selectStartingFrame({ ...frame, jobId: "another-job" }).composer;
     assert.equal(setting("Video model").props.value, model, "Changing frames retains the selected model");
@@ -396,9 +400,12 @@ test("slideshow assignment questions appear beside the same input without adding
   await h.composer.props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate);
   const composer = h.render().composer;
   assert.equal(composer.props.prompt, "My requested changes");
-  assert.ok(resultNodes(composer.props.promptFeedback).some(node => node.type === "p" && node.props.children === question));
-  assert.ok(resultNodes(composer.props.promptFeedback).some(node => node.type === "p" && /Clarify in the instructions above/.test(node.props.children)));
-  assert.equal(resultNodes(composer.props.promptFeedback).some(node => ["input", "textarea", "select"].includes(node.type)), false);
+  const notice = resultNodes(composer.props.promptFeedback).find(node => node.type?.name === "SlideshowClarificationNotice");
+  assert.equal(notice.type.name, "SlideshowClarificationNotice");
+  const feedback = notice.type(notice.props);
+  assert.ok(resultNodes(feedback).some(node => node.type === "li" && node.props.children === question));
+  assert.ok(resultNodes(feedback).some(node => node.type === "p" && /Update your instructions above, then select Generate again/.test(node.props.children)));
+  assert.equal(resultNodes(feedback).some(node => ["input", "textarea", "select"].includes(node.type)), false);
   assert.equal(composer.props.generateLabel, "Generate image", "Questions clear rejected submission recovery");
 });
 
@@ -493,7 +500,7 @@ for (const format of ["hook", "wall_text"]) {
     setting("Video model").props.onChange("seedance_2_5");
     chooseSourceTask(h, "reference");
     setting("Video duration").props.onChange(17);
-    const audio = { kind: "audio", asset: { id: "seedance-audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 3, fileSizeBytes: 1000 } };
+    const audio = { kind: "audio", asset: { id: "seedance-audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 5, fileSizeBytes: 1000 } };
     h.render().composer.props.referenceControls.props.onChange(audio, "audio");
     const composer = h.render().composer;
     assert.equal(composer.props.generateDisabled, false);
@@ -802,6 +809,9 @@ for (const format of ["hook", "wall_text"]) {
     await composer.props.onSubmit({ preventDefault() {} }); assert.equal(h.requests.length, 0);
     setting("Video model").props.onChange("wan_3_0");
     composer = h.render().composer;
+    assert.equal(Number(setting("Video duration").props.value), 4, "Omni clamps to its supported duration, retained when returning to WAN");
+    setting("Video duration").props.onChange(3);
+    composer = h.render().composer;
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.deepEqual(h.requests[0].body.referenceImageUrls, [image.asset.url]);
@@ -993,9 +1003,15 @@ test("another tab's running Hook job does not lock a fresh composer or take its 
 });
 
 
-test("4s and 5s Hook sources initialize full duration instead of provider minimum",()=>{
- for(const seconds of [4,5,4.3]){
- const h=harness("hook",{reference:false});const composer=h.selectStartingFrame({ownerId:"test-owner",draftId:"source-length",referenceId:"hook-fixture",assetId:"frame",jobId:"job",url:"https://owned.test/frame.png",width:720,height:1280,durationSeconds:4,sourceDurationSeconds:seconds,motionInstructions:"OPENING: PHASE [0–1]: Preserve source motion.",generateAudio:false}).composer;
- assert.match(composer.props.settingsSummary,new RegExp(Math.ceil(seconds)+"s"));
+test("4s and 5s Hook sources initialize the shortest supported duration covering the full source",()=>{
+ for(const model of ["google_omni", "seedance_2_5", "wan_3_0"]) for(const seconds of [4,5,4.3]){
+ const h=harness("hook",{reference:false, seedanceEnabled:true, wanEnabled:true});
+ h.render().composer.props.settings.props.children.find(node=>node?.props?.ariaLabel==="Video model").props.onChange(model);
+ const composer=h.selectStartingFrame({ownerId:"test-owner",draftId:"source-length",referenceId:"hook-fixture",assetId:"frame",jobId:"job",url:"https://owned.test/frame.png",width:720,height:1280,durationSeconds:4,sourceDurationSeconds:seconds,motionInstructions:"OPENING: PHASE [0–1]: Preserve source motion.",generateAudio:false}).composer;
+ const duration=composer.props.settings.props.children.find(node=>node?.props?.ariaLabel==="Video duration");
+ const expected=model==="google_omni" ? (seconds===4 ? 4 : 6) : Math.ceil(seconds);
+ assert.equal(Number(duration.props.value),expected,`${model}: source ${seconds}s`);
+ assert.ok(expected>=seconds);
+ assert.ok(!duration.props.options.some(option=>Number(option.value)>=seconds && Number(option.value)<expected));
  }
 });

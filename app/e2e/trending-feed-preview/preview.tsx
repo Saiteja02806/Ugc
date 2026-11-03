@@ -81,9 +81,9 @@ export function TrendingFeedPreview() {
   const decisions = reviewedAssignments.length;
   return <section className={`min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10 ${reviewLayout.workspace}`}>
     <div className={`mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)] ${reviewLayout.workspaceContent}`}>
-    <header className="flex items-start justify-between gap-4"><div className="min-w-0"><h1 className="text-[30px] font-semibold leading-9 sm:text-[32px] sm:leading-10">Trending</h1><p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">Explore Carousel, Hook, Wall-of-text, and Reaction Reel content made from your business profile.</p></div>
+    <header className="flex items-start justify-between gap-4"><div className="min-w-0"><h1 className="text-[30px] font-semibold leading-9 sm:text-[32px] sm:leading-10">Trending</h1><p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">Explore Carousel, Hook, Text on screen, and Reaction Reel content made from your business profile.</p></div>
       <div className="flex shrink-0 gap-3"><select aria-label="Preview format" value={format} onChange={event => { setFormat(event.target.value); setReviewedAssignments([]); postHistory.clear(); setDeckVersion(version => version + 1); }}>
-        <option value="reaction">Reaction Reel</option><option value="carousel">Slideshow</option><option value="wall_text">Wall of Text</option><option value="hook_video">Reel Hook</option></select>
+        <option value="reaction">Reaction Reel</option><option value="carousel">Slideshow</option><option value="wall_text">Text on screen</option><option value="hook_video">Reel Hook</option></select>
         {format === "carousel" ? <select aria-label="Preview edit status" value={editState}
           onChange={event => setEditState(event.target.value as typeof editState)}>
           <option value="none">No edit</option><option value="queued">Updating</option>

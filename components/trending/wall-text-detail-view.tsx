@@ -101,7 +101,7 @@ export function WallTextDetailView({
               muted
               playsInline
               preload="auto"
-              aria-label="Wall-of-text video preview"
+              aria-label="Text on screen video preview"
               className="size-full object-cover"
             />
             <WallTextOverlay

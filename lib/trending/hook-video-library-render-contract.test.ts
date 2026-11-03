@@ -101,8 +101,9 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
   assert.match(scheduleDrawer, /setHasManualScheduleTime\(true\)/);
   assert.match(
     scheduleDrawer,
-    /Leave these unchanged to schedule[\s\S]*after you confirm/,
+    /useDefaultScheduleTime[\s\S]*after you confirm/,
   );
+  assert.match(scheduleDrawer, /<WorkflowTimePicker[\s\S]*setHasManualScheduleTime\(true\)/);
   assert.match(scheduleRoute, /parsed\.data\.useDefaultScheduleTime/);
   assert.match(scheduleRoute, /getDefaultHookVideoScheduleTime/);
   assert.match(scheduleRoute, /error instanceof ScheduleTimeError/);
@@ -116,9 +117,12 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
 });
 
 test("Hook scheduling carries the optional post caption into the scheduled post", () => {
-  assert.match(scheduleDrawer, /Caption[\s\S]*?\(optional\)/);
-  assert.match(scheduleDrawer, /name="caption"/);
-  assert.match(scheduleDrawer, /caption,\s*scheduledDate,/);
+  assert.match(scheduleDrawer, /<PostCaptionField[^>]*value=\{caption\}/);
+  const captionField = readProjectFile("components/scheduling/post-caption-field.tsx");
+  assert.match(captionField, /Post caption[\s\S]*?\(optional\)/);
+  assert.match(captionField, /name = "caption"/);
+  assert.match(captionField, /name=\{name\}/);
+  assert.match(scheduleDrawer, /const selection: HookVideoScheduleSelection = \{\s*caption,\s*scheduledDate: submitTime\.date,\s*scheduledTime: submitTime\.time,/);
   assert.match(scheduleRoute, /caption: scheduleInput\.caption \?\? ""/);
 });
 

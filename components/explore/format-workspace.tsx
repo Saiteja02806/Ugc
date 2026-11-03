@@ -62,7 +62,7 @@ const FormatVideoEditor = dynamic(() => import("@/components/explore/format-vide
 const FormatSlideshowEditor = dynamic(() => import("@/components/explore/format-slideshow-editor").then(module => module.FormatSlideshowEditor));
 const WallSchedulePreview = dynamic(() => import("@/components/explore/wall-schedule-preview").then(module => module.WallSchedulePreview));
 const EMPTY: RecreateReference[] = [];
-const TITLES = { hook: "Hook video", wall_text: "Wall of text", slideshow: "Slideshows" };
+const TITLES = { hook: "Hook video", wall_text: "Text on screen", slideshow: "Slideshows" };
 type SavedOutput = { id: string; kind: "media_asset" | "library_item"; url: string; title: string; slides?: string[] };
 
 type FormatWorkspaceProps = {
@@ -193,7 +193,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [slideSelection, setSlideSelection] = useState<{ referenceId: string; ids: string[] } | null>(null);
   const [faceSwapOpen, setFaceSwapOpen] = useState(false);
   const [rawFaceSwapSlideIds, setFaceSwapSlideIds] = useState<string[]>([]);
-  const [faceSwapInfluencer, setFaceSwapInfluencer] = useState<{ id: string; url: string; title: string } | null>(null);
+  const [faceSwapInfluencer, setFaceSwapInfluencer] = useState<import("./slideshow-face-choice").SlideshowFaceChoiceValue | null>(null);
   const [pickedVideo, setSelectedVideo] = useState<FormatVideoSource | null>(localPreview ? previewVideo ?? null : null);
   const restoredVideo = useQuery({ queryKey: ["explore-edit-restore", user?.uid, format, initialMode, editVideoId], enabled: !localPreview && !pickedVideo && Boolean(user) && format !== "slideshow" && isExploreUuid(editVideoId), queryFn: async () => {
     const token = await getCurrentUserIdToken(user?.uid); if (!token || !editVideoId) throw new Error("Sign in to restore your video edit.");
@@ -222,7 +222,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [pendingComposition, setPendingComposition] = useState<ExploreScheduleComposition | null>(null);
   const wallCompositionIdentity = useRef<string | null>(null);
   const wallComposition = createWallScheduleComposition({ ownerId: user?.uid ?? null, sourceAssetId: selectedVideo?.mediaAssetId ?? null,
-    title: selectedVideo?.title ?? "Wall of text video", clip: openingClipState, pendingSource: source.busy, selectionError: source.error });
+    title: selectedVideo?.title ?? "Text on screen video", clip: openingClipState, pendingSource: source.busy, selectionError: source.error });
   const resolveWallComposition = useCallback(async () => {
     if (wallCompositionIdentity.current !== wallComposition.signature) throw new Error("Your video or audio changed. Review the updated video before scheduling.");
     return wallComposition.resolve();
@@ -321,16 +321,6 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const sourceSlides = slideshowRegenerationImage && primarySlide ? [primarySlide, ...contextSlides.filter(slide => slide.id !== primarySlide.id)] : contextSlides;
   const sourceImages = sourceSlides.map(slide => slide.generationUrl ?? slide.url);
   const sourceImage = format === "slideshow" ? sourceImages[0] : reference?.posterUrl;
-  useEffect(() => {
-    if (format !== "slideshow" || !faceSwapOpen) return;
-    function closeFaceSwap(event: PointerEvent) {
-      const target = event.target;
-      if (target instanceof Element && target.closest("[data-face-swap-control]")) return;
-      setFaceSwapOpen(false);
-    }
-    document.addEventListener("pointerdown", closeFaceSwap);
-    return () => document.removeEventListener("pointerdown", closeFaceSwap);
-  }, [format, faceSwapOpen]);
   const resultLabel = format === "slideshow" ? "Your Slides" : "Your videos";
   // Returning from a finished video must keep each source clip editable.
   // The combined publishing file belongs to Schedule's final preview.
@@ -423,7 +413,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     }
     return accepted;
   }
-  const changeOpeningAction = <><WorkflowClipSourceActions label={format === "wall_text" ? "wall-of-text video" : "hook video"} triggerLabel="Change" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} onGenerate={() => { setVideoMode("generate"); chooseOpeningInCreate(); }} />{inlineOpeningError ? <p role="alert" className="w-full text-xs text-destructive">{inlineOpeningError}</p> : null}</>;
+  const changeOpeningAction = <><WorkflowClipSourceActions label={format === "wall_text" ? "text on screen video" : "hook video"} triggerLabel="Change" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} onGenerate={() => { setVideoMode("generate"); chooseOpeningInCreate(); }} />{inlineOpeningError ? <p role="alert" className="w-full text-xs text-destructive">{inlineOpeningError}</p> : null}</>;
 
   function selectReference(next: RecreateReference, fromUpload = false) {
     if (generating || source.busy || slideshowSaving || slideshowUploadBusy && !fromUpload) return;
@@ -532,8 +522,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     setRegenerationSlideNumber(index + 1); setSlideshowRegenerationImage(image ?? null);
     setStep("edit");
   }
-  const slideshowFaceSwap = format === "slideshow" && !slideshowRegenerationImage ? { open: faceSwapOpen, onOpenChange: setFaceSwapOpen, slideIds: faceSwapSlideIds, onSlideIdsChange: setFaceSwapSlideIds, influencer: faceSwapInfluencer, onInfluencerChange: setFaceSwapInfluencer, eligibleCount: selectedSlideIds.length } : undefined;
-  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} faceSwap={slideshowFaceSwap} disabled={generating || slideshowSaving} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
+  const slideshowFaceSwap = format === "slideshow" && !slideshowRegenerationImage ? { open: faceSwapOpen, onOpenChange: setFaceSwapOpen, slideIds: faceSwapSlideIds, onSlideIdsChange: setFaceSwapSlideIds, influencer: faceSwapInfluencer, onInfluencerChange: setFaceSwapInfluencer, eligibleCount: selectedSlideIds.length, slides: reference?.slides.map((slide, index) => ({ id: slide.id, url: slide.url, number: index + 1, eligible: selectedSlideIds.includes(slide.id) })) ?? [] } : undefined;
+  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} disabled={generating || slideshowSaving} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
   const startingImageReference = startingFrameEnabled && Boolean(reference);
   const recreateView = {
     contextBanner: slideshowRegenerationImage ? <p className="text-sm text-muted">Describe the change for slide {regenerationSlideNumber}. Your current image and editable text stay in place until you choose a replacement.</p> : localPreview && previewContextBanner && reference?.pairedAudio ? <div data-music-layout-review>{previewContextBanner}</div> : contextBanner,
@@ -581,12 +571,12 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
       <aside ref={controlsArea} id={workflowControlsId} data-section={step} className={classic ? cn(creation.controls, styles.workflowControls, presentation.controls) : styles.controls} aria-label={`${TITLES[format]} controls`}>
         {!(editExpanded || (format === "wall_text" || format === "slideshow") && step === "edit") ? <WorkflowSectionNavigation presentation="panel" editValue={format === "hook" ? "demo" : "edit"} editLabel={format === "slideshow" ? "Edit slides" : format === "hook" ? "Demo" : "Edit"} /> : null}
         {editExpanded ? <div className={styles.controlsReturn}><span className="text-sm font-semibold">Workflow controls</span><Button type="button" variant="outline" data-back-to-editor onClick={() => showCompactPane("preview", true)}><ArrowLeft className="size-4" aria-hidden="true" />Back to editor</Button></div> : null}
-        {format === "wall_text" ? <div ref={setEditActionsTarget} hidden={step !== "edit"} className={presentation.wallEditToolbar} aria-label="Wall edit actions" /> : null}
+        {format === "wall_text" ? <div ref={setEditActionsTarget} hidden={step !== "edit"} className={presentation.wallEditToolbar} aria-label="Text on screen edit actions" /> : null}
         <div ref={controlContent} className={classic ? cn(creation.controlContent, styles.workflowContent) : styles.controlContent}>
         <Tabs.Panel value="create" keepMounted className={classic ? creation.sectionPanel : styles.sectionPanel}>
         {format !== "slideshow" ? <div className={presentation.createIntro}>
           <WorkflowVideoSourceSection kind="hook" label={TITLES[format]} hideHeading selection={videoSelection} disabled={generating} uploadHint="MP4, MOV or WebM · 1–120 seconds · Up to 250 MB" description="Choose a video to trim, add text and save in this workflow." previewAssets={localPreview ? previewAssets : undefined} />
-          {source.mode !== "generate" ? <p role="status" className="text-xs leading-5 text-muted">{source.busy ? "Preparing your video…" : importedReady ? "Your clip is ready. Choose Edit to trim it or add text." : format === "wall_text" ? "Choose a clip to trim and add your wall of text." : "Choose a clip to trim, add text and attach an optional demo."}{localPreview ? " Preview · uploads stay on your device." : ""}</p> : null}
+          {source.mode !== "generate" ? <p role="status" className="text-xs leading-5 text-muted">{source.busy ? "Preparing your video…" : importedReady ? "Your clip is ready. Choose Edit to trim it or add text." : format === "wall_text" ? "Choose a clip to trim and add your text on screen." : "Choose a clip to trim, add text and attach an optional demo."}{localPreview ? " Preview · uploads stay on your device." : ""}</p> : null}
         </div> : null}
         <div ref={setControlsTarget} className={classic ? creation.generationFields : styles.createControls} hidden={format !== "slideshow" && source.mode !== "generate"} />
         </Tabs.Panel>
@@ -632,11 +622,11 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           </div>
         </section> : <div ref={setEditResultsTarget} hidden={!(step === "edit" || slideshowOverviewVisible) || format === "wall_text" && !selectedVideo} className={cn(styles.results, styles.savedPreview)} />}
         {format === "wall_text" && step === "edit" && !selectedVideo ? (
-          <section aria-label="Wall of text edit setup" className={styles.emptyResult}>
+          <section aria-label="Text on screen edit setup" className={styles.emptyResult}>
             <span className={styles.emptyIcon}><Film aria-hidden="true" /></span>
             <h2 className="text-xl font-semibold">Choose a video to start editing</h2>
             <p role="status" className="max-w-lg text-sm leading-6 text-muted">{source.busy || restoredVideo.isFetching ? "Preparing your video…" : restoredVideo.isError ? "This saved video is unavailable. Upload or choose another video." : "Upload, choose a saved video, or generate a background. Then add your text and trim the clip."}</p>
-            <WorkflowClipSourceActions presentation="inline" label="wall-of-text video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} onGenerate={() => { setVideoMode("generate"); chooseOpeningInCreate(); }} />
+            <WorkflowClipSourceActions presentation="inline" label="text on screen video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} onGenerate={() => { setVideoMode("generate"); chooseOpeningInCreate(); }} />
             {inlineOpeningError ? <p role="alert" className="text-sm text-destructive">{inlineOpeningError}</p> : null}
             <Button type="button" variant="ghost" size="sm" disabled={generating || source.busy} onClick={chooseOpeningInCreate}><ArrowLeft aria-hidden="true" />Back to Create</Button>
           </section>

@@ -168,3 +168,18 @@ test("Wall opening persists once and a new service reads storage without downloa
  const second=await createHookSourceFrameService(options)("wall-fixture");
  assert.equal(downloads,1);assert.equal(decodes,1);assert.equal(prepares,1);assert.equal(second.frameIndex,0);assert.equal(second.frameSha256,first.frameSha256);
 });
+
+test("narrow local source root retains reviewed Talking Head fallback and rejects unrelated local files", async () => {
+  const { getAdditionalStartingFrameSources } = await import("./starting-frame-reference-source.ts");
+  const talking = getAdditionalStartingFrameSources().find(item => "localFile" in item && item.id === "talking-katiemeidt8")!;
+  assert.ok(talking && "localFile" in talking);
+  const original = await readFile(join(process.cwd(), "public", talking.localFile as string));
+  let decoded = 0;
+  const get = createHookSourceFrameService({ items: () => [talking], download: async () => assert.fail("local source cannot download"),
+    decode: async video => { decoded++; assert.equal(hash(video), talking.videoSha256); assert.deepEqual(video, original); return frame(talking.width,talking.height); } });
+  const result = await get(talking.id);
+  assert.equal(decoded,1); assert.equal(result.frameTimeSeconds,0); assert.equal(result.sourceSha256,talking.videoSha256);
+  const bad = createHookSourceFrameService({ items: () => [{ ...source(), localFile: "/explore/covers/promo.mp4" }],
+    download: async () => assert.fail("must not download"), decode: async () => assert.fail("must not decode") });
+  await assert.rejects(bad("hook-01"),{status:409});
+});

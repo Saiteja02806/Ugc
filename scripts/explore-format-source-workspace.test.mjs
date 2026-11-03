@@ -252,7 +252,7 @@ test("Wall's actual workflow keeps edit actions above its tools and hides the le
   h.render(); h.accept(video, "assets");
   nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
   const tree = h.render(), aside = nodes(tree).find(n => n.type === "aside");
-  const toolbar = nodes(aside).find(n => n.props?.["aria-label"] === "Wall edit actions");
+  const toolbar = nodes(aside).find(n => n.props?.["aria-label"] === "Text on screen edit actions");
   const footer = nodes(aside).find(n => n.type === "footer");
   assert.equal(toolbar.props.hidden, false); assert.equal(footer.props.hidden, true);
   assert.equal(nodes(footer).some(n => n.props?.ref === toolbar.props.ref), false);
@@ -301,7 +301,7 @@ test("Wall without a clip keeps its source controls and reference gallery availa
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
     assert.ok(nodes(tree).some(n => n.type === "WorkflowVideoSourceSection"));
     assert.ok(nodes(tree).some(n => n.type === "ReferenceCard"));
-    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Wall of text edit setup"), false);
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Text on screen edit setup"), false);
   }
 });
 

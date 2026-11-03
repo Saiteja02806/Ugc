@@ -80,6 +80,8 @@ export const CHARACTER_TYPES: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/characters/3.png",
     promptSnippet: "extreme expressive viral creator face, distinctive exaggerated masculine features, neatly groomed mustache, high-energy creator presence",
   },
+  { id: "char_wide_eyed_mustache", label: "Wide-Eyed Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/wide-eyed-mustache.png", promptSnippet: "distinctive expressive face with wide round eyes, prominent ears, long narrow nose and a curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
+  { id: "char_playful_mustache", label: "Playful Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/playful-mustache.png", promptSnippet: "playful expressive facial identity with large ears, rounded cheeks and a thick curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
 ];
 
 export const LEGACY_CHARACTER_ALIASES: readonly InfluencerTrait[] = [
@@ -146,6 +148,12 @@ export const BACKGROUNDS: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/backgrounds/draped-curtain-corner.png",
     promptSnippet: "cozy home room corner with elegant vertical pleated beige linen drapes hanging beside a warm wall, subtle fairy light accents, soft diffused window light, intimate creator room corner",
   },
+  { id: "bg_car_interior", label: "Car Interior", category: "background", imagePath: "/explore/influencer-studio/backgrounds/car-interior.jpg", promptSnippet: "car cabin with cream seats, dark dashboard and side-window daylight; use the reference for the cabin and lighting only, omit readable branding. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_clean_studio", label: "Minimal Gray Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/clean-studio.jpg", promptSnippet: "minimal gray interior with neutral sofa, simple door and soft diffuse light. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_cozy_bedroom", label: "Loft Bedroom", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-bedroom.jpg", promptSnippet: "cozy loft bedroom with white bedding, tall multi-pane windows, exposed ceiling and natural daylight. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_cozy_living_room", label: "Warm Living Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-living-room.jpg", promptSnippet: "warm living room with tan leather sofa, plants, neutral framed wall art and soft window light. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_modern_kitchen", label: "Modern Kitchen", category: "background", imagePath: "/explore/influencer-studio/backgrounds/modern-kitchen.jpg", promptSnippet: "warm modern kitchen with dark cabinetry, island counter, bar stools and angled sunlight. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_office_desk", label: "Dark Home Office", category: "background", imagePath: "/explore/influencer-studio/backgrounds/office-desk.jpg", promptSnippet: "dark home office with wood desk, monitor, desk chair, potted plant and soft side-window daylight. Use this photo for the environment only; keep the selected character and outfit." },
 ];
 
 export const GENDERS: readonly InfluencerTrait[] = [
@@ -294,12 +302,18 @@ export const SKIN_TONES: readonly InfluencerTrait[] = [
 
 export const HEAD_SHAPES: readonly InfluencerTrait[] = [
   {
+    id: "head_keep_existing",
+    label: "Keep head shape",
+    category: "head_shape",
+    promptSnippet: "Preserve the head shape from the selected character reference.",
+    isDefault: true,
+  },
+  {
     id: "head_oval",
     label: "Classic Oval",
     category: "head_shape",
     imagePath: "/explore/influencer-studio/head-shape/classic-oval.png",
     promptSnippet: "classic symmetrical oval head shape, softly rounded balanced jawline, proportionate cheekbones",
-    isDefault: true,
   },
   {
     id: "head_diamond",
@@ -357,6 +371,7 @@ export const HEAD_SHAPES: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/head-shape/avant-garde.png",
     promptSnippet: "bold avant-garde editorial face contour, exaggerated angular facial architecture",
   },
+  { id: "head_exaggerated_square", label: "Broad Square Jaw", category: "head_shape", imagePath: "/explore/influencer-studio/head-shape/broad-square-jaw.png", promptSnippet: "broad angular square jaw, wide chin and strong lower-face proportions. Use this photo for head shape only; preserve the selected character identity, eyes, hairstyle, skin tone and expression." },
 ];
 
 export const NECKS: readonly InfluencerTrait[] = [
@@ -533,7 +548,8 @@ export const EYE_COLORS: readonly InfluencerTrait[] = [
 ];
 
 export const HAIR_STYLES: readonly InfluencerTrait[] = [
-  { id: "hair_bob", label: "Natural Bob", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/natural-bob.png", promptSnippet: "chin-length natural bob haircut with a soft center part and face-framing ends. Use this photo for the haircut only, and apply the selected hair color", isDefault: true },
+  { id: "hair_keep_existing", label: "Keep hairstyle", category: "hair_style", promptSnippet: "Preserve the hairstyle from the selected character reference: length, texture, parting and volume. Hair color is independent.", isDefault: true },
+  { id: "hair_bob", label: "Natural Bob", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/natural-bob.png", promptSnippet: "chin-length natural bob haircut with a soft center part and face-framing ends. Use this photo for the haircut only, and apply the selected hair color" },
   { id: "hair_blunt_bob", label: "Blunt Bob", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/blunt-bob.png", promptSnippet: "blunt one-length bob haircut with a sharp hemline. Use this photo for the haircut only, and apply the selected hair color" },
   { id: "hair_vintage_waves", label: "Vintage Waves", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/vintage-waves.png", promptSnippet: "sculpted vintage waves with lifted crown volume. Use this photo for the haircut only, and apply the selected hair color" },
   { id: "hair_long_waves", label: "Long Waves", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/long-waves.png", promptSnippet: "long loose waves falling past the shoulders. Use this photo for the haircut only, and apply the selected hair color" },
@@ -547,16 +563,31 @@ export const HAIR_STYLES: readonly InfluencerTrait[] = [
   { id: "hair_space_buns", label: "Space Buns", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/space-buns.png", promptSnippet: "two high space buns. Use this photo for the haircut only, and apply the selected hair color" },
   { id: "hair_flat_top", label: "Flat Top", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/flat-top.png", promptSnippet: "flat-top haircut with short sides. Use this photo for the haircut only, and apply the selected hair color" },
   { id: "hair_textured_crop", label: "Textured Crop", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/textured-crop.png", promptSnippet: "short textured crop. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_tousled_shag", label: "Tousled Shag", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/tousled-shag.png", promptSnippet: "layered medium-length shag with tousled separated strands, wispy fringe and longer nape. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_spiky_high_top", label: "Spiky High Top", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/spiky-high-top.png", promptSnippet: "tall upright textured high-top hairstyle with spiky strands and closely tapered sides. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_tall_flat_top", label: "Tall Flat Top", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/tall-flat-top.png", promptSnippet: "tall squared flat-top haircut with a level top, defined corners and closely faded sides. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_curly_mullet", label: "Curly Mullet", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/curly-mullet.png", promptSnippet: "curly mullet with a rounded curly fringe, shorter sides and longer curls at the nape. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_wavy_bowl_cut", label: "Wavy Bowl Cut", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/wavy-bowl-cut.png", promptSnippet: "rounded bowl haircut with a short blunt fringe, wavy texture and outward-flipped sides. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_classic_flat_top", label: "Classic Flat Top", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/curls-afro.png", promptSnippet: "tall tightly textured flat-top haircut with a level squared top and short sides. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_rugged_crop", label: "Rugged Crop", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/rugged-crop.png", promptSnippet: "short rugged textured crop with uneven choppy strands and a slightly tousled top. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_short_fringe_bob", label: "Short Fringe Bob", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/sleek-pixie.png", promptSnippet: "sleek chin-length bob with a straight short fringe and rounded ends. Use this photo for the haircut only, and apply the selected hair color" },
+  { id: "hair_braided_updo", label: "Braided Updo", category: "hair_style", imagePath: "/explore/influencer-studio/hair-style/wavy-textured.png", promptSnippet: "large rope-like braids gathered into a high coiled updo. Use this photo for the haircut only, and apply the selected hair color" },
 ];
 
 export const HAIR_COLORS: readonly InfluencerTrait[] = [
+  {
+    id: "hair_color_keep_existing",
+    label: "Keep hair color",
+    category: "hair_color",
+    promptSnippet: "Preserve the original hair color from the selected character reference, including multicolor sections. A haircut reference must not change its color.",
+    isDefault: true,
+  },
   {
     id: "hair_color_black",
     label: "Jet Black",
     category: "hair_color",
     colorHex: "#0B0B0B",
     promptSnippet: "glossy jet-black hair with natural sheen and deep rich dimensional shadows",
-    isDefault: true,
   },
   {
     id: "hair_color_espresso",
@@ -617,13 +648,31 @@ export const OUTFITS: readonly InfluencerTrait[] = [
   { id: "outfit_1950s_leather_jacket", label: "Leather Jacket", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-leather-jacket.png", promptSnippet: `1950s leather jacket. ${outfitOnly}` },
   { id: "outfit_1950s_grey_suit", label: "Grey Suit", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-grey-suit.png", promptSnippet: `1950s tailored suit with hat and tie. ${outfitOnly}` },
   { id: "outfit_1950s_sweater_vest", label: "Sweater Vest", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-sweater-vest.png", promptSnippet: `1950s sweater vest. ${outfitOnly}` },
+  { id: "outfit_1950s_cardigan_capris", label: "Cardigan & Capris", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-cardigan-capris.png", promptSnippet: `cream cardigan, red top, dark capri trousers and saddle shoes. ${outfitOnly}` },
+  { id: "outfit_1950s_floral_swing_dress", label: "Floral Swing Dress", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-floral-swing-dress.png", promptSnippet: `blue floral fitted-waist swing dress. ${outfitOnly}` },
+  { id: "outfit_1950s_pencil_skirt", label: "Pencil Skirt", category: "outfit", group: "1950s", imagePath: "/explore/influencer-studio/outfits/1950s-pencil-skirt.png", promptSnippet: `pink cardigan, cream blouse and gray pencil skirt. ${outfitOnly}` },
+  { id: "outfit_1980s_vintage_denim", label: "Vintage Denim", category: "outfit", group: "1980s", imagePath: "/explore/influencer-studio/outfits/1980s-vintage-denim.png", promptSnippet: `1980s denim jacket and high-waisted acid-wash jeans. ${outfitOnly}` },
+  { id: "outfit_1980s_colorblock_sweater", label: "Colorblock Sweater", category: "outfit", group: "1980s", imagePath: "/explore/influencer-studio/outfits/1980s-colorblock-sweater.png", promptSnippet: `bright colorblock sweater with purple high-waisted trousers. ${outfitOnly}` },
+  { id: "outfit_1980s_denim_graphic_tee", label: "Denim & Graphic Tee", category: "outfit", group: "1980s", imagePath: "/explore/influencer-studio/outfits/1980s-denim-graphic-tee.png", promptSnippet: `denim jacket, colorful graphic tee and high-waisted jeans. ${outfitOnly}` },
+  { id: "outfit_1980s_pink_blouse_skirt", label: "Pink Blouse & Skirt", category: "outfit", group: "1980s", imagePath: "/explore/influencer-studio/outfits/1980s-pink-blouse-skirt.png", promptSnippet: `bright pink blouse and dark floral full skirt. ${outfitOnly}` },
+  { id: "outfit_1980s_retro_denim", label: "Retro Denim", category: "outfit", group: "1980s", imagePath: "/explore/influencer-studio/outfits/1980s-retro-denim.png", promptSnippet: `faded denim jacket, graphic tee and high-waisted jeans. ${outfitOnly}` },
   { id: "outfit_2000s_striped_tee", label: "Striped Tee", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-striped-tee.png", promptSnippet: `2000s striped tee. ${outfitOnly}` },
+  { id: "outfit_2000s_layered_polo", label: "Layered Polo", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-layered-polo.png", promptSnippet: `striped burgundy polo over a white long-sleeve shirt with baggy jeans. ${outfitOnly}` },
+  { id: "outfit_2000s_pink_cardigan", label: "Pink Cardigan", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-pink-cardigan.png", promptSnippet: `pink cardigan over a white crop top with low-rise flared jeans. ${outfitOnly}` },
+  { id: "outfit_2000s_pink_tracksuit", label: "Pink Tracksuit", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-pink-tracksuit.png", promptSnippet: `pink zip-up tracksuit with matching flared trousers. ${outfitOnly}` },
+  { id: "outfit_2000s_denim_mini_skirt", label: "Denim Mini Skirt", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-denim-mini-skirt.png", promptSnippet: `pink cardigan, white crop top, denim mini skirt and brown knee-high boots. ${outfitOnly}` },
+  { id: "outfit_2000s_baggy_denim_shirt", label: "Baggy Denim & Shirt", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-baggy-denim-shirt.png", promptSnippet: `navy short-sleeve overshirt, white tee and very loose cargo jeans. ${outfitOnly}` },
+  { id: "outfit_2000s_relaxed_striped_polo", label: "Relaxed Striped Polo", category: "outfit", group: "2000s", imagePath: "/explore/influencer-studio/outfits/2000s-relaxed-striped-polo.png", promptSnippet: `navy striped polo and loose blue jeans. ${outfitOnly}` },
   { id: "outfit_2025_day_dress", label: "Day Dress", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-day-dress.png", promptSnippet: `2025 short-sleeve day dress. ${outfitOnly}` },
   { id: "outfit_2025_satin_dress", label: "Satin Dress", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-satin-dress.png", promptSnippet: `2025 satin dress. ${outfitOnly}` },
   { id: "outfit_2025_streetwear", label: "Streetwear Hoodie", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-streetwear-hoodie.png", promptSnippet: `2025 streetwear hoodie and cargos. ${outfitOnly}` },
   { id: "outfit_2025_cream_linen", label: "Cream Linen", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-cream-linen.png", promptSnippet: `2025 cream linen outfit. ${outfitOnly}` },
   { id: "outfit_2025_leather_jacket", label: "Leather Jacket", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-leather-jacket.png", promptSnippet: `2025 leather jacket with denim. ${outfitOnly}` },
   { id: "outfit_2025_knit_layer", label: "Knit Layer", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-knit-layer.png", promptSnippet: `2025 knit layer. ${outfitOnly}` },
+  { id: "outfit_2025_floral_maxi_dress", label: "Floral Maxi Dress", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-floral-maxi-dress.png", promptSnippet: `floral short-sleeve maxi dress. ${outfitOnly}` },
+  { id: "outfit_2025_cargo_tank", label: "Cargo Jeans & Tank", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-cargo-tank.png", promptSnippet: `brown sleeveless tank with loose light-blue cargo jeans. ${outfitOnly}` },
+  { id: "outfit_2025_plaid_pajamas", label: "Plaid Pajamas", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-plaid-pajamas.png", promptSnippet: `cream sweatshirt with pink plaid pajama trousers. ${outfitOnly}` },
+  { id: "outfit_2025_white_tee_jeans", label: "White Tee & Jeans", category: "outfit", group: "2025", imagePath: "/explore/influencer-studio/outfits/2025-white-tee-jeans.png", promptSnippet: `fitted white short-sleeve tee and loose light-blue jeans. ${outfitOnly}` },
 ];
 
 export const OUTFIT_COLORS: readonly InfluencerTrait[] = [
@@ -768,6 +817,9 @@ export const ACCESSORIES: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/accessories/smudged-noir.png",
     promptSnippet: "subtle grunge-chic smudged noir eyeliner along lower lash line, edgy viral creator aesthetic",
   },
+  { id: "accessory_amber_aviators", label: "Amber Aviators", category: "accessories", imagePath: "/explore/influencer-studio/accessories/amber-aviators.png", promptSnippet: "wearing amber-tinted aviator sunglasses with thin metal frames. Use this photo for the accessory only; keep the selected character identity, hair, outfit and background." },
+  { id: "accessory_black_sunglasses", label: "Black Sunglasses", category: "accessories", imagePath: "/explore/influencer-studio/accessories/black-sunglasses.png", promptSnippet: "wearing black sunglasses with dark lenses and thick angular frames. Use this photo for the accessory only; keep the selected character identity, hair, outfit and background." },
+  { id: "accessory_pink_star_patches", label: "Pink Star Patches", category: "accessories", imagePath: "/explore/influencer-studio/accessories/pink-star-patches.png", promptSnippet: "wearing pastel pink under-eye skincare patches with a small star pattern. Use this photo for the accessory only; keep the selected character identity, hair, outfit and background." },
 ];
 
 export const ALL_TRAITS: readonly InfluencerTrait[] = [
@@ -851,12 +903,12 @@ export const DEFAULT_INFLUENCER_SELECTION: InfluencerSelectionState = {
   ethnicityId: "ethnicity_middle_eastern",
   ageId: "age_young_adult",
   skinToneId: "skin_light_olive",
-  headShapeId: "head_oval",
+  headShapeId: "head_keep_existing",
   neckId: "neck_standard",
   eyeShapeId: "eye_almond",
   eyeColorId: "eye_color_brown",
-  hairStyleId: "hair_bob",
-  hairColorId: "hair_color_black",
+  hairStyleId: "hair_keep_existing",
+  hairColorId: "hair_color_keep_existing",
   outfitId: "outfit_none",
   outfitColorId: "outfit_color_as_shown",
   heightId: "height_tall",

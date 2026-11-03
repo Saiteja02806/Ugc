@@ -13,16 +13,16 @@ type SlideshowAsset = (typeof previewAssets.slideshows)[keyof typeof previewAsse
 type GalleryItem = { title: string } & ({ kind: "video"; asset: VideoAsset } | { kind: "slides"; asset: SlideshowAsset });
 const items: GalleryItem[] = [
   { kind: "video", asset: previewAssets.videos.outerLeft, title: "Compact Hook Explore video" },
-  { kind: "video", asset: previewAssets.videos.wallLeft, title: "Wall of Text Explore video" },
+  { kind: "video", asset: previewAssets.videos.wallLeft, title: "Text on screen Explore video" },
   { kind: "slides", asset: previewAssets.slideshows.slideshowLeft, title: "Fitness slideshow Explore preview" },
   { kind: "video", asset: previewAssets.videos.hookPrimary, title: "Primary Hook Explore video" },
   { kind: "slides", asset: previewAssets.slideshows.slideshowRight, title: "Fitness training slideshow Explore preview" },
-  { kind: "video", asset: previewAssets.videos.wallRight, title: "Second Wall of Text Explore video" },
+  { kind: "video", asset: previewAssets.videos.wallRight, title: "Second Text on screen Explore video" },
   { kind: "video", asset: previewAssets.videos.outerRight, title: "Second compact Hook Explore video" },
   { kind: "video", asset: previewAssets.videos.talkingDemo, title: "Talking Head and Demo Explore video" },
   { kind: "video", asset: previewAssets.videos.hookExtra, title: "Keyboard reaction Hook Explore video" },
   { kind: "video", asset: previewAssets.videos.demoExample, title: "Talking Head and Demo opening Explore video" },
-  { kind: "video", asset: previewAssets.videos.wallExtra, title: "Story Wall of Text Explore video" },
+  { kind: "video", asset: previewAssets.videos.wallExtra, title: "Story Text on screen Explore video" },
 ];
 
 export function LandingHeroGallery() {

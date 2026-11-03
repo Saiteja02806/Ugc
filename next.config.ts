@@ -40,7 +40,11 @@ const nextConfig: NextConfig = {
     "/api/explore/**": ["./lib/explore/creator-*.json.enc"],
     "/api/ai-studio/**": ["./lib/explore/creator-*.json.enc"],
     "/api/media/**": ["./lib/explore/creator-*.json.enc"],
-    "/mcp": ["./lib/explore/creator-*.json.enc"],
+    // Next uses picomatch contains:true for route keys. Bound both ends with
+    // negative any-character lookarounds so health/discovery do not inherit
+    // these dynamic-read assets. The installed collector normalizes its
+    // app/mcp/route entry to /app/mcp; also support the documented /mcp path.
+    "(?<![\\s\\S]){,/app}/mcp(?![\\s\\S])": ["./lib/explore/creator-*.json.enc"],
     "/api/explore/slideshows/image": ["./lib/explore/creator-slideshow-media/*.enc"],
     "/api/explore/slideshows/reference-images": ["./lib/explore/creator-slideshow-media/*.enc"],
     "/api/explore/creator-slide-media/**": ["./lib/explore/creator-slideshow-media/*.enc"],
@@ -72,6 +76,11 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingExcludes: {
     "/*": nativeMedia.otherProbeBinaries,
+    // Turbopack can retain duplicate authoring copies even after filesystem
+    // reads use narrow public roots. These routes never read Remotion inputs.
+    "/api/explore/hook-keyframe": ["./remotion/**/*"],
+    "/api/explore/hook-starting-frame": ["./remotion/**/*"],
+    "/e2e/hook-keyframe-preview/source": ["./remotion/**/*"],
     // Next applies include globs with contains:true: /mcp also matches these
     // lightweight routes. They never execute a media decoder or probe.
     "/mcp/health": ["./node_modules/ffmpeg-static/**/*", "./node_modules/ffprobe-static/**/*"],

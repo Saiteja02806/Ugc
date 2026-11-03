@@ -64,7 +64,7 @@ export function registerReferenceMcpTools(server: McpServer) {
       max_instructions_characters:2000, max_source_characters:6000, max_source_blocks:20, daily_request_limit:20, quota_window_hours:24, required_write_scope:"generation:write", required_brand_scope:"brand:read" };
   }));
   server.registerTool("list_references",{
-    description:"Browse the application's published Hook, Wall-of-Text and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
+    description:"Browse the application's published Hook, Text on screen and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
     inputSchema:z.strictObject({ format:format.optional(), query:z.string().max(160).optional(), category:identifier.optional(), limit:z.number().int().min(1).max(50).default(20), cursor:z.string().min(1).max(1024).optional() }),
     outputSchema:z.strictObject({ items:z.array(reference).max(50), total:z.number().int().nonnegative(), next_cursor:z.string().nullable() }),
     annotations:readOnly, scopeChallenge:requireScopes("assets:read"), _meta:oauthMetadata("assets:read"),

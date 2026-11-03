@@ -324,7 +324,7 @@ export function InfluencerCustomizerDock({
         {CATEGORY_DEFINITIONS.map((cat) => {
           const isOpen = openSections.has(cat.id);
           const traits = getTraitsByCategory(cat.id);
-          const isCharCategory = cat.id === "character_type";
+          const isColorCategory = ["skin_tone", "eye_color", "hair_color", "outfit_color"].includes(cat.id);
           const categoryTraits = traits;
           const IconComp = CATEGORY_ICON_MAP[cat.iconName] ?? User;
 
@@ -346,20 +346,30 @@ export function InfluencerCustomizerDock({
                 />
               </button>
 
-              {isOpen && cat.id === "outfit_color" ? (
-                <div className={styles.colorSwatchGrid}>
+              {isOpen && isColorCategory ? (
+                <div className={styles.colorTileGrid}>
                   {categoryTraits.map((trait) => {
                     const selected = isTraitSelected(trait);
                     return (
                       <button
                         key={trait.id}
                         type="button"
-                        className={`${styles.colorSwatch} ${selected ? styles.colorSwatchSelected : ""} ${trait.colorHex ? "" : styles.colorSwatchPlain}`}
-                        style={trait.colorHex ? { backgroundColor: trait.colorHex } : undefined}
+                        className={`${styles.colorTile} ${selected ? styles.colorTileSelected : ""}`}
+                        title={trait.label}
                         aria-label={trait.label}
                         aria-pressed={selected}
+                        disabled={disabled || isGenerating}
                         onClick={() => handleTraitClick(trait)}
-                      />
+                      >
+                        <span
+                          className={`${styles.colorTilePreview} ${trait.colorHex ? "" : styles.colorTilePreviewEmpty}`}
+                          style={trait.colorHex ? { backgroundColor: trait.colorHex } : undefined}
+                          aria-hidden="true"
+                        >
+                          {!trait.colorHex ? <User size={20} /> : null}
+                        </span>
+                        <span className={styles.colorTileLabel}>{trait.label}</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -390,14 +400,6 @@ export function InfluencerCustomizerDock({
                                 className={styles.cardImage}
                                 unoptimized={trait.isCustomUpload}
                               />
-                            </div>
-                          ) : trait.colorHex ? (
-                            <div className={styles.swatchCardContent}>
-                              <div
-                                className={styles.swatchCircle}
-                                style={{ backgroundColor: trait.colorHex }}
-                              />
-                              <span className={styles.swatchLabel}>{displayTitle}</span>
                             </div>
                           ) : (
                             <div className={styles.swatchCardContent}>

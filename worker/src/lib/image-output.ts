@@ -23,10 +23,13 @@ export function getAIStudioImageDimensions(ratio: AIStudioImageRatio) {
 export async function prepareAIStudioImageOutput(
   imageBuffer: Buffer,
   ratio: AIStudioImageRatio = AI_STUDIO_IMAGE_RATIO,
-  options: { preserveComposition?: boolean; cropNearRatioPadding?: boolean } = {},
+  options: { preserveComposition?: boolean; cropNearRatioPadding?: boolean; requireMatchingAspectRatio?: boolean } = {},
 ) {
   const dimensions = getAIStudioImageDimensions(ratio);
   const image = sharp(imageBuffer);
+  if (options.requireMatchingAspectRatio) {
+    await assertImageOutputAspectRatio(imageBuffer, ratio);
+  }
   let cropNearRatioPadding = false;
   if (options.preserveComposition && options.cropNearRatioPadding) {
     const { width, height } = await image.metadata();
@@ -54,4 +57,14 @@ export async function prepareAIStudioImageOutput(
     })
     .png()
     .toBuffer();
+}
+
+export async function assertImageOutputAspectRatio(imageBuffer: Buffer, ratio: AIStudioImageRatio) {
+  const dimensions = getAIStudioImageDimensions(ratio);
+  const { width, height } = await sharp(imageBuffer).metadata();
+  const target = dimensions.width / dimensions.height;
+  if (!width || !height || Math.abs(width / height / target - 1) > 0.01) {
+    throw Object.assign(new Error("The generated starting frame has the wrong aspect ratio. Its saved stages are retained; no padded image was approved."),
+      { code: "image_aspect_ratio_mismatch" });
+  }
 }

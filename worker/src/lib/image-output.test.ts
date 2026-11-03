@@ -5,6 +5,17 @@ import sharp from "sharp";
 
 import { AI_STUDIO_IMAGE_RATIO, prepareAIStudioImageOutput } from "./image-output.js";
 
+test("new starting frames reject substantial ratio drift rather than returning a padded success", async () => {
+  const source = await sharp({ create: { width: 928, height: 1152, channels: 3, background: "red" } }).png().toBuffer();
+  await assert.rejects(prepareAIStudioImageOutput(source, "9:16", { preserveComposition: true, requireMatchingAspectRatio: true }),
+    error => error instanceof Error && "code" in error && error.code === "image_aspect_ratio_mismatch");
+  const legacy = await prepareAIStudioImageOutput(source, "9:16", { preserveComposition: true });
+  assert.equal((await sharp(legacy).metadata()).height, 1280);
+  const near = await sharp({ create: { width: 768, height: 1376, channels: 3, background: "red" } }).png().toBuffer();
+  const output = await prepareAIStudioImageOutput(near, "9:16", { preserveComposition: true, cropNearRatioPadding: true, requireMatchingAspectRatio: true });
+  assert.deepEqual([...await sharp(output).removeAlpha().raw().toBuffer()].slice(0, 3), [255, 0, 0]);
+});
+
 test("prepares one exact default 9:16 PNG for AI Studio", async () => {
   const source = await sharp({
     create: {

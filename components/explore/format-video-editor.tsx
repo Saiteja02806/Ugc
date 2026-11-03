@@ -174,7 +174,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   if (editing.trimEndMs > duration * 1000 + 50) validation = "Keep the trim range inside this video.";
   if (textLayouts.some(layout => !layout.fits)) validation = "Your text does not fit. Reduce its size or move it higher.";
   validation ??= overlays.map(text => formatTextEmojiError(text.value)).find(Boolean) ?? null;
-  if (format === "wall_text" && !overlays.some(text => text.value.trim())) validation = "Add your wall of text before saving.";
+  if (format === "wall_text" && !overlays.some(text => text.value.trim())) validation = "Add your text on screen before saving.";
   const restore = useCallback((draft: ExploreFinishDraft) => {
     if (localDraftExists.current || !draft.editing || draft.editing.format !== format || draft.sourceAssetId !== video.mediaAssetId) return;
     setReferenceAudioVolumeInitialized(true);
@@ -201,7 +201,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const automaticTextNeedsReview = (format === "wall_text" || format === "hook" && (draftScope ?? format) === "hook") && automaticText?.status === "needs_review" &&
     !continueWithoutAutomaticText && !draftSave.saved && !overlays.some(text => text.value.trim());
   if (automaticTextNeedsReview) {
-    if (format === "wall_text" && validation === "Add your wall of text before saving.") validation = "Your video is ready, but automatic text needs review. Add or remix your Wall text before saving.";
+    if (format === "wall_text" && validation === "Add your text on screen before saving.") validation = "Your video is ready, but automatic text needs review. Add or remix your on-screen text before saving.";
     else validation ??= "Your video is ready, but automatic text needs review. Add text or choose Continue without text.";
     draftValidation ??= validation;
   }
@@ -291,7 +291,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     if (soundtrack.current) soundtrack.current.volume = editing.musicVolume;
   }, [previewOriginalVolume, editing.musicVolume, previewPlayback, previewAudioUrl]);
   const sequencePreview = JSON.stringify({
-    segment: { id: video.mediaAssetId ?? video.id, label: format === "wall_text" ? "Wall of text" : "Hook", url: previewVideoUrl,
+    segment: { id: video.mediaAssetId ?? video.id, label: format === "wall_text" ? "Text on screen" : "Hook", url: previewVideoUrl,
       durationSeconds: duration, width, height, editing: { ...exportEditing, originalVolume: previewOriginalVolume },
       addedAudio: !referenceAudio && previewAudioUrl ? { url: previewAudioUrl, volume: editing.musicVolume, playback: previewPlayback,
         timelineOffsetMs: exportEditing.trimStartMs, mixDurationMs: duration * 1000 } : null },
@@ -383,7 +383,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     {simpleWall ? <div className={editorStyles.advancedEntry}><Button ref={wallModeButton} type="button" size="sm" variant="outline" aria-label="Edit video with advanced controls" aria-expanded={false} aria-controls={wallToolsId} onClick={() => setWallAdvanced(true)}>Edit</Button><span className="text-xs text-muted">Trim, text style and background audio</span></div> : null}
     {!actionsTarget ? actions : null}
   </div>;
-  const clipLabel = videoLabel ?? (format === "wall_text" ? "Wall-of-text video" : "Hook video");
+  const clipLabel = videoLabel ?? (format === "wall_text" ? "Text on screen video" : "Hook video");
   const preview = <section className="flex flex-col items-center gap-4" aria-label="Video edit preview" style={{ "--clip-aspect": width / height } as CSSProperties}><div className={styles.clipPreviewHeading}><h3>{editingActive ? `${clipLabel} · Live preview` : videoLabel ? `${videoLabel} preview` : onEdit ? clipLabel : "Live preview"}</h3><span>{width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : width === height ? "1:1" : width < height ? "Portrait" : "Landscape"}</span></div>
     <div data-clip-media data-clip-orientation={width < height ? "portrait" : width > height ? "landscape" : "square"} className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
       <video ref={player} src={previewVideoUrl} playsInline preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {

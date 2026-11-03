@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isCarouselGenerationJobHeld } from "./lib/carousel-generation-hold.js";
 
 import type { WorkerConfig } from "./config.js";
 import { JobCancellationRequestedError } from "./job-cancellation.js";
@@ -94,6 +95,13 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
     return;
   }
 
+  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type)) {
+    // Acknowledge transport only. Durable queued work and attempts stay intact
+    // for database recovery after the hold is lifted. Never report success.
+    await queue.deleteMessage(message);
+    return;
+  }
+
   if (!isAllowedWorkerJobType(config, job.job_type)) {
     logger.warn("Worker job type is not allowed for this service; leaving message for retry", {
       allowedJobTypes: config.allowedJobTypes,
@@ -151,6 +159,8 @@ export async function processRecoveredWorkerJob(params: {
     });
     return false;
   }
+
+  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type)) return false;
 
   return processClaimableJob({
     config: params.config,

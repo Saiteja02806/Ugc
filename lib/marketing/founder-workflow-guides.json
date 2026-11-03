@@ -1515,7 +1515,7 @@
       {
         "href": "/guides/wall-of-text-video-for-saas",
         "title": "Try a text-led format",
-        "description": "Turn the same business context into a wall-of-text video."
+        "description": "Turn the same business context into a text on screen video."
       },
       {
         "href": "/guides/product-demo-to-short-video",
@@ -1541,15 +1541,15 @@
   },
   {
     "slug": "wall-of-text-video-for-saas",
-    "title": "How to Make a Wall-of-Text Video for Your SaaS",
-    "description": "Turn verified SaaS business context into a natural wall-of-text social video, with original overlay copy, a footage plan and a Vidmake checklist.",
+    "title": "How to Make a Text on screen Video for Your SaaS",
+    "description": "Turn verified SaaS business context into a natural text on screen social video, with original overlay copy, a footage plan and a Vidmake checklist.",
     "lede": "Let one relatable situation carry the message. Write the words from real business context, choose footage that leaves them readable, and review the text as part of the final video.",
     "intent": "Business-context-to-written-social-story workflow; existing readable-text guide owns typography and existing hook library owns short openings.",
     "sections": [
       {
         "heading": "Choose this format when the written message carries the story",
         "paragraphs": [
-          "A wall-of-text video puts a compact written story, observation or list over moving footage. The words do most of the explaining. The background creates a fitting mood and gives the frame some life. It is different from a short hook followed by a product recording, and different from subtitles transcribing speech.",
+          "A text on screen video puts a compact written story, observation or list over moving footage. The words do most of the explaining. The background creates a fitting mood and gives the frame some life. It is different from a short hook followed by a product recording, and different from subtitles transcribing speech.",
           "For a SaaS or app business, the useful story is a situation the intended viewer recognizes. Start with a task, frustration or discovery connected to a real feature. “Our platform is revolutionary” gives people little to picture. A specific follow-up task gives the text a scene and a reason for the product to appear."
         ]
       },
@@ -1580,7 +1580,7 @@
       {
         "heading": "Build and review it in Vidmake",
         "paragraphs": [
-          "Open Wall of text in Explore. Choose an owned background or create footage with the available controls. Review any displayed credit estimate before a new generation. A source reference helps you plan a creative structure; it does not establish permission to reuse another creator’s footage, wording or claims.",
+          "Open Text on screen in Explore. Choose an owned background or create footage with the available controls. Review any displayed credit estimate before a new generation. A source reference helps you plan a creative structure; it does not establish permission to reuse another creator’s footage, wording or claims.",
           "For the chosen video, use the text-editing area to add or review your overlay. Keep the selected words and paragraph breaks deliberate. If using a text remix, confirm that it refers to your business and preserves only supported product facts. A useful draft is still a draft.",
           "Review the preview, then inspect the final output. Check placement, reading time and contrast over the whole moving scene. The simple text editor and any advanced editing controls serve different jobs; use the controls available in your account instead of assuming every generation is already a finished, shareable asset."
         ]
@@ -1629,11 +1629,11 @@
         ]
       ]
     },
-    "worksheet": "ILLUSTRATIVE OVERLAY — FICTIONAL NORTHSTAR NOTES\nthe call is over.\nthe follow-up is tomorrow.\nand the next step is somewhere in your notes.\n\nNorthStar Notes keeps the call note and its next steps together.\nopen the project, choose the call, check what comes next.\n\n--- ADAPT WITH YOUR VERIFIED BUSINESS FACTS ---\nSAAS WALL-OF-TEXT VIDEO BRIEF\nAudience and situation:\nVerified business facts:\nCreative angle (not a factual claim):\nExact overlay with paragraph breaks:\nProduct mention and supported behavior:\nClaims or first-person experiences to verify:\nOwned / permitted background:\nAvailable reading time and rehearsal result:\nText placement and moving-background check:\nOptional next step and real destination:\nApproved words / final revision:\nPhone reviewer summary:",
+    "worksheet": "ILLUSTRATIVE OVERLAY — FICTIONAL NORTHSTAR NOTES\nthe call is over.\nthe follow-up is tomorrow.\nand the next step is somewhere in your notes.\n\nNorthStar Notes keeps the call note and its next steps together.\nopen the project, choose the call, check what comes next.\n\n--- ADAPT WITH YOUR VERIFIED BUSINESS FACTS ---\nSAAS TEXT ON SCREEN VIDEO BRIEF\nAudience and situation:\nVerified business facts:\nCreative angle (not a factual claim):\nExact overlay with paragraph breaks:\nProduct mention and supported behavior:\nClaims or first-person experiences to verify:\nOwned / permitted background:\nAvailable reading time and rehearsal result:\nText placement and moving-background check:\nOptional next step and real destination:\nApproved words / final revision:\nPhone reviewer summary:",
     "links": [
       {
         "href": "/explore/wall-of-text",
-        "title": "Open Wall of text in Vidmake",
+        "title": "Open Text on screen in Vidmake",
         "description": "Sign in to work on footage and the written overlay."
       },
       {
@@ -1741,8 +1741,8 @@
   {
     "slug": "wall-text-relatable-frustration",
     "title": "Write a relatable SaaS frustration without exaggerating the problem",
-    "description": "Write relatable wall-of-text copy about a SaaS problem without inventing a customer experience or product outcome.",
-    "lede": "Write relatable wall-of-text copy about a SaaS problem without inventing a customer experience or product outcome.",
+    "description": "Write relatable text on screen copy about a SaaS problem without inventing a customer experience or product outcome.",
+    "lede": "Write relatable text on screen copy about a SaaS problem without inventing a customer experience or product outcome.",
     "intent": "Several complete business-specific overlays with claim checks and corrections",
     "sections": [
       {
@@ -1809,7 +1809,7 @@
     "links": [
       {
         "href": "/guides/wall-of-text-video-for-saas",
-        "title": "Build the full wall-of-text video",
+        "title": "Build the full text on screen video",
         "description": "Connect business context, copy and footage."
       },
       {
@@ -1831,7 +1831,7 @@
       {
         "heading": "Start with the same facts",
         "paragraphs": [
-          "A wall-of-text format can be a compact paragraph, a stacked list or a point-of-view scene. Choose the form based on the job the words need to do, not merely the amount of text. The fictional brief below assumes an app keeps a call note and its next steps together. These are example facts, not claims about a real customer or performance.",
+          "A text on screen format can be a compact paragraph, a stacked list or a point-of-view scene. Choose the form based on the job the words need to do, not merely the amount of text. The fictional brief below assumes an app keeps a call note and its next steps together. These are example facts, not claims about a real customer or performance.",
           "The viewer is a team member preparing a follow-up. The useful action is opening the note and checking the next-step section. Keep those same facts when comparing the three versions."
         ]
       },
@@ -1892,7 +1892,7 @@
     "links": [
       {
         "href": "/guides/wall-of-text-video-for-saas",
-        "title": "Plan a complete wall-of-text video",
+        "title": "Plan a complete text on screen video",
         "description": "Move from business context to a reviewed clip."
       },
       {
@@ -1906,9 +1906,9 @@
   },
   {
     "slug": "wall-text-pov-story",
-    "title": "Write a POV wall-of-text video that leads naturally to your app",
-    "description": "Write a point-of-view story for a SaaS wall-of-text video, using a fictional example and checks that prevent misleading first-person claims.",
-    "lede": "Write a point-of-view story for a SaaS wall-of-text video, using a fictional example and checks that prevent misleading first-person claims.",
+    "title": "Write a POV text on screen video that leads naturally to your app",
+    "description": "Write a point-of-view story for a SaaS text on screen video, using a fictional example and checks that prevent misleading first-person claims.",
+    "lede": "Write a point-of-view story for a SaaS text on screen video, using a fictional example and checks that prevent misleading first-person claims.",
     "intent": "Original complete POV stories with fictional/real attribution made explicit",
     "sections": [
       {
@@ -1978,7 +1978,7 @@
     "links": [
       {
         "href": "/guides/wall-of-text-video-for-saas",
-        "title": "Create a wall-of-text video",
+        "title": "Create a text on screen video",
         "description": "Connect the story with a footage and review workflow."
       },
       {
@@ -1993,8 +1993,8 @@
   {
     "slug": "wall-text-product-mention",
     "title": "Mention your SaaS naturally inside a text-led story",
-    "description": "Rewrite a heavy-handed product mention into a natural wall-of-text overlay based on a real, verifiable feature.",
-    "lede": "Rewrite a heavy-handed product mention into a natural wall-of-text overlay based on a real, verifiable feature.",
+    "description": "Rewrite a heavy-handed product mention into a natural text on screen overlay based on a real, verifiable feature.",
+    "lede": "Rewrite a heavy-handed product mention into a natural text on screen overlay based on a real, verifiable feature.",
     "intent": "Original heavy-handed versus specific rewrites with accurate product context",
     "sections": [
       {
@@ -2433,7 +2433,7 @@
       {
         "heading": "Pair each angle with an appropriate format",
         "paragraphs": [
-          "A reaction followed by real app footage can show the discovery. A wall-of-text overlay can describe the frustration, provided it is readable over the chosen footage. A slideshow can explain the use case one step at a time. These are planning options, not proof that any format performs better.",
+          "A reaction followed by real app footage can show the discovery. A text on screen overlay can describe the frustration, provided it is readable over the chosen footage. A slideshow can explain the use case one step at a time. These are planning options, not proof that any format performs better.",
           "Write the actual opening, supporting proof and viewer action for each option. If two angles have the same opening and same proof, combine them; changing a few adjectives does not create a useful independent concept."
         ]
       },
@@ -2576,8 +2576,8 @@
   {
     "slug": "wall-text-discovery-story",
     "title": "Turn a useful software discovery into a natural text-led video",
-    "description": "Write a discovery-style wall-of-text video using a real product feature without claiming a fictional personal experience.",
-    "lede": "Write a discovery-style wall-of-text video using a real product feature without claiming a fictional personal experience.",
+    "description": "Write a discovery-style text on screen video using a real product feature without claiming a fictional personal experience.",
+    "lede": "Write a discovery-style text on screen video using a real product feature without claiming a fictional personal experience.",
     "intent": "Full discovery overlays linked to demonstrable feature facts",
     "sections": [
       {
@@ -2756,7 +2756,7 @@
       {
         "heading": "Create the two concepts",
         "paragraphs": [
-          "Version A: a short reaction hook says “the next step is right here,” followed by a real recording that opens the note and shows its section. Version B: a wall-of-text overlay describes the same task and supported feature over appropriate footage. Each version should communicate the action accurately and use assets you have permission to publish.",
+          "Version A: a short reaction hook says “the next step is right here,” followed by a real recording that opens the note and shows its section. Version B: a text on screen overlay describes the same task and supported feature over appropriate footage. Each version should communicate the action accurately and use assets you have permission to publish.",
           "Keep a simple record of exact wording, duration, account, destination and dates. The versions do not need identical editing, but differences that matter should be documented. Do not call these drafts completed or claim a winner before actual evidence exists."
         ]
       },
@@ -2780,7 +2780,7 @@
       "columns": [
         "Item",
         "Reaction plus demo",
-        "Wall-of-text"
+        "Text on screen"
       ],
       "rows": [
         [
@@ -3409,8 +3409,8 @@
   {
     "slug": "reference-format-selection",
     "title": "Choose hook, talking-head, wall text or slideshow from a reference idea",
-    "description": "Choose between reaction-plus-demo, wall-of-text and slideshow treatments for the same SaaS message.",
-    "lede": "Choose between reaction-plus-demo, wall-of-text and slideshow treatments for the same SaaS message.",
+    "description": "Choose between reaction-plus-demo, text on screen and slideshow treatments for the same SaaS message.",
+    "lede": "Choose between reaction-plus-demo, text on screen and slideshow treatments for the same SaaS message.",
     "intent": "Same business brief expressed in distinct full formats with choice rationale",
     "sections": [
       {
@@ -3424,7 +3424,7 @@
         "heading": "Express the same brief three ways",
         "paragraphs": [
           "Reaction plus demo: “wait, the next steps are right here,” followed by a real recording that opens the note and holds the section. Choose this when the feature can be understood visually in a short sequence.",
-          "Wall of text: “the call is over. the follow-up is tomorrow. open the project note and check the next-step section.” Place the words over calm permissioned footage. Choose this when the situation and written observation are the main message.",
+          "Text on screen: “the call is over. the follow-up is tomorrow. open the project note and check the next-step section.” Place the words over calm permissioned footage. Choose this when the situation and written observation are the main message.",
           "Slideshow: “where did the next step go?” then the post-call situation, open the project note, check the section, and start with the next action. Choose this when the reader benefits from separate beats or instructions."
         ]
       },
@@ -3457,7 +3457,7 @@
           "Can the feature be understood on screen?"
         ],
         [
-          "Wall of text",
+          "Text on screen",
           "Written situation and supported fact",
           "Can the overlay be read in time?"
         ],
@@ -3499,7 +3499,7 @@
       {
         "heading": "Start with the promised task",
         "paragraphs": [
-          "Before reviewing style, write the opening promise and the product action the asset claims to show. Check the current app and record the supporting screen or source. A video, wall-of-text clip and carousel can make the same claim in different ways; each still needs accurate facts and appropriate permissions.",
+          "Before reviewing style, write the opening promise and the product action the asset claims to show. Check the current app and record the supporting screen or source. A video, text on screen clip and carousel can make the same claim in different ways; each still needs accurate facts and appropriate permissions.",
           "The examples in this guide are fictional review scenarios. They are not actual corrected exports, customer feedback or campaign outcomes."
         ]
       },
@@ -3511,7 +3511,7 @@
         ]
       },
       {
-        "heading": "Review a wall-of-text video or slideshow",
+        "heading": "Review a text on screen video or slideshow",
         "paragraphs": [
           "For a text-led clip, check the exact approved words, spelling, contrast and reading time across the moving background. A generated scene can illustrate context but does not prove customer use. For a slideshow, verify that the opening matches the body, each slide advances the task, any screen is genuine and sanitized, and the final destination delivers what the ending promises.",
           "Flag unsupported claims such as invented savings, guaranteed outcomes or a testimonial the speaker did not provide. Remove or substantiate them before sharing."
@@ -3539,7 +3539,7 @@
           "Actual product view"
         ],
         [
-          "Wall of text",
+          "Text on screen",
           "Can the approved words be read?",
           "Final export on phone"
         ],
@@ -4070,14 +4070,14 @@
   {
     "slug": "wall-text-background-match",
     "title": "Choose background footage that supports a dense written message",
-    "description": "Choose a background for a SaaS wall-of-text video by checking whether the footage supports the message and leaves the words readable.",
-    "lede": "Choose a background for a SaaS wall-of-text video by checking whether the footage supports the message and leaves the words readable.",
+    "description": "Choose a background for a SaaS text on screen video by checking whether the footage supports the message and leaves the words readable.",
+    "lede": "Choose a background for a SaaS text on screen video by checking whether the footage supports the message and leaves the words readable.",
     "intent": "Owned matched/mismatched footage examples with annotated exports",
     "sections": [
       {
         "heading": "Give the footage a supporting role",
         "paragraphs": [
-          "In a wall-of-text video, the words normally carry the main message. Choose footage that fits the situation without forcing the viewer to decode a second story at the same time. Before selecting a clip, write the approved overlay and identify the moment it describes.",
+          "In a text on screen video, the words normally carry the main message. Choose footage that fits the situation without forcing the viewer to decode a second story at the same time. Before selecting a clip, write the approved overlay and identify the moment it describes.",
           "This example is a fictional plan about finding next steps after a call. It does not describe an actual recorded clip or a measured creative result."
         ]
       },
@@ -4137,7 +4137,7 @@
     "links": [
       {
         "href": "/guides/wall-of-text-video-for-saas",
-        "title": "Plan the full wall-of-text video",
+        "title": "Plan the full text on screen video",
         "description": "Connect verified facts, copy and footage."
       },
       {
@@ -4989,8 +4989,8 @@
   {
     "slug": "one-saas-feature-three-social-formats",
     "title": "Turn one SaaS feature into hook-demo, talking-head and wall-text videos",
-    "description": "Plan the same verified SaaS feature as a reaction demo, a talking-head demo and a wall-of-text video.",
-    "lede": "Plan the same verified SaaS feature as a reaction demo, a talking-head demo and a wall-of-text video.",
+    "description": "Plan the same verified SaaS feature as a reaction demo, a talking-head demo and a text on screen video.",
+    "lede": "Plan the same verified SaaS feature as a reaction demo, a talking-head demo and a text on screen video.",
     "intent": "Three complete original assets using the same verified feature facts",
     "sections": [
       {
@@ -5006,10 +5006,10 @@
         ]
       },
       {
-        "heading": "Plan a talking-head demo and a wall-of-text video",
+        "heading": "Plan a talking-head demo and a text on screen video",
         "paragraphs": [
           "Talking-head script: “After a call, open the project note and check the next-step section.” Show the real navigation as the speaker names it, then hold the section long enough to read. Verify the real interface and do not imply the app created or sent a follow-up.",
-          "Wall-of-text overlay: “the call is over. the follow-up is tomorrow. open the project note and check the next step.” Pair the exact words with calm permissioned footage. The spoken version explains while showing the app; the text-led version carries the situation in written copy."
+          "Text on screen overlay: “the call is over. the follow-up is tomorrow. open the project note and check the next step.” Pair the exact words with calm permissioned footage. The spoken version explains while showing the app; the text-led version carries the situation in written copy."
         ]
       },
       {
@@ -5038,7 +5038,7 @@
           "Speech aligned with the screen"
         ],
         [
-          "Wall of text",
+          "Text on screen",
           "Write the post-call situation",
           "Readable, supported copy"
         ]
@@ -5261,15 +5261,15 @@
   },
   {
     "slug": "wall-text-video-breakdowns",
-    "title": "How to review a wall-of-text video for a SaaS product",
-    "description": "Analyze overlay wording, reading time and moving footage in a permissioned wall-of-text video.",
-    "lede": "Analyze overlay wording, reading time and moving footage in a permissioned wall-of-text video. The sample is a fictional planning exercise; real annotated assets require permission and review.",
+    "title": "How to review a text on screen video for a SaaS product",
+    "description": "Analyze overlay wording, reading time and moving footage in a permissioned text on screen video.",
+    "lede": "Analyze overlay wording, reading time and moving footage in a permissioned text on screen video. The sample is a fictional planning exercise; real annotated assets require permission and review.",
     "intent": "A format-specific method for reviewing creative evidence.",
     "sections": [
       {
         "heading": "Choose a complete clip and its approved words",
         "paragraphs": [
-          "A meaningful wall-of-text breakdown shows the full approved overlay, its timing and the moving footage beneath it. Use an asset you own or have permission to show. A still image alone cannot establish that every line stays readable throughout the clip."
+          "A meaningful text on screen breakdown shows the full approved overlay, its timing and the moving footage beneath it. Use an asset you own or have permission to show. A still image alone cannot establish that every line stays readable throughout the clip."
         ]
       },
       {

@@ -4,6 +4,24 @@
   margin-inline: auto;
 }
 
+.header { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "heading actions" "description description"; align-items: center; gap: 12px 20px; min-width: 0; margin-bottom: 28px; }
+.heading { grid-area: heading; }
+.headerActions { grid-area: actions; flex-wrap: wrap; min-width: 0; }
+.mcpComingSoon { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; margin-inline: 6px; color: var(--muted); font-size: 11px; font-weight: 500; line-height: 14px; white-space: nowrap; }
+.comingSoonLabel { font-size: 8px; font-weight: 400; line-height: 10px; }
+.description { grid-area: description; }
+.shortcuts { grid-area: shortcuts; display: flex; align-items: center; gap: 16px; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 2px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.shortcut { display: inline-flex; align-items: center; flex-shrink: 0; min-height: 36px; color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; border-radius: 4px; }
+.shortcut:hover { color: var(--foreground-strong); }
+.shortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.toolShortcut { border-left: 1px solid var(--border); border-radius: 0; padding-left: 16px; }
+@media (max-width: 1199px) {
+  .header { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "heading actions" "description description"; gap: 10px 12px; }
+}
+@media (max-width: 639px) {
+  .header { grid-template-columns: minmax(0, 1fr); grid-template-areas: "heading" "actions" "description"; }
+}
+
 .workflowGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -123,7 +141,7 @@
   gap: 8px;
   border: 0;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--card) 82%, black);
+  background: color-mix(in srgb, var(--card) 94%, white);
   padding: 14px;
   text-align: left;
   transition: background-color 160ms ease;

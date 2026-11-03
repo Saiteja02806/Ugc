@@ -35,6 +35,12 @@ supabase/.temp/
 supabase/supabase/
 design/
 
+# Remotion authoring inputs and local review artifacts. Published MP4/WebP
+# derivatives remain available; originals remain in the repository for rendering.
+public/explore/covers/sources/
+public/explore/covers/*contact-sheet.png
+public/explore/covers/preview.html
+
 # Do not upload plaintext private pilot source material.
 lib/explore/creator-accounts.json
 lib/explore/creator-account-reviews.json

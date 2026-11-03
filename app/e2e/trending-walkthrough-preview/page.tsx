@@ -14,7 +14,7 @@ export default function TrendingWalkthroughPreviewPage() {
         <div>
           <h1 className="text-3xl font-semibold text-foreground-strong">Trending</h1>
           <p className="mt-1 text-sm text-muted">
-            Explore Carousel, Hook, and Wall-of-text content made from your
+            Explore Carousel, Hook, and Text on screen content made from your
             business profile.
           </p>
         </div>

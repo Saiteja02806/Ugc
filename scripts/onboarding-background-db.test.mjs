@@ -37,6 +37,20 @@ async function analyze(d) {
 }
 async function finalize(d) { return change(d.user_id,'finalize',payload(d,{jobId:d.finalization_job_id,analysis})); }
 
+test('Startup billing migration leaves executable grants and credit reservations after the full migration chain', async () => {
+  for (const [plan, credits] of [['starter',360],['growth',720],['startup',1800]]) {
+    const user = `billing-migration-${plan}-${randomUUID()}`;
+    const grant = await one('select public.grant_complimentary_plan($1,$2,$3,$4) result', [user,plan,'Local migration regression','local-test-admin']);
+    assert.equal(grant.result.creditLimit, credits);
+    const reservation = await one('select public.reserve_subscription_billing_credits($1,$2,$3,$4) result', [user,randomUUID(),'generate_image',1]);
+    assert.equal(reservation.result.amount,1);
+    assert.ok(reservation.result.reservationId);
+    const balance = await one('select credit_limit,reserved_credits from public.complimentary_plan_credit_balances where user_id=$1',[user]);
+    assert.equal(balance.credit_limit,credits);
+    assert.equal(balance.reserved_credits,1);
+  }
+});
+
 test('fresh submission atomically persists a draft and one recoverable job', async () => {
   const d=await start();
   assert.equal(d.step,2);

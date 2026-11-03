@@ -21,7 +21,7 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
   try {
     if (!process.argv.includes('--routes-only')) {
     await page.goto(`${base}/explore?preview=1`, { waitUntil: 'networkidle' });
-    for (const title of ['Hook video', 'Wall of text', 'Slideshows']) assert.equal(await page.getByRole('heading', { name: title, exact: true }).count(), 1);
+    for (const title of ['Hook video', 'Text on screen', 'Slideshows']) assert.equal(await page.getByRole('heading', { name: title, exact: true }).count(), 1);
     assert.equal(await page.locator('a[href="/audio-generation"]').count(), 0);
     assert.equal(await page.locator('a[href*="/explore/create-hook"],a[href*="/explore/creator-phone"]').count(), 0);
     assert.equal(await page.locator('[data-explore-shortcut]').count(), 6);
@@ -63,7 +63,7 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       console.log('PASS no browser errors or provider/account writes');
       return;
     }
-    for (const [route, title, view, generate] of [['hook-video','Hook video','Your Video','Generate video'], ['wall-of-text','Wall of text','Your Video','Generate video'], ['slideshows','Slideshows','Your Slides','Generate image']]) {
+    for (const [route, title, view, generate] of [['hook-video','Hook video','Your Video','Generate video'], ['wall-of-text','Text on screen','Your Video','Generate video'], ['slideshows','Slideshows','Your Slides','Generate image']]) {
       await page.goto(`${base}/explore/${route}?preview=1`, { waitUntil: 'networkidle' });
       await page.getByRole('heading', { name: title, exact: true, level: 1 }).waitFor();
       const gallery = page.getByRole('region', { name: 'References', exact: true });
@@ -255,7 +255,7 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       await dialog.getByRole('button', { name: /Saved creator clip/ }).click();
       assert.equal(await page.getByLabel('Your selected video', { exact: true }).isVisible(), true);
       await editSelected().click();
-      assert.equal(await page.getByRole('textbox', { name: format === 'hook' ? 'Overlay text' : 'Wall of text', exact: true }).isVisible(), true);
+      assert.equal(await page.getByRole('textbox', { name: format === 'hook' ? 'Overlay text' : 'Text on screen', exact: true }).isVisible(), true);
       await page.getByRole('tab', { name: 'Create', exact: true }).click();
       await page.getByRole('button', { name: 'Upload', exact: true }).click();
       assert.equal(await page.getByLabel('Your selected video', { exact: true }).isVisible(), true);
@@ -268,7 +268,7 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       await page.setViewportSize({ width: 1440, height: 1000 });
       console.log(`PASS ${format}: upload, saved creator video, source switching, editor and mobile layout`);
       await page.goto(`${base}/e2e/explore-format-preview?format=${format}`, { waitUntil: 'networkidle' });
-      const textarea = page.getByRole('textbox', { name: format === 'hook' ? 'Overlay text' : 'Wall of text', exact: true });
+      const textarea = page.getByRole('textbox', { name: format === 'hook' ? 'Overlay text' : 'Text on screen', exact: true });
       await page.getByRole('spinbutton', { name: 'Trim start', exact: true }).fill('1');
       await page.getByRole('spinbutton', { name: 'Trim end', exact: true }).fill('6');
       const text = 'First line\n\nSecond paragraph';

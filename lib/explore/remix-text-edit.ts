@@ -18,22 +18,22 @@ export function applyVideoTextRemix(edit: ExploreFormatEdit, output: RemixOutput
     if (previous.length === 2) return parseExploreFormatEdit({ ...edit, text: null, textOverlays: previous.map((style, index) => ({ ...style, value: index === 0 ? output.heading : output.body })) });
     // A deliberately saved single-region layout keeps its geometry and exact new copy.
     if (previous.length === 1) return parseExploreFormatEdit({ ...edit, text: null, textOverlays: [{ ...previous[0], value: `${output.heading}\n\n${output.body}` }] });
-    if (previous.length > 0) throw new Error("Review the Wall heading and body layout before applying it.");
-    if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review Wall text placement for this aspect ratio.");
+    if (previous.length > 0) throw new Error("Review the on-screen text heading and body layout before applying it.");
+    if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review on-screen text placement for this aspect ratio.");
     return parseExploreFormatEdit({ ...edit, text: null, textOverlays: initialWallHeadingBody(output.heading, output.body, regionProfile, duration, 1) });
   }
   // Compatibility only: frozen block-based receipts and saved drafts keep their old meaning.
   if (regionProfile?.structure === "heading-body-v1" && output.blocks.length === 1 && (previous.length === 0 || previous.length === 2)) {
     const [heading, ...paragraphs] = output.blocks[0].split(/\n\s*\n/u);
     const body = paragraphs.join("\n\n");
-    if (!body.trim()) throw new Error("Review the Wall heading and body before applying it.");
+    if (!body.trim()) throw new Error("Review the on-screen text heading and body before applying it.");
     if (previous.length === 2) return parseExploreFormatEdit({ ...edit, text: null, textOverlays: previous.map((style, index) => ({ ...style, value: index === 0 ? heading : body })) });
-    if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review Wall text placement for this aspect ratio.");
+    if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review on-screen text placement for this aspect ratio.");
     return parseExploreFormatEdit({ ...edit, text: null, textOverlays: initialWallHeadingBody(heading, body, regionProfile, duration, 1) });
   }
   if (regionProfile?.regions && previous.length > 1 && output.blocks.length === 1) {
     const paragraphs = output.blocks[0].split(/\n\s*\n/u);
-    if (previous.length !== regionProfile.regions.length || paragraphs.length !== regionProfile.regions.reduce((sum, region) => sum + region.paragraphs, 0)) throw new Error("Review the Wall text's separate regions before applying it.");
+    if (previous.length !== regionProfile.regions.length || paragraphs.length !== regionProfile.regions.reduce((sum, region) => sum + region.paragraphs, 0)) throw new Error("Review the on-screen text’s separate regions before applying it.");
     let offset = 0;
     return parseExploreFormatEdit({ ...edit, text: null, textOverlays: previous.map((style, index) => {
       const count = regionProfile.regions![index].paragraphs;
@@ -47,7 +47,7 @@ export function applyVideoTextRemix(edit: ExploreFormatEdit, output: RemixOutput
     ? wallTextProfile(source.referenceId, source.sourceSha256) : null;
   if (wallProfile && !wallProfile.structure) {
     if (wallProfile.regions) {
-      if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review Wall text placement for this aspect ratio.");
+      if (dimensions.width / dimensions.height < .54 || dimensions.width / dimensions.height > .59) throw new Error("Review on-screen text placement for this aspect ratio.");
       return parseExploreFormatEdit({ ...edit, text: null, textOverlays: initialWallRegions(output.blocks[0], wallProfile, duration) });
     }
     const text = initialWallText(output.blocks[0], wallProfile, duration, dimensions.width, dimensions.height);

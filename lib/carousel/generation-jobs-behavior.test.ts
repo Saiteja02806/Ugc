@@ -9,6 +9,15 @@ const carouselIds = [
   "carousel-5",
 ] as const;
 
+function resumeCarouselForTest(context: import("node:test").TestContext) {
+  const previous = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+  process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = "false";
+  context.after(() => {
+    if (previous === undefined) delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+    else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = previous;
+  });
+}
+
 let missingQueueEnvVars: string[] = [];
 let missingStorageEnvVars: string[] = [];
 let createBatchJobCalls = 0;
@@ -94,7 +103,8 @@ function resetSimulation() {
   sendCalls = 0;
 }
 
-test("simulates the historical missing Carousel task URL before any five-item batch is persisted", async () => {
+test("simulates the historical missing Carousel task URL before any five-item batch is persisted", async context => {
+  resumeCarouselForTest(context);
   resetSimulation();
   missingQueueEnvVars = ["GCP_CAROUSEL_TASK_URL or GCP_BACKGROUND_JOB_TASK_URL"];
 
@@ -118,7 +128,8 @@ test("simulates the historical missing Carousel task URL before any five-item ba
   assert.deepEqual(events, []);
 });
 
-test("simulates an ambiguous five-Carousel Cloud Tasks failure without terminalizing customer work", async () => {
+test("simulates an ambiguous five-Carousel Cloud Tasks failure without terminalizing customer work", async context => {
+  resumeCarouselForTest(context);
   resetSimulation();
   deliveryShouldFail = true;
 
@@ -143,4 +154,18 @@ test("simulates an ambiguous five-Carousel Cloud Tasks failure without terminali
       },
     },
   ]);
+});
+
+
+test("Carousel pause blocks batch reservation and dispatch before queue configuration", async () => {
+  resetSimulation();
+  const previous = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+  process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED="true";
+  try {
+    await assert.rejects(enqueueCarouselExperimentBatchJob({carouselIds, experimentBatchId:"held-batch", projectId:"project-1", textStyle:"plain", userId:"user-1"}), /temporarily on hold/);
+    assert.equal(createBatchJobCalls,0); assert.equal(sendCalls,0); assert.deepEqual(events,[]);
+  } finally {
+    if(previous===undefined) delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+    else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED=previous;
+  }
 });

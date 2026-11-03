@@ -217,14 +217,17 @@ export function createHookSourceFrameService(options: {
     if (!options.items && source.workflow === "talking_head") {
       const prepared = talkingFrames.items.find(item => item.id === referenceId && item.sourceSha256 === source.videoSha256);
       if (!prepared || prepared.frameIndex !== 0 || prepared.frameTimeSeconds !== 0 || prepared.path !== `/explore/talking-head-frames/v1/${referenceId}.png`) throw new HookSourceFrameError("This reference's starting frame needs preparation.", 503);
-      const frame = checkedFrame(await readFile(join(process.cwd(), "public", prepared.path)), source);
+      const frame = checkedFrame(await readFile(join(process.cwd(), "public/explore/talking-head-frames/v1", `${referenceId}.png`)), source);
       if (frame.frameSha256 !== prepared.frameSha256 || frame.width !== prepared.width || frame.height !== prepared.height) throw new HookSourceFrameError("The prepared starting frame changed. It needs review.", 409);
       return { ...frame, referenceId, workflow: "talking_head" };
     }
     const selected = options.useCuratedFrame === false ? undefined : getCuratedHookFrame(referenceId, source.videoSha256);
     if (options.useCuratedFrame !== false && !selected && hasCuratedHookFrame(referenceId)) throw new HookSourceFrameError("This video changed. Its selected frame needs review.", 409);
     if (selected) {
-      const png = await readFile(join(process.cwd(), "public", selected.publicPath));
+      if (!/^[a-f0-9]{64}$/.test(selected.sha256) || selected.publicPath !== `/explore/curated-hook-frames/v1/${selected.sha256}.png`) {
+        throw new HookSourceFrameError("The selected frame changed. Refresh the reference before continuing.", 409);
+      }
+      const png = await readFile(join(process.cwd(), "public/explore/curated-hook-frames/v1", `${selected.sha256}.png`));
       const frame = checkedFrame(png, source);
       if (frame.frameSha256 !== selected.sha256 || frame.width !== selected.width || frame.height !== selected.height) {
         throw new HookSourceFrameError("The selected frame changed. Refresh the reference before continuing.", 409);
@@ -260,7 +263,10 @@ export function createHookSourceFrameService(options: {
         }
         let bytes: Buffer;
         if (source.localFile) {
-          const path = join(process.cwd(), "public", source.localFile);
+          if (source.workflow !== "talking_head" || source.localFile !== `/explore/talking-head-references/v1/${source.id}.mp4`) {
+            throw new HookSourceFrameError("This Hook needs a source review before a starting frame can be prepared.", 409);
+          }
+          const path = join(process.cwd(), "public/explore/talking-head-references/v1", `${source.id}.mp4`);
           const metadata = await stat(path);
           if (!metadata.isFile() || metadata.size < 32 || metadata.size > MAX_VIDEO_BYTES) throw new HookSourceFrameError("The original video is incomplete or too large.");
           bytes = await readFile(path);

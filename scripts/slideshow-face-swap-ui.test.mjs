@@ -8,7 +8,7 @@ const picker = readFileSync(new URL("../components/explore/slideshow-reference-p
 const composer = readFileSync(new URL("../components/generation/ai-studio-composer.tsx", import.meta.url), "utf8");
 
 test("slideshow face swap is chosen in the composer and applied only to marked slides", () => {
-  assert.match(workspace, /aria-label="Face swap"/);
+  assert.match(readFileSync(new URL("../components/explore/slideshow-face-swap-control.tsx", import.meta.url), "utf8"), /aria-label="Face swap"/);
   assert.match(workspace, /planSlideshowFaceSwaps/);
   assert.doesNotMatch(workspace, /onFaceSwap=\{row\.asset/);
   assert.match(picker, /Face swap for source slide/);
@@ -49,4 +49,11 @@ test("selected-face affordability includes one charge per distinct slide and kee
   assert.match(workspace, /creditsRemaining < totalRequiredCredits/);
   assert.match(workspace, /totalRequiredCredits = requiredCredits \+ faceSwapCredits/);
   assert.match(workspace, /This generation uses \$\{requiredCredits\}/);
+});
+
+
+test("supporting photos survive ordered slide planning without additional swaps", () => {
+  const job = { jobId: "job", slideshowGeneration: { version: 1, batchKey: "b", slideIndex: 1, slideCount: 1, versionIndex: 1, versionCount: 1 } };
+  assert.deepEqual(planSlideshowFaceSwaps({ jobs: [job], sources: [{ slideId: "a" }], slideIds: ["a"], influencerAssetId: "primary", influencerReferenceAssetIds: ["support-1", "support-2"] }), [{ jobId: "job", influencerAssetId: "primary", influencerReferenceAssetIds: ["support-1", "support-2"] }]);
+  assert.equal(getSlideshowFaceSwapCredits(["a"], "primary", 1), 1);
 });

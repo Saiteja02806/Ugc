@@ -1,0 +1,31 @@
+{
+  "scope": "Actual application helpers with mocked Firebase primitives; no real browser or production data",
+  "checks": [
+    {
+      "case": "API token waits for auth restoration",
+      "result": "PASS"
+    },
+    {
+      "case": "API token rejects wrong account before retrieval",
+      "result": "PASS"
+    },
+    {
+      "case": "API token rejects an account switch during retrieval",
+      "result": "PASS"
+    },
+    {
+      "case": "explicit user-refresh network failure throws without logging out SDK",
+      "result": "PASS"
+    },
+    {
+      "case": "explicit user refresh before SDK restoration completes",
+      "result": "CONFIRMED_GAP",
+      "observed": "Returns null without waiting for authStateReady. Only explicit email/verification refresh callers identified; ordinary workflow clicks do not call this function."
+    },
+    {
+      "case": "account changes while explicit user refresh is pending",
+      "result": "CONFIRMED_GAP",
+      "observed": "Returns old mapped identity even though SDK currentUser changed. AuthContext refreshUser can write that stale identity. This is a race in explicit refresh callers, not established cause of reported workflow redirect."
+    }
+  ]
+}

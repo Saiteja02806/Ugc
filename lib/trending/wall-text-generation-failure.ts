@@ -153,7 +153,7 @@ export function classifyWallTextGenerationFailure(
       diagnostic,
       errorCode: WALL_TEXT_RENDER_FIT_REJECTED,
       publicMessage:
-        "Wall-of-text could not be arranged safely inside the video.",
+        "Text on screen could not be arranged safely inside the video.",
       retryable: false,
     };
   }
@@ -163,7 +163,7 @@ export function classifyWallTextGenerationFailure(
       diagnostic,
       errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
       publicMessage:
-        "Wall-of-text needs a different content idea before it can be prepared.",
+        "Text on screen needs a different content idea before it can be prepared.",
       retryable: false,
     };
   }
@@ -173,7 +173,7 @@ export function classifyWallTextGenerationFailure(
       diagnostic,
       errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
       publicMessage:
-        "Wall-of-text could not be saved because a required update is missing.",
+        "Text on screen could not be saved because a required update is missing.",
       retryable: false,
     };
   }
@@ -183,7 +183,7 @@ export function classifyWallTextGenerationFailure(
       diagnostic,
       errorCode: WALL_TEXT_RUNTIME_CONFIGURATION_ERROR,
       publicMessage:
-        "Wall-of-text is unavailable because a required runtime dependency is not configured.",
+        "Text on screen is unavailable because a required runtime dependency is not configured.",
       retryable: false,
     };
   }
@@ -193,7 +193,7 @@ export function classifyWallTextGenerationFailure(
       diagnostic,
       errorCode: WALL_TEXT_DEPENDENCY_UNAVAILABLE,
       publicMessage:
-        "Wall-of-text cannot be prepared because a required audio dependency is unavailable.",
+        "Text on screen cannot be prepared because a required audio dependency is unavailable.",
       retryable: false,
     };
   }
@@ -202,7 +202,7 @@ export function classifyWallTextGenerationFailure(
     return {
       diagnostic,
       errorCode: WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
-      publicMessage: "Wall-of-text preparation could not finish yet.",
+      publicMessage: "Text on screen preparation could not finish yet.",
       retryable: true,
     };
   }
@@ -211,7 +211,7 @@ export function classifyWallTextGenerationFailure(
     return {
       diagnostic,
       errorCode: WALL_TEXT_MODEL_OUTPUT_REFUSAL,
-      publicMessage: "Wall-of-text needs a different content idea before it can be prepared.",
+      publicMessage: "Text on screen needs a different content idea before it can be prepared.",
       retryable: false,
     };
   }
@@ -223,7 +223,7 @@ export function classifyWallTextGenerationFailure(
     return {
       diagnostic,
       errorCode: code,
-      publicMessage: "Wall-of-text preparation could not finish yet.",
+      publicMessage: "Text on screen preparation could not finish yet.",
       retryable: true,
     };
   }
@@ -239,7 +239,7 @@ export function classifyWallTextGenerationFailure(
   return {
     diagnostic,
     errorCode: "infrastructure_error",
-    publicMessage: "Wall-of-text preparation could not finish yet.",
+    publicMessage: "Text on screen preparation could not finish yet.",
     retryable: true,
   };
 }
@@ -305,14 +305,14 @@ function classifyProviderFailure(
   if (status === 400) {
     return {
       errorCode: WALL_TEXT_PROVIDER_INVALID_REQUEST,
-      publicMessage: "Wall-of-text preparation is temporarily unavailable.",
+      publicMessage: "Text on screen preparation is temporarily unavailable.",
       retryable: false,
     };
   }
   if (status === 401 || status === 403) {
     return {
       errorCode: WALL_TEXT_PROVIDER_AUTHENTICATION_FAILED,
-      publicMessage: "Wall-of-text preparation is temporarily unavailable.",
+      publicMessage: "Text on screen preparation is temporarily unavailable.",
       retryable: false,
     };
   }
@@ -327,14 +327,14 @@ function classifyProviderFailure(
   ) {
     return {
       errorCode: WALL_TEXT_PROVIDER_BILLING_LIMIT,
-      publicMessage: "Wall-of-text preparation is temporarily unavailable.",
+      publicMessage: "Text on screen preparation is temporarily unavailable.",
       retryable: false,
     };
   }
   if (status === 429 || name === "RateLimitError") {
     return {
       errorCode: WALL_TEXT_PROVIDER_RATE_LIMITED,
-      publicMessage: "Wall-of-text preparation could not finish yet.",
+      publicMessage: "Text on screen preparation could not finish yet.",
       retryable: true,
     };
   }
@@ -351,7 +351,7 @@ function classifyProviderFailure(
   ) {
     return {
       errorCode: WALL_TEXT_PROVIDER_TRANSIENT,
-      publicMessage: "Wall-of-text preparation could not finish yet.",
+      publicMessage: "Text on screen preparation could not finish yet.",
       retryable: true,
     };
   }

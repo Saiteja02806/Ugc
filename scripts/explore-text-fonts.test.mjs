@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import sharp from "sharp";
-import ffmpeg from "ffmpeg-static";
+import bundledFfmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import { EXPLORE_TEXT_FONTS, exploreTextWeights, applyFormatTextPreset, createFormatTextSvg, formatTextLayout, parseExploreFormatEdit } from "../worker/dist/lib/explore-format-edit.js";
 import { prepareExploreFormatEditFilter } from "../worker/dist/lib/explore-format-render.js";
@@ -15,6 +15,9 @@ import { readFormatEditDraft, prepareFormatEditForExport } from "../lib/explore/
 import { applyVideoTextRemix } from "../lib/explore/remix-text-edit.ts";
 
 const legacyText = { value: "What nobody tells you about this", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+// The worker image uses system FFmpeg with drawtext. Some Linux static builds
+// support decoding but omit that renderer; allow the same explicit tool choice.
+const ffmpeg = process.env.FFMPEG_PATH || bundledFfmpeg;
 const edit = text => ({ version: 1, format: "hook", trimStartMs: 0, trimEndMs: 2000, originalVolume: 1, musicVolume: .2, text });
 const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");

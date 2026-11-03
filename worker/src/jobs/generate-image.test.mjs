@@ -663,14 +663,25 @@ test("Gemini 3 Pro hook starting frame with openrouter provider routes to openro
     const customReceipt = { ...customPartial, purpose: "hook_starting_frame", promptVersion: 7,
       inputKey: hookKeyframeGenerationInputKey(customPartial), promptSha256: createHash("sha256").update(custom).digest("hex") };
     const next = seedreamFixture();
-    next.imageJob.input_json = { ...f.imageJob.input_json, prompt: custom, hookKeyframe: customReceipt, startingFrameOutfitPrompt: custom };
+    next.imageJob.input_json = { ...f.imageJob.input_json, prompt: custom, hookKeyframe: customReceipt, startingFrameOutfitPrompt: custom, startingFramePipelineVersion: 2 };
     await runGenerateImageJob(next.imageJob, next.context);
     assert.equal(openrouterCalls.at(-1).startingFrameOutfitPrompt, custom);
+    assert.equal(openrouterCalls.at(-1).imageSize, "2K");
+    assert.equal(outputOptions.at(-1).requireMatchingAspectRatio, true);
+    const lostAggregate = seedreamFixture();
+    lostAggregate.imageJob.input_json = { ...next.imageJob.input_json };
+    lostAggregate.context.store.markGenerationProviderSucceeded = async () => { throw Error("Database unavailable"); };
+    await assert.rejects(runGenerateImageJob(lostAggregate.imageJob, lostAggregate.context),
+      error => error.code === "image_stage_persistence_pending");
     assert.deepEqual(openrouterCalls.at(-1).referenceOptions, customPartial.referenceOptions);
     const mismatch = seedreamFixture();
     mismatch.imageJob.input_json = { ...next.imageJob.input_json, startingFrameOutfitPrompt: "Different outfit request" };
     const beforeMismatch = openrouterCalls.length;
     await assert.rejects(runGenerateImageJob(mismatch.imageJob, mismatch.context), /do not match the saved custom prompt/);
+    assert.equal(openrouterCalls.length, beforeMismatch);
+    const invalidVersion = seedreamFixture();
+    invalidVersion.imageJob.input_json = { ...next.imageJob.input_json, startingFramePipelineVersion: 3 };
+    await assert.rejects(runGenerateImageJob(invalidVersion.imageJob, invalidVersion.context), /Invalid starting-frame pipeline version/);
     assert.equal(openrouterCalls.length, beforeMismatch);
   } finally { sceneBytes = originalBytes; }
 });
@@ -755,4 +766,22 @@ test("a pipeline failure cannot write a successful aggregate operation or final 
     await assert.rejects(runGenerateImageJob(f.imageJob, f.context), /harmonization failed/);
     assert.equal(f.events.some(event => event.name === "succeeded" || event.name === "persisted"), false);
   } finally { openrouterError = undefined; }
+});
+
+test("face swap worker forwards every supporting identity photo and rejects excess before provider submission", async () => {
+  for (const count of [5, 6]) {
+    const f = seedreamFixture();
+    const refs = Array.from({ length: count }, (_, i) => `https://media.example.test/ref-${i}.png`);
+    Object.assign(f.imageJob.input_json, { model: "gemini_3_pro", provider: "openrouter", mode: "face_swap", referenceImageUrl: refs[0], referenceImageUrls: refs });
+    const before = openrouterCalls.length;
+    if (count === 6) {
+      await assert.rejects(runGenerateImageJob(f.imageJob, f.context), /one to four photos/);
+      assert.equal(openrouterCalls.length, before);
+    } else {
+      await runGenerateImageJob(f.imageJob, f.context);
+      assert.equal(openrouterCalls.length, before + 1);
+      assert.equal(openrouterCalls.at(-1).supportingIdentityImages.length, 3);
+      assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
+    }
+  }
 });

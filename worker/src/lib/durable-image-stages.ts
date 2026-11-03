@@ -59,13 +59,20 @@ export function createDurableImageStageRunner(params: {
     // Decode and normalize before recording a usable stage. Invalid output or a
     // lost storage acknowledgement must never permit another paid submission.
     const buffer = await sharp(result.buffer, { failOn: "warning" }).png().toBuffer();
-    const saved = await storage.write({ buffer, key, contentType: "image/png", cacheControl: "private, max-age=86400" });
     const metadata = { pipelineVersion: 1, stage, stagingKey: key, model: result.model,
       sha256: createHash("sha256").update(buffer).digest("hex") };
-    await params.store.markGenerationProviderSucceeded({ ...base, metadata,
-      // Harmonization is local, not a second provider operation with the same ID.
-      ...(stage !== "harmonize" && result.requestId ? { providerOperationId: result.requestId } : {}) });
-    await params.store.markGenerationOutputPersisted({ ...base, metadata, outputReference: saved.key, outputUrl: saved.url });
+    try {
+      const saved = await storage.write({ buffer, key, contentType: "image/png", cacheControl: "private, max-age=86400" });
+      await params.store.markGenerationProviderSucceeded({ ...base, metadata,
+        // Harmonization is local, not a second provider operation with the same ID.
+        ...(stage !== "harmonize" && result.requestId ? { providerOperationId: result.requestId } : {}) });
+      await params.store.markGenerationOutputPersisted({ ...base, metadata, outputReference: saved.key, outputUrl: saved.url });
+    } catch {
+      // Retry reads the deterministic object first. A missing object cannot grant
+      // another paid submission: the existing operation remains reserved/uncertain.
+      throw new RetryableJobError("The image stage save is unconfirmed; recovery will check the saved output before continuing.",
+        { code: "image_stage_persistence_pending", retryAfterSeconds: 30 });
+    }
     return { ...result, buffer };
   };
 }

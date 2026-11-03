@@ -65,7 +65,7 @@ test("Hook platform filters use source provenance and clear back to the whole ga
 
 test("gallery formats appear in the requested order", () => {
   assert.deepEqual(RECREATE_FORMATS, ["slideshow", "wall_text", "hook"]);
-  assert.deepEqual(RECREATE_FORMATS.map((format) => RECREATE_FORMAT_LABELS[format]), ["Slideshows", "Wall of Text", "Hook videos"]);
+  assert.deepEqual(RECREATE_FORMATS.map((format) => RECREATE_FORMAT_LABELS[format]), ["Slideshows", "Text on screen", "Hook videos"]);
 });
 
 test("video galleries mix platforms stably, including newer single-platform batches and unknown sources", () => {

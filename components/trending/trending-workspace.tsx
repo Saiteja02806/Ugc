@@ -1558,7 +1558,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted">
         Add your business details to prepare personalized Carousel, Hook, and
-        Wall-of-text content.
+        Text on screen content.
       </p>
       <button
         type="button"
@@ -2748,7 +2748,7 @@ export function TrendingDeck({
       setWallTextActionState({
         message: getErrorMessage(
           error,
-          "Could not save this Wall-of-text video.",
+          "Could not save this Text on screen video.",
         ),
         retryAction: "save",
         status: "error",
@@ -2778,7 +2778,7 @@ export function TrendingDeck({
       setWallTextActionState({
         message: getErrorMessage(
           error,
-          "Could not prepare this Wall-of-text video for scheduling.",
+          "Could not prepare this Text on screen video for scheduling.",
         ),
         retryAction: "schedule",
         status: "error",
@@ -3310,7 +3310,7 @@ function TrendingFormatPill({
   const label = isHook
     ? "Reel Hook"
     : isWallText
-      ? "Wall-of-Text"
+      ? "Text on screen"
       : isReaction
         ? "Reaction Reel"
         : "Slideshow";
@@ -3941,7 +3941,7 @@ function TrendingWallTextDeckCard({
           presentation === "video_peek" ? "true" : undefined
         }
         data-trending-vertical-frame
-        aria-label={`${creative.title}, Wall-of-text content ${itemIndex + 1} of ${itemCount}`}
+        aria-label={`${creative.title}, Text on screen content ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
@@ -4748,7 +4748,7 @@ async function saveWallTextDraft(item: TrendingWallTextFeedItem) {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
-    throw new Error("Sign in before saving this Wall-of-text video.");
+    throw new Error("Sign in before saving this Text on screen video.");
   }
 
   const response = await fetch("/api/trending/wall-text/drafts", {
@@ -4770,7 +4770,7 @@ async function saveWallTextDraft(item: TrendingWallTextFeedItem) {
     throw new Error(
       data?.ok === false && data.error
         ? data.error
-        : "Could not save this Wall-of-text video.",
+        : "Could not save this Text on screen video.",
     );
   }
 
@@ -4784,7 +4784,7 @@ async function createPendingWallTextSchedule(params: {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
-    throw new Error("Sign in before scheduling this Wall-of-text Reel.");
+    throw new Error("Sign in before scheduling this Text on screen Reel.");
   }
 
   const response = await fetch("/api/trending/wall-text/schedules", {
@@ -4816,7 +4816,7 @@ async function createPendingWallTextSchedule(params: {
     throw new Error(
       data?.ok === false && data.message
         ? data.message
-        : "Could not schedule this Wall-of-text Reel.",
+        : "Could not schedule this Text on screen Reel.",
     );
   }
 

@@ -1164,8 +1164,8 @@ export function SchedulingWorkspace() {
         storeServerSchedule(renderResult.schedule);
         setActionNotice(
           renderResult.status === "ready"
-            ? "Wall-of-text video is ready; scheduling is retrying."
-            : "Wall-of-text video preparation resumed.",
+            ? "Text on screen video is ready; scheduling is retrying."
+            : "Text on screen video preparation resumed.",
         );
         return;
       }
@@ -3184,7 +3184,7 @@ function SelectedDayDraftCard({
   const primaryMediaLabel = isCarouselDraft(draft)
     ? "Carousel"
     : isWallTextDraft
-      ? "Wall video"
+      ? "Text on screen video"
       : "Reel clip";
   const primaryMediaValue = isWallTextDraft && !demoMedia
     ? draft.status === "render_failed"

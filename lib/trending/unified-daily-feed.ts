@@ -1,3 +1,4 @@
+import { isAutomaticCarouselGenerationPaused } from "@/lib/carousel/generation-hold";
 import "server-only";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
@@ -218,8 +219,8 @@ export async function readUnifiedTrendingDailyFeed(params: {
           createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
             "wall_text",
             reservedAllocation.wall_text === 0
-              ? "Wall-of-text is disabled in this content mix."
-              : "Wall-of-text is not enabled for this environment.",
+              ? "Text on screen is disabled in this content mix."
+              : "Text on screen is not enabled for this environment.",
         ),
       ),
     reservedAllocation.reaction > 0
@@ -313,6 +314,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       preparationResults: new Map(),
     }),
     requiresPreparation:
+      !isAutomaticCarouselGenerationPaused() &&
       !trialAccessBlocked &&
       !isHistoricalFeed &&
       (upgradeSlots > 0 ||
@@ -351,6 +353,7 @@ function getExistingFeedEntitlement(
 export function prepareUnifiedTrendingDailyFeed(params: Parameters<
   typeof ensureUnifiedTrendingDailyFeed
 >[0]) {
+  if (isAutomaticCarouselGenerationPaused()) return Promise.resolve();
   const timezone = normalizeTrendingTimezone(
     params.timezone ?? params.profile.trendingTimezone,
   );
@@ -413,7 +416,7 @@ function buildPreparingDailyFeed(params: {
       missingByFormat: params.allocation,
       preparationResults: new Map(),
     }),
-    requiresPreparation: true,
+    requiresPreparation: !isAutomaticCarouselGenerationPaused(),
   };
 }
 
@@ -481,6 +484,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   timezone?: string | null;
   userId: string;
 }) {
+  if (isAutomaticCarouselGenerationPaused()) return readUnifiedTrendingDailyFeed(params);
   const timezone = normalizeTrendingTimezone(
     params.timezone ?? params.profile.trendingTimezone,
   );
@@ -904,8 +908,8 @@ async function loadProviders(params: {
           createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
             "wall_text",
             params.allocation.wall_text === 0
-              ? "Wall-of-text is disabled in this content mix."
-              : "Wall-of-text is not enabled for this environment.",
+              ? "Text on screen is disabled in this content mix."
+              : "Text on screen is not enabled for this environment.",
         ),
       ),
     params.allocation.reaction > 0
@@ -986,7 +990,7 @@ async function prepareMissingFormats(params: {
             result.status === "failed"
               ? {
                   failureMessage:
-                    "Wall-of-text content could not be prepared. Try again shortly.",
+                    "Text on screen content could not be prepared. Try again shortly.",
                   status: "failed",
                 }
               : { status: "scheduled" },
@@ -996,7 +1000,7 @@ async function prepareMissingFormats(params: {
           console.error("Could not prepare reserved Wall-of-text positions:", error);
           results.set("wall_text", {
             failureMessage:
-              "Wall-of-text content could not be prepared. Try again shortly.",
+              "Text on screen content could not be prepared. Try again shortly.",
             status: "failed",
           });
         }),

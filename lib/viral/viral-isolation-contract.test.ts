@@ -47,7 +47,7 @@ test("shows Explore and standalone Audio in the primary navigation", () => {
 
 test("renders direct Hook and Wall of Text libraries without Instagram embeds", () => {
   assert.match(viralWorkspace, /label: "Hook Videos"/);
-  assert.match(viralWorkspace, /label: "Wall of Text"/);
+  assert.match(viralWorkspace, /label: "Text on screen"/);
   assert.match(viralWorkspace, /role="tablist"/);
   assert.match(viralWorkspace, /\/api\/explore\/hook-videos/);
   assert.match(viralWorkspace, /\/api\/explore\/wall-text-videos/);
@@ -127,14 +127,13 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(
     videoWorkspace,
-    /isExploreRecreate && !activeReferenceImageUrl[\s\S]*?setReferenceImageRequiredDialogOpen\(true\)/,
+    /!pendingSubmission && isExploreRecreate && !activeReferenceImageUrl[\s\S]*?setReferenceImageRequiredDialogOpen\(true\)/,
   );
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{\["image"\]\}/,
+    /activeReferenceImageUrl = startingFrame\?\.url/,
   );
-  assert.match(videoWorkspace, /Explore Recreate/);
-  assert.match(videoWorkspace, /Image required/);
+  assert.match(videoWorkspace, /This Explore format requires an image reference/);
   assert.match(
     videoWorkspace,
     /Add a reference image to recreate this video/,

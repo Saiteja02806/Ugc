@@ -28,7 +28,7 @@ export function createWallScheduleComposition({ ownerId, sourceAssetId, title, c
     selectionError || (!sourceAssetId || !isExploreUuid(sourceAssetId) ? "Choose a saved video before scheduling." :
       !clip || clip.sourceId !== sourceAssetId ? "Loading the selected video's edit settings…" : clip.error);
   if (!error && clip) try {
-    if (clip.editing.format !== "wall_text") throw new Error("Review the Wall of text edit settings before scheduling.");
+    if (clip.editing.format !== "wall_text") throw new Error("Review the Text on screen edit settings before scheduling.");
     draft = parseExploreFinishDraft({ version: 1, kind: "hook", sourceAssetId,
       demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", subtitles: null,
       backgroundAssetId: clip.backgroundAssetId ?? null,

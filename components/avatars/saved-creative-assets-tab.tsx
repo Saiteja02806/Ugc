@@ -28,7 +28,7 @@ const savedCreativeFilters: Array<{
 }> = [
   { icon: Layers, label: "All", value: "all" },
   { icon: Video, label: "Hook videos", value: "hook_video" },
-  { icon: AlignLeft, label: "Wall-of-Text", value: "wall_text" },
+  { icon: AlignLeft, label: "Text on screen", value: "wall_text" },
   { icon: GalleryHorizontal, label: "Carousels", value: "carousel" },
 ];
 
@@ -137,7 +137,7 @@ export function SavedCreativeAssetsTab() {
                   No saved content yet
                 </h3>
                 <p className="mt-1.5 max-w-md text-xs sm:text-sm text-muted">
-                  Save reviewed Reel hooks, Wall-of-Text videos, or Carousels from Trending, and they will appear here ready to schedule.
+                  Save reviewed Reel hooks, Text on screen videos, or Carousels from Trending, and they will appear here ready to schedule.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                   <Link

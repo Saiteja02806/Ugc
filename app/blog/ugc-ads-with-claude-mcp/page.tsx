@@ -126,7 +126,7 @@ export default function UgcAdsWithClaudeMcpPage() {
           Pick a hook. Keep the claim honest: no invented numbers, customers or outcomes. Vidmake can also pull your saved brand profile with <ArticleCode>get_saas_brand</ArticleCode>, so Claude can keep the tone consistent with your brand.
         </p>
         <p>
-          Need hook formats to start from? Ask Claude to browse Vidmake&apos;s reference catalogue (<ArticleCode>list_references</ArticleCode>) for hook, wall-of-text and slideshow formats, then remix the text for your product with <ArticleCode>remix_reference_text</ArticleCode>.
+          Need hook formats to start from? Ask Claude to browse Vidmake&apos;s reference catalogue (<ArticleCode>list_references</ArticleCode>) for hook, text on screen and slideshow formats, then remix the text for your product with <ArticleCode>remix_reference_text</ArticleCode>.
         </p>
 
         <ArticleH2>Step 4: Generate the video</ArticleH2>

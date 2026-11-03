@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import {
@@ -47,6 +48,7 @@ export function useSocialOAuthPopup(params?: {
   onPopupClosed?: (context: PopupClosedContext) => boolean | Promise<boolean>;
   onResult?: (result: SocialOAuthResultMessage) => void | Promise<void>;
 }) {
+  const attemptRef = useRef<AbortController | null>(null);
   const popupRef = useRef<Window | null>(null);
   const closePollRef = useRef<number | null>(null);
   const onPopupClosedRef = useRef(params?.onPopupClosed);
@@ -80,6 +82,8 @@ export function useSocialOAuthPopup(params?: {
   }, []);
 
   const closePopup = useCallback(() => {
+    attemptRef.current?.abort();
+    attemptRef.current = null;
     clearClosePoll();
 
     if (popupRef.current && !popupRef.current.closed) {
@@ -102,6 +106,8 @@ export function useSocialOAuthPopup(params?: {
         return;
       }
 
+      attemptRef.current?.abort();
+      attemptRef.current = null;
       clearClosePoll();
       if (event.data.status === "success") {
         popupRef.current?.close();
@@ -126,6 +132,8 @@ export function useSocialOAuthPopup(params?: {
 
     return () => {
       window.removeEventListener("message", receiveOAuthResult);
+      attemptRef.current?.abort();
+      attemptRef.current = null;
       clearClosePoll();
 
       if (popupRef.current && !popupRef.current.closed) {
@@ -164,41 +172,64 @@ export function useSocialOAuthPopup(params?: {
         return;
       }
 
+      attemptRef.current?.abort();
+      const attempt = new AbortController();
+      attemptRef.current = attempt;
       popupRef.current = popup;
+      clearClosePoll();
+      closePollRef.current = window.setInterval(() => {
+        if (popup.closed && attemptRef.current === attempt) {
+          attempt.abort();
+        }
+      }, 500);
 
       try {
-        const token = await getCurrentUserIdToken();
+        const data = await withReadDeadline(async (signal) => {
+          const token = await getCurrentUserIdToken();
+          signal.throwIfAborted();
 
-        if (!token) {
-          throw new Error("Sign in before connecting a social account.");
-        }
+          if (!token) {
+            throw new Error("Sign in before connecting a social account.");
+          }
 
-        const response = await fetch("/api/social/oauth/start", {
-          body: JSON.stringify({
-            carouselId: input.carouselId,
-            connectionId: input.expectedConnectionId,
-            forceConsent: input.forceConsent === true,
-            intent: input.intent ?? "add",
-            libraryItemId: input.libraryItemId,
-            platform: input.platform,
-            provider: getProviderForPlatform(input.platform),
-            returnTo: input.returnTo,
-          }),
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-        });
-        const data = (await response.json().catch(() => null)) as
-          | StartConnectionResponse
-          | null;
+          const response = await fetch("/api/social/oauth/start", {
+            body: JSON.stringify({
+              carouselId: input.carouselId,
+              connectionId: input.expectedConnectionId,
+              forceConsent: input.forceConsent === true,
+              intent: input.intent ?? "add",
+              libraryItemId: input.libraryItemId,
+              platform: input.platform,
+              provider: getProviderForPlatform(input.platform),
+              returnTo: input.returnTo,
+            }),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+            signal,
+          });
+          const data = (await response.json().catch(() => null)) as
+            | StartConnectionResponse
+            | null;
 
-        if (!response.ok || data?.ok !== true) {
+          signal.throwIfAborted();
+
+          if (!response.ok || data?.ok !== true) {
+            throw new Error(
+              data?.ok === false
+                ? data.message
+                : "Could not start the account connection.",
+            );
+          }
+
+          return data;
+        }, attempt.signal);
+        if (attemptRef.current !== attempt) return;
+        if (popup.closed) {
           throw new Error(
-            data?.ok === false
-              ? data.message
-              : "Could not start the account connection.",
+            "The connection window was closed before authorization finished.",
           );
         }
 
@@ -206,7 +237,7 @@ export function useSocialOAuthPopup(params?: {
         popup.focus();
         clearClosePoll();
         closePollRef.current = window.setInterval(() => {
-          if (!popup.closed) {
+          if (!popup.closed || attemptRef.current !== attempt) {
             return;
           }
 
@@ -217,14 +248,18 @@ export function useSocialOAuthPopup(params?: {
           setConnectingIntent(null);
 
           void (async () => {
-            const handled = await onPopupClosedRef.current?.({
-              expectedConnectionId: input.expectedConnectionId ?? null,
-              intent: input.intent ?? "add",
-              platform: input.platform,
-              previousConnectionUpdatedAt:
-                input.previousConnectionUpdatedAt ?? null,
-              provider: getProviderForPlatform(input.platform),
-            });
+            const handled = await withReadDeadline(
+              async () => onPopupClosedRef.current?.({
+                expectedConnectionId: input.expectedConnectionId ?? null,
+                intent: input.intent ?? "add",
+                platform: input.platform,
+                previousConnectionUpdatedAt:
+                  input.previousConnectionUpdatedAt ?? null,
+                provider: getProviderForPlatform(input.platform),
+              }),
+              attempt.signal,
+            ).catch(() => false);
+            if (attemptRef.current !== attempt) return;
 
             if (handled) {
               setPopupError(null);
@@ -238,6 +273,8 @@ export function useSocialOAuthPopup(params?: {
           })();
         }, 500);
       } catch (error) {
+        if (attemptRef.current !== attempt) return;
+        attemptRef.current = null;
         clearClosePoll();
         popup.close();
         popupRef.current = null;
@@ -245,9 +282,11 @@ export function useSocialOAuthPopup(params?: {
         setConnectingConnectionId(null);
         setConnectingIntent(null);
         setPopupError(
-          error instanceof Error
-            ? error.message
-            : "Could not start the account connection.",
+          popup.closed && attempt.signal.aborted
+            ? "The connection window was closed before authorization finished."
+            : error instanceof Error
+              ? error.message
+              : "Could not start the account connection.",
         );
         setPopupErrorCode(null);
       }
@@ -310,7 +349,7 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
     case "eligible_instagram_account_missing":
     case INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR:
       message =
-        "This Instagram profile is not a Creator account yet. Switch it to a Creator account, then try again.";
+        "This Instagram profile needs a professional account (Creator or Business). Switch account type, then try again.";
       break;
     case "invalid_or_expired_state":
       message = "This connection request expired. Start the connection again.";

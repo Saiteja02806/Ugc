@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Filter, Layers3, LockKeyhole, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter, Layers3, LockKeyhole, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCoverPlayback } from "@/components/explore/use-cover-playback";
@@ -190,25 +190,22 @@ export function FilterMenu({ activeCategories, categories, disabled, onClear, on
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, showActionLabel = false, overlayActions = false, canOpenSource = false, hideRecreate = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean; hideRecreate?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, overlayActions = false, canOpenSource = false, hideRecreate = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean; hideRecreate?: boolean }) {
   const source = getReferenceSource(reference);
   const overlay = overlayActions && reference.format === "hook";
   const sourceLabel = source ? referenceSourceLabel(source) : "";
   return <article data-reference-id={reference.id} className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
-      {reference.isNew ? <span data-reference-new className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-foreground-strong px-2.5 py-1 text-[11px] font-semibold leading-none" style={{ color: "#101014" }}>New</span> : null}
+      {reference.isNew ? <span data-reference-new className={studio.referenceNewBadge}><span aria-hidden="true" className={studio.referenceNewDot} />New</span> : null}
       {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
-      {overlay && !hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate-overlay className="absolute bottom-3 right-3 z-10 inline-flex size-9 items-center justify-center rounded-full border border-white/30 bg-black/50 text-white shadow-[0_2px_8px_rgba(0,0,0,0.45)] backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+      {!hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate data-reference-recreate-overlay data-selected={isSelected || undefined} className={studio.referenceRecreateButton}>
         <RotateCcw className="size-4" aria-hidden="true" />
-      </button> : null}
-      {!hideRecreate && !showActionLabel && !overlay ? <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", reference.format === "slideshow" && "rounded-full", compact ? "top-3" : "bottom-3", isSelected ? "border-white bg-black/60 text-white" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:border-white")} aria-label={`Recreate ${reference.title}`} title={isSelected ? "Selected reference" : "Recreate this reference"}>
-        {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
+        <span>Recreate</span>
       </button> : null}
     </div>
     {compact && !hideCaption && !overlay && (reference.format !== "slideshow" || source || isSelected) ? <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-1.5">{reference.format !== "slideshow" ? <p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p> : null}{source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} showLabel={reference.format === "slideshow"} /> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-foreground-strong">Selected</span> : null}</div> : null}
     {!compact && reference.format === "slideshow" && source ? <div className="mt-2"><ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} showLabel /></div> : null}
-    {!hideRecreate && showActionLabel && !overlay ? <Button type="button" variant="outline" data-reference-recreate aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} onClick={onRecreate} className={cn("mt-2 h-9 w-full gap-2 px-2 text-xs", reference.format === "slideshow" && "rounded-full")}>{isSelected ? <Check className="size-4" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}<span>{isSelected ? "Selected" : "Recreate"}</span></Button> : null}
   </article>;
 }
 
@@ -216,7 +213,7 @@ export function ReferenceSourceAction({ source, label, canOpen, overlay = false,
   const subscription = useBillingSubscription({ freshOnMount: true, refreshOnFocus: true });
   const sourceAllowed = canOpen && canOpenReferenceSource(subscription);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const className = overlay ? "absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" : cn("inline-flex shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", showLabel ? "min-h-6 gap-1.5 px-1 text-xs" : "size-6");
+  const className = overlay ? cn(studio.referenceSourceOverlay, "absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white") : cn("inline-flex shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", showLabel ? "min-h-6 gap-1.5 px-1 text-xs" : "size-6");
   const icon = <SocialPlatformIcon platform={source.platform} className={cn(overlay ? "size-[18px] text-current drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" : "size-3.5 text-current", source.platform === "tiktok" && "fill-current")} />;
   const content = <>{icon}{showLabel ? <span>{source.kind === "profile" ? "Creator profile" : "Original post"}</span> : null}</>;
   return <>{sourceAllowed ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={referenceSourceLabel(source)} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{content}</a>

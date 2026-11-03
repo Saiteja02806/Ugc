@@ -1,0 +1,64 @@
+{
+  "scope": "active publishing service, last week, latest 1000 projected log rows",
+  "recentCompletions": [
+    {
+      "timestamp": "2026-10-30T15:30:32.613915Z",
+      "delaySeconds": 18
+    },
+    {
+      "timestamp": "2026-10-30T07:47:19.723857Z",
+      "delaySeconds": 7
+    },
+    {
+      "timestamp": "2026-10-30T06:30:51.503261Z",
+      "delaySeconds": 12
+    },
+    {
+      "timestamp": "2026-10-29T14:06:37.517365Z",
+      "delaySeconds": 23
+    },
+    {
+      "timestamp": "2026-10-29T14:06:22.607145Z",
+      "delaySeconds": 7
+    },
+    {
+      "timestamp": "2026-10-29T13:36:14.719956Z",
+      "delaySeconds": 1
+    }
+  ],
+  "recognizedEvents": [
+    {
+      "Name": "Instagram publish request started",
+      "Count": 10
+    },
+    {
+      "Name": "Social publish timing completed",
+      "Count": 23
+    },
+    {
+      "Name": "Social publish timing recorded",
+      "Count": 24
+    },
+    {
+      "Name": "Social publish worker started",
+      "Count": 24
+    }
+  ],
+  "errorCodes": [
+    {
+      "Name": "tiktok_internal_error",
+      "Count": 1
+    }
+  ],
+  "httpStatuses": [
+    {
+      "Name": "200",
+      "Count": 23
+    },
+    {
+      "Name": "503",
+      "Count": 2
+    }
+  ],
+  "rows": 368
+}

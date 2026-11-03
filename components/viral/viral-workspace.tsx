@@ -92,22 +92,22 @@ const EXPLORE_SECTION_CONFIG: Record<ExploreSection, ExploreSectionConfig> = {
   },
   wall_text: {
     description:
-      "Study Wall of Text references, then recreate the format in AI Studio with your own reference image.",
+      "Study Text on screen references, then recreate the format in AI Studio with your own reference image.",
     emptyDescription:
-      "Wall of Text videos will appear here after they are imported to Explore.",
-    emptyTitle: "No Wall of Text videos yet",
+      "Text on screen videos will appear here after they are imported to Explore.",
+    emptyTitle: "No Text on screen videos yet",
     endpoint: "/api/explore/wall-text-videos",
-    label: "Wall of Text",
+    label: "Text on screen",
     previewDescription:
-      "This Wall of Text reference shows a proven way to hold attention. With Pro, you can watch the complete library and create your own version.",
+      "This Text on screen reference shows a proven way to hold attention. With Pro, you can watch the complete library and create your own version.",
     previewFeatures: [
       "Study pacing and full-screen text treatments.",
-      "Bring any Wall of Text reference into AI Studio.",
+      "Bring any Text on screen reference into AI Studio.",
       "Recreate it in your own visual style.",
     ],
-    previewTitle: "Turn a Wall of Text reference into your next video.",
+    previewTitle: "Turn a Text on screen reference into your next video.",
     referenceType: "wall_text",
-    videoLabel: "Wall of Text video",
+    videoLabel: "Text on screen video",
   },
 };
 

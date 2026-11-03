@@ -1,7 +1,8 @@
 import { escapeAssText, type SubtitleLayout } from "./captions.ts";
 import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.ts";
 
-export const EDITORIAL_FAMILY = "Vidmake Editorial Study";
+// Internal family embedded in the bundled font; independent of the product name.
+export const EDITORIAL_FAMILY = "UGCPilot Editorial Study";
 export const EDITORIAL_RENDER_VERSION = "editorial-v1";
 export type EditorialFont = "lead" | "hero" | "support";
 export type InkBounds = { left: number; top: number; width: number; height: number };

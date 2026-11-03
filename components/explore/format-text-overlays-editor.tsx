@@ -50,7 +50,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
         </div>
       </div></details>;
   return <section className="space-y-3" aria-label="Text overlays">
-    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{wallText ? "Your wall of text" : "Text overlays"}</h2>
+    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{wallText ? "Your on-screen text" : "Text overlays"}</h2>
       <Button type="button" size="sm" variant="outline" disabled={editable.length >= MAX_FORMAT_TEXT_OVERLAYS || durationMs < 1} onClick={add}>Add text</Button></div>
     {fullDuration && !wallText ? <p className="text-xs leading-5 text-muted">This text stays on screen for the entire selected hook. Its timing follows your trim.</p> : !wallText ? <p className="text-xs leading-5 text-muted">Each text block has its own timing within the trimmed clip.</p> : null}
     {editable.length > 1 || text.value ? <div className="space-y-2" role="group" aria-label="Text blocks">
@@ -62,7 +62,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
       </div>)}
     </div> : null}
     {text ? <>
-      <label className="block space-y-2 text-xs text-muted">Text block {index + 1}<textarea aria-label={wallText ? "Wall of text" : "Overlay text"} placeholder="Type text to show on this clip…" value={text.value} onChange={event => update({ value: event.target.value })} rows={3} maxLength={wallText ? 6000 : 600} className={field} /></label>
+      <label className="block space-y-2 text-xs text-muted">Text block {index + 1}<textarea aria-label={wallText ? "Text on screen" : "Overlay text"} placeholder="Type text to show on this clip…" value={text.value} onChange={event => update({ value: event.target.value })} rows={3} maxLength={wallText ? 6000 : 600} className={field} /></label>
       {!automaticTiming ? <div className={tools.textTiming}><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} max={durationMs / 1000} step={.1} value={text.startMs / 1000} onChange={event => update({ startMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={durationMs / 1000} step={.1} value={text.endMs / 1000} onChange={event => update({ endMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label></div> : null}
       {showStyleControls ? styleTarget ? createPortal(styleControls, styleTarget) : styleControls : null}
     </> : <p className="text-xs text-muted">Add text to show a message at a specific time.</p>}

@@ -1,0 +1,53 @@
+{
+  "sdk": "Actual installed Firebase SDK, fake transport and test-only persistent storage adapter",
+  "results": [
+    {
+      "scenario": "healthy",
+      "userPresent": true,
+      "storedUserPresent": true,
+      "observerErrors": [],
+      "authEvents": [
+        true
+      ]
+    },
+    {
+      "scenario": "network",
+      "userPresent": true,
+      "storedUserPresent": true,
+      "observerErrors": [],
+      "authEvents": [
+        true
+      ]
+    },
+    {
+      "scenario": "outage",
+      "userPresent": false,
+      "storedUserPresent": false,
+      "observerErrors": [],
+      "authEvents": [
+        false
+      ]
+    },
+    {
+      "scenario": "throttled",
+      "userPresent": false,
+      "storedUserPresent": false,
+      "observerErrors": [],
+      "authEvents": [
+        false
+      ]
+    },
+    {
+      "scenario": "invalid",
+      "userPresent": false,
+      "storedUserPresent": false,
+      "observerErrors": [],
+      "authEvents": [
+        false
+      ]
+    }
+  ],
+  "requests": 15,
+  "conclusion": "SDK startup preserves stored users for network-request-failed but clears them for simulated non-network lookup errors including500 and429. This can cause a genuine loss on a full reload; it does not establish the cause of client-side workflow navigation in the affected browser.",
+  "limitations": "No real browser, persistence backend, production credentials or network requests."
+}

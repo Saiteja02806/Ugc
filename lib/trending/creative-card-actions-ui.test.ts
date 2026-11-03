@@ -320,7 +320,7 @@ test("labels every Trending card with its content format", () => {
   assert.match(workspace, /<TrendingFormatPill/);
   assert.match(workspace, /data-trending-format-pill/);
   assert.match(workspace, /"Reel Hook"/);
-  assert.match(workspace, /"Wall-of-Text"/);
+  assert.match(workspace, /"Text on screen"/);
   assert.match(workspace, /"Reaction Reel"/);
   assert.match(workspace, /isReaction[\s\S]*\? Sparkles/);
   assert.match(workspace, /Slideshow/);

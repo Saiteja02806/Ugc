@@ -11,17 +11,27 @@ import { mergeCharacterHistoryPages } from "@/lib/characters/history";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { cn } from "@/lib/utils";
 
-export type SlideshowFaceChoiceValue = { id: string; url: string; title: string };
+export type SlideshowFacePhoto = { id: string; url: string; title: string };
+export type SlideshowFaceChoiceValue = SlideshowFacePhoto & { referencePhotos?: SlideshowFacePhoto[] };
+export const MAX_SLIDESHOW_FACE_PHOTOS = 4;
 
-export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect }: {
+export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect, onBusyChange }: {
   ownerId?: string | null;
   selected: SlideshowFaceChoiceValue | null;
   disabled?: boolean;
   onSelect: (face: SlideshowFaceChoiceValue | null) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const selectedPhotos = selected ? [selected, ...(selected.referencePhotos ?? [])] : [];
+  function toggle(face: SlideshowFacePhoto) {
+    const next = selectedPhotos.some(photo => photo.id === face.id)
+      ? selectedPhotos.filter(photo => photo.id !== face.id)
+      : [...selectedPhotos, face].slice(0, MAX_SLIDESHOW_FACE_PHOTOS);
+    onSelect(next.length ? { id: next[0].id, url: next[0].url, title: next[0].title, referencePhotos: next.slice(1).map(({ id, url, title }) => ({ id, url, title })) } : null);
+  }
   const influencers = useInfiniteQuery({
     queryKey: ["hook-influencer-history", ownerId ?? "signed-out"],
     initialPageParam: null as string | null,
@@ -41,18 +51,30 @@ export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect }: {
     ...(uploads.data ?? []).map(asset => ({ id: asset.id, url: asset.url, title: asset.fileName || asset.title || "Uploaded photo" })),
   ].filter(face => face.id && face.url);
 
-  async function upload(file: File) {
+  async function upload(files: File[]) {
     if (!ownerId || disabled || uploading) return;
+    if (files.length > MAX_SLIDESHOW_FACE_PHOTOS - selectedPhotos.length) {
+      setUploadError(`Choose up to ${MAX_SLIDESHOW_FACE_PHOTOS - selectedPhotos.length} more photos of the same person.`);
+      if (input.current) input.current.value = "";
+      return;
+    }
     setUploading(true);
+    onBusyChange?.(true);
     setUploadError(null);
     try {
-      const media = await uploadAIStudioReferenceMedia(file, "image", 3, ownerId, { purpose: "explore-reference" });
-      onSelect({ id: media.asset.id, url: media.asset.url, title: media.asset.fileName || "Uploaded photo" });
-      void uploads.refetch();
+      const added: SlideshowFacePhoto[] = [];
+      for (const file of files) {
+        const media = await uploadAIStudioReferenceMedia(file, "image", 3, ownerId, { purpose: "explore-reference" });
+        added.push({ id: media.asset.id, url: media.asset.url, title: media.asset.fileName || "Uploaded photo" });
+      }
+      const next = [...new Map([...selectedPhotos, ...added].map(photo => [photo.id, photo])).values()];
+      onSelect({ id: next[0].id, url: next[0].url, title: next[0].title, referencePhotos: next.slice(1).map(({ id, url, title }) => ({ id, url, title })) });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Could not upload that photo. Try another.");
     } finally {
       setUploading(false);
+      onBusyChange?.(false);
+      void uploads.refetch();
       if (input.current) input.current.value = "";
     }
   }
@@ -60,13 +82,13 @@ export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect }: {
   return <div data-face-swap-control="" className="grid min-w-0 gap-2">
     <div className="flex items-center justify-between gap-2">
 
-      <Button type="button" variant="outline" size="sm" disabled={disabled || uploading || !ownerId} onClick={() => input.current?.click()}>
+      <Button type="button" variant="outline" size="sm" disabled={disabled || uploading || !ownerId || selectedPhotos.length >= MAX_SLIDESHOW_FACE_PHOTOS} onClick={() => input.current?.click()}>
         {uploading ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload className="size-3.5" aria-hidden="true" />}
         Upload photo
       </Button>
-      <input ref={input} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a face photo" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void upload(file); }} />
+      <input ref={input} className="sr-only" type="file" multiple tabIndex={-1} disabled={disabled || uploading || !ownerId} accept="image/png,image/jpeg,image/webp" aria-label="Upload face photos" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); if (files.length) void upload(files); }} />
     </div>
-    {selected ? <p className="text-xs text-muted">Selected: {selected.title}</p> : null}
+    <p className="text-xs text-muted">{selectedPhotos.length} of {MAX_SLIDESHOW_FACE_PHOTOS} photos selected. Use photos of the same person. The first is primary.</p>
     {uploadError ? <p role="alert" className="text-xs leading-5 text-destructive">{uploadError}</p> : null}
     {influencers.isError ? <div role="alert" className="space-y-1 text-xs">
       <p>Could not load your saved faces. Your current selection is kept.</p>
@@ -76,11 +98,13 @@ export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect }: {
       <p>Could not load your uploaded portraits. Your current selection is kept.</p>
       <Button type="button" variant="outline" size="sm" disabled={disabled || uploading || uploads.isFetching} onClick={() => void uploads.refetch()}>{uploads.isFetching ? "Retrying portraits…" : "Retry uploaded portraits"}</Button>
     </div> : null}
-    {influencers.isLoading || uploads.isLoading ? <p role="status" className="text-xs text-muted">Loading your faces…</p> : faces.length ? <div className="flex gap-2 overflow-x-auto py-1" role="listbox" aria-label="Faces for the selected slides">
-      {faces.map(face => {
-        const pressed = selected?.id === face.id;
-        return <button key={face.id} type="button" role="option" aria-selected={pressed} aria-label={face.title} title={face.title} disabled={disabled} onClick={() => onSelect(pressed ? null : face)} className={cn("relative size-14 shrink-0 overflow-hidden rounded-lg border bg-background focus-visible:outline-2 focus-visible:outline-focus", pressed ? "border-foreground" : "border-border")}>
-          <img src={face.url} alt="" width={56} height={56} className="size-full object-cover" />
+    {influencers.isLoading || uploads.isLoading ? <p role="status" className="text-xs text-muted">Loading your faces…</p> : faces.length || selectedPhotos.length ? <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="listbox" aria-multiselectable="true" aria-label="Faces for the selected slides">
+      {[...new Map([...selectedPhotos, ...faces].map(face => [face.id, face])).values()].map(face => {
+        const selectedIndex = selectedPhotos.findIndex(photo => photo.id === face.id);
+        const pressed = selectedIndex >= 0;
+        return <button key={face.id} type="button" role="option" aria-selected={pressed} aria-label={face.title} title={face.title} disabled={disabled || uploading || !pressed && selectedPhotos.length >= MAX_SLIDESHOW_FACE_PHOTOS} onClick={() => toggle(face)} className={cn("relative aspect-square w-full overflow-hidden rounded-lg border bg-background focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50", pressed ? "border-primary ring-2 ring-primary" : "border-border")}>
+          <img src={face.url} alt="" width={80} height={80} className="size-full object-cover" />
+          {pressed ? <span className="absolute inset-x-0 bottom-0 bg-background/90 text-[10px] leading-5">{selectedIndex === 0 ? "Primary" : `Photo ${selectedIndex + 1}`}</span> : null}
         </button>;
       })}
     </div> : !influencers.isError && !uploads.isError ? <p className="flex items-center gap-2 text-xs text-muted"><UserRound className="size-4" aria-hidden="true" />Upload a portrait or save an influencer to use as the face.</p> : null}

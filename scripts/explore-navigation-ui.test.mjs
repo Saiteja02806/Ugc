@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
@@ -95,16 +96,23 @@ test("AI character cover and caption remain inside a single live link without a 
     assert.equal(anchors[0].props.href, `/explore/build-character${localPreview ? "?preview=1" : ""}`);
     assert.equal(anchors[0].props.onClick, undefined);
     assert.equal(anchors[0].props.disabled, undefined);
-    assert.ok(nodes(anchors[0]).find(node => node.type === "video"));
+    const video = nodes(anchors[0]).find(node => node.type === "video");
+    const image = nodes(anchors[0]).find(node => node.type === "image");
+    assert.ok(video);
+    assert.equal(video.props.poster, image.props.src, "Native and optimized poster use the same revision");
+    const posterBytes = readFileSync(new URL(`../public${image.props.src}`, import.meta.url));
+    const posterHash = createHash("sha256").update(posterBytes).digest("hex").slice(0, 12);
+    assert.ok(image.props.src.endsWith(`-${posterHash}.webp`), "Poster filename must reflect its bytes to invalidate the optimized cache");
     assert.ok(nodes(anchors[0]).find(node => node.type === "indicator"));
   }
 });
 
 test("quick starts preserve destinations, duration and preview query parameters with per-link feedback", () => {
+  let currentUser = null;
   const { ExploreWorkspace } = load("components/explore/explore-workspace.tsx", {
     "@/components/layout/workspace-navigation-feedback": link,
     "next/link": { default: "next-link", __esModule: true },
-    "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: currentUser }) },
     "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
@@ -113,7 +121,20 @@ test("quick starts preserve destinations, duration and preview query parameters 
     "@/lib/explore/launch-presets": presets,
   });
   for (const localPreview of [false, true]) {
-    const anchors = nodes(ExploreWorkspace({ localPreview })).filter(node => node.type === "link");
+    const tree = ExploreWorkspace({ localPreview });
+    const mcp = nodes(tree).find(node => node.props?.className === "mcpComingSoon");
+    assert.equal(text(mcp), "MCPComing soon");
+    assert.equal(mcp.type, "span");
+    assert.equal(mcp.props.role, undefined);
+    assert.equal(mcp.props.tabIndex, undefined);
+    assert.equal(mcp.props.href, undefined);
+    assert.equal(mcp.props.onClick, undefined);
+    const actions = nodes(tree).filter(node => node.type === "next-link");
+    assert.deepEqual(actions.map(node => [text(node), node.props.href]), [["Upgrade", "/pricing"], ["Sign up", "/sign-in"]]);
+    assert.equal(nodes(tree).some(node => node.type === "nav" && node.props["aria-label"] === "Explore shortcuts"), false);
+    assert.equal(nodes(tree).filter(node => node.type === "workflow-card").length, workflows.EXPLORE_WORKFLOWS.length);
+    assert.equal(nodes(tree).filter(node => node.type === "character-card").length, 1);
+    const anchors = nodes(tree).filter(node => node.type === "link" && node.props["data-explore-shortcut"]);
     assert.equal(anchors.length, presets.EXPLORE_QUICK_STARTS.length);
     anchors.forEach((anchor, index) => {
       const shortcut = presets.EXPLORE_QUICK_STARTS[index];
@@ -129,6 +150,9 @@ test("quick starts preserve destinations, duration and preview query parameters 
       assert.equal(anchor.props.disabled, undefined);
     });
   }
+  currentUser = { uid: "signed-in" };
+  const signedInActions = nodes(ExploreWorkspace({})).filter(node => node.type === "next-link");
+  assert.deepEqual(signedInActions.map(node => text(node)), ["Upgrade"]);
 });
 
 test("Explore route has a loading boundary using the existing accessible workspace fallback", () => {

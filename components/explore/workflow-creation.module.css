@@ -344,3 +344,6 @@
 
 .whiteGenerate.whiteGenerate { background: #f5f3f0; color: #101014; }
 .whiteGenerate.whiteGenerate:hover { background: #dedbd7; color: #101014; }
+
+.blueGenerate.blueGenerate { background: var(--primary); color: var(--primary-foreground); }
+.blueGenerate.blueGenerate:hover { background: color-mix(in srgb, var(--primary) 88%, black); color: var(--primary-foreground); }

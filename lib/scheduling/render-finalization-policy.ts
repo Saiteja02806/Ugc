@@ -119,7 +119,7 @@ export function getWallTextRenderFinalizationDecision(params: {
     return {
       action: "reject" as const,
       code: "stale_wall_text_render",
-      message: "This Wall-of-text video is no longer the current version for the schedule.",
+      message: "This Text on screen video is no longer the current version for the schedule.",
     };
   }
 

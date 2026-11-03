@@ -124,7 +124,7 @@ export default function ShortFormVideoMarketingSaasPage() {
           Generate a 3-second talking-head hook via the <ArticleLink href="/hookvideos">Hook Video Studio</ArticleLink> introducing the frustration, then cut to a 10-second screen recording showing the feature in action.
         </p>
 
-        <ArticleH3>Format 2: Wall-of-Text Relatable Frustration (POV Video)</ArticleH3>
+        <ArticleH3>Format 2: Text on screen Relatable Frustration (POV Video)</ArticleH3>
         <p>
           Share an industry insight or contrarian opinion overlaid as high-contrast text on ambient background video. This format drives high comment debates and viral saves.
         </p>

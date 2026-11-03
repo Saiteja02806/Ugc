@@ -92,7 +92,7 @@ test("reference card clicks preview in-app and Recreate remains a separate actio
     assert.equal(h.previews, 1);
     assert.equal(h.recreations, 0);
     const recreate = tree.find(node => node.props?.["aria-label"] === "Recreate Reference");
-    assert.equal(recreate.type, "Button", "The overlay keeps the shared button's focus and disabled treatment");
+    assert.equal(recreate.type, "button", "Recreate is a native keyboard-accessible action separate from Preview");
     assert.equal(recreate.props["data-reference-recreate"], true);
     assert.equal(nodes(preview).includes(recreate), false, "Preview and Recreate cannot be nested interactive controls");
     recreate.props.onClick();

@@ -105,7 +105,7 @@ for (const flow of ["run", "swap"] as const) {
 for (const interruption of ["loseWrite", "loseReceipt"] as const) {
   test(`${interruption}: stored Stage 1 survives a lost acknowledgement without resubmission`, async () => {
     const f = await fixture(); f[interruption]();
-    await assert.rejects(f.run());
+    await assert.rejects(f.run(), error => error instanceof Error && "code" in error && error.code === "image_stage_persistence_pending");
     assert.equal(f.paid(), 1);
     await f.run(); assert.equal(f.paid(), 2);
   });

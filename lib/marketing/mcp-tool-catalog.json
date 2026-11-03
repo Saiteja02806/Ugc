@@ -344,7 +344,7 @@
         },
         {
           "name": "list_references",
-          "description": "Browse the application's published Hook, Wall-of-Text and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
+          "description": "Browse the application's published Hook, Text on screen and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
           "scope": "assets:read"
         },
         {

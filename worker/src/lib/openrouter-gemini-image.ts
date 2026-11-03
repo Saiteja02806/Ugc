@@ -1,6 +1,6 @@
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import { startingFrameReferenceInstructions, withStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "./starting-frame-reference-options.js";
-import { AI_STUDIO_IMAGE_RATIOS, type AIStudioImageRatio } from "./image-output.js";
+import { AI_STUDIO_IMAGE_RATIOS, assertImageOutputAspectRatio, type AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { harmonizeStartingFrameImage, STARTING_FRAME_HARMONIZER_GRAIN } from "./image-harmonizer.js";
 
@@ -16,7 +16,9 @@ const STARTING_FRAME_TEXT_CLEANUP = "STARTING-FRAME TEXT CLEANUP: Return a capti
 
 function startingFrameCleanup(outfitPrompt?: string, options?: StartingFrameReferenceOptions) {
   if (options) return STARTING_FRAME_TEXT_CLEANUP.replace("Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity;",
-    "Preserve the background and outfit selected in USER-SELECTED IMAGE ROLES while reconstructing their surfaces. Keep source camera, crop, pose, hands, props and influencer identity;");
+    options.hairstyle !== undefined
+      ? "Preserve the background, outfit and hairstyle selected in USER-SELECTED IMAGE ROLES while reconstructing their surfaces. Keep source camera, crop, pose, hands, props and influencer identity;"
+      : "Preserve the background and outfit selected in USER-SELECTED IMAGE ROLES while reconstructing their surfaces. Keep source camera, crop, pose, hands, props and influencer identity;");
   // Keep older accepted jobs' stage inputs byte-for-byte stable.
   return outfitPrompt ? STARTING_FRAME_TEXT_CLEANUP.replace("Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity;",
     "Preserve the user's explicitly requested outfit while removing its lettering. If no outfit change is requested, keep the source video's outfit. Keep the source room, objects, camera, crop, pose, hands, lighting and influencer identity;") : STARTING_FRAME_TEXT_CLEANUP;
@@ -168,6 +170,8 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
   aspectRatio: AIStudioImageRatio;
   referenceImages: { data: string; mimeType: string }[];
   identityReferenceStartIndex?: number;
+  /** New versioned starting-frame jobs only; absent keeps accepted stage inputs stable. */
+  imageSize?: "2K";
   /** Frozen on new jobs only; absent preserves historical stage fingerprints. */
   startingFrameTextCleanup?: boolean;
   startingFrameOutfitPrompt?: string;
@@ -186,10 +190,13 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
     params.referenceOptions ? "" : startingFrameOutfitInstructions(params.startingFrameOutfitPrompt),
     params.startingFrameTextCleanup ? startingFrameCleanup(params.startingFrameOutfitPrompt, params.referenceOptions) : ""].filter(Boolean).join("\n\n");
   const sceneInput = { prompt: scenePrompt,
+    ...(params.imageSize ? { imageSize: params.imageSize } : {}),
     aspectRatio: params.aspectRatio, referenceImages: params.referenceImages };
   const stage1 = await run("scene", sceneInput, () => generateOpenRouterGeminiImage(sceneInput,
     { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));
+  if (params.imageSize) await assertImageOutputAspectRatio(stage1.buffer, params.aspectRatio);
   const stage2Input = {
+    ...(params.imageSize ? { imageSize: params.imageSize } : {}),
     prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions, supportingImageCount: params.referenceImages.length - identityIndex - 1,
       startingFrameTextCleanup: params.startingFrameTextCleanup, startingFrameOutfitPrompt: params.startingFrameOutfitPrompt, referenceOptions: params.referenceOptions }),
     aspectRatio: params.aspectRatio,
@@ -200,6 +207,7 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
   };
   const stage2 = await run("identity", stage2Input, () => generateOpenRouterGeminiImage(stage2Input,
     { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));
+  if (params.imageSize) await assertImageOutputAspectRatio(stage2.buffer, params.aspectRatio);
   return run("harmonize", { image: stage2.buffer.toString("base64"), grain: STARTING_FRAME_HARMONIZER_GRAIN }, async () => ({
     ...stage2, buffer: (await harmonizeStartingFrameImage(stage2.buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN })).buffer,
   }));
@@ -215,6 +223,7 @@ export async function performOpenRouterFaceSwap(params: {
   runStage?: ImageStageRunner;
   baseImage: { data: string; mimeType: string };
   influencerImage: { data: string; mimeType: string };
+  supportingIdentityImages?: { data: string; mimeType: string }[];
   aspectRatio: AIStudioImageRatio;
   instructions?: string;
   apiKey?: string;
@@ -222,9 +231,9 @@ export async function performOpenRouterFaceSwap(params: {
 }): Promise<{ buffer: Buffer; model: string; requestId?: string }> {
   const run = params.runStage ?? directStage;
   const stage2Input = {
-    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions }),
+    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions }) + (params.supportingIdentityImages?.length ? "\nImages 3 onward are supporting photographs of the SAME person as Image 2. Use them only to clarify facial identity. Image 2 remains primary. Preserve Image 1 scene, clothing, composition and pose; do not copy supporting-photo backgrounds, outfits or poses." : ""),
     aspectRatio: params.aspectRatio,
-    referenceImages: [params.baseImage, params.influencerImage],
+    referenceImages: [params.baseImage, params.influencerImage, ...(params.supportingIdentityImages ?? [])],
   };
   const result = await run("identity", stage2Input, () => generateOpenRouterGeminiImage(stage2Input,
     { apiKey: params.apiKey, fetchImpl: params.fetchImpl }));

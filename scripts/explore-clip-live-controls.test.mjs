@@ -284,12 +284,12 @@ test("Wall manual text hides timing and style until advanced mode while keeping 
   const overlay = { value: "Wall message", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 };
   const props = { overlays: [overlay], wallText: true, showStyleControls: false, durationMs: 5000, timeMs: 3000, onChange: value => updates.push(value), onSeek() {} };
   let tree = h.render(() => h.exports.FormatTextOverlaysEditor(props));
-  assert.ok(labelled(tree, "Wall of text"));
+  assert.ok(labelled(tree, "Text on screen"));
   assert.equal(labelled(tree, "Text start time"), undefined); assert.equal(labelled(tree, "Text end time"), undefined);
   assert.equal(labelled(tree, "Text preset"), undefined);
   assert.equal(JSON.stringify(tree).includes("Each text block has its own timing"), false);
   assert.equal(JSON.stringify(tree).includes("0–5s"), false);
-  labelled(tree, "Wall of text").props.onChange({ target: { value: "Updated wall" } });
+  labelled(tree, "Text on screen").props.onChange({ target: { value: "Updated wall" } });
   assert.equal(updates.at(-1)[0].value, "Updated wall");
   nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
   assert.equal(updates.at(-1)[1].startMs, 0); assert.equal(updates.at(-1)[1].endMs, 5000);

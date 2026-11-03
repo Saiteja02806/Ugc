@@ -117,7 +117,7 @@ export function WallTextEditOverlay({ children, layout, onBoxChange }: BoxContro
       <div
         role="button"
         tabIndex={0}
-        aria-label="Move Wall-of-text copy"
+        aria-label="Move Text on screen copy"
         className="flex items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-white"
         style={{ minHeight: `${box.height * 100 * 16 / 9}cqw`, cursor: action === "move" ? "grabbing" : "grab" }}
         onPointerDown={(event) => begin(event, "move")}

@@ -10,6 +10,7 @@ import {
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
 import { buildInstagramOAuthAuthorizationUrl } from "@/lib/social/instagram-oauth-config";
@@ -1434,6 +1435,26 @@ async function exchangeTikTokCode(
   };
 }
 
+// A code can already be consumed when a response is lost. Bound both headers and
+// body parsing, but never automatically retry either token exchange.
+async function readInstagramTokenResponse(url: string | URL, init?: RequestInit) {
+  try {
+    return await withReadDeadline(async (signal) => {
+      const response = await fetch(url, { ...init, signal });
+      const data: unknown = await response.json().catch(() => null);
+      signal.throwIfAborted();
+      return { response, data };
+    }, undefined, 15_000);
+  } catch {
+    throw new SocialOAuthError(
+      "Instagram token exchange did not complete. Start a new connection to try again.",
+      502,
+      "provider_exchange_failed",
+      "exchange_authorization_code",
+    );
+  }
+}
+
 async function exchangeInstagramCode(
   code: string,
   redirectUri: string,
@@ -1447,7 +1468,7 @@ async function exchangeInstagramCode(
     redirect_uri: redirectUri,
   });
 
-  const shortResponse = await fetch(
+  const { response: shortResponse, data: shortJson } = await readInstagramTokenResponse(
     "https://api.instagram.com/oauth/access_token",
     {
       body,
@@ -1455,7 +1476,7 @@ async function exchangeInstagramCode(
       method: "POST",
     },
   );
-  const shortData = (await shortResponse.json().catch(() => null)) as {
+  const shortData = shortJson as {
     access_token?: string;
     error?: unknown;
     error_code?: number | string;
@@ -1525,8 +1546,8 @@ async function exchangeInstagramLongLivedToken(
   url.searchParams.set("client_secret", getEnv("INSTAGRAM_APP_SECRET"));
   url.searchParams.set("access_token", accessToken);
 
-  const response = await fetch(url);
-  const data = (await response.json().catch(() => null)) as {
+  const { response, data: tokenJson } = await readInstagramTokenResponse(url);
+  const data = tokenJson as {
     access_token?: string;
     error?: unknown;
     error_code?: number | string;

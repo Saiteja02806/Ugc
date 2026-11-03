@@ -1,18 +1,20 @@
 import sharp from "sharp";
 import * as opentype from "opentype.js";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
-import { carouselManualTextMarkup, createCarouselManualLayout, type CarouselManualSlide } from "./carousel-manual-text.js";
-import { serializeGlyphPath } from "./svg-glyph-path.js";
+import { carouselManualTextMarkup, createCarouselManualLayout, type CarouselManualSlide } from "./carousel-manual-text.ts";
+import { serializeGlyphPath } from "./svg-glyph-path.ts";
 
 const fonts = new Map<string, Promise<opentype.Font>>();
 // Webpack selects the package's ESM build; Node workers load its CommonJS build.
 const parseFont: typeof opentype.parse = typeof opentype.parse === "function"
   ? opentype.parse
   : Reflect.get(opentype, "default").parse;
-const fontsDir = ["../../assets/fonts/", "../../src/assets/fonts/", "../assets/fonts/"].map(path => fileURLToPath(new URL(path, import.meta.url)))
+// Resolve runtime directories as filesystem paths, not bundler asset URLs.
+const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+const fontsDir = ["../../assets/fonts/", "../../src/assets/fonts/", "../assets/fonts/"].map(path => resolve(moduleDirectory, path))
   .find(path => existsSync(resolve(path, "explore-text/inter-400.ttf")));
 export async function createCarouselManualSvg(slide: CarouselManualSlide, options?: { fontDirectory: string }) {
   const directory = options?.fontDirectory ?? fontsDir;

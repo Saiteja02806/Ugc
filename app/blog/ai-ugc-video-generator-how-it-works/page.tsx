@@ -106,7 +106,7 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong className="font-semibold text-foreground-strong">Speech and audio.</strong> Generate a voiceover and attach it to a video.</li>
           <li><strong className="font-semibold text-foreground-strong">Edit drafts and exports.</strong> Open a draft, change it, then export a finished version.</li>
-          <li><strong className="font-semibold text-foreground-strong">Reference and remix.</strong> Browse hook, wall-of-text and slideshow reference formats and remix the text for your own brand.</li>
+          <li><strong className="font-semibold text-foreground-strong">Reference and remix.</strong> Browse hook, text on screen and slideshow reference formats and remix the text for your own brand.</li>
           <li><strong className="font-semibold text-foreground-strong">Library.</strong> Keep finished carousels, slideshows and videos in one place.</li>
           <li><strong className="font-semibold text-foreground-strong">AI characters.</strong> Build a reusable on-screen creator for your brand so a series looks consistent.</li>
         </ul>

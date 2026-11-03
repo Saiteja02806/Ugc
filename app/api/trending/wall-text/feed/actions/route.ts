@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         {
           error:
             error.status === 401
-              ? "Sign in before updating this Wall-of-text idea."
+              ? "Sign in before updating this Text on screen idea."
               : error.message,
           ok: false,
         },
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return json(
-      { error: "Choose a valid Wall-of-text action.", ok: false },
+      { error: "Choose a valid Text on screen action.", ok: false },
       400,
     );
   }
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Could not update Trending Wall-of-text idea:", error);
     return json(
-      { error: "Could not update this Wall-of-text idea.", ok: false },
+      { error: "Could not update this Text on screen idea.", ok: false },
       500,
     );
   }

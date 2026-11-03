@@ -6,6 +6,7 @@ import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/
 import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
 import { generateOpenRouterGeminiHookKeyframe, generateOpenRouterGeminiImage, performOpenRouterFaceSwap } from "../lib/openrouter-gemini-image.js";
 import { createDurableImageStageRunner } from "../lib/durable-image-stages.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -58,6 +59,7 @@ type GenerateImageInput = {
   hookKeyframe?: HookKeyframeGenerationReceipt;
   startingFrameTextCleanup?: true;
   startingFrameOutfitPrompt?: string;
+  startingFramePipelineVersion?: 2;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -97,6 +99,10 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
   const hookKeyframe = job.input_json.hookKeyframe === undefined ? undefined : parseHookKeyframeGenerationReceipt(job.input_json.hookKeyframe);
+  const startingFramePipelineVersion = job.input_json.startingFramePipelineVersion;
+  if (startingFramePipelineVersion !== undefined && (startingFramePipelineVersion !== 2 || !hookKeyframe || model !== "gemini_3_pro" || provider !== "openrouter")) {
+    throw new ProviderRequestNotSubmittedError("Invalid starting-frame pipeline version.");
+  }
   if (hookKeyframe && model === "seedream_5_pro" && provider !== "openrouter") throw new ProviderRequestNotSubmittedError("Starting-frame Seedream jobs require the saved OpenRouter route.");
   if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || !["hook", "wall_text"].includes(String(job.input_json.exploreFormat)) ||
     job.input_json.slideshowReferenceContract !== undefined || job.input_json.slideshowGeneration !== undefined ||
@@ -154,6 +160,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     ...(hookKeyframe ? { hookKeyframe } : {}),
     ...(startingFrameTextCleanup === true ? { startingFrameTextCleanup: true as const } : {}),
     ...(startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: startingFrameOutfitPrompt as string } : {}),
+    ...(startingFramePipelineVersion === 2 ? { startingFramePipelineVersion: 2 as const } : {}),
     ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
     ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
     ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
@@ -222,6 +229,7 @@ export async function runGenerateImageJob(
     ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
     ...(input.startingFrameTextCleanup ? { startingFrameTextCleanup: true } : {}),
     ...(input.startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: input.startingFrameOutfitPrompt } : {}),
+    ...(input.startingFramePipelineVersion === 2 ? { startingFramePipelineVersion: 2 } : {}),
   });
   const stagedPipeline = input.model === "gemini_3_pro" && provider === "openrouter" && Boolean(input.hookKeyframe || input.mode === "face_swap");
   const reservation = await context.store.reserveGenerationProviderOperation({
@@ -247,7 +255,7 @@ export async function runGenerateImageJob(
       hook.version === 4 && !hookKeyframeAnchorBytesMatch(hook, downloaded[1]))) {
       throw new ProviderRequestNotSubmittedError("The starting-frame inputs do not match their verified source roles.");
     }
-    if (!hook && downloaded.length !== 2) throw new ProviderRequestNotSubmittedError("Face swap requires a base image and an influencer photo.");
+    if (!hook && (downloaded.length < 2 || downloaded.length > 5)) throw new ProviderRequestNotSubmittedError("Face swap requires a base image and one to four photos of the same person.");
     const refImages = downloaded.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
     const runStage = createDurableImageStageRunner({ jobId: job.id, store: context.store,
       checkpoint: stage => context.checkpoint({ stage, status: "processing" }) });
@@ -257,12 +265,19 @@ export async function runGenerateImageJob(
       startingFrameTextCleanup: input.startingFrameTextCleanup,
       startingFrameOutfitPrompt: input.startingFrameOutfitPrompt,
       referenceOptions: hook.referenceOptions,
-    }) : await performOpenRouterFaceSwap({ baseImage: refImages[0], influencerImage: refImages[1],
+      ...(input.startingFramePipelineVersion === 2 ? { imageSize: "2K" as const } : {}),
+    }) : await performOpenRouterFaceSwap({ baseImage: refImages[0], influencerImage: refImages[1], supportingIdentityImages: refImages.slice(2),
       aspectRatio: input.aspectRatio, instructions: input.prompt, runStage });
-    const staged = await uploadBufferToStorage({ buffer: generated.buffer, key: stagingKey,
-      contentType: "image/png", cacheControl: "private, max-age=86400" });
-    await context.store.markGenerationProviderSucceeded({ jobId: job.id, operationKey,
-      metadata: { pipelineVersion: 1, stagesComplete: true, model: generated.model, stagingKey: staged.key } });
+    try {
+      const staged = await uploadBufferToStorage({ buffer: generated.buffer, key: stagingKey,
+        contentType: "image/png", cacheControl: "private, max-age=86400" });
+      await context.store.markGenerationProviderSucceeded({ jobId: job.id, operationKey,
+        metadata: { pipelineVersion: 1, stagesComplete: true, model: generated.model, stagingKey: staged.key } });
+    } catch (error) {
+      if (input.startingFramePipelineVersion !== 2) throw error;
+      throw new RetryableJobError("The completed image stages are saved; their combined output will be recovered.",
+        { code: "image_stage_persistence_pending", retryAfterSeconds: 30 });
+    }
     generatedImageBuffer = generated.buffer;
   } else if ((input.model === "gemini_3_pro" && provider !== "openrouter") || (input.model === "seedream_5_pro" && provider === "runway")) {
     generatedImageBuffer = await generateDurableImageForJob(job, context, input, reservation, stagingKey, operationKey);
@@ -320,6 +335,7 @@ export async function runGenerateImageJob(
                 return performOpenRouterFaceSwap({
                   baseImage: refImages[0],
                   influencerImage: refImages[1],
+                  supportingIdentityImages: refImages.slice(2),
                   aspectRatio: input.aspectRatio,
                   instructions: input.prompt,
                 });
@@ -408,6 +424,7 @@ export async function runGenerateImageJob(
     generatedImageBuffer,
     input.aspectRatio,
     { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe),
+      ...(input.startingFramePipelineVersion === 2 ? { requireMatchingAspectRatio: true } : {}),
       ...(input.hookKeyframe && input.hookKeyframe.version !== 1 && input.hookKeyframe.promptVersion >= 2 ? { cropNearRatioPadding: true } : {}) },
   );
 

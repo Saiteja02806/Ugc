@@ -74,7 +74,7 @@ export function hookKeyframeDraftStorageKey(ownerId: string, draftId: string, re
 export function createHookKeyframeDraft(scope: HookKeyframeScope): HookKeyframeDraft {
   if (!validScope(scope)) invalid();
   return { version: 4, imageModel: DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, scope: { ...scope }, sourceFrame: null, imageAssetIds: [], instructions: "", motionInstructions: null,
-    generateAudio: false, generatedImage: null, approval: null };
+    referenceOptions: { background: "source", outfit: "source", hairstyle: "source" }, generateAudio: false, generatedImage: null, approval: null };
 }
 
 /** Exact, deterministic input binding; it is not a signature or ownership proof.

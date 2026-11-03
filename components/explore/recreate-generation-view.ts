@@ -17,8 +17,9 @@ export type RecreateGenerationView = {
     onOpenChange: (open: boolean) => void;
     slideIds: string[];
     onSlideIdsChange: (ids: string[]) => void;
-    influencer: { id: string; url: string; title: string } | null;
-    onInfluencerChange: (influencer: { id: string; url: string; title: string } | null) => void;
+    influencer: import("./slideshow-face-choice").SlideshowFaceChoiceValue | null;
+    onInfluencerChange: (influencer: import("./slideshow-face-choice").SlideshowFaceChoiceValue | null) => void;
+    slides?: { id: string; url: string; number: number; eligible: boolean }[];
     eligibleCount: number;
   };
   referenceTitle?: string;

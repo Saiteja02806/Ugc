@@ -351,6 +351,10 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
 
   function changeImages(next: AIStudioReferenceMedia[]) {
     if (!restored || choosingInfluencer) return;
+    if (previewRuntime && next.some(image => image.asset.id.startsWith("local:"))) {
+      setPhotoNotice("Sign in to upload and use your photos for starting-frame generation. Your current preparation is unchanged.");
+      return;
+    }
     rememberPhotos(next);
     setImages(next); setDraft(current => updateHookKeyframeDraft(current, { imageAssetIds: next.map(image => image.asset.id) })); setSaved(false);
   }
@@ -611,8 +615,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
             : frameQuery.isPending ? <p role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Preparing the source frame…</p>
             : <div role="alert"><p>{preparation.error || frameQuery.error?.message || "The source frame could not be prepared."}</p><Button type="button" variant="outline" onClick={() => void frameQuery.refetch()}><RefreshCw aria-hidden="true" />Try again</Button></div>}
         </div>
-        <p className={styles.caption}>{draft.referenceOptions?.background === "photo" || draft.referenceOptions?.outfit === "photo"
-          ? "Keep the source pose. Use your background and outfit choices below. Remove the captions."
+        <p className={styles.caption}>{draft.referenceOptions?.background === "photo" || draft.referenceOptions?.outfit === "photo" || draft.referenceOptions?.hairstyle === "photo"
+          ? "Keep the source pose. Use your background and appearance choices below. Remove the captions."
           : presentation === "recreation" ? "Keep scene, pose and clothing. Generate without on-screen captions; review the result." : "Keep this scene, pose and clothing. Remove the captions."}</p>
         {motionDraft?.requiresDecision && motionDraft.riskFlags.includes("no_person_in_opening_frame") ? <p className={styles.notice} role="status">This reference opens before the performer appears. Its starting image and reveal need review before it can be animated.</p> : null}
         {motionDraft?.requiresDecision && motionDraft.riskFlags.some(flag => flag === "jump_cut" || flag === "multiple_takes") ? <p className={styles.notice} role="status">This reference contains a cut. Its action sequence needs review for animation from one image.</p> : null}
@@ -635,12 +639,12 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           <p>Your last photo selection is remembered in this browser.</p>
           {photoNotice ? <p role="status">{photoNotice}</p> : null}
         </div>
-        <details className="text-sm" aria-label="Background and outfit">
-          <summary className="cursor-pointer">Background and outfit</summary>
-        <fieldset className="mt-2 flex flex-col gap-2" aria-label="Background and outfit choices" disabled={busy || creatingImage || !restored || !images.length || Boolean(retainedFrame)}>
-          {([['background', 'Use background from my photo'], ['outfit', 'Use outfit from my photo']] as const).map(([role, label]) => <label key={role} className="flex items-center gap-2">
+        <details className="text-sm" aria-label="Background and appearance">
+          <summary className="cursor-pointer">Background and appearance</summary>
+        <fieldset className="mt-2 flex flex-col gap-2" aria-label="Background and appearance choices" disabled={busy || creatingImage || !restored || !images.length || Boolean(retainedFrame)}>
+          {([['background', 'Use background from my photo'], ['outfit', 'Use outfit from my photo'], ['hairstyle', 'Use hairstyle from my photo']] as const).map(([role, label]) => <label key={role} className="flex items-center gap-2">
             <input type="checkbox" className="accent-neutral-400" checked={draft.referenceOptions?.[role] === "photo"} onChange={event => {
-              const options = { background: draft.referenceOptions?.background ?? "source", outfit: draft.referenceOptions?.outfit ?? "source", [role]: event.target.checked ? "photo" as const : "source" as const };
+              const options = { background: draft.referenceOptions?.background ?? "source", outfit: draft.referenceOptions?.outfit ?? "source", hairstyle: draft.referenceOptions?.hairstyle ?? "source", [role]: event.target.checked ? "photo" as const : "source" as const };
               setDraft(current => updateHookKeyframeDraft(current, { referenceOptions: options })); setSaved(false);
             }} />{label}
           </label>)}

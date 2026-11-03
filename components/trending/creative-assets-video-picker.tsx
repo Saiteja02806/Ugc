@@ -363,7 +363,7 @@ export function CreativeAssetsVideoPicker({
   }
 
   const formatLabel =
-    format === "hook_video" ? "Hook video" : "Wall of text";
+    format === "hook_video" ? "Hook video" : "Text on screen";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

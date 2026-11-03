@@ -75,7 +75,7 @@ export function LandingFormatShelf() {
           {/* Frosted format badge */}
           <div className="absolute left-2 top-2 z-20 flex items-center gap-1 rounded-full border border-white/20 bg-black/65 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-white backdrop-blur-md shadow-sm">
             <ScanText className="size-3 text-primary" aria-hidden="true" />
-            <span>Wall of Text</span>
+            <span>Text on screen</span>
           </div>
 
           <video

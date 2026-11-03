@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         {
           error:
             error.status === 401
-              ? "Sign in before preparing Wall-of-text ideas."
+              ? "Sign in before preparing Text on screen ideas."
               : error.message,
           ok: false,
         },
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Could not queue Trending Wall-of-text ideas:", error);
     return json(
-      { error: "Could not queue Trending Wall-of-text ideas.", ok: false },
+      { error: "Could not queue Trending Text on screen ideas.", ok: false },
       502,
     );
   }

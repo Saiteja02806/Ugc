@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
+import { resolve } from "node:path";
 import { CAROUSEL_EDIT_FONTS, createCarouselManualLayout, defaultCarouselManualTextStyle, resolveCarouselManualTextStyle, parseCarouselManualTextStyle, carouselManualTextMarkup, type CarouselManualSlide } from "./carousel-manual-text.js";
 import { createCarouselManualSvg, renderCarouselManualSlide } from "./carousel-manual-render.js";
 
 const slide: CarouselManualSlide = { headline: "Small steps", subtext: "Build one useful thing today.\n\nShare what you learned.", ctaText: "", slideNumber: 2, renderFormat: "4:5", textPosition: { x: .5, y: .5 }, textStyle: defaultCarouselManualTextStyle() };
+test("compiled worker default and application explicit font paths render identical SVG geometry", async () => {
+  const inferred = await createCarouselManualSvg(slide);
+  const explicit = await createCarouselManualSvg(slide, { fontDirectory: resolve("worker/src/assets/fonts") });
+  assert.deepEqual(inferred, explicit);
+  assert.ok(inferred.svg.includes("<path"));
+  const image = await sharp(Buffer.from(inferred.svg)).png().toBuffer();
+  assert.ok(image.length > 1000);
+});
 test("manual typography rejects untrusted fonts, CSS colors and unbounded sizes while legacy edits remain valid", () => {
   assert.equal(parseCarouselManualTextStyle(undefined), null);
   for (const patch of [{ font: "url(https://evil.test)" }, { fontSize: NaN }, { fontSize: 300 }, { headingSize: 24.5 }, { color: 'red" onload="alert(1)' }, { headingColor: "transparent" }, { textWidth: 10 }, { align: "justify" }, { fontWeight: 900 }, { headingWeight: 600 }, { lineHeight: 0 }, { backgroundColor: "red" }, { backgroundOpacity: 2 }, { headingBackground: "url(evil)" }, { outline: "yes" }]) assert.throws(() => parseCarouselManualTextStyle({ ...slide.textStyle, ...patch }));

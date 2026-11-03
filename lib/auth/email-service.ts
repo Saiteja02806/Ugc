@@ -18,7 +18,7 @@ export function getAuthEmailConfiguration() {
   return {
     key, projectId,
     appUrl: getEmailAuthAppUrl(),
-    from: process.env.EMAIL_FROM?.trim() || "Vidmake <admin@getugcpilot.com>",
+    from: process.env.EMAIL_FROM?.trim() || "Vidmake <hello@vidmake.io>",
     verificationTemplate: process.env.RESEND_VERIFICATION_TEMPLATE_ID?.trim() || "email-verification",
     resetTemplate: process.env.RESEND_PASSWORD_RESET_TEMPLATE_ID?.trim() || "forgot-your-password",
   };

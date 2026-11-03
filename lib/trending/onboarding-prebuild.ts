@@ -1,4 +1,5 @@
 import "server-only";
+import { isAutomaticCarouselGenerationPaused } from "@/lib/carousel/generation-hold";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
@@ -9,6 +10,7 @@ export async function prebuildTrendingAfterOnboarding(params: {
   profile: BusinessProfileRecord;
   timezone: string;
 }) {
+  if (isAutomaticCarouselGenerationPaused()) return [{ format: "daily_feed" as const, status: "paused" as const }];
   try {
     const feed = await ensureUnifiedTrendingDailyFeed({
       includeHookVideos: params.includeHookVideos,

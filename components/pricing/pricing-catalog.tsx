@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 
 import { PricingCard } from "@/components/pricing/pricing-card";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
-import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import {
   displayedPricingPlans,
   type BillingInterval,
@@ -90,9 +89,6 @@ export function PricingCatalog({
             <span>Annual<span className="hidden sm:inline"> Billing</span></span>
           </button>
         </div>
-        <p className="text-center text-xs text-muted">
-          {FREE_TRIAL_CONTENT_DAYS}-day trial · Change or cancel paid plans anytime
-        </p>
         <div
           className="mt-3 inline-flex flex-wrap items-center justify-center gap-0.5 rounded-full border border-border bg-card p-0.5 shadow-xs"
           role="group"

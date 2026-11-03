@@ -52,6 +52,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     "./recreate-workspace": { ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
     "@/lib/explore/talking-head-reference": { visibleTalkingHeadReferences },
     "./talking-head-references.module.css": { default: {} },
+    "./workflow-studio.module.css": { default: { referenceRecreateButton: "referenceRecreateButton" } },
     "./lazy-hook-starting-frame-workspace": { preloadHookStartingFrameWorkspace: async () => { warmed++; } },
   });
   function nodes(value) {
@@ -64,7 +65,9 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), expected);
     const action = nodes(tree).find(node => node.type === "button" && node.props.onPointerEnter);
     assert.match(action.props["aria-label"], /^(Recreate|Preview) /);
-    assert.equal(action.props.children?.type, "rotate");
+    assert.equal(action.props.children[0]?.type, "rotate");
+    assert.match(action.props.children[1]?.props.children, /^(Recreate|Preview only)$/);
+    assert.equal(action.props.className, "referenceRecreateButton");
     const before = warmed;
     action.props.onPointerEnter(); action.props.onFocus();
     assert.equal(warmed - before, startingFrameEnabled ? 2 : 0);

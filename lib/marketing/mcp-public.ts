@@ -14,7 +14,7 @@ const hiddenPublicToolNames = new Set(["update_publishing_preferences"]);
 
 const publicDescriptionByName: Record<string, string> = {
   list_references:
-    "Browse the Hook, Wall-of-Text, and slideshow reference catalogue in the application, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
+    "Browse the Hook, Text on screen, and slideshow reference catalogue in the application, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
   list_operations:
     "Discover owned application and MCP jobs across generation, finishing, and preparation. Returns safe status summaries without inputs, diagnostics or provider/storage identifiers.",
   get_library_item:

@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-11-03T13:42:54",
+  "scope": "Unauthenticated public HTTP reads and public served JavaScript only. No tokens, browser storage, credentials, or user records inspected. No application mutation or deployment.",
+  "pages": [
+    {
+      "path": "/explore",
+      "status": 200,
+      "final_url": "https://vidmake.io/explore",
+      "title": [
+        "Explore | Vidmake"
+      ],
+      "scripts": 21,
+      "has_explore_heading": true
+    },
+    {
+      "path": "/explore/hook-video",
+      "status": 200,
+      "final_url": "https://vidmake.io/explore/hook-video",
+      "title": [
+        "Hook video | Vidmake"
+      ],
+      "scripts": 36,
+      "has_explore_heading": false
+    },
+    {
+      "path": "/explore/slideshows",
+      "status": 200,
+      "final_url": "https://vidmake.io/explore/slideshows",
+      "title": [
+        "Slideshows | Vidmake"
+      ],
+      "scripts": 36,
+      "has_explore_heading": false
+    },
+    {
+      "path": "/explore/wall-of-text",
+      "status": 200,
+      "final_url": "https://vidmake.io/explore/wall-of-text",
+      "title": [
+        "Wall of text | Vidmake"
+      ],
+      "scripts": 36,
+      "has_explore_heading": false
+    },
+    {
+      "path": "/sign-in",
+      "status": 200,
+      "final_url": "https://vidmake.io/sign-in",
+      "title": [
+        "Vidmake"
+      ],
+      "scripts": 22,
+      "has_explore_heading": false
+    }
+  ],
+  "chunks_checked": 41,
+  "auth_chunks": [
+    {
+      "chunk": "/_next/static/chunks/10315-1b428876e600fe80.js",
+      "status": 200,
+      "bytes": 142390,
+      "auth_snippets": {
+        "Firebase auth observer failed:": "}\\p{Script=Hangul}]/u.test(a)||/\\p{Extended_Pictographic}/u.test(a)?1:/^[ilI1|]$/.test(a)?.27:/^[.,'`:;!]$/.test(a)?.25:/^[fjrt()\\[\\]{}]$/.test(a)?.38:/^[mw]$/.test(a)?.76:/^[MW@%&]$/.test(a)?.82:/^[A-Z]$/.test(a)?.62:/^[0-9]$/.test(a)?.56:/^[\\-\u2013\u2014_+<>=/?\\\\]$/.test(a)?.46:/^[a-z]$/.test(a)?.52:a.length>1?1:.62}return d*e*1.1}},47277:(f,e,d)=>{\"use strict\";d.d(e,{A:()=>i,AuthProvider:()=>r});var a=d(95155),t=d(12115),c=d(51544);let o=(0,t.createContext)(void 0);function r({children:f}){let[e,d]=(0,t.useState)(null),[i,b]=(0,t.useState)(!0),[l,s]=(0,t.useState)(null);(0,t.useEffect)(()=>{let f=(0,c._D)(f=>{d(f),s(null),b(!1)},f=>{console.error(\"Firebase auth observer failed:\",f),d(null),s(f),b(!1)});return()=>f()},[]);let u=(0,t.useCallback)(async()=>{s(null);try{await (0,c.ri)()}catch(e){let f=n(e);throw s(f),f}},[]),h=(0,t.useCallback)(async()=>{s(null);try{let f=await (0,c.LQ)();return d(f),f}catch(e){let f=n(e);throw s(f),f}},[]),w=(0,t.useMemo)(()=>({user:e,loading:i,error:l,refreshUser:h,signOut:u}),[e,i,l,h,u]);return(0,a.jsx)(o.Provider,{value:w,children:f})}function i(){let f=(0,t.useContext)(o);if(!f)throw Error(\"useAuth must be used inside AuthProvider\");return f}function n(f){return f instanceof Error?f:Error(\"An unexpected authentication error occurred.\")}},53384:(f,e,d)=>{\"use strict\";function a(f){return void 0===f||\"free\"===f||\"pending\"===f}function t(f){switch(f){case\"failed\":return{description:\"Dodo Payments could not complete the payment. Your subscription was not activated.\",title:\"Payment failed\"};case\"canc"
+      }
+    },
+    {
+      "chunk": "/_next/static/chunks/51544-46a276c24ada0cdd.js",
+      "status": 200,
+      "bytes": 13663,
+      "auth_snippets": {
+        "ugc_session": "\"use strict\";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[51544],{30421:(e,a,t)=>{t.d(a,{h:()=>n,j:()=>s});var i=t(97873),o=t(59997);let r=(0,i.Dk)().length?(0,i.Sx)():(0,i.Wp)({apiKey:\"[public config omitted]\",authDomain:\"vidmake.io\",projectId:\"ugcsaas\",storageBucket:\"ugcsaas.firebasestorage.app\",messagingSenderId:\"58051192797\",appId:\"1:58051192797:web:075b9ec04bc7af3992f834\"}),s=(0,o.xI)(r),n=new o.HF;n.setCustomParameters({prompt:\"select_account\"})},31069:(e,a,t)=>{t.d(a,{N:()=>i,r:()=>o});let i=\"ugc_session\";function o(e){return e.split(\";\").some(e=>e.trim()===`${i}=1`)}},51544:(e,a,t)=>{t.d(a,{P8:()=>f,xM:()=>A,Py:()=>$,Bq:()=>z,_D:()=>q,ri:()=>F,LQ:()=>R,w2:()=>P,nA:()=>U,Ru:()=>T,G6:()=>_,_4:()=>S,bk:()=>I,OH:()=>E});var i=t(97873),o=t(59997),r=t(30421);let s=JSON.parse('[\"/\",\"/pricing\",\"/connect-ai\",\"/mcp\",\"/mcp/claude\",\"/mcp/codex\",\"/docs/mcp-tools\",\"/instagram-carousel-maker\",\"/ai-ugc-video-generator\",\"/case-studies/ai-ugc-video-generator-saas-founders\",\"/blog/ugc-video-generator-examples\",\"/blog/ai-ugc-video-generator-how-it-works\",\"/blog/ugc-ads-with-claude-mcp\",\"/blog/ugc-pilot-vs-hiring-ugc-creators\",\"/blog/ugc-videos-with-codex-mcp\",\"/blog/ugc-ad-script-templates\",\"/blog/ai-ugc-for-tiktok-ads\",\"/blog/how-to-choose-a-ugc-video-maker\",\"/blog/ugc-hooks\",\"/blog/ai-content-creation-tools-small-teams\",\"/blog/ai-ugc-for-saas-startups\",\"/blog/ai-video-generator-for-saas\",\"/bl",
+        "Your signed-in account changed. Reload to continue.": "tch(e,{method:\"POST\",headers:{\"Content-Type\":\"application/json\",...t?{Authorization:`Bearer ${t}`}:{}},body:JSON.stringify(a),signal:AbortSignal.timeout(3e4)})}catch{throw new k(\"The email request could not be completed. Please try again.\")}if(!i.ok){let e=await i.json().catch(()=>null);throw new k(e?.error||\"The email request could not be completed. Please try again.\",429===i.status?\"auth/too-many-requests\":\"auth/email-delivery-failed\")}}async function R(){let e=D();if(e)return e;let a=r.j.currentUser;return a?(await (0,o.yQ)(a),await (0,o.p9)(a,!0),x(a)):null}async function $(e,a=!1){let t=C();if(t){if(e&&\"edit-render-e2e\"!==e)throw Error(\"Your signed-in account changed. Reload to continue.\");return t}await r.j.authStateReady();let i=r.j.currentUser;if(e&&i?.uid!==e)throw Error(\"Your signed-in account changed. Reload to continue.\");let s=i?await (0,o.p9)(i,a):null;if(e&&r.j.currentUser?.uid!==e)throw Error(\"Your signed-in account changed. Reload to continue.\");return s}function C(){return\"true\"!==w.env.NEXT_PUBLIC_ENABLE_EDIT_RENDER_E2E_AUTH?null:window.localStorage.getItem(f)?.trim()||null}function q(e,a){let t=D();return t?(v(),e(t),()=>{}):(0,o.hg)(r.j,a=>{a?v():b(),e(a?x(a):null)},e=>{b(),a?.(e)})}function z(e){if(e instanceof k)return e.message;if(e instanceof i.g)switch(e.code){case\"auth/account-exists-with-different-credential\":return\"An account already exists for this email with another sign-in method. Sign in with that method first, then add email/password.\";case\"auth/credential-already-in-use\":return\"Those email "
+      }
+    },
+    {
+      "chunk": "/_next/static/chunks/68579-c04275d9063b96d6.js",
+      "status": 200,
+      "bytes": 12483,
+      "auth_snippets": {
+        "Firebase auth observer failed:": "order bg-secondary text-secondary-foreground\"}},defaultVariants:{variant:\"default\"}});function d({className:e,variant:r=\"default\",render:t,...n}){return(0,i.C)({defaultTagName:\"span\",props:(0,o.v6)({className:(0,s.cn)(a({variant:r}),e)},n),render:t,state:{slot:\"badge\",variant:r}})}},46624:(e,r,t)=>{t.d(r,{WB:()=>i,qK:()=>o});let o=7,i=20},47277:(e,r,t)=>{t.d(r,{A:()=>d,AuthProvider:()=>a});var o=t(95155),i=t(12115),n=t(51544);let s=(0,i.createContext)(void 0);function a({children:e}){let[r,t]=(0,i.useState)(null),[d,l]=(0,i.useState)(!0),[u,g]=(0,i.useState)(null);(0,i.useEffect)(()=>{let e=(0,n._D)(e=>{t(e),g(null),l(!1)},e=>{console.error(\"Firebase auth observer failed:\",e),t(null),g(e),l(!1)});return()=>e()},[]);let b=(0,i.useCallback)(async()=>{g(null);try{await (0,n.ri)()}catch(r){let e=c(r);throw g(e),e}},[]),h=(0,i.useCallback)(async()=>{g(null);try{let e=await (0,n.LQ)();return t(e),e}catch(r){let e=c(r);throw g(e),e}},[]),p=(0,i.useMemo)(()=>({user:r,loading:d,error:u,refreshUser:h,signOut:b}),[r,d,u,h,b]);return(0,o.jsx)(s.Provider,{value:p,children:e})}function d(){let e=(0,i.useContext)(s);if(!e)throw Error(\"useAuth must be used inside AuthProvider\");return e}function c(e){return e instanceof Error?e:Error(\"An unexpected authentication error occurred.\")}},61073:(e,r,t)=>{t.d(r,{Bu:()=>d,Nh:()=>g,Nz:()=>a,m5:()=>b,qt:()=>u,rx:()=>h,w6:()=>l,yG:()=>s});var o=t(46624),i=t(21690);let n=new Intl.NumberFormat(\"en-US\",{style:\"currency\",currency:\"USD\",minimumFractionDigits:0,maximumFractionDigits:2});function s(e){return"
+      }
+    },
+    {
+      "chunk": "/_next/static/chunks/app/explore/page-2431534b24935fdf.js",
+      "status": 200,
+      "bytes": 15874,
+      "auth_snippets": {
+        "Firebase auth observer failed:": "(r(36095)),\"default\"),n=(0,a.prepareImageConfig)({deviceSizes:[640,750,828,1080,1200,1920,2048,3840],imageSizes:[32,48,64,96,128,256,384],qualities:[75],path:\"/_next/image\",loader:\"default\",dangerouslyAllowSVG:!1,unoptimized:!1})},40179:(e,t,r)=>{Promise.resolve().then(r.bind(r,87674)),Promise.resolve().then(r.bind(r,72491))},47277:(e,t,r)=>{\"use strict\";r.d(t,{A:()=>l,AuthProvider:()=>n});var i=r(95155),a=r(12115),o=r(51544);let s=(0,a.createContext)(void 0);function n({children:e}){let[t,r]=(0,a.useState)(null),[l,d]=(0,a.useState)(!0),[u,h]=(0,a.useState)(null);(0,a.useEffect)(()=>{let e=(0,o._D)(e=>{r(e),h(null),d(!1)},e=>{console.error(\"Firebase auth observer failed:\",e),r(null),h(e),d(!1)});return()=>e()},[]);let p=(0,a.useCallback)(async()=>{h(null);try{await (0,o.ri)()}catch(t){let e=c(t);throw h(e),e}},[]),m=(0,a.useCallback)(async()=>{h(null);try{let e=await (0,o.LQ)();return r(e),e}catch(t){let e=c(t);throw h(e),e}},[]),v=(0,a.useMemo)(()=>({user:t,loading:l,error:u,refreshUser:m,signOut:p}),[t,l,u,m,p]);return(0,i.jsx)(s.Provider,{value:v,children:e})}function l(){let e=(0,a.useContext)(s);if(!e)throw Error(\"useAuth must be used inside AuthProvider\");return e}function c(e){return e instanceof Error?e:Error(\"An unexpected authentication error occurred.\")}},47862:e=>{e.exports={page:\"explore-workspace_page__51tjO\",workflowGrid:\"explore-workspace_workflowGrid__cl6RO\",workflowCard:\"explore-workspace_workflowCard__jlRr2\",cover:\"explore-workspace_cover__SkkE5\",characterVideo:\"explore-workspace_characterVideo__O83hs\",ch"
+      }
+    },
+    {
+      "chunk": "/_next/static/chunks/app/layout-b6b3bb447376cbc5.js",
+      "status": 200,
+      "bytes": 21442,
+      "auth_snippets": {
+        "Firebase auth observer failed:": "imeZone\"):[\"America/Los_Angeles\",\"America/New_York\",\"Asia/Kolkata\",\"Asia/Tokyo\",\"Australia/Sydney\",\"Europe/London\"]])).sort()}function o({selectedDate:e,minimumLeadMinutes:t,now:r=Date.now(),timezone:a=i()}){let s=(0,n.mi)(r,a).date,l=(0,n.mi)((0,n.Vs)({minimumLeadMinutes:t,now:r}),a);return{date:e===s?l.date:e,time:l.time}}},47277:(e,t,r)=>{\"use strict\";r.d(t,{A:()=>l,AuthProvider:()=>s});var n=r(95155),i=r(12115),a=r(51544);let o=(0,i.createContext)(void 0);function s({children:e}){let[t,r]=(0,i.useState)(null),[l,c]=(0,i.useState)(!0),[d,f]=(0,i.useState)(null);(0,i.useEffect)(()=>{let e=(0,a._D)(e=>{r(e),f(null),c(!1)},e=>{console.error(\"Firebase auth observer failed:\",e),r(null),f(e),c(!1)});return()=>e()},[]);let h=(0,i.useCallback)(async()=>{f(null);try{await (0,a.ri)()}catch(t){let e=u(t);throw f(e),e}},[]),m=(0,i.useCallback)(async()=>{f(null);try{let e=await (0,a.LQ)();return r(e),e}catch(t){let e=u(t);throw f(e),e}},[]),p=(0,i.useMemo)(()=>({user:t,loading:l,error:d,refreshUser:m,signOut:h}),[t,l,d,m,h]);return(0,n.jsx)(o.Provider,{value:p,children:e})}function l(){let e=(0,i.useContext)(o);if(!e)throw Error(\"useAuth must be used inside AuthProvider\");return e}function u(e){return e instanceof Error?e:Error(\"An unexpected authentication error occurred.\")}},53384:(e,t,r)=>{\"use strict\";function n(e){return void 0===e||\"free\"===e||\"pending\"===e}function i(e){switch(e){case\"failed\":return{description:\"Dodo Payments could not complete the payment. Your subscription was not activated.\",title:\"Payment failed\"};case\"canc",
+        "Opening sign in...": "cExternalStore)(v,g,y),C=t&&!w&&r&&!x&&!!b?.emailVerified,k=(0,i.I)({enabled:C,gcTime:h.BQ,queryFn:({signal:e})=>(0,h.Ns)(b?.uid??\"signed-out\",e),queryKey:(0,h.SN)(b?.uid??\"signed-out\"),refetchOnWindowFocus:!1,staleTime:h.U6});if((0,u.useEffect)(()=>{if(t){if(!w&&!x&&!b)return void s.replace(\"/sign-in\");w||x||!b||b.emailVerified||s.replace(\"/verify-email\")}},[w,x,t,s,b]),(0,u.useEffect)(()=>{C&&k.data?.onboardingComplete===!1&&s.replace(\"/onboarding\")},[C,k.data,s]),!t)return e;if(!w){if(x||C&&k.isPending)return(0,n.jsx)(p,{label:\"Opening your workspace...\"});if(!b||!b.emailVerified)return(0,n.jsx)(p,{label:b?\"Opening email verification...\":\"Opening sign in...\"});if(C&&k.data?.onboardingComplete===!1)return(0,n.jsx)(p,{label:\"Finishing your business setup...\"});if(C&&k.isError&&!(0,h.E1)(k.data,k.error))return(0,n.jsx)(\"main\",{className:\"flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6\",children:(0,n.jsxs)(c.Fc,{variant:\"destructive\",className:\"w-full max-w-lg bg-card shadow-card\",children:[(0,n.jsx)(a.A,{\"aria-hidden\":\"true\"}),(0,n.jsx)(c.XL,{children:\"We could not verify your business setup\"}),(0,n.jsx)(c.TN,{children:k.error instanceof Error&&k.error.message.trim()?k.error.message:\"Check your connection, then try opening the workspace again.\"}),(0,n.jsxs)(d.$n,{type:\"button\",variant:\"outline\",size:\"lg\",onClick:()=>void k.refetch(),className:\"mt-2 w-fit\",children:[(0,n.jsx)(o.A,{\"data-icon\":\"inline-start\",\"aria-hidden\":\"true\"}),\"Try again\"]})]})})}return e}function p({label:e}){re"
+      }
+    }
+  ],
+  "chunk_errors": [],
+  "limitations": [
+    "No authenticated browser state or failing transition captured.",
+    "Public HTTP200 responses do not establish authenticated workflow success.",
+    "No application source/configuration edits or deployments.",
+    "Local browser inventory reports browser use disabled in Work settings; existing Playwright profile is in use."
+  ]
+}

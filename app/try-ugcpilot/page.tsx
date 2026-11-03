@@ -16,7 +16,7 @@ const tryUgcPilotWallText = localFont({
 
 export const metadata: Metadata = {
   title: { absolute: "Try Vidmake" },
-  description: "Try the Vidmake Wall-of-Text content demonstration.",
+  description: "Try the Vidmake Text on screen content demonstration.",
 };
 
 export default function TryUgcPilotPage() {

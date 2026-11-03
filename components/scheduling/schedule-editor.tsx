@@ -2624,7 +2624,7 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
     generated_video: "Generated video",
     influencer_video: "Presenter",
     user_video: "Uploaded video",
-    wall_text_render: "Wall-of-text Reel",
+    wall_text_render: "Text on screen Reel",
     reaction_render: "Reaction Reel",
   };
 

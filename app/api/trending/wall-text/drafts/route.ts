@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       const parsedAssignmentId = z.string().uuid().safeParse(assignmentId);
 
       if (!parsedAssignmentId.success) {
-        return json({ error: "Choose a valid Wall-of-text video.", ok: false }, 400);
+        return json({ error: "Choose a valid Text on screen video.", ok: false }, 400);
       }
 
       const draft = await getSavedWallTextDraft({
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       });
 
       if (!draft) {
-        return json({ error: "This Wall-of-text video was not found.", ok: false }, 404);
+        return json({ error: "This Text on screen video was not found.", ok: false }, 404);
       }
 
       return json({ draft, ok: true });
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Could not load saved Wall-of-text videos:", error);
     return json(
-      { error: "Could not load saved Wall-of-text videos.", ok: false },
+      { error: "Could not load saved Text on screen videos.", ok: false },
       500,
     );
   }
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   );
 
   if (!parsed.success) {
-    return json({ error: "Choose a valid Wall-of-text video.", ok: false }, 400);
+    return json({ error: "Choose a valid Text on screen video.", ok: false }, 400);
   }
 
   try {
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
     console.error("Could not save the Wall-of-text video:", error);
     return json(
-      { error: "Could not save and prepare this Wall-of-text video.", ok: false },
+      { error: "Could not save and prepare this Text on screen video.", ok: false },
       500,
     );
   }
@@ -124,7 +124,7 @@ function authErrorResponse(error: unknown) {
       {
         error:
           error.status === 401
-            ? "Sign in before saving Wall-of-text videos."
+            ? "Sign in before saving Text on screen videos."
             : error.message,
         ok: false,
       },

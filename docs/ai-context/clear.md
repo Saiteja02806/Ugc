@@ -2626,3 +2626,9 @@ UGC-UI-20261103-CHARACTER-COLORS local verification — LOCALLY VERIFIED: all fo
 - Evidence: full character/studio suite126/127PASS (one307vs308assertion); actual builder hook15/15PASS; workerbuildPASS; current main image-worker suite39/39PASS including influencer/multiple-reference/OpenRouter/recovery tests; isolated fourviewport layout/allfourcolor testsPASS. No claim of real provider completion.
 - Expected regression: align the redirect test with approved308migration while retaining route/MCP boundaries; update the legacy mock to current exports then rerun dedicated character-worker suite. No fixes made because current user asked for verification/report.
 - Hosted test browser is signed out, ends at https://vidmake.io/sign-in; production UI/upload/paidprovider/save/download acceptance NOT VERIFIED. Connected account read reports activeGrowth,imageaccess,599credits,0reserved; no generation submitted. Receipt docs/ai-influencer-verification-2026-11-03.md.
+
+### UGC-BILL-20261103-ANNUAL-PRICE — Startup annual displayed price differs from checkout
+- CODE CONFIRMED: live Dodo product pdt_0Nr1EcYSxhTFJs2KTD74z returns USD999/year, no discount/trial; website catalogue and FAQ show990. Root cause: stale advertised price, provider unchanged. User explicitly selects Display999on website during deployment. Status OPEN pending render/plan regression verification.
+- Scope: Startup annual display source/FAQ and existing assertions only. Preserve99monthly,1800shared credits, product IDs, payment/subscription behavior and removed helper line. No provider price mutation.
+
+UGC-BILL-20261103-ANNUAL-PRICE local verification: Startup annual999 in catalogue/FAQ; removed false ten-month-equivalent claim.44pricing/Dodo/render tests PASS; scoped lint PASS. Monthly99,1800credits, productIDs unchanged. User explicitly approved website999; no provider mutation.

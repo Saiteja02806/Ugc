@@ -132,7 +132,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     slug: "startup", name: "Startup", bestFor: "For a larger content operation",
     description: "The larger monthly video allowance for teams publishing every day.",
-    prices: { monthly: 99, yearly: 990 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.startup, oneTimeCredits: 0,
+    prices: { monthly: 99, yearly: 999 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.startup, oneTimeCredits: 0,
     dailyContentPieces: 50, instagramAccounts: 5,
     capacityLabel: "1,800 credits / month",
     features: [

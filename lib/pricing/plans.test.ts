@@ -7,7 +7,7 @@ import {
   pricingPlans,
 } from "./plans.ts";
 
-test("annual pricing charges ten monthly payments for paid tiers", () => {
+test("annual pricing uses the catalogue charge and computes actual savings", () => {
   for (const plan of pricingPlans) {
     const annualPricing = getPlanPricing(plan, "yearly");
 
@@ -16,8 +16,8 @@ test("annual pricing charges ten monthly payments for paid tiers", () => {
       assert.equal(annualPricing.savings, 0);
       assert.equal(annualPricing.monthlyEquivalent, 0);
     } else {
-      assert.equal(annualPricing.billedAmount, plan.prices.monthly * 10);
-      assert.equal(annualPricing.savings, plan.prices.monthly * 2);
+      assert.equal(annualPricing.billedAmount, plan.prices.yearly);
+      assert.equal(annualPricing.savings, plan.prices.monthly * 12 - plan.prices.yearly);
       assert.equal(annualPricing.monthlyEquivalent, plan.prices.yearly / 12);
     }
   }
@@ -135,7 +135,7 @@ test("display prices match the configured Dodo catalog", () => {
       ["free", 0, 0],
       ["starter", 29, 290],
       ["growth", 49, 490],
-      ["startup", 99, 990],
+      ["startup", 99, 999],
     ],
   );
 });

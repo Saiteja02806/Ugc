@@ -53,7 +53,7 @@ const faqs = [
   },
   {
     question: "How do annual billing and plan changes work?",
-    answer: "Annual plans charge $290 for Starter, $490 for Growth, or $990 for Startup upfront, equal to ten monthly payments. Credits still refresh monthly. Existing subscribers can open the secure Dodo billing portal to manage their plan, payment details and cancellation. Your portal shows when any change takes effect.",
+    answer: "Annual plans charge $290 for Starter, $490 for Growth, or $999 for Startup upfront. Credits still refresh monthly. Existing subscribers can open the secure Dodo billing portal to manage their plan, payment details and cancellation. Your portal shows when any change takes effect.",
   },
 ];
 

@@ -97,7 +97,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     slug: "starter", name: "Starter", bestFor: "For your everyday content",
     description: "Daily content and custom AI generation for your growing brand.",
-    prices: { monthly: 29, yearly: 290 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.starter, oneTimeCredits: 0,
+    prices: { monthly: 29, yearly: 299 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.starter, oneTimeCredits: 0,
     dailyContentPieces: 20, instagramAccounts: 3,
     capacityLabel: "360 credits / month",
     features: [

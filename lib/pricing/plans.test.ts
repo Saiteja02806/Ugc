@@ -133,7 +133,7 @@ test("display prices match the configured Dodo catalog", () => {
     ]),
     [
       ["free", 0, 0],
-      ["starter", 29, 290],
+      ["starter", 29, 299],
       ["growth", 49, 490],
       ["startup", 99, 999],
     ],

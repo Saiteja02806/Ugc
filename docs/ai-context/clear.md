@@ -2632,3 +2632,5 @@ UGC-UI-20261103-CHARACTER-COLORS local verification — LOCALLY VERIFIED: all fo
 - Scope: Startup annual display source/FAQ and existing assertions only. Preserve99monthly,1800shared credits, product IDs, payment/subscription behavior and removed helper line. No provider price mutation.
 
 UGC-BILL-20261103-ANNUAL-PRICE local verification: Startup annual999 in catalogue/FAQ; removed false ten-month-equivalent claim.44pricing/Dodo/render tests PASS; scoped lint PASS. Monthly99,1800credits, productIDs unchanged. User explicitly approved website999; no provider mutation.
+
+UGC-BILL-20261103-ANNUAL-PRICE continuation — USER SCREENSHOT CONFIRMED and live product read confirms Starter annual299, Growth490, Startup999. User explicitly requests Starter299 as well. Update shared catalogue/FAQ and existing render assertions, preserving monthly29/49/99 and plan entitlements. No provider price change.

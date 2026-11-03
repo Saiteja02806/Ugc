@@ -11,14 +11,14 @@ export type ExploreWorkflow = {
 export const EXPLORE_WORKFLOWS: readonly ExploreWorkflow[] = [
   {
     id: "talking-head-demo", title: "Talking Head + Demo", description: "Create a talking-head video and add your demo.",
-    destination: "/explore/create-hook", status: "available", coverVideo: "/explore/covers/talking-head-demo-promo-v1.mp4", coverPoster: "/explore/covers/talking-head-demo-promo-v1.webp",
+    destination: "/explore/create-hook", status: "available", coverVideo: "/explore/covers/talking-head-demo-promo-04f4bca2ef42.mp4", coverPoster: "/explore/covers/talking-head-demo-promo-v1.webp",
   },
   {
     id: "hook-video", title: "Hook video", description: "Choose a hook reference and create your own video.",
-    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-promo-v1.mp4", coverPoster: "/explore/covers/hook-video-promo-v1.webp",
+    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-promo-8b8fa82f32cd.mp4", coverPoster: "/explore/covers/hook-video-promo-v1.webp",
   },
-  { id: "wall-of-text", title: "Text on screen", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-promo-v1.mp4", coverPoster: "/explore/covers/wall-of-text-promo-v1.webp" },
-  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-v1.mp4", coverPoster: "/explore/covers/slideshow-promo-v1.webp" },
+  { id: "wall-of-text", title: "Text on screen", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-promo-034d99c3ae14.mp4", coverPoster: "/explore/covers/wall-of-text-promo-v1.webp" },
+  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-872636fa69c6.mp4", coverPoster: "/explore/covers/slideshow-promo-v1.webp" },
 ];
 
 // Creator Shows App on Phone remains hidden, including in development review.

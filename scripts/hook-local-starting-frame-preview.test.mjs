@@ -50,7 +50,7 @@ test("local extraction route is closed in production and on non-loopback hosts",
   let reads = 0;
   const env = { NODE_ENV: "production" };
   const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
-    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookSourceFrame: () => { reads++; assert.fail("Must be rejected first"); } },
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookOpeningSourceFrame: () => { reads++; assert.fail("Must be rejected first"); } },
   }, { process: { env } });
   assert.equal((await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"))).status, 404);
   env.NODE_ENV = "development";
@@ -62,12 +62,28 @@ test("local extraction route is closed in production and on non-loopback hosts",
 test("local extraction delegates only catalogue identity and returns the real decoder provenance", async () => {
   const reads = [];
   const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
-    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookSourceFrame: async referenceId => {
-      reads.push(referenceId); return { referenceId, sourceSha256, frameSha256, png: pixels, width: 720, height: 1280 };
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {},
+      getHookSourceFrame: () => assert.fail("The legacy resolver may return a later curated frame"),
+      getHookOpeningSourceFrame: async referenceId => {
+      reads.push(referenceId); return { referenceId, sourceSha256, frameSha256, frameIndex: 0, frameTimeSeconds: 0, png: pixels, width: 720, height: 1280 };
     } },
   }, { process: { env: { NODE_ENV: "development" } } });
   const result = await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"));
   assert.deepEqual(reads, ["keyboard-hook"]); assert.equal(result.status, 200);
   assert.equal(result.headers.get("X-Hook-Frame-Sha256"), frameSha256); assert.equal(result.headers.get("X-Hook-Frame-Time"), "0");
   assert.equal(Buffer.from(await result.arrayBuffer()).compare(pixels), 0);
+});
+
+test("local preview never relabels a later source frame as original t=0", async () => {
+  class HookSourceFrameError extends Error { constructor(message, status) { super(message); this.status = status; } }
+  const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError, getHookOpeningSourceFrame: async () => ({
+      referenceId: scope.referenceId, sourceSha256, frameSha256, frameIndex: 70, frameTimeSeconds: 2.333333,
+      png: pixels, width: 720, height: 1280,
+    }) },
+  }, { process: { env: { NODE_ENV: "development" } } });
+  const result = await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"));
+  assert.equal(result.status, 409);
+  assert.equal(result.headers.get("X-Hook-Frame-Index"), null);
+  assert.match((await result.json()).message, /original opening frame could not be verified/);
 });

@@ -130,6 +130,19 @@ test("checkout returns to activation verification instead of declaring success",
   assert.equal(url.searchParams.has("success"), false);
 });
 
+test("checkout fails closed when Startup points at the Growth product", () => {
+  const growth = process.env.DODO_GROWTH_YEARLY_PRODUCT_ID;
+  const startup = process.env.DODO_STARTUP_PLAN_YEARLY;
+  try {
+    process.env.DODO_GROWTH_YEARLY_PRODUCT_ID = "pdt_shared_invalid";
+    process.env.DODO_STARTUP_PLAN_YEARLY = "pdt_shared_invalid";
+    assert.throws(() => resolveDodoProductId("startup", "yearly"), /Conflicting Dodo product configuration/);
+  } finally {
+    restoreEnvironment("DODO_GROWTH_YEARLY_PRODUCT_ID", growth);
+    restoreEnvironment("DODO_STARTUP_PLAN_YEARLY", startup);
+  }
+});
+
 test("checkout fails closed until signed webhook delivery is configured", () => {
   const originalApiKey = process.env.DODO_PAYMENTS_API_KEY;
   const originalWebhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
@@ -274,17 +287,17 @@ test("paid prebuild rechecks the current plan before preparing the existing feed
   assert.match(paidTrendingPrebuildRoute, /isBusinessProfileOnboardingComplete/);
 });
 
-test("video generation charges four credits for every selected second", () => {
-  assert.equal(DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, 4);
+test("video generation charges three credits for every selected second", () => {
+  assert.equal(DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, 3);
   assert.deepEqual(
     [3, 4, 5, 6, 7, 8, 9, 10].map((seconds) =>
       calculateVideoGenerationCreditCost(seconds),
     ),
-    [12, 16, 20, 24, 28, 32, 36, 40],
+    [9, 12, 15, 18, 21, 24, 27, 30],
   );
   assert.match(
     subscriptionDb,
-    /BILLING_VIDEO_GENERATION_CREDITS_PER_SECOND/,
+    /return DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND/,
   );
   assert.doesNotMatch(subscriptionDb, /BILLING_VIDEO_GENERATION_CREDITS"/);
 });

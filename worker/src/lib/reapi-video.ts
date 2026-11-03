@@ -1,3 +1,4 @@
+import { silenceGeneratedVideo } from "./silent-video.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderOutputCollectionError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
@@ -13,7 +14,7 @@ export const REAPI_OMNI_MODEL = "gemini-omni-1-1";
 const OMNI_DURATIONS = new Set([4, 6, 8, 10]);
 
 type ReapiVideoInput = {
-  model: "seedance_2_5" | "wan_3_0" | "google_omni";
+  model: "seedance_2_5" | "wan_3_0" | "google_omni" | "kling_3_0" | "kling_4_0";
   prompt: string;
   aspectRatio: "9:16" | "16:9";
   durationSeconds: number;
@@ -41,7 +42,9 @@ type ReapiVideoRequest = {
   prompt: string;
   duration?: number;
   size?: string;
-  resolution: string;
+  resolution?: string;
+  mode?: string;
+  sound?: boolean;
   aspect_ratio?: ReapiVideoInput["aspectRatio"];
   content_filter?: boolean;
   generate_audio?: boolean;
@@ -57,6 +60,18 @@ type ReapiVideoRequest = {
 
 /** New requests only. Legacy provider adapters and fingerprints stay frozen. */
 export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoRequest {
+  if (input.model === "kling_4_0") {
+    const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+    if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 30 || !["720p", "1080p"].includes(input.resolution) || !["9:16", "16:9"].includes(input.aspectRatio) || !input.prompt.trim() || images.length > 2 || images.some(url => !isHttpsUrl(url)) || input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode || (input.startingFrameImageUrl && (input.referenceImageUrl || input.referenceImageUrls?.length))) throw new ProviderRequestNotSubmittedError("Choose supported Kling 4.0 settings: 3-30 seconds, 720p/1080p, and up to two HTTPS frames.");
+    return { model: "kling-4-0", prompt: input.prompt.trim(), duration: input.durationSeconds, resolution: input.resolution, aspect_ratio: input.aspectRatio, ...(images.length ? { image_urls: images } : {}) };
+  }
+  if (input.model === "kling_3_0") {
+    const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+    if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 15 || input.resolution !== "720p" || !["9:16", "16:9"].includes(input.aspectRatio) || input.prompt.trim().length < 2 || input.prompt.trim().length > 2500 || images.length > 2 || images.some(url => !isHttpsUrl(url)) || input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode || (input.startingFrameImageUrl && (input.referenceImageUrl || input.referenceImageUrls?.length))) {
+      throw new ProviderRequestNotSubmittedError("Kling 3.0 requires 3-15 seconds, 720p and up to two HTTPS frames without timed references.");
+    }
+    return { model: "kling-3-0", prompt: input.prompt.trim(), duration: input.durationSeconds, mode: "std", sound: input.generateAudio ?? false, aspect_ratio: input.aspectRatio, ...(images.length ? { image_urls: images } : {}) };
+  }
   if (input.model === "google_omni") return buildReapiOmniVideoRequest(input);
   const seedance = input.model === "seedance_2_5";
   const startingFrame = input.startingFrameImageUrl !== undefined;
@@ -170,7 +185,8 @@ export async function generateReapiVideoBuffer(input: ReapiVideoInput & ReapiOpe
       if (!acceptedUrl) throw new ProviderOutputCollectionError("untrusted_output_url");
       // CDN downloads are public bearer URLs, never authenticated with our key.
       try {
-        return await downloadVideoToBuffer(acceptedUrl, { fetchImpl, redirect: "error" });
+        const buffer = await downloadVideoToBuffer(acceptedUrl, { fetchImpl, redirect: "error" });
+        return input.model === "kling_4_0" && input.generateAudio !== true ? await silenceGeneratedVideo(buffer) : buffer;
       } catch {
         // Raw download errors can contain signed links. Keep a safe, distinct
         // collection diagnostic instead of misreporting rendering as pending.

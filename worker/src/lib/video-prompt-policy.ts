@@ -10,7 +10,7 @@ export function getVideoPromptCharacterLimit({
   referenceVideoMode,
   provider,
 }: {
-  model?: "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0";
+  model?: "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0" | "kling_4_0";
   hasReferenceVideo?: boolean;
   referenceVideoMode?: "edit";
   provider?: string;

@@ -31,6 +31,7 @@ import {
   type TraitCategory,
 } from "@/lib/characters/influencer-registry";
 import { changedInfluencerPills, compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
+import { studioTraitImageUrl } from "@/lib/characters/studio-catalog";
 import styles from "./influencer-studio.module.css";
 
 const CATEGORY_ICON_MAP: Record<string, typeof User> = {
@@ -393,7 +394,7 @@ export function InfluencerCustomizerDock({
                           {trait.imagePath ? (
                             <div className={styles.cardImageWrapper}>
                               <Image
-                                src={trait.imagePath}
+                                src={studioTraitImageUrl(trait)!}
                                 alt={trait.label}
                                 fill
                                 sizes="110px"

@@ -1,4 +1,4 @@
-import { getHookSourceFrame, HookSourceFrameError } from "@/lib/explore/hook-source-frame";
+import { getHookOpeningSourceFrame, HookSourceFrameError } from "@/lib/explore/hook-source-frame";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,11 +17,15 @@ export async function GET(request: Request) {
   try {
     // Same immutable-source download, hash validation and frame-zero decoder
     // used by authenticated preparation. No poster, uploads, DB or inference.
-    const frame = await getHookSourceFrame(referenceId);
+    const frame = await getHookOpeningSourceFrame(referenceId);
+    if (frame.frameIndex !== 0 || frame.frameTimeSeconds !== 0) {
+      throw new HookSourceFrameError("The original opening frame could not be verified. Try again.", 409);
+    }
     return new Response(new Uint8Array(frame.png), { headers: {
       ...headers, "Content-Type": "image/png",
       "X-Hook-Reference-Id": frame.referenceId, "X-Hook-Source-Sha256": frame.sourceSha256,
-      "X-Hook-Frame-Sha256": frame.frameSha256, "X-Hook-Frame-Index": "0", "X-Hook-Frame-Time": "0",
+      "X-Hook-Frame-Sha256": frame.frameSha256,
+      "X-Hook-Frame-Index": String(frame.frameIndex), "X-Hook-Frame-Time": String(frame.frameTimeSeconds),
       "X-Hook-Frame-Width": String(frame.width), "X-Hook-Frame-Height": String(frame.height),
     } });
   } catch (error) {

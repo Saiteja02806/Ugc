@@ -9,7 +9,7 @@ export function getVideoReferencePolicy(model: AIStudioVideoModel, options: Vide
   // Image capacity is independent of the one video / one audio supported by
   // this application. A source clip must not consume a face-photo slot.
   // ReAPI Omni Flash accepts no image, one image, or three images.
-  const maxImages = model === "seedance_2_5" ? 30 : model === "kling_3_0" ? 2 : model === "google_omni" ? 3 : 10;
+  const maxImages = model === "seedance_2_5" ? 30 : (model === "kling_3_0" || model === "kling_4_0") ? 2 : model === "google_omni" ? 3 : 10;
   return {
     allowedKinds: ["image", ...(timed || omniVideo ? ["video"] : []), ...(timed ? ["audio"] : [])] as ("image" | "video" | "audio")[],
     maxImages,

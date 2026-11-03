@@ -1,0 +1,13 @@
+# Local Hook preview timeout repair — 3 November 2026
+
+The remaining demonstrated unbounded source read is repaired locally. No technical blocker required leaving it open; the previous turn was diagnosis only. The user authorized continuing the repair while prohibiting builds.
+
+Changed files: lib/explore/local-hook-starting-frame-preview.ts (existing deadline helper,90second total,abort guard); scripts/hook-local-starting-frame-preview.test.mjs (four fault/recovery tests); EXPLORE_CONTEXT.md and docs/ai-context/clear.md (append-only evidence); this receipt. All unrelated current work remains untouched. No dependency/config/provider/API/schema/model/prompt/source timestamp or UI change.
+
+Boundary: bound only the anonymous development source read; preserve chosen source/hash, cancellation, manual retry and inability to submit generation. Same90secondbudgetaslivefetch; no automatic retries. The deadline covers response parsing and verification, not just headers. Normal decoder/server failure still follows existing query error recovery.
+
+Sources actually read: current local preview/client/route, shared deadline helper, existing local-preview tests and workspace error rendering; relevant Explore/ledger entries; context-memory/immutable/regression procedures and nonnegotiable excerpts. Earlier full preflight sources are in the prior Hook recovery receipt. No claim of a fresh complete reread of the large historical ledger.
+
+Fresh verification:137directNode regression checksPASS (same set as .tmp/hook-deep-check-20261103/tests.txt plus4faultcases). Real preview orchestration+real receipt reader+real deadline helper, controlled stalled headers/body, both timeout and caller cancellation, propagated aborted signal, exactlyoneattempt and successful verified subsequent read.90secondtimerissafelycontrolledinthetest; no90secondblockingwait. Existing tests retain wrong-source/hash/timestamp/owner/historical-job and no-generation guards. Scoped ESLint and diff whitespace check results are stored in .tmp/hook-deep-check-20261103/.
+
+VERIFIED: boundedread/cancellation/manualretry/datareceipt behavior in automated tests; no source/model/UI/generation side effects by scoped diff. NOT TESTED: fresh actual browser timeout screenshot, full authenticated paid generation, production integration. No builds,devserver starts,browser bundling,pushes or deployments. Existing cold development compilation cost is a separate measured source of initial delay and is not claimed removed by a network deadline. Previously cancelled production release remains separate; this new uncommitted fix has not shipped. Incident UGC-UI-20261103-HOOK-LOCAL-READ-DEADLINE is locally verified, with visual/hosted acceptance outstanding.

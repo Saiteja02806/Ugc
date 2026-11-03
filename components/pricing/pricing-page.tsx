@@ -13,6 +13,7 @@ import Link from "next/link";
 
 import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "@/lib/billing/free-trial-policy";
+import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
 import { buttonVariants } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import styles from "./pricing-page.module.css";
 import { useAuth } from "@/contexts/auth-context";
 import {
   displayedPricingPlans,
+  getPlanVideoAllowance,
   pricingWorkflows,
   type BillingInterval,
 } from "@/lib/pricing/plans";
@@ -29,6 +31,11 @@ const platformFeatures = pricingWorkflows.map((workflow, index) => ({
   ...workflow,
   icon: [Flame, Layers3, UserRound, CalendarClock][index],
 }));
+
+const allowanceText = displayedPricingPlans.map(plan => {
+  const allowance = getPlanVideoAllowance(plan.sharedMonthlyCredits);
+  return `${plan.name}: ${plan.sharedMonthlyCredits.toLocaleString("en-US")} credits per month, enough for up to ${allowance.hookVideos} four-second Omni Flash videos or ${allowance.fullVideos} six-second videos`;
+}).join(". ");
 
 const faqs = [
   {
@@ -45,7 +52,7 @@ const faqs = [
   },
   {
     question: "How do Vidmake credits work?",
-    answer: `Free accounts do not include AI credits. Starter includes 360 credits each month, Growth includes 720, and Startup includes 1,800, including on annual subscriptions. One second of video costs 4 credits, so those allowances make 30, 60, or 150 three-second hooks, or 15, 30, or 75 six-second videos. Check the displayed credit cost before generating.`,
+    answer: `Free accounts do not include AI credits. ${allowanceText}. These are alternative uses of the same shared credit balance, including on annual subscriptions. These counts use WAN 3.0 or Omni Flash at ${STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second. Seedance 2.5 uses ${DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second; images and other AI generation also use this balance. Check the displayed credit cost before generating.`,
   },
   {
     question: "Which workflows and platforms are included?",

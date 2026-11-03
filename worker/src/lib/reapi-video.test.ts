@@ -308,3 +308,21 @@ test("missing key and malformed acceptance cannot trigger a second paid POST", a
     fetchImpl: (async () => { posts++; return json({ status: "processing" }, 202); }) as typeof fetch }));
   assert.equal(posts, 1);
 });
+
+
+test("Kling 3 uses only ReAPI documented fields and validates before submission", () => {
+  const base = { ...input, model: "kling_3_0", durationSeconds: 3 } as const;
+  assert.deepEqual(buildReapiVideoRequest(base), { model: "kling-3-0", prompt: input.prompt, duration: 3, mode: "std", sound: false, aspect_ratio: "9:16" });
+  assert.deepEqual(buildReapiVideoRequest({ ...base, referenceImageUrls: ["https://storage.example.com/first.png", "https://storage.example.com/last.png"], generateAudio: true }).image_urls, ["https://storage.example.com/first.png", "https://storage.example.com/last.png"]);
+  for (const patch of [{ durationSeconds: 2 }, { durationSeconds: 16 }, { referenceVideoUrl: "https://storage.example.com/video.mp4" }, { resolution: "1080p" as const }]) {
+    assert.throws(() => buildReapiVideoRequest({ ...base, ...patch }), ProviderRequestNotSubmittedError);
+  }
+});
+
+
+test("Kling 4 uses its own schema and rejects unsupported references before charging", () => {
+  const base = { ...input, model: "kling_4_0", durationSeconds: 3 } as const;
+  assert.deepEqual(buildReapiVideoRequest(base), { model: "kling-4-0", prompt: input.prompt, duration: 3, resolution: "720p", aspect_ratio: "9:16" });
+  assert.equal(buildReapiVideoRequest({ ...base, durationSeconds: 30, resolution: "1080p" }).duration, 30);
+  for (const patch of [{ durationSeconds: 2 }, { durationSeconds: 31 }, { referenceVideoUrl: "https://storage.example.com/source.mp4" }, { resolution: "480p" as const }]) assert.throws(() => buildReapiVideoRequest({ ...base, ...patch }), ProviderRequestNotSubmittedError);
+});

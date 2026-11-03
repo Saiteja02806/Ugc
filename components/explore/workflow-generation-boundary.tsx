@@ -3,6 +3,7 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { getVideoModelCreditsPerSecond } from "@/lib/billing/generation-credit-policy";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import { useAuth } from "@/contexts/auth-context";
@@ -157,7 +158,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
   const failedJob = jobs.find((job) => job.status === "failed" || job.status === "cancelled");
   const missingOutput = jobs.some((job) => job.status === "completed") && assetIds.length < jobs.filter((job) => job.status === "completed").length;
   const draftError = getWorkflowGenerationDraftError(draft);
-  const rate = billing.data?.videoGenerationCreditsPerSecond;
+  const rate = getVideoModelCreditsPerSecond(draft.settings.model);
   const requiredCredits = draft.settings.duration * draft.settings.quantity * (rate ?? 0);
   const validBilling = Boolean(billing.data && billing.data.userId === ownerId && Number.isFinite(rate) && rate! > 0 && Number.isFinite(billing.data.creditsRemaining) && billing.data.creditsRemaining >= 0);
   const billingReady = !billing.isError && validBilling && !billing.isPending;

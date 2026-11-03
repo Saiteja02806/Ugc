@@ -71,20 +71,24 @@ export function compileInfluencerPrompt(
   const promptSections: string[] = [];
 
   // 0. UGC framing and the selected room. Full shows the whole person. Half stops at the waist.
-  const bgSnippet = background?.promptSnippet
+  const backgroundSnippet = background?.promptSnippet
     ? background.promptSnippet
     : "authentic home office workspace environment with laptop and desk";
+  const bgSnippet = framing === "full"
+    ? backgroundSnippet.replace("ergonomic desk chair back in foreground", "desk chair to the side")
+    : backgroundSnippet;
   const framingLine = framing === "half"
     ? "Frame the person from the head through the waist, with the legs and feet outside the photograph and the room still visible around them."
-    : "Show the whole person from head to feet.";
+    : "Show the whole person from head to feet in a wide shot with floor below both feet and furniture to the side.";
+  const photograph = framing === "full" ? "full-body photograph" : "creator portrait photograph";
 
   promptSections.push(
-    `Authentic UGC creator portrait photograph in vertical 9:16 frame, natural candid posture, in an ${bgSnippet}, authentic UGC content creator aesthetic, natural ambient room lighting, realistic optical background blur, zero commercial studio equipment. ${framingLine}`
+    `Authentic UGC ${photograph} in vertical 9:16 frame, natural candid posture, in an ${bgSnippet}, authentic UGC content creator aesthetic, natural ambient room lighting, realistic optical background blur, zero commercial studio equipment. ${framingLine}`
   );
 
   // 1. Identity & Demographic Core
   const identityTokens: string[] = [];
-  if (gender) identityTokens.push(gender.promptSnippet);
+  if (gender) identityTokens.push(framing === "full" ? gender.promptSnippet.replace("studio portrait", "full-length photograph") : gender.promptSnippet);
   if (age) identityTokens.push(age.promptSnippet);
   if (ethnicity) identityTokens.push(ethnicity.promptSnippet);
   if (skinTone) identityTokens.push(skinTone.promptSnippet);

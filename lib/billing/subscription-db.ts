@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { selectActiveDodoSubscription } from "./complimentary-plan-policy";
 
 import {
   getActiveComplimentaryPlanGrant,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/billing/free-trial";
 import {
   calculateVideoGenerationCreditCost,
+  getVideoModelCreditsPerSecond,
   DEFAULT_IMAGE_GENERATION_CREDITS,
   DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
 } from "@/lib/billing/generation-credit-policy";
@@ -22,6 +24,7 @@ import {
 } from "@/lib/billing/free-generation-credit-policy";
 import {
   getBillingUsageRetryDelayMs,
+  isPaidBillingPlan,
   getSubscriptionEntitlementPlanKey,
   MAX_BILLING_USAGE_ATTEMPTS,
   PAID_PLAN_MONTHLY_CREDITS,
@@ -298,14 +301,14 @@ export async function getUserSubscription(
   const row = subscriptionResult.data?.find(
     (subscription) => subscription.dodo_subscription_id === creditsResult.data?.dodo_subscription_id,
   ) ?? subscriptionResult.data?.[0] ?? null;
-  const activeDodoRow = (activeSubscriptionsResult.data ?? []).find(
-    (subscription) => subscription.plan_key === "growth",
-  ) ?? activeSubscriptionsResult.data?.[0] ?? null;
+  const activeDodoRow = selectActiveDodoSubscription((activeSubscriptionsResult.data ?? []).map(
+    subscription => ({ ...subscription, plan_key: normalizeSubscriptionPlanKey(subscription.plan_key) }),
+  ));
   const activeDodoPlanKey = activeDodoRow
     ? normalizeSubscriptionPlanKey(activeDodoRow.plan_key)
     : "free";
   const dodoPlanKey =
-    activeDodoPlanKey === "starter" || activeDodoPlanKey === "growth"
+    isPaidBillingPlan(activeDodoPlanKey)
       ? activeDodoPlanKey
       : null;
   const access = resolveBillingAccess({
@@ -378,7 +381,8 @@ export async function getUserSubscription(
     Date.parse(creditBalance!.period_end) <= Date.now();
   const creditLimit = Math.max(
     0,
-    toInteger(creditBalance?.credit_limit, base.sharedMonthlyCredits),
+    previewExpiredCycle ? base.sharedMonthlyCredits
+      : toInteger(creditBalance?.credit_limit, base.sharedMonthlyCredits),
   );
   const creditsUsed = previewExpiredCycle ? 0 : Math.max(0, toInteger(creditBalance?.used_credits));
   const creditsReserved = Math.max(
@@ -735,10 +739,12 @@ export function getGenerationCreditCost(kind: "image"): number;
 export function getGenerationCreditCost(
   kind: "video",
   durationSeconds: number,
+  model?: string,
 ): number;
 export function getGenerationCreditCost(
   kind: "image" | "video",
   durationSeconds?: number,
+  model?: string,
 ) {
   if (kind === "video") {
     if (durationSeconds === undefined) {
@@ -747,7 +753,7 @@ export function getGenerationCreditCost(
 
     return calculateVideoGenerationCreditCost(
       durationSeconds,
-      getVideoGenerationCreditsPerSecond(),
+      getVideoModelCreditsPerSecond(model),
     );
   }
 
@@ -758,10 +764,9 @@ export function getGenerationCreditCost(
 }
 
 export function getVideoGenerationCreditsPerSecond() {
-  return getConfiguredPositiveInteger(
-    "BILLING_VIDEO_GENERATION_CREDITS_PER_SECOND",
-    DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
-  );
+  // The advertised rate and admission charge share one policy. Historical
+  // environment overrides must not silently charge a different amount.
+  return DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND;
 }
 
 function getConfiguredPositiveInteger(name: string, fallback: number) {

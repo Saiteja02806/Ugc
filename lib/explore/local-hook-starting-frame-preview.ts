@@ -1,5 +1,6 @@
 import type { HookKeyframePreviewRuntime } from "@/components/explore/hook-starting-frame-workspace";
 import { readVerifiedHookStartingFrame } from "./hook-starting-frame-client";
+import { withReadDeadline } from "../http/read-deadline";
 
 /** Separate from authenticated drafts; this identity can never submit work. */
 export const LOCAL_HOOK_PREVIEW_OWNER_ID = "local-hook-source-preview-v2";
@@ -9,10 +10,11 @@ export function createLocalHookStartingFramePreviewRuntime(): HookKeyframePrevie
   const signIn = "Sign in to use your saved influencer photos and generate starting images.";
   return {
     generationDisabledReason: "Local preview shows the actual first frame. Sign in to generate starting images; no generation has been submitted.",
-    loadSource: async ({ scope, signal }) => {
-      const response = await fetch(`/e2e/hook-keyframe-preview/source?referenceId=${encodeURIComponent(scope.referenceId)}`, { cache: "no-store", signal });
+    loadSource: ({ scope, signal }) => withReadDeadline(async bounded => {
+      const response = await fetch(`/e2e/hook-keyframe-preview/source?referenceId=${encodeURIComponent(scope.referenceId)}`, { cache: "no-store", signal: bounded });
+      bounded.throwIfAborted();
       return readVerifiedHookStartingFrame(response, scope);
-    },
+    }, signal, 90_000),
     loadInfluencers: async () => { throw new Error(signIn); },
     resolvePhoto: async () => { throw new Error("Local photos are temporary. Choose them again, or sign in to restore saved photos."); },
     read: async () => { throw new Error(signIn); },

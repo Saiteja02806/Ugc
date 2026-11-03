@@ -81,6 +81,16 @@ export function resolveDodoProductId(
     throw new Error(`${variableName} is not configured.`);
   }
 
+  // Never sell another tier/cadence when a deployment variable was copied.
+  for (const otherPlan of ["starter", "growth", "startup"] as const) {
+    for (const otherInterval of ["monthly", "yearly"] as const) {
+      const otherVariable = getProductEnvironmentVariable(otherPlan, otherInterval);
+      if (otherVariable !== variableName && process.env[otherVariable]?.trim() === productId) {
+        throw new Error(`Conflicting Dodo product configuration: ${variableName} and ${otherVariable}.`);
+      }
+    }
+  }
+
   return productId;
 }
 
@@ -163,7 +173,7 @@ export async function createDodoCheckoutSession(
     product_cart: [{ product_id: productId, quantity: 1 }],
     return_url: resolveDefaultReturnUrl(),
     show_saved_payment_methods: Boolean(params.customerId),
-  });
+  }, { maxRetries: 0, timeout: 15_000 });
 
   if (!session.checkout_url) {
     throw new Error("Dodo checkout response did not include a checkout URL.");
@@ -185,6 +195,7 @@ export async function createDodoCustomerPortalSession(params: {
       return_url: `${getBillingAppBaseUrl()}/settings#subscription-billing`,
       send_email: false,
     },
+    { maxRetries: 0, timeout: 15_000 },
   );
 
   return session.link;

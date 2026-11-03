@@ -1,3 +1,5 @@
+import {ensureCharacterCatalogCache,catalogCacheRoot} from './character-catalog-test-cache.mjs';
+await ensureCharacterCatalogCache();
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -108,7 +110,7 @@ test("AICharacterPromo uses authentic Influencer Studio trait assets and exact f
   );
 
   // Walk public/explore/influencer-studio and verify all 36 staged trait assets match an authentic studio image byte-for-byte
-  const studioRoot = path.join(root, "public/explore/influencer-studio");
+  const studioRoot = path.join(catalogCacheRoot, "explore/influencer-studio");
   const studioBuffers = [];
   function collectStudioFiles(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -13,7 +13,7 @@ export function isAIStudioGenerationQuantity(value: unknown): value is AIStudioG
 }
 export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as const;
 export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"] as const;
-export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;
+export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "kling_4_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
 // Kling 3.0's configured route accepts every whole second from 3 through 15.
 const KLING_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
@@ -48,12 +48,13 @@ const AI_STUDIO_VIDEO_RESOLUTIONS_BY_MODEL: Record<
 > = {
   google_omni: ["720p", "1080p"],
   kling_3_0: ["720p"],
+  kling_4_0: ["720p", "1080p"],
   seedance_2_5: ["480p", "720p"],
   wan_3_0: ["480p", "720p", "1080p"],
 };
 
 export function getAIStudioVideoModelLabel(model: AIStudioVideoModel) {
-  return { kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5", wan_3_0: "WAN 3.0" }[model];
+  return { kling_4_0: "Kling 4.0", kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5", wan_3_0: "WAN 3.0" }[model];
 }
 
 export function getDefaultAIStudioVideoModel(
@@ -72,6 +73,7 @@ export function isAIStudioVideoModelAvailable(
 }
 
 export function getAIStudioVideoDurations(model: AIStudioVideoModel): readonly AIStudioVideoDuration[] {
+  if (model === "kling_4_0") return WAN_VIDEO_DURATIONS.filter(value => value >= 3);
   if (model === "wan_3_0") return WAN_VIDEO_DURATIONS;
   if (model === "seedance_2_5") return SEEDANCE_VIDEO_DURATIONS;
   if (model === "kling_3_0") return KLING_VIDEO_DURATIONS;

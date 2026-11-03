@@ -3,8 +3,13 @@ import test from "node:test";
 
 import {
   INSTAGRAM_ACCOUNT_LIMITS,
+  PAID_PLAN_MONTHLY_CREDITS,
   resolveInstagramAccountLimit,
 } from "./policy.ts";
+
+test("monthly credits match the merchant-confirmed catalogue for all paid tiers", () => {
+  assert.deepEqual(PAID_PLAN_MONTHLY_CREDITS, { starter: 200, growth: 600, startup: 1200 });
+});
 
 test("Instagram connection limits allow Free one account and Starter three", () => {
   assert.deepEqual(INSTAGRAM_ACCOUNT_LIMITS, {

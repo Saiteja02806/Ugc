@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as deadlines from "../lib/http/read-deadline.ts";
 
 function load(path, imports, globals = {}) {
   const exports = {};
@@ -11,7 +12,7 @@ function load(path, imports, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(code, { exports, URL, URLSearchParams, Response, Uint8Array, crypto: webcrypto, ...globals,
-    require(name) { if (name in imports) return imports[name]; throw Error(`Unexpected import ${name}`); } });
+    require(name) { if (name === "../http/read-deadline") return deadlines; if (name in imports) return imports[name]; throw Error(`Unexpected import ${name}`); } });
   return exports;
 }
 
@@ -50,7 +51,7 @@ test("local extraction route is closed in production and on non-loopback hosts",
   let reads = 0;
   const env = { NODE_ENV: "production" };
   const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
-    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookSourceFrame: () => { reads++; assert.fail("Must be rejected first"); } },
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookOpeningSourceFrame: () => { reads++; assert.fail("Must be rejected first"); } },
   }, { process: { env } });
   assert.equal((await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"))).status, 404);
   env.NODE_ENV = "development";
@@ -62,8 +63,10 @@ test("local extraction route is closed in production and on non-loopback hosts",
 test("local extraction delegates only catalogue identity and returns the real decoder provenance", async () => {
   const reads = [];
   const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
-    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {}, getHookSourceFrame: async referenceId => {
-      reads.push(referenceId); return { referenceId, sourceSha256, frameSha256, png: pixels, width: 720, height: 1280 };
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError: class extends Error {},
+      getHookSourceFrame: () => assert.fail("The legacy resolver may return a later curated frame"),
+      getHookOpeningSourceFrame: async referenceId => {
+      reads.push(referenceId); return { referenceId, sourceSha256, frameSha256, frameIndex: 0, frameTimeSeconds: 0, png: pixels, width: 720, height: 1280 };
     } },
   }, { process: { env: { NODE_ENV: "development" } } });
   const result = await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"));
@@ -71,3 +74,53 @@ test("local extraction delegates only catalogue identity and returns the real de
   assert.equal(result.headers.get("X-Hook-Frame-Sha256"), frameSha256); assert.equal(result.headers.get("X-Hook-Frame-Time"), "0");
   assert.equal(Buffer.from(await result.arrayBuffer()).compare(pixels), 0);
 });
+
+test("local preview never relabels a later source frame as original t=0", async () => {
+  class HookSourceFrameError extends Error { constructor(message, status) { super(message); this.status = status; } }
+  const route = load("app/e2e/hook-keyframe-preview/source/route.ts", {
+    "@/lib/explore/hook-source-frame": { HookSourceFrameError, getHookOpeningSourceFrame: async () => ({
+      referenceId: scope.referenceId, sourceSha256, frameSha256, frameIndex: 70, frameTimeSeconds: 2.333333,
+      png: pixels, width: 720, height: 1280,
+    }) },
+  }, { process: { env: { NODE_ENV: "development" } } });
+  const result = await route.GET(new Request("http://127.0.0.1/e2e/hook-keyframe-preview/source?referenceId=keyboard-hook"));
+  assert.equal(result.status, 409);
+  assert.equal(result.headers.get("X-Hook-Frame-Index"), null);
+  assert.match((await result.json()).message, /original opening frame could not be verified/);
+});
+
+for (const phase of ["headers", "body"]) for (const cancel of [false, true]) {
+  test(`local preview ${phase} stall ${cancel ? "cancels" : "times out"} and a fresh read recovers`, async t => {
+    const timeout = new AbortController(), caller = new AbortController();
+    t.mock.method(AbortSignal, "timeout", ms => { assert.equal(ms, 90_000); return timeout.signal; });
+    const client = load("lib/explore/hook-starting-frame-client.ts", {
+      "../firebase/auth": { getCurrentUserIdToken: () => assert.fail("Preview must not authenticate") },
+    });
+    let stalled = true, started, requestSignal, calls = 0;
+    const ready = new Promise(resolve => { started = resolve; });
+    const response = () => new Response(pixels, { headers: {
+      "Content-Type": "image/png", "X-Hook-Reference-Id": scope.referenceId,
+      "X-Hook-Source-Sha256": sourceSha256, "X-Hook-Frame-Sha256": frameSha256,
+      "X-Hook-Frame-Index": "0", "X-Hook-Frame-Time": "0",
+      "X-Hook-Frame-Width": "720", "X-Hook-Frame-Height": "1280",
+    } });
+    const preview = load("lib/explore/local-hook-starting-frame-preview.ts", { "./hook-starting-frame-client": client }, {
+      fetch: async (_url, options) => {
+        calls++; requestSignal = options.signal;
+        if (!stalled) return response();
+        if (phase === "headers") { started(); return new Promise(() => {}); }
+        const value = response(); value.blob = () => { started(); return new Promise(() => {}); }; return value;
+      },
+    }).createLocalHookStartingFramePreviewRuntime();
+    const pending = preview.loadSource({ scope, signal: caller.signal });
+    await ready;
+    if (cancel) caller.abort(); else timeout.abort();
+    await assert.rejects(pending, cancel ? { name: "AbortError" } : error => error instanceof deadlines.ReadDeadlineError);
+    assert.equal(requestSignal.aborted, true);
+    assert.equal(calls, 1, "No automatic retries or generation requests");
+    stalled = false; t.mock.restoreAll();
+    const recovered = await preview.loadSource({ scope, signal: new AbortController().signal });
+    assert.equal(recovered.frame.sha256, frameSha256);
+    assert.equal(calls, 2);
+  });
+}

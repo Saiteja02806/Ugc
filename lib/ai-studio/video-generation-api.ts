@@ -660,7 +660,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
   const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
-    : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" ? "reapi" : undefined;
+    : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" || model === "kling_3_0" || model === "kling_4_0" ? "reapi" : undefined;
   const providerReferenceImages = frameVoiceReference && startingFrame ? [startingFrame.imageUrl, ...referenceImageUrls] : referenceImageUrls;
   const startingFrameInput = frameVoiceReference && startingFrame ? {
     startingImageReference: { version: 1, mode: "image_voice_reference", assetId: startingFrame.assetId, imageJobId: startingFrame.imageJobId,
@@ -687,7 +687,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
   if (options) {
     return options.startBatch({
-      amountPerVideo: getGenerationCreditCost("video", durationSeconds),
+      amountPerVideo: getGenerationCreditCost("video", durationSeconds, model),
       requestKey: baseIdempotencyKey,
       userId: user.uid,
       inputs: Array.from({ length: quantity }, (_, index) => ({
@@ -729,7 +729,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
     try {
       await reserveBillingCredits({
-        amount: getGenerationCreditCost("video", durationSeconds),
+        amount: getGenerationCreditCost("video", durationSeconds, model),
         idempotencyKey,
         jobType: VIDEO_JOB_TYPE,
         userId: user.uid,

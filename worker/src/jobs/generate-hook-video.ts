@@ -56,7 +56,7 @@ type GenerateHookVideoBaseInput = {
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "wan_3_0";
+  model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -506,7 +506,7 @@ async function generateProviderBuffer(
   params: {
     aspectRatio: HookVideoAspectRatio;
     durationSeconds: number;
-    model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "wan_3_0";
+    model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0";
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
@@ -525,7 +525,7 @@ async function generateProviderBuffer(
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
   if (provider === "reapi") {
-    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0" && params.model !== "google_omni") throw new ProviderRequestNotSubmittedError("Choose Omni Flash, Seedance 2.5, or WAN 3.0 for ReAPI.");
+    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0" && params.model !== "google_omni" && params.model !== "kling_3_0" && params.model !== "kling_4_0") throw new ProviderRequestNotSubmittedError("Choose Omni Flash, Seedance 2.5, or WAN 3.0 for ReAPI.");
     return generateReapiVideoBuffer({ ...params, model: params.model, onOperationSucceeded });
   }
   if (provider === "openrouter") {
@@ -604,6 +604,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   if (job.input_json.generateAudio !== undefined && typeof job.input_json.generateAudio !== "boolean") throw new ProviderRequestNotSubmittedError("Choose a valid sound setting.");
   const model =
     job.input_json.model === "wan_3_0" ? "wan_3_0" :
+    job.input_json.model === "kling_4_0" ? "kling_4_0" :
     job.input_json.model === "kling_3_0" ? "kling_3_0" :
     job.input_json.model === "seedance_2_5"
       ? "seedance_2_5"

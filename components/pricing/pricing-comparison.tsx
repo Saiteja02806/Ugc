@@ -158,7 +158,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 </tr>
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th scope="row" className="px-5 py-3.5 text-xs font-normal text-muted">
-                    3-second hook videos
+                    4-second Omni Flash videos
                   </th>
                   {plans.map((plan) => (
                     <td key={plan.slug} className={cn("px-4 py-3.5 text-center text-xs font-semibold text-foreground-strong", plan.highlighted ? "bg-primary/[0.04] text-primary" : "")}>

@@ -46,7 +46,7 @@ export function PricingCatalog({
 
   const isYearly = billingInterval === "yearly";
   const allowanceOptions: Array<{ label: string; value: PlanAllowanceView }> = [
-    { label: "3-second hooks", value: "hooks" },
+    { label: "Short hooks", value: "hooks" },
     { label: "6-second videos", value: "full" },
     { label: "Credits", value: "credits" },
   ];

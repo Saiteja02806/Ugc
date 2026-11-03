@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error(error);
@@ -33,7 +33,7 @@ export default function ErrorPage({
           return to the workspace.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button type="button" size="lg" onClick={() => unstable_retry()}>
+          <Button type="button" size="lg" onClick={() => retry()}>
             <RotateCcw data-icon="inline-start" aria-hidden="true" />
             Try again
           </Button>

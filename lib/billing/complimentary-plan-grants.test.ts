@@ -1,9 +1,26 @@
 import assert from "node:assert/strict";
+import { isPaidBillingPlan } from "./policy.ts";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { hasBillingAdminAccess, parseBillingAdminEmails } from "./admin-access.ts";
-import { resolveBillingAccess } from "./complimentary-plan-policy.ts";
+import { resolveBillingAccess, selectActiveDodoSubscription } from "./complimentary-plan-policy.ts";
+
+test("Startup remains the highest active paid tier even with an older Growth subscription", () => {
+  const startup = { plan_key: "startup", status: "active", id: "startup" };
+  const growth = { plan_key: "growth", status: "active", id: "growth" };
+  for (const rows of [[growth, startup], [startup, growth]]) {
+    const selected = selectActiveDodoSubscription(rows);
+    assert.equal(selected, startup);
+    assert.ok(isPaidBillingPlan(selected.plan_key));
+    assert.deepEqual(resolveBillingAccess({ complimentaryPlanKey: "growth", dodoPlanKey: selected.plan_key }),
+      { accessSource: "dodo", planKey: "startup" });
+  }
+  assert.equal(selectActiveDodoSubscription([{ ...startup, status: "cancelled" }, growth]), growth);
+  assert.equal(selectActiveDodoSubscription([{ plan_key: "unknown", status: "active" }]), null);
+  assert.equal(selectActiveDodoSubscription([]), null);
+  assert.equal(isPaidBillingPlan("startup"), true);
+});
 
 const migration = readFileSync(
   new URL(

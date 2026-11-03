@@ -67,7 +67,7 @@ import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getVideoGenerationState } from "@/lib/ai-studio/video-generation-state";
-import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
+import { getVideoModelCreditsPerSecond } from "@/lib/billing/generation-credit-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getExploreVideoPromptMaxLength } from "@/lib/explore/format-generation-prompt";
 import type { ExploreImagePurpose } from "@/lib/explore/person-reference";
@@ -262,7 +262,6 @@ export function VideoGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
   active = true,
-  creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
   creditsRemaining = null,
   recreateView,
 }: {
@@ -539,6 +538,7 @@ export function VideoGenerationStudioPanel({
     setGalleryVideoMetadata(previous => previous?.url === url && previous.duration === duration ? previous : { url, duration });
   }
   const billedDuration = hasWorkflowVideoReference && sourceDuration ? model === "seedance_2_5" ? Math.ceil(sourceDuration) : Math.max(3, Math.round(sourceDuration)) : durationSeconds;
+  const creditsPerSecond = getVideoModelCreditsPerSecond(model);
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =

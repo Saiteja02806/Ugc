@@ -166,7 +166,7 @@ export function registerGenerationMcpTools(server: McpServer) {
     _meta: oauthMetadata("generation:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "generation:write");
-    const creditCost = getGenerationCreditCost("video", args.duration_seconds) * args.count;
+    const creditCost = getGenerationCreditCost("video", args.duration_seconds, "google_omni") * args.count;
     return requireConfirmation({
       tool: "generate_video", accountId: userId, args, effect: "spend_credits",
       summary: `Reserve ${creditCost} credits and queue ${args.count} ${args.duration_seconds}-second video${args.count === 1 ? "" : "s"}.`,
@@ -177,7 +177,7 @@ export function registerGenerationMcpTools(server: McpServer) {
         const referenceImageUrl = await getReferenceImage(userId, args.reference_asset_id);
         return queueGeneration({
           userId, kind: "video", count: args.count, clientRequestId: args.client_request_id,
-          amount: getGenerationCreditCost("video", args.duration_seconds),
+          amount: getGenerationCreditCost("video", args.duration_seconds, "google_omni"),
           fingerprint: generationRequestFingerprint({
             kind: "video", prompt: args.prompt, aspectRatio: args.aspect_ratio,
             count: args.count, referenceAssetId: args.reference_asset_id, durationSeconds: args.duration_seconds,

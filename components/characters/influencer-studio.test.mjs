@@ -55,6 +55,19 @@ test("half framing asks for a waist-up portrait and keeps the vertical frame", (
   assert.equal(result.displayPills.at(-1)?.label, "Half");
 });
 
+test("Full avoids conflicting portrait and foreground-chair instructions while Half retains its composition", () => {
+  const selection = { ...DEFAULT_INFLUENCER_SELECTION, backgroundId: "bg_cozy_floral_bedroom" };
+  const full = compileInfluencerPrompt(selection).prompt;
+  assert.match(full, /full-body photograph.*9:16/);
+  assert.match(full, /head to feet.*floor below both feet/);
+  assert.match(full, /desk chair to the side/);
+  assert.doesNotMatch(full, /studio portrait|creator portrait photograph|desk chair back in foreground/);
+  const half = compileInfluencerPrompt({ ...selection, framing: "half" }).prompt;
+  assert.match(half, /creator portrait photograph/);
+  assert.match(half, /studio portrait/);
+  assert.match(half, /desk chair back in foreground/);
+});
+
 test("compileInfluencerPrompt respects tall vs petite height proportions", () => {
   const tallSelection = { ...DEFAULT_INFLUENCER_SELECTION, heightId: "height_tall" };
   const tallResult = compileInfluencerPrompt(tallSelection);

@@ -4,9 +4,9 @@ export type PaidBillingPlanKey = Exclude<BillingPlanKey, "free">;
 export const MAX_BILLING_USAGE_ATTEMPTS = 10;
 
 export const PAID_PLAN_MONTHLY_CREDITS: Record<PaidBillingPlanKey, number> = {
-  starter: 360,
-  growth: 720,
-  startup: 1800,
+  starter: 200,
+  growth: 600,
+  startup: 1200,
 };
 
 export const INSTAGRAM_ACCOUNT_LIMITS: Record<BillingPlanKey, number> = {

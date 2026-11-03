@@ -1,4 +1,5 @@
 import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "../billing/free-trial-policy.ts";
+import { getVideoModelCreditsPerSecond } from "../billing/generation-credit-policy.ts";
 import { PAID_PLAN_MONTHLY_CREDITS } from "../billing/policy.ts";
 
 export type BillingInterval = "monthly" | "yearly";
@@ -29,13 +30,22 @@ const usdPriceFormatter = new Intl.NumberFormat("en-US", {
 });
 export const HOOK_VIDEO_SECONDS = 3;
 export const FULL_VIDEO_SECONDS = 6;
-const HOOK_VIDEO_CREDITS = HOOK_VIDEO_SECONDS * 4;
-const FULL_VIDEO_CREDITS = FULL_VIDEO_SECONDS * 4;
+export const PRICING_VIDEO_MODELS = [
+  { id: "google_omni", label: "Omni Flash" },
+  { id: "wan_3_0", label: "WAN 3.0" },
+  { id: "seedance_2_5", label: "Seedance 2.5" },
+  { id: "kling_3_0", label: "Kling 3.0" },
+  { id: "kling_4_0", label: "Kling 4.0" },
+] as const;
+export type PricingVideoModel = typeof PRICING_VIDEO_MODELS[number]["id"];
 export function formatPricingAmount(amount: number) { return usdPriceFormatter.format(amount); }
-export function getPlanVideoAllowance(monthlyCredits: number) {
+export function getPlanVideoAllowance(monthlyCredits: number, model: PricingVideoModel = "google_omni") {
+  const rate = getVideoModelCreditsPerSecond(model);
+  const hookSeconds = model === "google_omni" || model === "seedance_2_5" ? 4 : 3;
   return {
-    fullVideos: Math.floor(monthlyCredits / FULL_VIDEO_CREDITS),
-    hookVideos: Math.floor(monthlyCredits / HOOK_VIDEO_CREDITS),
+    hookSeconds,
+    fullVideos: Math.floor(monthlyCredits / (FULL_VIDEO_SECONDS * rate)),
+    hookVideos: Math.floor(monthlyCredits / (hookSeconds * rate)),
   };
 }
 export function formatPlanAllowance(
@@ -50,7 +60,7 @@ export function formatPlanAllowance(
 function monthlyVideoFeatures(monthlyCredits: number) {
   const allowance = getPlanVideoAllowance(monthlyCredits);
   return [
-    `${allowance.hookVideos} three-second hook videos each month`,
+    `${allowance.hookVideos} ${allowance.hookSeconds}-second hook videos each month`,
     `${allowance.fullVideos} six-second videos each month`,
     `${monthlyCredits.toLocaleString("en-US")} AI credits each month`,
   ];
@@ -99,7 +109,7 @@ export const pricingPlans: PricingPlan[] = [
     description: "Daily content and custom AI generation for your growing brand.",
     prices: { monthly: 29, yearly: 299 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.starter, oneTimeCredits: 0,
     dailyContentPieces: 20, instagramAccounts: 3,
-    capacityLabel: "360 credits / month",
+    capacityLabel: `${PAID_PLAN_MONTHLY_CREDITS.starter.toLocaleString("en-US")} credits / month`,
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.starter),
       "Access to all available workflows",
@@ -117,7 +127,7 @@ export const pricingPlans: PricingPlan[] = [
     prices: { monthly: 49, yearly: 490 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.growth, oneTimeCredits: 0,
     dailyContentPieces: 50, instagramAccounts: 5,
     highlighted: true, badgeLabel: "Best seller",
-    capacityLabel: "720 credits / month",
+    capacityLabel: `${PAID_PLAN_MONTHLY_CREDITS.growth.toLocaleString("en-US")} credits / month`,
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.growth),
       "Access to all available workflows",
@@ -134,7 +144,7 @@ export const pricingPlans: PricingPlan[] = [
     description: "The larger monthly video allowance for teams publishing every day.",
     prices: { monthly: 99, yearly: 999 }, sharedMonthlyCredits: PAID_PLAN_MONTHLY_CREDITS.startup, oneTimeCredits: 0,
     dailyContentPieces: 50, instagramAccounts: 5,
-    capacityLabel: "1,800 credits / month",
+    capacityLabel: `${PAID_PLAN_MONTHLY_CREDITS.startup.toLocaleString("en-US")} credits / month`,
     features: [
       ...monthlyVideoFeatures(PAID_PLAN_MONTHLY_CREDITS.startup),
       "Access to all available workflows",

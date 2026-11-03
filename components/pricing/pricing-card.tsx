@@ -1,14 +1,16 @@
 import { ArrowRight, Check, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { BillingSubscription } from "@/components/billing/use-billing-subscription";
 import { CreditIcon } from "@/components/icons/credit-icon";
+import { PricingModelSelect } from "@/components/pricing/pricing-model-select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { resolvePricingPlanAction } from "@/lib/pricing/plan-action";
 import {
@@ -16,6 +18,7 @@ import {
   formatPricingAmount,
   getPlanPricing,
   getPlanVideoAllowance,
+  type PricingVideoModel,
   type BillingInterval,
   type PlanAllowanceView,
   type PricingPlan,
@@ -41,10 +44,30 @@ export function PricingCard({
 }: PricingCardProps) {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [isWorking, setIsWorking] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionState, setActionState] = useState<{
+    ownerId: string | undefined;
+    working: boolean;
+    error: string | null;
+  }>({ ownerId: undefined, working: false, error: null });
+  const isWorking = actionState.ownerId === user?.uid && actionState.working;
+  const actionError = actionState.ownerId === user?.uid ? actionState.error : null;
+  const actionInFlight = useRef(false);
+  const actionController = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      actionController.current?.abort();
+      actionController.current = null;
+      actionInFlight.current = false;
+    };
+  }, [user?.uid]);
   const pricing = getPlanPricing(plan, billingInterval);
-  const videoAllowance = getPlanVideoAllowance(plan.sharedMonthlyCredits);
+  const [allowanceModel, setAllowanceModel] = useState<PricingVideoModel>("google_omni");
+  const videoAllowance = getPlanVideoAllowance(plan.sharedMonthlyCredits, allowanceModel);
+  const displayedFeatures = plan.sharedMonthlyCredits > 0 ? [
+    `${videoAllowance.hookVideos} ${videoAllowance.hookSeconds}-second hook videos each month`,
+    `${videoAllowance.fullVideos} six-second videos each month`,
+    ...plan.features.slice(2),
+  ] : plan.features;
   const isFree = plan.slug === "free";
   const isGrowth = plan.highlighted;
   const ctaHref = `/sign-in?plan=${plan.slug}&billing=${billingInterval}`;
@@ -61,7 +84,7 @@ export function PricingCard({
   const isDisabled = isWorking || action.disabled;
 
   async function handleAction() {
-    if (isDisabled) {
+    if (isDisabled || actionInFlight.current) {
       return;
     }
 
@@ -75,11 +98,13 @@ export function PricingCard({
       return;
     }
 
-    setIsWorking(true);
-    setActionError(null);
+    actionInFlight.current = true;
+    const controller = new AbortController();
+    actionController.current = controller;
+    setActionState({ ownerId: user?.uid, working: true, error: null });
 
     try {
-      const token = await getCurrentUserIdToken();
+      const token = await withReadDeadline(() => getCurrentUserIdToken(user?.uid), controller.signal);
 
       if (!token) {
         throw new Error("Sign in again before continuing to billing.");
@@ -88,33 +113,38 @@ export function PricingCard({
       const endpoint = action.destination === "portal"
         ? "/api/billing/portal"
         : "/api/billing/checkout";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: action.destination === "portal"
-          ? undefined
-          : JSON.stringify({ billingInterval, planSlug: plan.slug }),
-      });
-      const data = (await response.json().catch(() => null)) as
-        | { checkoutUrl?: string; error?: string; portalUrl?: string }
-        | null;
+      // Bound headers AND body parsing. Never automatically replay a billing POST.
+      const { response, data } = await withReadDeadline(async (signal) => {
+        const response = await fetch(endpoint, {
+          signal,
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: action.destination === "portal"
+            ? undefined
+            : JSON.stringify({ billingInterval, planSlug: plan.slug }),
+        });
+        const data = (await response.json().catch(() => null)) as
+          | { checkoutUrl?: string; error?: string; portalUrl?: string }
+          | null;
+        return { response, data };
+      }, controller.signal, 30_000);
       const destination = data?.portalUrl ?? data?.checkoutUrl;
 
       if (!response.ok || !destination) {
         throw new Error(data?.error || "Could not open secure billing.");
       }
 
-      window.location.assign(destination);
+      if (!controller.signal.aborted) window.location.assign(destination);
     } catch (error) {
-      setIsWorking(false);
-      setActionError(
-        error instanceof Error
+      if (controller.signal.aborted || actionController.current !== controller) return;
+      actionInFlight.current = false;
+      actionController.current = null;
+      setActionState({ ownerId: user?.uid, working: false, error: error instanceof Error
           ? error.message
-          : "Could not open secure billing. Try again.",
-      );
+          : "Could not open secure billing. Try again." });
     }
   }
 
@@ -255,15 +285,17 @@ export function PricingCard({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
             What you can make every month
           </p>
+          <PricingModelSelect planName={plan.name} value={allowanceModel} onChange={setAllowanceModel} />
+          <p className="mt-2 text-[11px] text-muted">Video generation varies by model.</p>
           <p className="mt-2 text-sm font-semibold text-foreground-strong">
             {allowanceView === "hooks"
-              ? `${videoAllowance.hookVideos} video hooks, 3 seconds each`
+              ? `${videoAllowance.hookVideos} video hooks, ${videoAllowance.hookSeconds} seconds each`
               : allowanceView === "full"
                 ? `${videoAllowance.fullVideos} full videos, 6 seconds each`
                 : formatPlanAllowance(plan.sharedMonthlyCredits, "credits")}
           </p>
           <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
-            <li>{videoAllowance.hookVideos} three-second hooks</li>
+            <li>{videoAllowance.hookVideos} {videoAllowance.hookSeconds}-second hooks</li>
             <li>or {videoAllowance.fullVideos} six-second videos</li>
             <li className="flex items-center gap-1.5">
               <CreditIcon className="size-4" />
@@ -292,7 +324,7 @@ export function PricingCard({
           Included
         </p>
         <ul className="mt-3 flex flex-1 flex-col gap-2.5 text-xs">
-          {plan.features.map((feature) => (
+          {displayedFeatures.map((feature) => (
             <li key={feature} className="flex items-start gap-2.5">
               <Check
                 className="mt-0.5 size-3.5 shrink-0 text-success"

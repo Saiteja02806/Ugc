@@ -188,7 +188,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       characterSource: CHARACTER_SOURCE,
       characterVersion: CHARACTER_VERSION,
       characterRequestFingerprint: fingerprint,
-      generationId: (dependencies.createId ?? crypto.randomUUID)(),
+      generationId: dependencies.createId ? dependencies.createId() : crypto.randomUUID(),
       mode: request.mode,
       model: request.model,
       ...(request.model === "seedream_5_pro" || request.model === "gemini_3_pro" ? { provider: "openrouter" } : {}),

@@ -14,6 +14,7 @@ import {
 } from "@/lib/characters/influencer-registry";
 import { compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
 import { orderedStudioReferences, studioReferenceOrderLine, studioReferenceSize } from "@/lib/characters/studio-references";
+import { prepareStudioReferenceAssets } from "@/lib/characters/studio-preparation-client";
 import { useCharacterBuilder } from "./use-character-builder";
 import { InfluencerCustomizerDock } from "./influencer-customizer-dock";
 import { InfluencerCanvas } from "./influencer-canvas";
@@ -43,17 +44,6 @@ async function studioReferenceFile(blob: Blob, filename: string) {
   } catch {
     return fallback();
   }
-}
-
-async function ownedStudioAssetId(imagePath: string, userId: string, cache: Map<string, string>) {
-  const cached = cache.get(imagePath);
-  if (cached) return cached;
-  const response = await fetch(imagePath);
-  if (!response.ok) throw new Error("A selected look could not be loaded.");
-  const file = await studioReferenceFile(await response.blob(), imagePath.split("/").pop() || "reference.png");
-  const uploaded = await uploadAIStudioReferenceMedia(file, "image", undefined, userId, { purpose: "explore-catalog-reference" });
-  cache.set(imagePath, uploaded.asset.id);
-  return uploaded.asset.id;
 }
 
 export function CharacterWorkspace({ localPreview = false }: { localPreview?: boolean }) {
@@ -111,7 +101,6 @@ function CharacterStudioScreen({
   const [customCharacters, setCustomCharacters] = useState<InfluencerTrait[]>([]);
   const faceFiles = useRef(new Map<string, File>());
   const faceAssetIds = useRef(new Map<string, string>());
-  const studioAssetIds = useRef(new Map<string, string>());
   const [batchSize, setBatchSize] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadingReferences, setUploadingReferences] = useState(false);
@@ -184,10 +173,8 @@ function CharacterStudioScreen({
       }
       const references = orderedStudioReferences(selection, customCharacters, uploadedFaceAssetId ? 9 : 10)
         .filter((reference, index, list) => list.findIndex((item) => item.imagePath === reference.imagePath) === index);
-      const studioAssetIdList: string[] = [];
-      for (const reference of references) {
-        studioAssetIdList.push(await ownedStudioAssetId(reference.imagePath, userId, studioAssetIds.current));
-      }
+      const studioAssetIdList = references.length
+        ? await prepareStudioReferenceAssets(userId, references.map(reference => reference.id)) : [];
       const assetIds = [...(uploadedFaceAssetId ? [uploadedFaceAssetId] : []), ...studioAssetIdList];
       const labels = [
         ...(uploadedFaceAssetId ? ["uploaded face"] : []),

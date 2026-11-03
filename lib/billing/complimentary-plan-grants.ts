@@ -1,11 +1,9 @@
 import "server-only";
+import { isPaidBillingPlan } from "./policy";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  resolveBillingAccess,
-  type PaidBillingPlanKey,
-} from "./complimentary-plan-policy";
+import type { PaidBillingPlanKey } from "./complimentary-plan-policy";
 
 export {
   resolveBillingAccess,
@@ -52,7 +50,7 @@ export async function getActiveComplimentaryPlanGrant(
     );
   }
 
-  if (!data || (data.plan_key !== "starter" && data.plan_key !== "growth")) {
+  if (!data || !isPaidBillingPlan(data.plan_key)) {
     return null;
   }
 

@@ -3,9 +3,22 @@ import test from "node:test";
 
 import {
   getPlanPricing,
+  getPlanVideoAllowance,
   parseBillingInterval,
   pricingPlans,
 } from "./plans.ts";
+
+test("model-specific allowances use the complete monthly video-only credit budget", () => {
+  for (const [model, seconds, rate] of [["google_omni", 4, 2], ["wan_3_0", 3, 2], ["seedance_2_5", 4, 3], ["kling_3_0", 3, 1], ["kling_4_0", 3, 2]] as const) {
+    for (const credits of [200, 600, 1200]) {
+      const allowance = getPlanVideoAllowance(credits, model);
+      assert.equal(allowance.hookSeconds, seconds);
+      assert.ok(allowance.hookVideos * seconds * rate <= credits);
+      assert.ok((allowance.hookVideos + 1) * seconds * rate > credits);
+      assert.equal(allowance.fullVideos, Math.floor(credits / (6 * rate)));
+    }
+  }
+});
 
 test("annual pricing uses the catalogue charge and computes actual savings", () => {
   for (const plan of pricingPlans) {
@@ -38,14 +51,14 @@ test("plans expose credit balances for Free, Starter, Growth, and Startup", () =
     pricingPlans.map((plan) => [plan.slug, plan.sharedMonthlyCredits]),
     [
       ["free", 0],
-      ["starter", 360],
-      ["growth", 720],
-      ["startup", 1800],
+      ["starter", 200],
+      ["growth", 600],
+      ["startup", 1200],
     ],
   );
 });
 
-test("paid plans show hook and full-video counts from four credits per second", () => {
+test("paid plans show hook and full-video counts from two credits per second", () => {
   assert.deepEqual(
     pricingPlans.filter((plan) => plan.slug !== "free").map((plan) => [
       plan.slug,
@@ -54,9 +67,9 @@ test("paid plans show hook and full-video counts from four credits per second", 
       plan.features[2],
     ]),
     [
-      ["starter", "30 three-second hook videos each month", "15 six-second videos each month", "360 AI credits each month"],
-      ["growth", "60 three-second hook videos each month", "30 six-second videos each month", "720 AI credits each month"],
-      ["startup", "150 three-second hook videos each month", "75 six-second videos each month", "1,800 AI credits each month"],
+      ["starter", "25 4-second hook videos each month", "16 six-second videos each month", "200 AI credits each month"],
+      ["growth", "75 4-second hook videos each month", "50 six-second videos each month", "600 AI credits each month"],
+      ["startup", "150 4-second hook videos each month", "100 six-second videos each month", "1,200 AI credits each month"],
     ],
   );
 });

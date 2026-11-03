@@ -106,7 +106,7 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /durationSeconds,[\s\S]*?model,/);
   assert.match(
     videoGenerationApi,
-    /getGenerationCreditCost\("video", durationSeconds\)/,
+    /getGenerationCreditCost\("video", durationSeconds, model\)/,
   );
   assert.match(videoWorkspace, /AiStudioRatioPicker/);
   assert.match(videoWorkspace, /allowedRatios=\{startingFrame \? \[startingFrame\.width > startingFrame\.height \? "16:9" : "9:16"\] : \["9:16", "16:9"\]\}/);
@@ -134,7 +134,7 @@ test("video duration displays and enforces four credits per second", () => {
   );
   assert.match(
     videoWorkspace,
-    /creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND/,
+    /creditsPerSecond = getVideoModelCreditsPerSecond\(model\)/,
   );
   assert.match(videoWorkspace, /hasInsufficientCredits/);
   assert.match(imageWorkspace, /hasInsufficientCredits/);

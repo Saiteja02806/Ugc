@@ -80,11 +80,12 @@ export const CHARACTER_TYPES: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/characters/3.png",
     promptSnippet: "extreme expressive viral creator face, distinctive exaggerated masculine features, neatly groomed mustache, high-energy creator presence",
   },
-  { id: "char_wide_eyed_mustache", label: "Wide-Eyed Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/wide-eyed-mustache.png", promptSnippet: "distinctive expressive face with wide round eyes, prominent ears, long narrow nose and a curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
   { id: "char_playful_mustache", label: "Playful Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/playful-mustache.png", promptSnippet: "playful expressive facial identity with large ears, rounded cheeks and a thick curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
 ];
 
 export const LEGACY_CHARACTER_ALIASES: readonly InfluencerTrait[] = [
+  // Retain lookup support for saved generations; omit from the live chooser.
+  { id: "char_wide_eyed_mustache", label: "Wide-Eyed Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/wide-eyed-mustache.png", promptSnippet: "distinctive expressive face with wide round eyes, prominent ears, long narrow nose and a curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
   { ...CHARACTER_TYPES[0], id: "char_allura" },
   { ...CHARACTER_TYPES[1], id: "char_kora" },
   { ...CHARACTER_TYPES[2], id: "char_nico" },
@@ -96,6 +97,16 @@ export const SCRATCH_CHARACTER_FALLBACK: InfluencerTrait = {
   category: "character_type",
   promptSnippet: "unique authentic creator face synthesized from anatomical parameters, ultra-realistic believable human identity",
 };
+
+// Historical selections remain resolvable without offering these rooms again.
+const LEGACY_BACKGROUNDS: readonly InfluencerTrait[] = [
+  { id: "bg_car_interior", label: "Car Interior", category: "background", imagePath: "/explore/influencer-studio/backgrounds/car-interior.jpg", promptSnippet: "car cabin with cream seats, dark dashboard and side-window daylight; use the reference for the cabin and lighting only, omit readable branding. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_clean_studio", label: "Minimal Gray Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/clean-studio.jpg", promptSnippet: "minimal gray interior with neutral sofa, simple door and soft diffuse light. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_cozy_bedroom", label: "Loft Bedroom", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-bedroom.jpg", promptSnippet: "cozy loft bedroom with white bedding, tall multi-pane windows, exposed ceiling and natural daylight. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_cozy_living_room", label: "Warm Living Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-living-room.jpg", promptSnippet: "warm living room with tan leather sofa, plants, neutral framed wall art and soft window light. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_modern_kitchen", label: "Modern Kitchen", category: "background", imagePath: "/explore/influencer-studio/backgrounds/modern-kitchen.jpg", promptSnippet: "warm modern kitchen with dark cabinetry, island counter, bar stools and angled sunlight. Use this photo for the environment only; keep the selected character and outfit." },
+  { id: "bg_office_desk", label: "Dark Home Office", category: "background", imagePath: "/explore/influencer-studio/backgrounds/office-desk.jpg", promptSnippet: "dark home office with wood desk, monitor, desk chair, potted plant and soft side-window daylight. Use this photo for the environment only; keep the selected character and outfit." },
+];
 
 export const BACKGROUNDS: readonly InfluencerTrait[] = [
   {
@@ -148,12 +159,6 @@ export const BACKGROUNDS: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/backgrounds/draped-curtain-corner.png",
     promptSnippet: "cozy home room corner with elegant vertical pleated beige linen drapes hanging beside a warm wall, subtle fairy light accents, soft diffused window light, intimate creator room corner",
   },
-  { id: "bg_car_interior", label: "Car Interior", category: "background", imagePath: "/explore/influencer-studio/backgrounds/car-interior.jpg", promptSnippet: "car cabin with cream seats, dark dashboard and side-window daylight; use the reference for the cabin and lighting only, omit readable branding. Use this photo for the environment only; keep the selected character and outfit." },
-  { id: "bg_clean_studio", label: "Minimal Gray Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/clean-studio.jpg", promptSnippet: "minimal gray interior with neutral sofa, simple door and soft diffuse light. Use this photo for the environment only; keep the selected character and outfit." },
-  { id: "bg_cozy_bedroom", label: "Loft Bedroom", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-bedroom.jpg", promptSnippet: "cozy loft bedroom with white bedding, tall multi-pane windows, exposed ceiling and natural daylight. Use this photo for the environment only; keep the selected character and outfit." },
-  { id: "bg_cozy_living_room", label: "Warm Living Room", category: "background", imagePath: "/explore/influencer-studio/backgrounds/cozy-living-room.jpg", promptSnippet: "warm living room with tan leather sofa, plants, neutral framed wall art and soft window light. Use this photo for the environment only; keep the selected character and outfit." },
-  { id: "bg_modern_kitchen", label: "Modern Kitchen", category: "background", imagePath: "/explore/influencer-studio/backgrounds/modern-kitchen.jpg", promptSnippet: "warm modern kitchen with dark cabinetry, island counter, bar stools and angled sunlight. Use this photo for the environment only; keep the selected character and outfit." },
-  { id: "bg_office_desk", label: "Dark Home Office", category: "background", imagePath: "/explore/influencer-studio/backgrounds/office-desk.jpg", promptSnippet: "dark home office with wood desk, monitor, desk chair, potted plant and soft side-window daylight. Use this photo for the environment only; keep the selected character and outfit." },
 ];
 
 export const GENDERS: readonly InfluencerTrait[] = [
@@ -372,6 +377,7 @@ export const HEAD_SHAPES: readonly InfluencerTrait[] = [
     promptSnippet: "bold avant-garde editorial face contour, exaggerated angular facial architecture",
   },
   { id: "head_exaggerated_square", label: "Broad Square Jaw", category: "head_shape", imagePath: "/explore/influencer-studio/head-shape/broad-square-jaw.png", promptSnippet: "broad angular square jaw, wide chin and strong lower-face proportions. Use this photo for head shape only; preserve the selected character identity, eyes, hairstyle, skin tone and expression." },
+  { id: "head_wide_eyed_mustache", label: "Long Narrow Face", category: "head_shape", imagePath: "/explore/influencer-studio/characters/wide-eyed-mustache.png", promptSnippet: "elongated narrow head silhouette with a tapered chin and prominent ears. Use this photo for head shape only; preserve the selected character identity, eye shape, hairstyle, facial hair, skin tone, accessories and expression." },
 ];
 
 export const NECKS: readonly InfluencerTrait[] = [
@@ -827,6 +833,7 @@ export const ALL_TRAITS: readonly InfluencerTrait[] = [
   ...LEGACY_CHARACTER_ALIASES,
   SCRATCH_CHARACTER_FALLBACK,
   ...BACKGROUNDS,
+  ...LEGACY_BACKGROUNDS,
   ...GENDERS,
   ...ETHNICITIES,
   ...AGES,

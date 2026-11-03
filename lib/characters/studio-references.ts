@@ -1,4 +1,4 @@
-import { resolvePrimaryAppOrigin } from "../marketing/public-origin.ts";
+import { studioCatalogUrl } from "./studio-catalog.ts";
 import {
   findTraitById,
   type InfluencerSelectionState,
@@ -70,18 +70,17 @@ export function studioReferenceOrderLine(labels: readonly string[], framing: "fu
   return `\nCombine these reference images into one new vertical 9:16 photograph of ${subject}. Each image supplies only its named trait. Do not copy a white backdrop, a cropped head, or a floating-head composition. Reference image order: ${order}.`;
 }
 
-/** Allowlisted catalog paths. Generation uploads these files; the public site does not serve them until this studio is deployed. */
+/** Resolve registered logical paths to immutable shared backend images. */
 export function resolveStudioReferenceUrls(ids: readonly string[]) {
   if (ids.length > MAX_STUDIO_REFERENCES || new Set(ids).size !== ids.length) {
     throw new Error("Choose up to 10 different studio references.");
   }
-  const origin = resolvePrimaryAppOrigin();
   return ids.map((id) => {
     const trait = findTraitById(id);
     if (!trait || trait.isCustomUpload || !isStudioImagePath(trait.imagePath)) {
       throw new Error("Choose influencer references from the studio.");
     }
-    return new URL(trait.imagePath, origin).href;
+    return studioCatalogUrl(trait.imagePath);
   });
 }
 

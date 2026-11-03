@@ -1,3 +1,5 @@
+import {ensureCharacterCatalogCache,catalogCacheFile} from './character-catalog-test-cache.mjs';
+await ensureCharacterCatalogCache();
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -33,9 +35,10 @@ const html = '<!doctype html><html class="dark"><head><meta name="viewport" cont
 const server = createServer((req, res) => {
   const pathname = new URL(req.url, "http://fixture").pathname;
   if (pathname === "/") { res.setHeader("Content-Type", "text/html"); res.end(html); return; }
-  const file = pathname.startsWith("/explore/") ? path.join(root,"public",pathname) : path.resolve(out, `.${pathname}`);
+  const file = pathname.startsWith("/explore/") ? (pathname.startsWith('/explore/influencer-studio/') ? catalogCacheFile(pathname) : path.join(root,"public",pathname)) : path.resolve(out, `.${pathname}`);
   const publicRoot = path.join(root, "public") + path.sep;
-  if ((!file.startsWith(out + path.sep) && !file.startsWith(publicRoot)) || !existsSync(file)) { res.writeHead(404); res.end(); return; }
+  const fixtureRoot = path.join(root, ".tmp/character-catalog/source") + path.sep;
+  if ((!file.startsWith(out + path.sep) && !file.startsWith(publicRoot) && !file.startsWith(fixtureRoot)) || !existsSync(file)) { res.writeHead(404); res.end(); return; }
   res.setHeader("Content-Type", file.endsWith(".png") ? "image/png" : file.endsWith(".jpg") ? "image/jpeg" : file.endsWith(".css") ? "text/css" : "text/javascript"); res.end(readFileSync(file));
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -47,6 +50,20 @@ try {
 
  for(const viewport of [{width:1440,height:1000},{width:900,height:1000},{width:390,height:844},{width:320,height:720}]){
  await page.setViewportSize(viewport);await page.goto(origin);await page.locator('.traitCard').first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'Wide-Eyed Mustache',exact:true}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'Playful Mustache',exact:true}).count(),1);
+ const backgrounds=page.getByRole('button',{name:/^Background /}).locator('..');
+ assert.equal(await backgrounds.locator('.traitCard').count(),7);
+ for(const name of ['Car Interior','Minimal Gray Room','Loft Bedroom','Warm Living Room','Modern Kitchen','Dark Home Office']){
+  assert.equal(await backgrounds.getByRole('button',{name,exact:true}).count(),0);
+ }
+ await page.getByRole('button',{name:/^Head Shape /}).click();
+ const head=page.getByTitle('Long Narrow Face',{exact:true});await head.click();
+ assert.match(await head.getAttribute('class'),/traitCardSelected/);
+ await head.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(root,'.tmp/character-ui/head-moved-'+viewport.width+'.png')});
+ await page.getByRole('button',{name:'Reset all',exact:true}).click();
+ assert.match(await page.getByTitle('Keep head shape',{exact:true}).getAttribute('class'),/traitCardSelected/);
+ await page.getByRole('button',{name:/^Head Shape /}).click();
  await page.getByRole('button',{name:/Accessories/}).click();
  const label=page.locator('.cardSelectedPillText').filter({hasText:'Matte Black'});await label.waitFor();await label.scrollIntoViewIfNeeded();
  const r=await page.evaluate(()=>{const root=document.querySelector('.studioRoot').getBoundingClientRect(),cta=document.querySelector('.generateButton').getBoundingClientRect(),label=document.querySelector('.cardSelectedPillText'),style=getComputedStyle(label);return {rootBottom:root.bottom,ctaBottom:cta.bottom,overflow:document.documentElement.scrollWidth>innerWidth,color:style.color,stroke:style.webkitTextStrokeWidth,cards:[...document.querySelectorAll('.traitCard')].every(e=>e.getBoundingClientRect().right<=innerWidth),labels:[...document.querySelectorAll('.cardSelectedPillText')].every(e=>{const a=e.getBoundingClientRect(),b=e.closest('.traitCard').getBoundingClientRect();return a.left>=b.left&&a.right<=b.right})}});

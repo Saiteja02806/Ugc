@@ -6,6 +6,7 @@ import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/
 import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
 import { generateOpenRouterGeminiHookKeyframe, generateOpenRouterGeminiImage, performOpenRouterFaceSwap } from "../lib/openrouter-gemini-image.js";
 import { createDurableImageStageRunner } from "../lib/durable-image-stages.js";
+import { generateCharacterIdentityImage, parseCharacterIdentityPipeline, type CharacterIdentityPipeline } from "../lib/character-image-pipeline.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import {
   assertProviderOperationCanContinue,
@@ -60,6 +61,7 @@ type GenerateImageInput = {
   startingFrameTextCleanup?: true;
   startingFrameOutfitPrompt?: string;
   startingFramePipelineVersion?: 2;
+  characterIdentityPipeline?: CharacterIdentityPipeline;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -148,7 +150,13 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     !hookKeyframe || startingFrameOutfitPrompt !== hookKeyframe.customImagePrompt || !startingFrameTextCleanup || model !== "gemini_3_pro" || provider !== "openrouter")) {
     throw new ProviderRequestNotSubmittedError("The starting-frame outfit instructions do not match the saved custom prompt.");
   }
+  const characterIdentityPipeline = job.input_json.characterIdentityPipeline === undefined ? undefined
+    : parseCharacterIdentityPipeline(job.input_json.characterIdentityPipeline);
+  if (characterIdentityPipeline && (!promptDrivenCharacter || model !== "gemini_3_pro" || job.input_json.provider !== "openrouter" || !referenceImageUrls?.length)) {
+    throw new ProviderRequestNotSubmittedError("Character identity stages require a verified Gemini character request and primary face.");
+  }
   return {
+    ...(characterIdentityPipeline ? { characterIdentityPipeline } : {}),
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     model,
@@ -230,8 +238,9 @@ export async function runGenerateImageJob(
     ...(input.startingFrameTextCleanup ? { startingFrameTextCleanup: true } : {}),
     ...(input.startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: input.startingFrameOutfitPrompt } : {}),
     ...(input.startingFramePipelineVersion === 2 ? { startingFramePipelineVersion: 2 } : {}),
+    ...(input.characterIdentityPipeline ? { characterIdentityPipeline: input.characterIdentityPipeline } : {}),
   });
-  const stagedPipeline = input.model === "gemini_3_pro" && provider === "openrouter" && Boolean(input.hookKeyframe || input.mode === "face_swap");
+  const stagedPipeline = input.model === "gemini_3_pro" && provider === "openrouter" && Boolean(input.hookKeyframe || input.mode === "face_swap" || input.characterIdentityPipeline);
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
     operationKey,
@@ -255,11 +264,15 @@ export async function runGenerateImageJob(
       hook.version === 4 && !hookKeyframeAnchorBytesMatch(hook, downloaded[1]))) {
       throw new ProviderRequestNotSubmittedError("The starting-frame inputs do not match their verified source roles.");
     }
-    if (!hook && (downloaded.length < 2 || downloaded.length > 5)) throw new ProviderRequestNotSubmittedError("Face swap requires a base image and one to four photos of the same person.");
+    if (!hook && !input.characterIdentityPipeline && (downloaded.length < 2 || downloaded.length > 5)) throw new ProviderRequestNotSubmittedError("Face swap requires a base image and one to four photos of the same person.");
     const refImages = downloaded.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
     const runStage = createDurableImageStageRunner({ jobId: job.id, store: context.store,
       checkpoint: stage => context.checkpoint({ stage, status: "processing" }) });
-    const generated = hook ? await generateOpenRouterGeminiHookKeyframe({
+    const generated = input.characterIdentityPipeline ? await generateCharacterIdentityImage({
+      prompt: providerPrompt, aspectRatio: input.aspectRatio, referenceImages: refImages, pipeline: input.characterIdentityPipeline, runStage,
+      ...(input.characterIdentityPipeline.version === 2 ? { legacyIdentityFingerprint:
+        (await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "openrouter-image-identity-v1" }))?.request_fingerprint } : {}),
+    }) : hook ? await generateOpenRouterGeminiHookKeyframe({
       prompt: providerPrompt, aspectRatio: input.aspectRatio, referenceImages: refImages,
       identityReferenceStartIndex: hook.version === 4 ? 2 : 1, instructions: hook.instructions, runStage,
       startingFrameTextCleanup: input.startingFrameTextCleanup,

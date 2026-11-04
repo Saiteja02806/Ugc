@@ -148,6 +148,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
 
   if (!existingPlan) {
     return buildPreparingDailyFeed({
+      userId: params.userId,
       allocation: dailyPlan.allocation,
       entitlement,
       localDate,
@@ -314,7 +315,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       preparationResults: new Map(),
     }),
     requiresPreparation:
-      !isAutomaticCarouselGenerationPaused() &&
+      !isAutomaticCarouselGenerationPaused(undefined, params.profile.userId) &&
       !trialAccessBlocked &&
       !isHistoricalFeed &&
       (upgradeSlots > 0 ||
@@ -353,7 +354,7 @@ function getExistingFeedEntitlement(
 export function prepareUnifiedTrendingDailyFeed(params: Parameters<
   typeof ensureUnifiedTrendingDailyFeed
 >[0]) {
-  if (isAutomaticCarouselGenerationPaused()) return Promise.resolve();
+  if (isAutomaticCarouselGenerationPaused(undefined, params.profile.userId)) return Promise.resolve();
   const timezone = normalizeTrendingTimezone(
     params.timezone ?? params.profile.trendingTimezone,
   );
@@ -378,6 +379,7 @@ export function prepareUnifiedTrendingDailyFeed(params: Parameters<
 }
 
 function buildPreparingDailyFeed(params: {
+  userId: string;
   allocation: TrendingContentAllocation;
   entitlement: TrendingPlanEntitlement;
   localDate: string;
@@ -416,7 +418,7 @@ function buildPreparingDailyFeed(params: {
       missingByFormat: params.allocation,
       preparationResults: new Map(),
     }),
-    requiresPreparation: !isAutomaticCarouselGenerationPaused(),
+    requiresPreparation: !isAutomaticCarouselGenerationPaused(undefined, params.userId),
   };
 }
 
@@ -484,7 +486,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   timezone?: string | null;
   userId: string;
 }) {
-  if (isAutomaticCarouselGenerationPaused()) return readUnifiedTrendingDailyFeed(params);
+  if (isAutomaticCarouselGenerationPaused(undefined, params.profile.userId)) return readUnifiedTrendingDailyFeed(params);
   const timezone = normalizeTrendingTimezone(
     params.timezone ?? params.profile.trendingTimezone,
   );

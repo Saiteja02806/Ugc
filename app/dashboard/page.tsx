@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { TrendingScreenAccess } from "@/components/trending/trending-screen-access";
 
 export default function DashboardPage() {
-  redirect("/explore");
+  return <TrendingScreenAccess />;
 }

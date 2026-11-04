@@ -41,7 +41,7 @@ export async function runWorkerJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
 ) {
-  if (isCarouselGenerationJobHeld(job.job_type)) {
+  if (isCarouselGenerationJobHeld(job.job_type, job.user_id)) {
     throw new DeferredJobError("Automatic Carousel generation is temporarily on hold.", {
       code: "carousel_generation_paused", retryAfterSeconds: 43_200,
     });

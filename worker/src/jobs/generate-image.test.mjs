@@ -78,6 +78,7 @@ mock.module(new URL("../../dist/lib/openrouter-gemini-image.js", import.meta.url
 mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
   AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["4:5", "1:1", "9:16", "16:9"],
   getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
+  assertImageOutputAspectRatio: async () => {},
   prepareAIStudioImageOutput: async (buffer, ratio, options) => { outputOptions.push(options); return buffer; },
 } });
 mock.module(new URL("../../dist/lib/storage.js", import.meta.url), { namedExports: {

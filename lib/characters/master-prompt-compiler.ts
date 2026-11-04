@@ -43,6 +43,7 @@ export function compileInfluencerPrompt(
   const height = findTraitById(selection.heightId, customTraits);
   const build = findTraitById(selection.buildId, customTraits);
   const accessories = selection.accessoryIds
+    .filter((id) => id !== "accessory_none")
     .map((id) => findTraitById(id, customTraits))
     .filter((trait): trait is NonNullable<typeof trait> => Boolean(trait));
 
@@ -135,10 +136,16 @@ export function compileInfluencerPrompt(
   // 5. Accessories & Styling
   if (accessories.length > 0) {
     promptSections.push(accessories.map((acc) => acc.promptSnippet).join(", "));
+    promptSections.push("Use only these selected accessories; ignore all other jewelry and accessories in reference photos.");
+  } else {
+    promptSections.push("No accessories required; both ears must have bare, natural unpierced earlobes. No earrings, jewelry, headphones, glasses, headbands or skincare patches, even when visible in reference photos.");
   }
 
   // 6. Realism & Photography Standards
   promptSections.push(REALISM_ENGINE_TOKENS);
+  if (eyeColor) {
+    promptSections.push(`Eye color priority: both irises must be ${eyeColor.label}. This selected color overrides every reference photo. Eye-shape references supply eyelid shape only, never iris color.`);
+  }
 
   const fullPrompt = promptSections.filter(Boolean).join(".\n");
 

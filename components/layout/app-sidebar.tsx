@@ -26,6 +26,7 @@ import {
 } from "@/components/icons/sidebar-icon";
 import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
+import { canViewTrendingScreen } from "@/lib/trending/screen-access";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 
@@ -361,7 +362,10 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = primaryNavigationItems;
+  const { user } = useAuth();
+  const visiblePrimaryNavigationItems: SidebarItem[] = canViewTrendingScreen(user)
+    ? [{ key: "trending", label: "Trending", href: "/dashboard", icon: "trending" }, ...primaryNavigationItems]
+    : primaryNavigationItems;
 
   return (
     <nav

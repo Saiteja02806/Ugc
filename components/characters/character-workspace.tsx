@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { ArrowLeft, History } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
-import { CHARACTER_STUDIO_IMAGE_MODEL, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { CHARACTER_STUDIO_IMAGE_MODEL, getCharacterPromptLimit, MAX_CHARACTER_REFERENCES } from "@/lib/characters/image-models";
 import {
   DEFAULT_INFLUENCER_SELECTION,
   randomizeInfluencerSelection,
@@ -13,7 +13,12 @@ import {
   type InfluencerTrait,
 } from "@/lib/characters/influencer-registry";
 import { compileInfluencerPrompt } from "@/lib/characters/master-prompt-compiler";
-import { orderedStudioReferences, studioReferenceOrderLine, studioReferenceSize } from "@/lib/characters/studio-references";
+import {
+  orderedStudioReferences,
+  studioReferenceOrderLine,
+  studioReferenceSize,
+  validateStudioReferenceCapacity,
+} from "@/lib/characters/studio-references";
 import { prepareStudioReferenceAssets } from "@/lib/characters/studio-preparation-client";
 import { useCharacterBuilder } from "./use-character-builder";
 import { InfluencerCustomizerDock } from "./influencer-customizer-dock";
@@ -171,8 +176,21 @@ function CharacterStudioScreen({
           faceAssetIds.current.set(uploadedFaceId, uploadedFaceAssetId);
         }
       }
-      const references = orderedStudioReferences(selection, customCharacters, uploadedFaceAssetId ? 9 : 10)
-        .filter((reference, index, list) => list.findIndex((item) => item.imagePath === reference.imagePath) === index);
+      const capacity = validateStudioReferenceCapacity(
+        selection,
+        customCharacters,
+        Boolean(uploadedFaceAssetId),
+        MAX_CHARACTER_REFERENCES
+      );
+      if (!capacity.valid) {
+        setErrorMessage(
+          `You have selected ${capacity.total} reference looks (${capacity.limit} maximum). Please remove ${
+            capacity.excess === 1 ? "1 accessory or trait" : `${capacity.excess} accessories or traits`
+          } before generating.`
+        );
+        return;
+      }
+      const references = capacity.references;
       const studioAssetIdList = references.length
         ? await prepareStudioReferenceAssets(userId, references.map(reference => reference.id)) : [];
       const assetIds = [...(uploadedFaceAssetId ? [uploadedFaceAssetId] : []), ...studioAssetIdList];
@@ -180,7 +198,10 @@ function CharacterStudioScreen({
         ...(uploadedFaceAssetId ? ["uploaded face"] : []),
         ...references.map((reference) => reference.role),
       ];
-      const prompt = `${compiled.prompt}${studioReferenceOrderLine(labels, selection.framing)}`;
+      const negativeConstraints = compiled.negativePrompt
+        ? `\nNegative constraints: Avoid ${compiled.negativePrompt}.`
+        : "";
+      const prompt = `${compiled.prompt}${studioReferenceOrderLine(labels, selection.framing)}${negativeConstraints}`;
       if (prompt.length > getCharacterPromptLimit(CHARACTER_STUDIO_IMAGE_MODEL)) {
         setErrorMessage("This combination is too long for Gemini 3 Pro. Remove an accessory and try again.");
         return;
@@ -191,6 +212,8 @@ function CharacterStudioScreen({
         model: CHARACTER_STUDIO_IMAGE_MODEL,
         imageCount: batchSize as 1 | 2 | 3,
         prompt,
+        negativePrompt: compiled.negativePrompt,
+        selection,
         idempotencyKey: crypto.randomUUID(),
         ...(assetIds.length > 1 ? { referenceImageAssetIds: assetIds } : {}),
         ...(assetIds.length === 1 ? { referenceImageAssetId: assetIds[0] } : {}),

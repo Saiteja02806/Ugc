@@ -8,6 +8,7 @@ import {
   Dices,
   Eye,
   Glasses,
+  Layers,
   Globe,
   Image as ImageIcon,
   Palette,
@@ -23,6 +24,8 @@ import {
 } from "lucide-react";
 import {
   CATEGORY_DEFINITIONS,
+  toggleInfluencerAccessory,
+  isInfluencerAccessorySelected,
   DEFAULT_INFLUENCER_SELECTION,
   findTraitById,
   getTraitsByCategory,
@@ -89,6 +92,8 @@ export function InfluencerCustomizerDock({
   const [openSections, setOpenSections] = useState<Set<TraitCategory>>(
     () => new Set(["character_type", "background", "ethnicity", "build", "hair_style", "eyes"])
   );
+  const [patchVariantsOpen, setPatchVariantsOpen] = useState(false);
+  const patchVariantIds = ["accessory_clear_patches", "accessory_rose_patches"];
 
   const toggleSection = useCallback((catId: TraitCategory) => {
     setOpenSections((prev) => {
@@ -153,11 +158,7 @@ export function InfluencerCustomizerDock({
           onSelectionChange({ buildId: trait.id });
           break;
         case "accessories": {
-          const current = selection.accessoryIds;
-          const exists = current.includes(trait.id);
-          const next = exists
-            ? current.filter((id) => id !== trait.id)
-            : [...current, trait.id];
+          const next = toggleInfluencerAccessory(selection.accessoryIds, trait.id);
           onSelectionChange({ accessoryIds: next });
           break;
         }
@@ -202,7 +203,7 @@ export function InfluencerCustomizerDock({
         case "build":
           return selection.buildId === trait.id;
         case "accessories":
-          return selection.accessoryIds.includes(trait.id);
+          return isInfluencerAccessorySelected(selection.accessoryIds, trait.id);
       }
     },
     [selection]
@@ -327,6 +328,7 @@ export function InfluencerCustomizerDock({
           const traits = getTraitsByCategory(cat.id);
           const isColorCategory = ["skin_tone", "eye_color", "hair_color", "outfit_color"].includes(cat.id);
           const categoryTraits = traits;
+          const visibleTraits = categoryTraits.filter(trait => patchVariantsOpen || !patchVariantIds.includes(trait.id));
           const IconComp = CATEGORY_ICON_MAP[cat.iconName] ?? User;
 
           return (
@@ -377,14 +379,15 @@ export function InfluencerCustomizerDock({
               ) : isOpen ? (
                 <div className={styles.accordionContent}>
                   <div className={styles.cardsGrid}>
-                    {categoryTraits.map((trait, index) => {
+                    {visibleTraits.map((trait, index) => {
                       const selected = isTraitSelected(trait);
                       const displayTitle = trait.label.split("(")[0].trim();
-                      const showGroup = Boolean(trait.group && trait.group !== categoryTraits[index - 1]?.group);
+                      const showGroup = Boolean(trait.group && trait.group !== visibleTraits[index - 1]?.group);
 
                       return (
                         <Fragment key={trait.id}>
                         {showGroup ? <div className={styles.cardGroupLabel}>{trait.group}</div> : null}
+                        <div className={trait.id === "accessory_gold_patches" ? styles.traitCardWrapper : styles.traitCardPassthrough}>
                         <button
                           type="button"
                           className={`${styles.traitCard} ${selected ? styles.traitCardSelected : ""}`}
@@ -399,7 +402,7 @@ export function InfluencerCustomizerDock({
                                 fill
                                 sizes="110px"
                                 className={styles.cardImage}
-                                unoptimized={trait.isCustomUpload}
+                                unoptimized
                               />
                             </div>
                           ) : (
@@ -418,6 +421,20 @@ export function InfluencerCustomizerDock({
                             </div>
                           )}
                         </button>
+                        {trait.id === "accessory_gold_patches" ? (
+                          <button
+                            type="button"
+                            className={`${styles.variantOverlay} ${selection.accessoryIds.some(id => patchVariantIds.includes(id)) ? styles.variantOverlaySelected : ""}`}
+                            title={patchVariantsOpen ? "Hide patch variations" : "Show patch variations"}
+                            aria-label={patchVariantsOpen ? "Hide patch variations" : "Show patch variations"}
+                            aria-expanded={patchVariantsOpen}
+                            disabled={disabled || isGenerating}
+                            onClick={() => { if (!disabled && !isGenerating) setPatchVariantsOpen(open => !open); }}
+                          >
+                            <Layers size={18} aria-hidden="true" />
+                          </button>
+                        ) : null}
+                        </div>
                         </Fragment>
                       );
                     })}

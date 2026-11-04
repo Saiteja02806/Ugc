@@ -1461,7 +1461,7 @@ export function ImageGenerationStudioPanel({
           />
         }
         name="imagePrompt"
-        generateTone={workflowFormat === "slideshow" ? "blue" : undefined}
+        generateTone={workflowFormat === "slideshow" || workflowFormat === "hook" || workflowFormat === "wall_text" ? "blue" : undefined}
         promptCornerControl={faceSwap ? <SlideshowFaceSwapControl value={faceSwap} ownerId={user?.uid} disabled={isGenerating || selectingImage} /> : undefined}
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
         promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}

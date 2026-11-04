@@ -95,7 +95,7 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
     return;
   }
 
-  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type)) {
+  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type, job.user_id)) {
     // Acknowledge transport only. Durable queued work and attempts stay intact
     // for database recovery after the hold is lifted. Never report success.
     await queue.deleteMessage(message);
@@ -160,7 +160,7 @@ export async function processRecoveredWorkerJob(params: {
     return false;
   }
 
-  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type)) return false;
+  if (job.status !== "cancel_requested" && isCarouselGenerationJobHeld(job.job_type, job.user_id)) return false;
 
   return processClaimableJob({
     config: params.config,

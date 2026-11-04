@@ -12,7 +12,7 @@ export async function ensureCarouselContentPlanGeneration(params: {
   profile: BusinessProfileRecord;
   timezone: string;
 }) {
-  assertAutomaticCarouselGenerationEnabled();
+  assertAutomaticCarouselGenerationEnabled(params.profile.userId);
   const plan = await ensureCurrentCarouselContentPlan(params);
 
   if (plan.status !== "generating") {

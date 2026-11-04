@@ -3,7 +3,7 @@ import type { BackgroundJobStatus } from "@/lib/jobs/background-jobs";
 import type { CharacterGenderSchema, CharacterImageCountSchema, CharacterImageModelSchema } from "./schema";
 import type { CharacterPromptPresentation } from "./prompt-skills";
 
-export type { CharacterGenerateRequest, CharacterSpec } from "./schema";
+export type { CharacterGenerateRequest, CharacterSpec, InfluencerSelection } from "./schema";
 export type CharacterGender = z.infer<typeof CharacterGenderSchema>;
 export type CharacterImageModel = z.infer<typeof CharacterImageModelSchema>;
 export type CharacterImageCount = z.infer<typeof CharacterImageCountSchema>;

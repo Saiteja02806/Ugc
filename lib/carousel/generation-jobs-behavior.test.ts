@@ -169,3 +169,18 @@ test("Carousel pause blocks batch reservation and dispatch before queue configur
     else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED=previous;
   }
 });
+
+
+test("only the verified pilot owner dispatches a batch while everyone else is paused",async context=>{
+ const old=process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED="true";
+ context.after(()=>{if(old===undefined)delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED=old;});
+ resetSimulation();
+ const {CAROUSEL_GENERATION_PILOT_USER_ID}=await import("./generation-hold.ts");
+ const originalOwner=queuedBatchJob.userId;
+ queuedBatchJob.userId=CAROUSEL_GENERATION_PILOT_USER_ID;
+ try {
+  const jobId=await enqueueCarouselExperimentBatchJob({carouselIds,experimentBatchId:"batch-1",projectId:"project-1",textStyle:"plain",userId:CAROUSEL_GENERATION_PILOT_USER_ID});
+  assert.equal(jobId,"queue-message-1"); // This isolated delivery mock returns the transport ID.
+  assert.equal(createBatchJobCalls,1);assert.equal(sendCalls,1);
+ } finally { queuedBatchJob.userId=originalOwner; }
+});

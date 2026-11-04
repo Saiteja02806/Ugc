@@ -21,6 +21,8 @@ import {
 } from "./schema";
 import type { CharacterGenerationResponse, CharacterImageCount } from "./types";
 import { composeCharacterPrompt, resolveCharacterPromptSkills } from "./prompt-skills";
+import { appendCharacterNegativePrompt, characterFaceOnlyInstructions, compileStudioSelection } from "./studio-selection.ts";
+import { studioReferenceIdentity } from "./studio-preparation.ts";
 
 export class CharacterGenerationError extends Error {
   constructor(public code: string, message: string, public status = 400) {
@@ -72,6 +74,8 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     mode: request.mode,
     model: request.model,
     prompt: request.prompt ?? null,
+    ...(request.negativePrompt ? { negativePrompt: request.negativePrompt } : {}),
+    ...(request.selection ? { selection: request.selection } : {}),
     ...(request.skillIds?.length ? { skillIds: request.skillIds } : {}),
     referenceCharacterId: request.referenceCharacterId ?? null,
     ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds } : {}),
@@ -161,6 +165,17 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   } else {
     const skills = resolveCharacterPromptSkills(request.skillIds);
+    const studio = request.selection ? compileStudioSelection(request.selection, request.negativePrompt) : null;
+    const uploadedIds = request.referenceImageAssetIds ?? (request.referenceImageAssetId ? [request.referenceImageAssetId] : []);
+    const studioBindings = studio ? studio.references.map(reference => ({
+      traitId: reference.id, role: reference.role,
+      ...studioReferenceIdentity(userId, reference.id),
+    })) : [];
+    if (studio && (request.referenceCharacterId || request.referenceCharacterIds ||
+        uploadedIds.length !== studio.total || studioBindings.some((binding, index) =>
+          binding.id !== uploadedIds[index + (studio.uploaded ? 1 : 0)]))) {
+      throw new CharacterGenerationError("INPUT_INVALID", "The attached reference images do not match your selected looks. Try Generate again.");
+    }
     const access = await dependencies.requireAccess(userId, request);
     const referenceIds = request.referenceCharacterIds ?? (request.referenceCharacterId ? [request.referenceCharacterId] : []);
     const references = await Promise.all(referenceIds.map((id) => dependencies.getReference(id, userId)));
@@ -169,9 +184,22 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "The saved influencer could not be found.", 404);
     }
     const reference = references[0] ?? null;
-    const uploadedIds = request.referenceImageAssetIds ?? (request.referenceImageAssetId ? [request.referenceImageAssetId] : []);
-    const uploadedUrls = await Promise.all(uploadedIds.map(async id =>
-      uploadedReferenceUrl(await dependencies.getReferenceAsset(id, userId), id, userId)));
+    const uploadedAssets = await Promise.all(uploadedIds.map(id => dependencies.getReferenceAsset(id, userId)));
+    const uploadedUrls = uploadedAssets.map((asset, index) => uploadedReferenceUrl(asset, uploadedIds[index], userId));
+    if (studio) {
+      for (const [index, binding] of studioBindings.entries()) {
+        const asset = uploadedAssets[index + (studio.uploaded ? 1 : 0)]!;
+        const metadata = asset.metadata;
+        if (asset.project_id !== "explore-catalog-reference" || asset.source_record_id !== binding.id ||
+            asset.storage_key !== binding.key || !metadata || typeof metadata !== "object" || Array.isArray(metadata) ||
+            metadata.sourceSha256 !== binding.digest) {
+          throw new CharacterGenerationError("INPUT_INVALID", "A selected look could not be verified. Prepare your references again.");
+        }
+      }
+      if (studio.uploaded && uploadedAssets[0]?.project_id === "explore-catalog-reference") {
+        throw new CharacterGenerationError("INPUT_INVALID", "Upload your face photo again before generating.");
+      }
+    }
     const referenceImageUrls = [...references.map((reference) => reference!.referenceImageUrl), ...uploadedUrls];
     if (new Set(referenceImageUrls).size !== referenceImageUrls.length) {
       throw new CharacterGenerationError("INPUT_INVALID", "Choose each reference image only once.");
@@ -192,7 +220,21 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       mode: request.mode,
       model: request.model,
       ...(request.model === "seedream_5_pro" || request.model === "gemini_3_pro" ? { provider: "openrouter" } : {}),
-      prompt: composeCharacterPrompt(request.prompt, skills),
+      prompt: composeCharacterPrompt(studio?.prompt ?? appendCharacterNegativePrompt(request.prompt, request.negativePrompt), skills),
+      ...(studio?.negativePrompt || request.negativePrompt ? { negativePrompt: studio?.negativePrompt ?? request.negativePrompt } : {}),
+      ...(request.selection ? { selection: request.selection as unknown as Json } : {}),
+      ...(studio && request.model === "gemini_3_pro" && (studio.uploaded || studio.references[0]?.role === "character face") ? {
+        characterIdentityPipeline: { version: 4, identityReferenceIndex: 0,
+          instructions: characterFaceOnlyInstructions(request.selection!), negativePrompt: studio.negativePrompt },
+      } : {}),
+      ...(studio ? { characterStudioReceipt: {
+        version: 1, compilerVersion: 2,
+        positivePrompt: studio.positivePrompt, negativePrompt: studio.negativePrompt,
+        references: [
+          ...(studio.uploaded ? [{ traitId: request.selection!.characterTypeId, role: "uploaded face", assetId: uploadedIds[0] }] : []),
+          ...studioBindings.map(binding => ({ traitId: binding.traitId, role: binding.role, assetId: binding.id, sourceSha256: binding.digest })),
+        ],
+      } } : {}),
       ...(skills.length ? { characterPromptPresentation: {
         userPrompt: request.prompt,
         skills: skills.map(({ id, name, instruction }) => ({ id, name, instruction })),

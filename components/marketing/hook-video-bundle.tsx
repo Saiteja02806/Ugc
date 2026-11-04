@@ -8,12 +8,16 @@ import { BatchNotificationForm } from "@/components/marketing/batch-notification
 import { BATCH_ONE_COMPLETE } from "@/lib/resources/hook-bundle-copy";
 
 const endpoint = "/api/resources/hook-video-bundle";
+const previewUrl = "https://storage.googleapis.com/ugcsaas-media/marketing/hook-video-library/v1/preview-2a3c843428fa3763.mp4";
+const previewPoster = "https://storage.googleapis.com/ugcsaas-media/marketing/hook-video-library/v1/preview-5c570227cee989d7.jpg";
 type Status = { count: number; limit: number; exhausted: boolean; started: boolean; videoCount: number };
 export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [started, setStarted] = useState(false);
+  const [previewUnavailable, setPreviewUnavailable] = useState(false);
+  const preview = useRef<HTMLVideoElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const busy = useRef(false);
@@ -80,16 +84,28 @@ export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
   const Container = compact ? "article" : "main";
   const Heading = compact ? "h2" : "h1";
   return <Container className={compact ? "flex min-w-0 flex-col rounded-[28px] border border-border bg-card p-6 sm:p-8" : "min-h-dvh bg-background text-foreground"}>
-    {!compact ? <header className="mx-auto flex max-w-4xl items-center justify-between border-b border-border px-6 py-6">
+    {!compact ? <header className="mx-auto flex max-w-[1200px] items-center justify-between border-b border-border px-6 py-6">
       <Link href="/" className="text-xl font-semibold text-foreground-strong">Vidmake</Link>
       <Link href="/free-tools" className="inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4">Free tools</Link>
     </header> : <div className="mb-7 flex items-center justify-between gap-3 text-xs font-medium text-muted"><span>VIDEO LIBRARY · ZIP</span><span className="rounded-full border border-border px-3 py-1.5">Batch 1 · 100 downloads</span></div>}
-    <section className={compact ? "flex flex-1 flex-col" : "mx-auto max-w-2xl px-6 py-16 sm:py-24"} aria-labelledby="bundle-title">
+    <section className={compact ? "flex flex-1 flex-col" : "mx-auto grid max-w-[1200px] gap-y-8 px-6 py-12 sm:py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-x-14 lg:gap-y-6 lg:py-20"} aria-labelledby="bundle-title">
+      <div className={compact ? "contents" : "min-w-0 lg:col-start-1"}>
       {compact ? <div className="mb-8 flex h-52 shrink-0 flex-col items-center justify-center rounded-[20px] bg-background sm:h-60"><Film className="size-12 text-primary" aria-hidden="true" /><p className="mt-4 text-4xl font-semibold tracking-normal text-foreground-strong">104 clips</p><p className="mt-2 text-sm text-muted">One ZIP. Your next opening.</p></div> : <><Film className="mb-6 size-10 text-primary" aria-hidden="true" /><p className="mb-4 text-sm font-medium uppercase tracking-widest text-primary">Batch 1 · Free video library</p></>}
       <Heading id="bundle-title" className={compact ? "lg:min-h-[2.5em] text-3xl font-semibold leading-tight tracking-tight text-foreground-strong" : "text-4xl font-semibold leading-tight tracking-tight text-foreground-strong sm:text-5xl"}>Hook Video Library{!compact ? <><br />104 clips. One download.</> : null}</Heading>
       <p className={compact ? "mt-4 leading-7 text-muted lg:min-h-[84px]" : "mt-6 text-lg leading-8 text-muted"}>104 public Hook reference clips in one ZIP. Browse the reactions and use them to plan your next opening.</p>
       <p className="mt-3 text-sm leading-6 text-muted">MP4 videos · No signup · First 100 downloads</p>
-      <div className={compact ? "pt-7" : "mt-8 rounded-xl border border-border bg-card p-5 sm:p-6"}>
+      </div>
+      {!compact ? <figure className="min-w-0 self-start lg:col-start-2 lg:row-start-1 lg:row-span-2">
+        <div className="overflow-hidden rounded-[20px] border border-border bg-card">
+          <video ref={preview} src={previewUrl} poster={previewPoster} width={512} height={550} controls playsInline preload="none" aria-label="Preview the Hook Video Library" aria-describedby="bundle-preview-caption" className="aspect-[512/550] w-full object-contain" onError={() => setPreviewUnavailable(true)}>
+            Your browser cannot play this preview. <a href={previewUrl}>Open the preview video</a>.
+          </video>
+        </div>
+        <figcaption id="bundle-preview-caption" className="mt-4 text-sm leading-6 text-muted">A look inside the library. Preview the reactions before you download.</figcaption>
+        {previewUnavailable ? <div className="mt-3 space-y-2"><p role="alert" className="text-sm text-muted">The preview could not load. You can still download the library.</p><Button type="button" variant="outline" onClick={() => { setPreviewUnavailable(false); preview.current?.load(); }}>Retry preview</Button></div> : null}
+      </figure> : null}
+      <div className={compact ? "contents" : "min-w-0 lg:col-start-1 lg:row-start-2"}>
+      <div className={compact ? "pt-7" : "rounded-xl border border-border bg-card p-5 sm:p-6"}>
         <p role="status" aria-live="polite" className={compact ? "min-h-12 text-sm leading-6 text-muted" : "min-h-6 text-sm text-muted"}>{status?.exhausted ? BATCH_ONE_COMPLETE : status ? `${status.count} of 100 downloads started · ${100 - status.count} remaining` : "Checking download availability…"}</p>
         <form action={endpoint} method="post" target="hook-bundle-download" onSubmit={submit} className="mt-4">
           <input ref={input} type="hidden" name="requestId" />
@@ -103,6 +119,7 @@ export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
       </div>
       {status?.exhausted ? <BatchNotificationForm /> : null}
       {!compact ? <Link href="/free-hook-lines" className="mt-8 inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">Need the words too? Browse The Reaction Hook Library</Link> : null}
+      </div>
     </section>
     <iframe ref={frame} name="hook-bundle-download" title="Hook bundle download" hidden onLoad={readDownloadError} />
   </Container>;

@@ -459,6 +459,45 @@ export async function getUserSubscription(
   };
 }
 
+/** Checkout needs billing ownership, not dashboard entitlements or credit grants. */
+export async function getBillingCheckoutAccount(userId: string) {
+  if (!userId.trim()) throw new Error("BILLING_ACCOUNT_UNAVAILABLE");
+  const db = getClient();
+  const [recent, active, balance, customerId] = await Promise.all([
+    db.from("billing_subscriptions")
+      .select("dodo_subscription_id,plan_key,status")
+      .eq("user_id", userId)
+      .order("last_event_at", { ascending: false })
+      .limit(10),
+    db.from("billing_subscriptions")
+      .select("dodo_subscription_id,plan_key,status")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("last_event_at", { ascending: false })
+      .limit(10),
+    db.from("billing_credit_balances")
+      .select("dodo_subscription_id")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    getBillingCustomerId(userId),
+  ]);
+  if (recent.error || active.error || balance.error) {
+    throw new Error("BILLING_ACCOUNT_UNAVAILABLE");
+  }
+  // Match getUserSubscription: an older cancellation must not hide the
+  // current balance owner's held/paused subscription or another active plan.
+  const row = recent.data?.find(
+    subscription => subscription.dodo_subscription_id === balance.data?.dodo_subscription_id,
+  ) ?? recent.data?.[0] ?? null;
+  const activeSubscription = selectActiveDodoSubscription((active.data ?? []).map(
+    subscription => ({ ...subscription, plan_key: normalizeSubscriptionPlanKey(subscription.plan_key) }),
+  ));
+  return {
+    customerId,
+    isDodoManaged: Boolean(activeSubscription) || ["on_hold", "paused", "failed"].includes(row?.status ?? ""),
+  };
+}
+
 export async function getBillingCustomerId(userId: string) {
   const { data, error } = await getClient()
     .from("billing_customers")

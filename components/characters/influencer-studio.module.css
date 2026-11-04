@@ -524,6 +524,47 @@
 }
 
 /* Clean floating label on selected cards without dark overlay or black backing */
+.traitCardWrapper {
+  position: relative;
+  min-width: 0;
+  display: grid;
+}
+
+.traitCardPassthrough {
+  display: contents;
+}
+
+.variantOverlay {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+}
+
+.variantOverlay:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+}
+
+.variantOverlaySelected {
+  background: var(--app-primary);
+}
+
+.variantOverlay:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .cardSelectedPill {
   position: absolute;
   bottom: 8px;

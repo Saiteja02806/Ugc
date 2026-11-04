@@ -261,7 +261,7 @@ async function prepareControlledGenerationBatch(params: {
   // This must happen before reserving experiment batches or plan items. A
   // missing Cloud Tasks configuration is an application deployment error, not
   // a failed customer Carousel or a consumed daily-content slot.
-  assertCarouselGenerationRuntimeConfigured();
+  assertCarouselGenerationRuntimeConfigured(params.profile.userId);
 
   const candidateCount = Math.min(
     Math.ceil(params.candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE) *

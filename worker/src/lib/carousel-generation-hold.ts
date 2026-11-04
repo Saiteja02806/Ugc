@@ -1,19 +1,21 @@
 // Temporary product hold. App and worker copies must stay in sync.
-// Set explicitly to false only when automatic Carousel generation is released.
+// One verified pilot owner is enabled; all other owners retain the product hold.
+export const CAROUSEL_GENERATION_PILOT_USER_ID = "oPQhLloYHKQFCysJ4cznV2dv8v02";
 export function isAutomaticCarouselGenerationPaused(
   value = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED,
+  userId?: string | null,
 ) {
-  return value?.trim().toLowerCase() !== "false";
+  return userId !== CAROUSEL_GENERATION_PILOT_USER_ID && value?.trim().toLowerCase() !== "false";
 }
 
-export function assertAutomaticCarouselGenerationEnabled() {
-  if (isAutomaticCarouselGenerationPaused()) {
+export function assertAutomaticCarouselGenerationEnabled(userId?: string | null) {
+  if (isAutomaticCarouselGenerationPaused(undefined, userId)) {
     throw new Error("Automatic Carousel generation is temporarily on hold.");
   }
 }
 
-export function isCarouselGenerationJobHeld(jobType: string) {
-  return isAutomaticCarouselGenerationPaused() && [
+export function isCarouselGenerationJobHeld(jobType: string, userId?: string | null) {
+  return isAutomaticCarouselGenerationPaused(undefined, userId) && [
     "generate_carousel",
     "carousel_content_plan_generation",
   ].includes(jobType);

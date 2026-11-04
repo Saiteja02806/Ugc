@@ -1,16 +1,15 @@
-// NodeNext worker sources deliberately name emitted .js imports. Resolve their
-// TypeScript peers when a web contract test loads those sources before emit.
+// Run worker tests against current TypeScript sources without creating build output.
 import { existsSync } from "node:fs";
 import { registerHooks } from "node:module";
 import { fileURLToPath } from "node:url";
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier.endsWith(".js") && (specifier.startsWith("./") || specifier.startsWith("../")) && context.parentURL?.startsWith("file:")) {
-      const emitted = new URL(specifier, context.parentURL);
-      const source = new URL(`${specifier.slice(0, -3)}.ts`, context.parentURL);
-      if (source.pathname.includes("/worker/src/") && !existsSync(fileURLToPath(emitted)) && existsSync(fileURLToPath(source))) {
-        return { shortCircuit: true, url: source.href };
+    if (context.parentURL?.startsWith("file:") && /\.js$/.test(specifier)) {
+      const target = new URL(specifier, context.parentURL);
+      target.pathname = target.pathname.replace("/worker/dist/", "/worker/src/").replace(/\.js$/, ".ts");
+      if (target.pathname.includes("/worker/src/") && existsSync(fileURLToPath(target))) {
+        return { shortCircuit: true, url: target.href };
       }
     }
     return nextResolve(specifier, context);

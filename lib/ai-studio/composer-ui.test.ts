@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
+
+test("Hook and Text on screen image/video Generate actions choose blue without changing other tool defaults", () => {
+  for (const file of ["components/video/video-generation-workspace.tsx", "components/workspace/ugc-chat-workspace.tsx"]) {
+    const source = readProjectFile(file);
+    const expression = source.match(/generateTone=\{([^}]+)\}/)?.[1];
+    assert.ok(expression, `${file} must explicitly select its Generate tone`);
+    for (const workflowFormat of ["hook", "wall_text"]) {
+      assert.equal(runInNewContext(expression, { workflowFormat }), "blue");
+    }
+    assert.equal(runInNewContext(expression, { workflowFormat: undefined }), undefined);
+    if (file.includes("ugc-chat")) assert.equal(runInNewContext(expression, { workflowFormat: "slideshow" }), "blue");
+  }
+});
 
 const composer = readProjectFile(
   "components/generation/ai-studio-composer.tsx",

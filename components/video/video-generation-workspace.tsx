@@ -1553,6 +1553,7 @@ export function VideoGenerationStudioPanel({
           isGenerating || recoveringJobs
         }
         generateLabel={pendingSubmission ? "Recover saved request" : "Generate video"}
+        generateTone={workflowFormat === "hook" || workflowFormat === "wall_text" ? "blue" : undefined}
         generationLocked={generationLocked && !pendingSubmission}
         hasAttachments={referenceFiles.length > 0 || referenceFilesPending}
         isGenerating={isGenerating}

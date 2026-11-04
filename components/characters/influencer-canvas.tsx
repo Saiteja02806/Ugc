@@ -86,13 +86,6 @@ export function InfluencerCanvas({
                 </div>
 
                 <div className={styles.candidateActions}>
-                  <ImageDownloadButton
-                    assetId={job.output!.mediaAssetId}
-                    userId={userId}
-                    name="AI Influencer"
-                    label="Download"
-                    className={styles.actionButtonSecondary}
-                  />
                   <button
                     type="button"
                     className={styles.actionButtonPrimary}
@@ -102,6 +95,13 @@ export function InfluencerCanvas({
                     <Bookmark className="w-4 h-4 fill-current" />
                     {isSaved ? "Saved to Influencers" : isSaving ? "Saving..." : "Save to My Influencers"}
                   </button>
+                  <ImageDownloadButton
+                    assetId={job.output!.mediaAssetId}
+                    userId={userId}
+                    name="AI Influencer"
+                    label="Download"
+                    className={styles.actionButtonSecondary}
+                  />
                 </div>
               </div>
             );

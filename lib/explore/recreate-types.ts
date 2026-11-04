@@ -24,6 +24,8 @@ export type RecreateReference = {
   categoryLabel: string | null;
   posterUrl: string;
   videoUrl?: string;
+  viewCount?: number;
+  formattedViews?: string;
   /** Canonical server-provided digest for packaged references without hashed URLs. */
   sourceSha256?: string;
   /** Private pilot membership, issued only by the authenticated creator catalogue. */

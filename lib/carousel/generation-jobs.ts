@@ -48,8 +48,8 @@ export class CarouselGenerationConfigurationError extends Error {
  * consuming a customer's Carousel slot before a task exists would make that
  * configuration error look like a content-generation failure.
  */
-export function assertCarouselGenerationRuntimeConfigured() {
-  assertAutomaticCarouselGenerationEnabled();
+export function assertCarouselGenerationRuntimeConfigured(userId?: string | null) {
+  assertAutomaticCarouselGenerationEnabled(userId);
   const missingEnvVars = getMissingCarouselGenerationEnvVars();
 
   if (missingEnvVars.length > 0) {
@@ -66,7 +66,7 @@ export async function enqueueCarouselGenerationJob(params: {
   textStyle: CarouselRenderStyle;
   userId: string;
 }) {
-  assertCarouselGenerationRuntimeConfigured();
+  assertCarouselGenerationRuntimeConfigured(params.userId);
 
   const existingJob = params.existingJobId
     ? await getBackgroundJobById(params.existingJobId)
@@ -154,7 +154,7 @@ export async function enqueueCarouselExperimentBatchJob(params: {
   textStyle: CarouselRenderStyle;
   userId: string;
 }) {
-  assertCarouselGenerationRuntimeConfigured();
+  assertCarouselGenerationRuntimeConfigured(params.userId);
 
   if (params.carouselIds.length !== 5 || new Set(params.carouselIds).size !== 5) {
     throw new Error("A Carousel experiment job requires exactly five unique Carousel IDs.");

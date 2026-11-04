@@ -38,15 +38,14 @@ const SINGLE_REFERENCES: readonly { field: keyof InfluencerSelectionState; role:
 
 export type StudioReference = { id: string; role: string; imagePath: string };
 
-export function orderedStudioReferences(
+export function collectAllStudioReferences(
   selection: InfluencerSelectionState,
   customTraits: readonly InfluencerTrait[] = [],
-  limit = MAX_STUDIO_REFERENCES,
 ): StudioReference[] {
   const chosen: StudioReference[] = [];
   const seen = new Set<string>();
   const add = (id: string, role: string) => {
-    if (chosen.length >= limit || seen.has(id)) return;
+    if (seen.has(id)) return;
     const trait = findTraitById(id, customTraits);
     const imagePath = trait?.imagePath;
     if (!trait || trait.isCustomUpload || !isStudioImagePath(imagePath)) return;
@@ -61,13 +60,35 @@ export function orderedStudioReferences(
   return chosen;
 }
 
+export function validateStudioReferenceCapacity(
+  selection: InfluencerSelectionState,
+  customTraits: readonly InfluencerTrait[] = [],
+  hasUploadedFace: boolean,
+  limit = MAX_STUDIO_REFERENCES,
+): { valid: boolean; total: number; limit: number; excess: number; references: StudioReference[] } {
+  const all = collectAllStudioReferences(selection, customTraits);
+  const references = all.filter((reference, index, list) => list.findIndex((item) => item.imagePath === reference.imagePath) === index);
+  const total = (hasUploadedFace ? 1 : 0) + references.length;
+  const excess = Math.max(0, total - limit);
+  return { valid: total <= limit, total, limit, excess, references };
+}
+
+export function orderedStudioReferences(
+  selection: InfluencerSelectionState,
+  customTraits: readonly InfluencerTrait[] = [],
+  limit = MAX_STUDIO_REFERENCES,
+): StudioReference[] {
+  const all = collectAllStudioReferences(selection, customTraits);
+  return all.slice(0, limit);
+}
+
 export function studioReferenceOrderLine(labels: readonly string[], framing: "full" | "half" = "full") {
   if (!labels.length) return "";
   const order = labels.map((label, index) => `${index + 1} ${label}`).join("; ");
   const subject = framing === "half"
     ? "one person framed from the head through the waist in the selected room"
     : "one full-body person standing in the selected room";
-  return `\nCombine these reference images into one new vertical 9:16 photograph of ${subject}. Each image supplies only its named trait. Do not copy a white backdrop, a cropped head, or a floating-head composition. Reference image order: ${order}.`;
+  return `\nCombine these reference images into one new vertical 9:16 photograph of ${subject}. Each image supplies only its named trait. Do not copy a white backdrop, a cropped head, or a floating-head composition. Reference image order: ${order}. Only selected accessories may appear; ignore jewelry in all other references. The selected eye color overrides every photo's iris color.`;
 }
 
 /** Resolve registered logical paths to immutable shared backend images. */

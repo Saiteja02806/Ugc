@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "method": "reviewed-ellipse-face-suppression",
+  "traits": {
+    "hair_bob": {
+      "sourceSha256": "b08ff15d18956338f1e44acb770c1e9249bf0614ee89f9fb3a11fc4f4ff9378c",
+      "preparedSha256": "20cb1f3e024c920e63dafb5feb629e3bc9ab0e952b1148916aa7e42d89ae9971",
+      "ellipse": [
+        0.49414,
+        0.46947,
+        0.26789,
+        0.21208,
+        0.32437
+      ]
+    },
+    "hair_blunt_bob": {
+      "sourceSha256": "bca513e1a612c22059c5ff745236bcd77824db25e8381edb0e9e61afa65cb57d",
+      "preparedSha256": "d7f1d1d787f04003a0e8b8ee03df21beb044ee5ad1244c8dc4c110f3486c039b",
+      "ellipse": [
+        0.50651,
+        0.4232,
+        0.27,
+        0.21375,
+        0.27695
+      ]
+    },
+    "hair_vintage_waves": {
+      "sourceSha256": "6426adf3b335325bd5345b3037970846c677ee01d5f0cfca72b1e37849fd8ee0",
+      "preparedSha256": "9a5259484b94b97ca7292dfc84ccc33949dffc861fb34f878eca862510ccd873",
+      "ellipse": [
+        0.53461,
+        0.45884,
+        0.28426,
+        0.17413,
+        0.33969
+      ]
+    },
+    "hair_long_waves": {
+      "sourceSha256": "084bac276278f1d07547b4a80df7cd9d69900b201a81b30a555cb0f241b3555f",
+      "preparedSha256": "b8c7332253c8b73a5a428fb9fd5d53d3aa8a84a85c4ed46f76a7088777333c1a",
+      "ellipse": [
+        0.4733,
+        0.38617,
+        0.24,
+        0.18558,
+        0.2592
+      ]
+    },
+    "hair_layered_waves": {
+      "sourceSha256": "a358e41ae80fc8d224e6b489dae9f73fc35dece4c1d178611d08316634da7039",
+      "preparedSha256": "332b2595341fa7f84afd68201a02881946921328e139c5578bea974d9544df07",
+      "ellipse": [
+        0.45605,
+        0.38636,
+        0.25288,
+        0.19582,
+        0.25238
+      ]
+    },
+    "hair_soft_curls": {
+      "sourceSha256": "4ab6ece768763a6c8aebd3daca07104802ef8ef74ebeaf484d82c37ba9765590",
+      "preparedSha256": "6f561a544aff846e36d97612d69b49e9fe3bcaed66211218b3656d8622e64664",
+      "ellipse": [
+        0.52734,
+        0.44684,
+        0.25594,
+        0.20262,
+        0.3082
+      ]
+    },
+    "hair_sculpted_curls": {
+      "sourceSha256": "a5d139fb1af6582300ad8892098ff29ea960167c510198c4542c6ba28fa9dd48",
+      "preparedSha256": "3cfe428343b059093f560add2a2fca07dd51a4cacbb89c7853f97d6a9d64bf4e",
+      "ellipse": [
+        0.49711,
+        0.47328,
+        0.33087,
+        0.19161,
+        0.34218
+      ]
+    },
+    "hair_voluminous_curls": {
+      "sourceSha256": "2e1464c7016766ef7c106d75da506a8a3c6ee5947412f69b7fc8fe1122e0ceaa",
+      "preparedSha256": "c43cb4e52ba7ed04908f33a0aeb18662484999fa1eb69a3800b35e28c62f4110",
+      "ellipse": [
+        0.49632,
+        0.46008,
+        0.30375,
+        0.18438,
+        0.33393
+      ]
+    },
+    "hair_pin_curls": {
+      "sourceSha256": "250ecd299f7e4d4c750291f5141271a9940eae70d1845378fcfca933987b5010",
+      "preparedSha256": "a7800958aff5787be159e59e26fca9780d1706b08fd33f307a3eae97af29d5e6",
+      "ellipse": [
+        0.4871,
+        0.45685,
+        0.33964,
+        0.191,
+        0.32616
+      ]
+    },
+    "hair_updo": {
+      "sourceSha256": "f39ea96c721a325ddc505e078be8869630078b18345bd5ad831f4e605eca58d2",
+      "preparedSha256": "2100e4e68caaa9b5e42751a1054ce07cf6ba9076287e382659f36d380e8bf2dc",
+      "ellipse": [
+        0.47461,
+        0.52346,
+        0.25523,
+        0.20206,
+        0.38521
+      ]
+    },
+    "hair_messy_updo": {
+      "sourceSha256": "a3babc284fb8ed79551d51244e5246a4fc53a01f4149d08fe1146d3ee6654f34",
+      "preparedSha256": "2b2a1485d01893fbb68bd97e520b39a82779e9d236c4743df4417b451d3df2cd",
+      "ellipse": [
+        0.53709,
+        0.45626,
+        0.27193,
+        0.2127,
+        0.31073
+      ]
+    },
+    "hair_space_buns": {
+      "sourceSha256": "fabf914607785f7ca68380cd88582b76fa2bdb289c41b7f9bd0f4a1f6372070f",
+      "preparedSha256": "bfbd8689011875ec822d40f22c071b825ceb720a49d44c079291e55ec34d0891",
+      "ellipse": [
+        0.52409,
+        0.45881,
+        0.30445,
+        0.24103,
+        0.2939
+      ]
+    },
+    "hair_flat_top": {
+      "sourceSha256": "336860bce1bb2beb03768b60f35f48ec1488474a0f2af2f0471aa2c45ee1cebc",
+      "preparedSha256": "c5a6622e92d4fd2442e0b5bb2a0073d2608801cbfbbfa2766d7077c70fd8a324",
+      "ellipse": [
+        0.50521,
+        0.4348,
+        0.28547,
+        0.226,
+        0.28018
+      ]
+    },
+    "hair_textured_crop": {
+      "sourceSha256": "fd95855219963f961f2169aced1af8a075ebe4e2ac6667407209120e999594ad",
+      "preparedSha256": "c3e0af4d3cfe9636a567e9772350793b114851a0e5ddaec2a9adbfbd5eaf695f",
+      "ellipse": [
+        0.48372,
+        0.46521,
+        0.3143,
+        0.24882,
+        0.29497
+      ]
+    },
+    "hair_tousled_shag": {
+      "sourceSha256": "0d7656564f5d0a6e433765e174c3df014db4d1dae2d0f409b3dc58adb1384257",
+      "preparedSha256": "7e8c79c315c2ce5693da9650103db36af017060ba28e8212a3c05de90ec9fde6",
+      "ellipse": [
+        0.51595,
+        0.42871,
+        0.25407,
+        0.26818,
+        0.24522
+      ]
+    },
+    "hair_spiky_high_top": {
+      "sourceSha256": "85bd913996d5b5bdfc68c5b6ebbdf640eaff6d47a8fdd67269b1d080eadf9bd2",
+      "preparedSha256": "ac6ea1006f330daaf77519976314890394fc4b22ccfa99334993df5257d15388",
+      "ellipse": [
+        0.50439,
+        0.46021,
+        0.26483,
+        0.27955,
+        0.26894
+      ]
+    },
+    "hair_tall_flat_top": {
+      "sourceSha256": "95b58c923b2756ff27ecf044832c095e50f2909091f53a9282a4ad4a3fe46678",
+      "preparedSha256": "5c81a1fd6d4a8900f5a839e033d9ffe8d989086c3c6c8bd069410a7b8b17e0b8",
+      "ellipse": [
+        0.50638,
+        0.45426,
+        0.26526,
+        0.28,
+        0.26268
+      ]
+    },
+    "hair_curly_mullet": {
+      "sourceSha256": "d4707dbd7f5785ce11e8fb6aca77a9c8cc392f9c4c42d6bc986a2c7fdef56b2a",
+      "preparedSha256": "3c35eeabe4f16d93bea9d7be3cad04578bac7daa9414c5744b893dcb72064fda",
+      "ellipse": [
+        0.50558,
+        0.42931,
+        0.25148,
+        0.26545,
+        0.24769
+      ]
+    },
+    "hair_wavy_bowl_cut": {
+      "sourceSha256": "0e962d54cfb0276130bd72c63278ad6b353e256bd89fadfa7236e06b1316bf3e",
+      "preparedSha256": "a166cf4a6facde0d02e357c767bdba0aa45f595f3ad1e7a4fe386d15a3457cf2",
+      "ellipse": [
+        0.50518,
+        0.42499,
+        0.24158,
+        0.255,
+        0.25052
+      ]
+    },
+    "hair_classic_flat_top": {
+      "sourceSha256": "19a17b179b0339b15ddaf4cf1ba7a2ce0c76016bee58b44635afa78adbec51fc",
+      "preparedSha256": "c5ab65d10a2348ddfad97650f0d6c5effa9b2e3ddeb63e2c98fbcda772c2ab2b",
+      "ellipse": [
+        0.49851,
+        0.63157,
+        0.28966,
+        0.30439,
+        0.4233
+      ]
+    },
+    "hair_rugged_crop": {
+      "sourceSha256": "b42009f284dfb0c8a4b66c7c477f0e4aa159260bc2c0bee100e3342ebb24ec98",
+      "preparedSha256": "8f568f5f165f6b2786e4d1f8edb06a5c10925e2f2ce08c34f3a3d18d29fd3326",
+      "ellipse": [
+        0.50877,
+        0.57359,
+        0.35828,
+        0.37818,
+        0.31483
+      ]
+    },
+    "hair_short_fringe_bob": {
+      "sourceSha256": "b4500753580422b3e28ab947b71081bfd78c842668e1cc2d6a8f4cce3cc6e6e5",
+      "preparedSha256": "7967756508a1a341cebb90168ea63ceca1cfaa6e40daa46a098bf0138a2050b7",
+      "ellipse": [
+        0.50917,
+        0.60183,
+        0.34665,
+        0.36591,
+        0.35148
+      ]
+    },
+    "hair_braided_updo": {
+      "sourceSha256": "c209d0720f2b67115ef89944ef92d19a2bd0a0c3a95d5fbcf9cafe48a32a3bb8",
+      "preparedSha256": "e12d312d2d93fdcb39d25b9ada68b6ca6fca2b4321e98011c2e656a537ef4307",
+      "ellipse": [
+        0.49321,
+        0.67708,
+        0.24434,
+        0.25446,
+        0.50298
+      ]
+    }
+  }
+}

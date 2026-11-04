@@ -10,7 +10,7 @@ export async function prebuildTrendingAfterOnboarding(params: {
   profile: BusinessProfileRecord;
   timezone: string;
 }) {
-  if (isAutomaticCarouselGenerationPaused()) return [{ format: "daily_feed" as const, status: "paused" as const }];
+  if (isAutomaticCarouselGenerationPaused(undefined, params.profile.userId)) return [{ format: "daily_feed" as const, status: "paused" as const }];
   try {
     const feed = await ensureUnifiedTrendingDailyFeed({
       includeHookVideos: params.includeHookVideos,

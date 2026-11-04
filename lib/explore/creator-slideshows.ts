@@ -4,6 +4,7 @@ import { readCreatorPrivateFile, readCreatorPrivateJson, type CreatorSlideshows 
 import { canAccessCreatorAccounts } from "./creator-account-access.ts";
 import { creatorSlideUrl, parseCreatorSlideUrl } from "../../worker/src/lib/creator-slide-delivery.ts";
 import type { RecreateReference } from "./recreate-types.ts";
+import { getSlideshowReferenceViews } from "./slideshow-reference-views.ts";
 type Actor = Parameters<typeof canAccessCreatorAccounts>[0];
 const catalog = readCreatorPrivateJson<CreatorSlideshows>("creator-slideshows.json", {version: 1, id: "creator-slideshow-account-1", label: "TikTok Creator Account", items: []});
 
@@ -20,7 +21,9 @@ export function getCreatorSlideshowReference(referenceId: string, actor: Actor):
   const item = canAccessCreatorAccounts(actor) ? catalog.items.find(item => item.id === referenceId) : undefined;
   if (!item) return undefined;
   const slides = item.slides.map(slide => ({ id: slide.id, width: slide.width, height: slide.height, url: creatorSlideUrl(item.id,slide) }));
+  const views = getSlideshowReferenceViews(item.id);
   return { id: item.id, format: "slideshow", title: item.title, creatorAccountId: catalog.id, category: "marketing", categoryLabel: "Marketing", sourcePlatform: "tiktok",
+    ...(views ? { viewCount: views.viewCount, formattedViews: views.formattedViews } : {}),
     ...(item.sourceUrl ? { sourceUrl: item.sourceUrl, sourceKind: "post" as const } : {}), posterUrl: slides[0].url, slides };
 }
 export function getCreatorSlideshowAccounts(actor: Actor) {

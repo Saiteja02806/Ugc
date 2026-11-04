@@ -8,7 +8,7 @@ import {
   PENDING_CHECKOUT_MAX_AGE_SECONDS,
   serializePendingCheckoutSessionIds,
 } from "@/lib/billing/pending-checkout";
-import { getBillingCustomerId, getUserSubscription } from "@/lib/billing/subscription-db";
+import { getBillingCheckoutAccount } from "@/lib/billing/subscription-db";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -39,15 +39,12 @@ export async function POST(request: NextRequest) {
 
     const { billingInterval, planSlug } = parseResult.data;
 
-    const [subscription, customerId] = await Promise.all([
-      getUserSubscription(user.uid, { strict: true, refreshCredits: false }),
-      getBillingCustomerId(user.uid),
-    ]);
+    const { isDodoManaged, customerId } = await getBillingCheckoutAccount(user.uid);
 
     // The displayed plan can become stale while the pricing page is open.
     // Resolve managed subscribers to their existing account instead of selling
     // them a second subscription when they click a checkout action.
-    if (subscription.isDodoManaged) {
+    if (isDodoManaged) {
       if (!customerId) {
         return NextResponse.json(
           { error: "Your existing billing account could not be found. Try again or contact support." },

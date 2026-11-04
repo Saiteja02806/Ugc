@@ -1,0 +1,1493 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-04T06:49:43.304Z",
+  "description": "Authoritative view count registry for Hook Video workflow references",
+  "viewsByReferenceId": {
+    "explore-paired-hook-fc44f6214b6e17413600ec13": {
+      "viewCount": 350000,
+      "formattedViews": "350K"
+    },
+    "explore-paired-hook-20d3e0c0a3051477008bd86b": {
+      "viewCount": 410000,
+      "formattedViews": "410K"
+    },
+    "explore-paired-hook-4aa27111a23b04a6dd27717b": {
+      "viewCount": 1610000,
+      "formattedViews": "1.6M"
+    },
+    "explore-paired-hook-ddcfb2950d40f37771058b73": {
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    "explore-paired-hook-185ed6ac17073e3bc1b8f6b5": {
+      "viewCount": 930000,
+      "formattedViews": "930K"
+    },
+    "explore-paired-hook-892b0f65083c8cf03270a7c9": {
+      "viewCount": 3460000,
+      "formattedViews": "3.5M"
+    },
+    "explore-paired-hook-4d44e59d5acbbad7f138d3a3": {
+      "viewCount": 1390000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-c15a0f9f2a7c4a28d5330825": {
+      "viewCount": 1430000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-6070b6ecbe246d879ce0bdcb": {
+      "viewCount": 2860000,
+      "formattedViews": "2.9M"
+    },
+    "explore-paired-hook-3cddc94937cdb32947f9e0c2": {
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    "explore-paired-hook-17133540b2315e0a3a05bfbd": {
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    "explore-paired-hook-ac9df55efb6be6e2fefbcf0e": {
+      "viewCount": 790000,
+      "formattedViews": "790K"
+    },
+    "explore-paired-hook-44d165d51084f977f5146f69": {
+      "viewCount": 3800000,
+      "formattedViews": "3.8M"
+    },
+    "explore-paired-hook-f216fd8e9397a7747a445ab7": {
+      "viewCount": 450000,
+      "formattedViews": "450K"
+    },
+    "explore-paired-hook-c8b971f4cea086703e106c92": {
+      "viewCount": 2870000,
+      "formattedViews": "2.9M"
+    },
+    "explore-paired-hook-4585ee949081c4e5cd835cd3": {
+      "viewCount": 1910000,
+      "formattedViews": "1.9M"
+    },
+    "explore-paired-hook-cdddd09fdd3b5a23d9949205": {
+      "viewCount": 560000,
+      "formattedViews": "560K"
+    },
+    "explore-paired-hook-d7a0b28cd22cc29d618a5a6d": {
+      "viewCount": 270000,
+      "formattedViews": "270K"
+    },
+    "explore-paired-hook-7c53cba88343579e7e15c8b0": {
+      "viewCount": 1880000,
+      "formattedViews": "1.9M"
+    },
+    "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b": {
+      "viewCount": 4590000,
+      "formattedViews": "4.6M"
+    },
+    "explore-paired-hook-114b58d5c22018e273a346de": {
+      "viewCount": 350000,
+      "formattedViews": "350K"
+    },
+    "explore-paired-hook-ef59f4b5e69bc9e125f8ada7": {
+      "viewCount": 3820000,
+      "formattedViews": "3.8M"
+    },
+    "explore-paired-hook-cfa08753a0ca05384e797ad2": {
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    "explore-paired-hook-725d926d66f44993f3556ee1": {
+      "viewCount": 650000,
+      "formattedViews": "650K"
+    },
+    "explore-paired-hook-b43622d1486957644f3317e6": {
+      "viewCount": 510000,
+      "formattedViews": "510K"
+    },
+    "explore-paired-hook-20446a41b05ed3e9fdb6af95": {
+      "viewCount": 1200000,
+      "formattedViews": "1.2M"
+    },
+    "explore-paired-hook-743919c25a4f61942184a81b": {
+      "viewCount": 380000,
+      "formattedViews": "380K"
+    },
+    "explore-paired-hook-510f7a66546d25863c268477": {
+      "viewCount": 1210000,
+      "formattedViews": "1.2M"
+    },
+    "explore-paired-hook-f0917e5ac7271343ebe3cded": {
+      "viewCount": 720000,
+      "formattedViews": "720K"
+    },
+    "explore-paired-hook-8641b91f883cb5b6c66efd3c": {
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    "explore-paired-hook-55cb1594a04550147e829d7f": {
+      "viewCount": 510000,
+      "formattedViews": "510K"
+    },
+    "explore-paired-hook-caceb6cb43d6e62137cf9892": {
+      "viewCount": 2870000,
+      "formattedViews": "2.9M"
+    },
+    "explore-paired-hook-bfd6368d9fc52f44c6422a2b": {
+      "viewCount": 460000,
+      "formattedViews": "460K"
+    },
+    "explore-paired-hook-2a74d53ba481fd0f99b84179": {
+      "viewCount": 770000,
+      "formattedViews": "770K"
+    },
+    "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82": {
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-3c414e30a7405a8c57cb01de": {
+      "viewCount": 1360000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-d1d14b08f6dd4711ad166ded": {
+      "viewCount": 1760000,
+      "formattedViews": "1.8M"
+    },
+    "explore-paired-hook-c7ffd19dc027af1ff4034aeb": {
+      "viewCount": 2900000,
+      "formattedViews": "2.9M"
+    },
+    "explore-paired-hook-283fc73921d127b977edd5cd": {
+      "viewCount": 3200000,
+      "formattedViews": "3.2M"
+    },
+    "explore-paired-hook-aa0caa002b6a92ad9226b26c": {
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    "explore-paired-hook-c709e563045b8e9e473929a9": {
+      "viewCount": 570000,
+      "formattedViews": "570K"
+    },
+    "explore-paired-hook-75b1b07ece3bdd13302c96c0": {
+      "viewCount": 3200000,
+      "formattedViews": "3.2M"
+    },
+    "explore-paired-hook-9ee299bb7c8ab66ad9387bbf": {
+      "viewCount": 2700000,
+      "formattedViews": "2.7M"
+    },
+    "explore-paired-hook-8d49391ade6ddf5261d43d2a": {
+      "viewCount": 880000,
+      "formattedViews": "880K"
+    },
+    "explore-paired-hook-d426f4a2248708f61298bf7f": {
+      "viewCount": 1660000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-3a6a3f1380bf0260ec43bd78": {
+      "viewCount": 1220000,
+      "formattedViews": "1.2M"
+    },
+    "explore-paired-hook-b7c86d6729a69666ddf46ed5": {
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    "explore-paired-hook-0dd34d729ad756dbd87888cc": {
+      "viewCount": 1860000,
+      "formattedViews": "1.9M"
+    },
+    "explore-paired-hook-03d314d5268b8c31ec390bf1": {
+      "viewCount": 590000,
+      "formattedViews": "590K"
+    },
+    "explore-paired-hook-e7147ac8b75176755e120150": {
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    "explore-paired-hook-6030a6af486760af6b5d64b1": {
+      "viewCount": 1920000,
+      "formattedViews": "1.9M"
+    },
+    "explore-paired-hook-4f4ca22ed141ee115d1eb913": {
+      "viewCount": 440000,
+      "formattedViews": "440K"
+    },
+    "explore-paired-hook-4463cc3d85f44ad6829ceb12": {
+      "viewCount": 640000,
+      "formattedViews": "640K"
+    },
+    "explore-paired-hook-43cc1dae0a6cfcb03e0a9333": {
+      "viewCount": 1060000,
+      "formattedViews": "1.1M"
+    },
+    "explore-paired-hook-7a81a25a6fb874013b14dbf1": {
+      "viewCount": 760000,
+      "formattedViews": "760K"
+    },
+    "explore-paired-hook-be7df3868a7b06024c0a90d1": {
+      "viewCount": 840000,
+      "formattedViews": "840K"
+    },
+    "explore-paired-hook-def19968a4a8c55c52679591": {
+      "viewCount": 2710000,
+      "formattedViews": "2.7M"
+    },
+    "explore-paired-hook-b0aead788c4930565401371b": {
+      "viewCount": 1400000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-0c14ee9d885466ad13cf9e52": {
+      "viewCount": 320000,
+      "formattedViews": "320K"
+    },
+    "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc": {
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    "explore-paired-hook-3bd70516e94e1dfa9ed6797a": {
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    "explore-paired-hook-f1afdb3229e127c8b6563087": {
+      "viewCount": 470000,
+      "formattedViews": "470K"
+    },
+    "explore-paired-hook-7351dd660bc41910b9f25453": {
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    "explore-paired-hook-17d1208ac2c327913bb321ab": {
+      "viewCount": 2690000,
+      "formattedViews": "2.7M"
+    },
+    "explore-paired-hook-2e28e18f894e3ba7de367ced": {
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    "explore-paired-hook-11f2baa840d10b65bc4c4dee": {
+      "viewCount": 1120000,
+      "formattedViews": "1.1M"
+    },
+    "explore-paired-hook-5be30f0749eec90b5a70bd18": {
+      "viewCount": 2930000,
+      "formattedViews": "2.9M"
+    },
+    "explore-paired-hook-59dee735a7c5d1643bc57127": {
+      "viewCount": 3190000,
+      "formattedViews": "3.2M"
+    },
+    "explore-paired-hook-d3a67b533f083d26dd5d46f0": {
+      "viewCount": 460000,
+      "formattedViews": "460K"
+    },
+    "explore-paired-hook-43f2c2d266d23e3af05875d8": {
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    "explore-paired-hook-607bfccda5e91e0d8731fa94": {
+      "viewCount": 1170000,
+      "formattedViews": "1.2M"
+    },
+    "explore-paired-hook-62f80506cbbedab0d340f863": {
+      "viewCount": 910000,
+      "formattedViews": "910K"
+    },
+    "explore-paired-hook-bee95bd7a34b5d2a72775282": {
+      "viewCount": 1360000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-09c4e9b5de6a85f0f4c371da": {
+      "viewCount": 3480000,
+      "formattedViews": "3.5M"
+    },
+    "explore-paired-hook-717396089efc644caf411c79": {
+      "viewCount": 1410000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f": {
+      "viewCount": 1420000,
+      "formattedViews": "1.4M"
+    },
+    "explore-paired-hook-164ad3e6923d5d0d576114a5": {
+      "viewCount": 230000,
+      "formattedViews": "230K"
+    },
+    "explore-paired-hook-761c394a83c7b4c06e35e262": {
+      "viewCount": 320000,
+      "formattedViews": "320K"
+    },
+    "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea": {
+      "viewCount": 490000,
+      "formattedViews": "490K"
+    },
+    "explore-paired-hook-9309a041061ae5abc6970d52": {
+      "viewCount": 1760000,
+      "formattedViews": "1.8M"
+    },
+    "explore-paired-hook-349e499826f7491d91f6b712": {
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    },
+    "explore-paired-hook-14b3c195d4648bd1793f8d50": {
+      "viewCount": 1700000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-88b4f433fe4fcb0504aca67f": {
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-df58806df2ea040df347f267": {
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    "explore-paired-hook-c5e3806f418bbe37e864485a": {
+      "viewCount": 3490000,
+      "formattedViews": "3.5M"
+    },
+    "explore-paired-hook-f24aeb3d18886faf62ca3b8c": {
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    "explore-paired-hook-61eb29067f56267684b7cfe6": {
+      "viewCount": 1870000,
+      "formattedViews": "1.9M"
+    },
+    "explore-paired-hook-d4e7dafbab7e65e9a2505ce0": {
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    "explore-paired-hook-bdc5af5aedfac3ddb93b4348": {
+      "viewCount": 1770000,
+      "formattedViews": "1.8M"
+    },
+    "explore-paired-hook-f1b5421be14d24803539be89": {
+      "viewCount": 2410000,
+      "formattedViews": "2.4M"
+    },
+    "explore-paired-hook-1280571372ff2cd67af995f3": {
+      "viewCount": 780000,
+      "formattedViews": "780K"
+    },
+    "explore-paired-hook-21d7d65d41c97e6ebbb5a13e": {
+      "viewCount": 1840000,
+      "formattedViews": "1.8M"
+    },
+    "explore-paired-hook-99ff813ebc24c61f1c92828e": {
+      "viewCount": 1810000,
+      "formattedViews": "1.8M"
+    },
+    "explore-paired-hook-ccc00a7b185156ed25e1af37": {
+      "viewCount": 1130000,
+      "formattedViews": "1.1M"
+    },
+    "explore-paired-hook-5947060ace44a6f7366de20c": {
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    "explore-paired-hook-2575e61e1f8151761d13e032": {
+      "viewCount": 490000,
+      "formattedViews": "490K"
+    },
+    "explore-paired-hook-7715be59e01c9ee80a3bb018": {
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    },
+    "explore-paired-hook-643978050b8b91c838ce4985": {
+      "viewCount": 600000,
+      "formattedViews": "600K"
+    },
+    "explore-paired-hook-322af5b0d5778b474cfcfdf4": {
+      "viewCount": 1700000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-318267dcb393c3e701c8c944": {
+      "viewCount": 360000,
+      "formattedViews": "360K"
+    },
+    "explore-paired-hook-775bf4f0fc41f253d04663e2": {
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    "explore-paired-hook-f12c90a72871c0cdaf3503db": {
+      "viewCount": 780000,
+      "formattedViews": "780K"
+    },
+    "explore-paired-hook-095c5d08848977c4a1dda973": {
+      "viewCount": 860000,
+      "formattedViews": "860K"
+    },
+    "explore-paired-hook-50dd086ef9d1c758d5ae3bb5": {
+      "viewCount": 920000,
+      "formattedViews": "920K"
+    },
+    "explore-paired-hook-2822e820228a01fb4c4273a1": {
+      "viewCount": 2660000,
+      "formattedViews": "2.7M"
+    },
+    "explore-paired-hook-a9289ca5bd17288593e63eee": {
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    }
+  },
+  "items": [
+    {
+      "galleryIndex": 1,
+      "id": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "title": "Hook 100",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DeacvdqpkvR/",
+      "caption": "POV: you finally understand\nhow to use Claude\nfor marketing",
+      "viewCount": 350000,
+      "formattedViews": "350K"
+    },
+    {
+      "galleryIndex": 2,
+      "id": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "title": "Hook 103",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@nikki.scripture/video/7695178280676134175",
+      "caption": "POV: you found a way to\nmake your texts point you\nback to God",
+      "viewCount": 410000,
+      "formattedViews": "410K"
+    },
+    {
+      "galleryIndex": 3,
+      "id": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "title": "Hook 46",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "“bro rate my startup idea 💀🥀”",
+      "viewCount": 1610000,
+      "formattedViews": "1.6M"
+    },
+    {
+      "galleryIndex": 4,
+      "id": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "title": "Hook 101",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DeQwSJTxiza/",
+      "caption": "I could literally KISS\nthe business owner\nwho showed me this",
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    {
+      "galleryIndex": 5,
+      "id": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "title": "Hook 104",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@nikki.scripture/video/7694873153369083167",
+      "caption": "I love Gen Z because WDYM\nwe made a Bible buddy that\nwill literally text you and\nremind you to spend time\nwith God",
+      "viewCount": 930000,
+      "formattedViews": "930K"
+    },
+    {
+      "galleryIndex": 6,
+      "id": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "title": "Hook 47",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "Part time job ❌\nColoring Books ✅",
+      "viewCount": 3460000,
+      "formattedViews": "3.5M"
+    },
+    {
+      "galleryIndex": 7,
+      "id": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "title": "Hook 102",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Db6fu0DRPsQ/",
+      "caption": "Since when can WhatsApp\ndo THIS??!😭😭",
+      "viewCount": 1390000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 8,
+      "id": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "title": "Hook 107",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@buildwkel/video/7671014748678376726",
+      "caption": "Claude Code can't do that 😮‍💨",
+      "viewCount": 1430000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 9,
+      "id": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "title": "Hook 48",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "“I can’t get client” 🤨 / “I can’t get client” 🤨\n“Ok...let me show you how” 😎",
+      "viewCount": 2860000,
+      "formattedViews": "2.9M"
+    },
+    {
+      "galleryIndex": 10,
+      "id": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "title": "Hook 105",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dbt1-qBJrrj/",
+      "caption": "My husband coded\nme this!!!!",
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    {
+      "galleryIndex": 11,
+      "id": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "title": "Hook 99",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@tweetytakespics/video/7647168888169450784",
+      "caption": "You’re telling me this is what the cool girls use for their Pinterest??",
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    {
+      "galleryIndex": 12,
+      "id": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "title": "Hook 49",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "Wait...CHATGPT 6 Astra can do what? 🤡💀",
+      "viewCount": 790000,
+      "formattedViews": "790K"
+    },
+    {
+      "galleryIndex": 13,
+      "id": "explore-paired-hook-44d165d51084f977f5146f69",
+      "title": "Hook 106",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DezJ-d1lGUs/",
+      "caption": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+      "viewCount": 3800000,
+      "formattedViews": "3.8M"
+    },
+    {
+      "galleryIndex": 14,
+      "id": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "title": "Hook 53",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@viktoriasdiscounts/video/7622494854978735373",
+      "caption": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
+      "viewCount": 450000,
+      "formattedViews": "450K"
+    },
+    {
+      "galleryIndex": 15,
+      "id": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "title": "Hook 50",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "SAY BYE BYE\nTO CLAUDE MAX 🥀🤪",
+      "viewCount": 2870000,
+      "formattedViews": "2.9M"
+    },
+    {
+      "galleryIndex": 16,
+      "id": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "title": "Hook 01",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dd4oo1qy_Dc/",
+      "caption": "Computer Science students!!\nThis website is EVERYTHING",
+      "viewCount": 1910000,
+      "formattedViews": "1.9M"
+    },
+    {
+      "galleryIndex": 17,
+      "id": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "title": "Hook 54",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@viktoriasdiscounts/video/7615847134142745870",
+      "caption": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
+      "viewCount": 560000,
+      "formattedViews": "560K"
+    },
+    {
+      "galleryIndex": 18,
+      "id": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "title": "Hook 51",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "grand\ntheft\nauto VI + YouTube\n= $678/day 🤑",
+      "viewCount": 270000,
+      "formattedViews": "270K"
+    },
+    {
+      "galleryIndex": 19,
+      "id": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "title": "Hook 02",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dc66cKZyBph/",
+      "caption": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
+      "viewCount": 1880000,
+      "formattedViews": "1.9M"
+    },
+    {
+      "galleryIndex": 20,
+      "id": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "title": "Hook 55",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@tweety.flows/video/7614214530549173512",
+      "caption": "How tf is this LEGAL? 💀",
+      "viewCount": 4590000,
+      "formattedViews": "4.6M"
+    },
+    {
+      "galleryIndex": 21,
+      "id": "explore-paired-hook-114b58d5c22018e273a346de",
+      "title": "Hook 52",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "pov: you’re dating an IT guy",
+      "viewCount": 350000,
+      "formattedViews": "350K"
+    },
+    {
+      "galleryIndex": 22,
+      "id": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "title": "Hook 03",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dd394l1gRWG/",
+      "caption": "3 years of video editing\nand NOW i find this??? 😳",
+      "viewCount": 3820000,
+      "formattedViews": "3.8M"
+    },
+    {
+      "galleryIndex": 23,
+      "id": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "title": "Hook 61",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@vero.detective/video/7654319444075793697",
+      "caption": "Imagine a game where\nyou have to stalk a\nmissing girl’s phone to\nfind her",
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    {
+      "galleryIndex": 24,
+      "id": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "title": "Hook 56",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "I deleted Capcut after this 🤫",
+      "viewCount": 650000,
+      "formattedViews": "650K"
+    },
+    {
+      "galleryIndex": 25,
+      "id": "explore-paired-hook-b43622d1486957644f3317e6",
+      "title": "Hook 04",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dd3a2QJkoF6/",
+      "caption": "Broke people will\nLOVE me after seeing\nTHIS 😭💰 / Go to Pinterest",
+      "viewCount": 510000,
+      "formattedViews": "510K"
+    },
+    {
+      "galleryIndex": 26,
+      "id": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "title": "Hook 63",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@autumn.pushclock/video/7668726250147482912",
+      "caption": "POV: ur alarm won’t turn\noff til u do 15 squats 😭😭😭",
+      "viewCount": 1200000,
+      "formattedViews": "1.2M"
+    },
+    {
+      "galleryIndex": 27,
+      "id": "explore-paired-hook-743919c25a4f61942184a81b",
+      "title": "Hook 57",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "Why was I searching for\ntemplate on Tiktok when\nthis exists 😭😭😭",
+      "viewCount": 380000,
+      "formattedViews": "380K"
+    },
+    {
+      "galleryIndex": 28,
+      "id": "explore-paired-hook-510f7a66546d25863c268477",
+      "title": "Hook 05",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaWk-oWJtZb/",
+      "caption": "HOW is this even LEGAL?!?\n😭",
+      "viewCount": 1210000,
+      "formattedViews": "1.2M"
+    },
+    {
+      "galleryIndex": 29,
+      "id": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "title": "Hook 66",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@nessa.biblechat/video/7447690758359928095",
+      "caption": "How to put a Bible verse\non your lockscreen\n(It changes everyday)",
+      "viewCount": 720000,
+      "formattedViews": "720K"
+    },
+    {
+      "galleryIndex": 30,
+      "id": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "title": "Hook 58",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "I think my sister has\nofficially lost her mind\nwhy is this her wedding\ninvitation??",
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    {
+      "galleryIndex": 31,
+      "id": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "title": "Hook 06",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DchdXLQN7Lc/",
+      "caption": "How tf is this legal 💀 / Go to “Google”",
+      "viewCount": 510000,
+      "formattedViews": "510K"
+    },
+    {
+      "galleryIndex": 32,
+      "id": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "title": "Hook 67",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@alyssa.cycletips/video/7481010099742461214",
+      "caption": "10 years of using a male\ndesigned period app and\nnow I find this...",
+      "viewCount": 2870000,
+      "formattedViews": "2.9M"
+    },
+    {
+      "galleryIndex": 33,
+      "id": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "title": "Hook 59",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "someone tell me how this worksss 🥺",
+      "viewCount": 460000,
+      "formattedViews": "460K"
+    },
+    {
+      "galleryIndex": 34,
+      "id": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "title": "Hook 07",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DcvimXKyRlv/",
+      "caption": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
+      "viewCount": 770000,
+      "formattedViews": "770K"
+    },
+    {
+      "galleryIndex": 35,
+      "id": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "title": "Hook 68",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@alyssa.cycletips/video/7479945469221719327",
+      "caption": "You realize you’ve been\nusing such basic period\napps & then find THIS!!!??",
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 36,
+      "id": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "title": "Hook 60",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "how life sounds like after your\nfriend shows you an app to\nlive translate and save\nmanhwa on your phone",
+      "viewCount": 1360000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 37,
+      "id": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "title": "Hook 08",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dd3MtKRNg94/",
+      "caption": "Claude + Shorts\n= $940/day 🤯",
+      "viewCount": 1760000,
+      "formattedViews": "1.8M"
+    },
+    {
+      "galleryIndex": 38,
+      "id": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "title": "Hook 69",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kaias_lensss/video/7385309375528783146",
+      "caption": "pov: you finally delete\nsnap",
+      "viewCount": 2900000,
+      "formattedViews": "2.9M"
+    },
+    {
+      "galleryIndex": 39,
+      "id": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "title": "Hook 62",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "My sister is actually nuts\nwhy are these her\nwedding invites 😭",
+      "viewCount": 3200000,
+      "formattedViews": "3.2M"
+    },
+    {
+      "galleryIndex": 40,
+      "id": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "title": "Hook 09",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Dd0BOnuCiH9/",
+      "caption": "POV you married the IT guy",
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    {
+      "galleryIndex": 41,
+      "id": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "title": "Hook 70",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kalebsjournal/video/7673945469189360910",
+      "caption": "Not my MOMMM asking me to\nget this with her before I leave for\ncollege 😭🥰",
+      "viewCount": 570000,
+      "formattedViews": "570K"
+    },
+    {
+      "galleryIndex": 42,
+      "id": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "title": "Hook 65",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "You’re telling me I could’ve been\nwatching the Bible this whole\ntime???",
+      "viewCount": 3200000,
+      "formattedViews": "3.2M"
+    },
+    {
+      "galleryIndex": 43,
+      "id": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "title": "Hook 10",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DdyrKJgDLYL/",
+      "caption": "no way this can HELP\nyou get through your\nRESEARCH! 😭",
+      "viewCount": 2700000,
+      "formattedViews": "2.7M"
+    },
+    {
+      "galleryIndex": 44,
+      "id": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "title": "Hook 71",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@autumn.pushclock/video/7693299457227525409",
+      "caption": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
+      "viewCount": 880000,
+      "formattedViews": "880K"
+    },
+    {
+      "galleryIndex": 45,
+      "id": "explore-paired-hook-d426f4a2248708f61298bf7f",
+      "title": "Reclassified reference 06",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "",
+      "viewCount": 1660000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 46,
+      "id": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "title": "Hook 11",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DagD0aFBEEx/",
+      "caption": "My Gen Z intern just showed\nme how she's been making\n100+ creatives for our clients\nin 5 minutes 😭💀",
+      "viewCount": 1220000,
+      "formattedViews": "1.2M"
+    },
+    {
+      "galleryIndex": 47,
+      "id": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "title": "Hook 72",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@goldrecipesdaily/video/7690266167872654612",
+      "caption": "20 years of cooking and I just\nfound this? 😳😡😭",
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    {
+      "galleryIndex": 48,
+      "id": "explore-paired-hook-0dd34d729ad756dbd87888cc",
+      "title": "Reclassified reference 28",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "",
+      "viewCount": 1860000,
+      "formattedViews": "1.9M"
+    },
+    {
+      "galleryIndex": 49,
+      "id": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "title": "Hook 12",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DcXiJFlqgog/",
+      "caption": "Gaming website that\nmakes you money while\nyou sleep 😴💸",
+      "viewCount": 590000,
+      "formattedViews": "590K"
+    },
+    {
+      "galleryIndex": 50,
+      "id": "explore-paired-hook-e7147ac8b75176755e120150",
+      "title": "Hook 73",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kailyn.lifts/video/7623850765102173454",
+      "caption": "4 years at the gym and I just\nNOW find this?!?!",
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    {
+      "galleryIndex": 51,
+      "id": "explore-paired-hook-6030a6af486760af6b5d64b1",
+      "title": "Reclassified reference 59",
+      "platform": "internal",
+      "sourceUrl": null,
+      "caption": "",
+      "viewCount": 1920000,
+      "formattedViews": "1.9M"
+    },
+    {
+      "galleryIndex": 52,
+      "id": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "title": "Hook 14",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DclXYzBObgb/",
+      "caption": "POV: I let ChatGPT plan and\ncreate an entire video 🤯",
+      "viewCount": 440000,
+      "formattedViews": "440K"
+    },
+    {
+      "galleryIndex": 53,
+      "id": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "title": "Hook 74",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@createwithnattt2/video/7633239446011399438",
+      "caption": "How TF is this legal\nIn CANVA 👹😨🤯😭",
+      "viewCount": 640000,
+      "formattedViews": "640K"
+    },
+    {
+      "galleryIndex": 54,
+      "id": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "title": "Hook 15",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DccQ1ygztSS/",
+      "caption": "Normal people:\n“I don’t have experience/\nI can’t do game dev”",
+      "viewCount": 1060000,
+      "formattedViews": "1.1M"
+    },
+    {
+      "galleryIndex": 55,
+      "id": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "title": "Hook 75",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@deninisolotravels/video/7526258539564649734",
+      "caption": "imagine being scared\nof solo traveling\nwhen THIS exists 🤣💀",
+      "viewCount": 760000,
+      "formattedViews": "760K"
+    },
+    {
+      "galleryIndex": 56,
+      "id": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "title": "Hook 16",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DcSG5OWTHQ1/",
+      "caption": "POV: put your dream\nshoes on a public\nwishlist for fun...\nturns out rich people\nenjoy spending\nmoney 😭😭",
+      "viewCount": 840000,
+      "formattedViews": "840K"
+    },
+    {
+      "galleryIndex": 57,
+      "id": "explore-paired-hook-def19968a4a8c55c52679591",
+      "title": "Hook 76",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@emiliemeetstheworld/video/7664468215715745046",
+      "caption": "Girls in Seoul 🇰🇷 are WILD\n😂😭💔",
+      "viewCount": 2710000,
+      "formattedViews": "2.7M"
+    },
+    {
+      "galleryIndex": 58,
+      "id": "explore-paired-hook-b0aead788c4930565401371b",
+      "title": "Hook 17",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Da6N_JupSBV/",
+      "caption": "I owe my entire career\nto the random guy\nwho showed me this\nside hustle 😭",
+      "viewCount": 1400000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 59,
+      "id": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
+      "title": "Hook 77",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@vero.detective/video/7665786281661713697",
+      "caption": "my new obsession: a\ngame where you go\nthrough a fake phone to\nfind a missing girl 🤫",
+      "viewCount": 320000,
+      "formattedViews": "320K"
+    },
+    {
+      "galleryIndex": 60,
+      "id": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "title": "Hook 18",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DF7nUkDCeYp/",
+      "caption": "BRUH 💀 I just found out\nhow my 6 year old brother\nstudies for exams 😭😳",
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    {
+      "galleryIndex": 61,
+      "id": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "title": "Hook 78",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@vero.detective/video/7654722595207564576",
+      "caption": "I found a game where I\nneed to stalk a girl's cell\nphone to find out what\nhappened With her",
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    {
+      "galleryIndex": 62,
+      "id": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "title": "Hook 20",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DZZAqqOAZdo/",
+      "caption": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+      "viewCount": 470000,
+      "formattedViews": "470K"
+    },
+    {
+      "galleryIndex": 63,
+      "id": "explore-paired-hook-7351dd660bc41910b9f25453",
+      "title": "Hook 79",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@marilynn.simmy/video/7610661008213888276",
+      "caption": "wait...I think Draco is\nOBSESSED with me?!",
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    {
+      "galleryIndex": 64,
+      "id": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "title": "Hook 21",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbHHaXhjwSA/",
+      "caption": "I found the best AI Video\nGenerator and it's FREE! 🤯 / Open Cantina",
+      "viewCount": 2690000,
+      "formattedViews": "2.7M"
+    },
+    {
+      "galleryIndex": 65,
+      "id": "explore-paired-hook-2e28e18f894e3ba7de367ced",
+      "title": "Hook 80",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kai.clm444/video/7696006452212665622",
+      "caption": "My sister is\nactually nuts why\nis this her wedding\ninvitation 😭😭😭",
+      "viewCount": 890000,
+      "formattedViews": "890K"
+    },
+    {
+      "galleryIndex": 66,
+      "id": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "title": "Hook 22",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Db3Sei2Pwu0/",
+      "caption": "So this is why everyone’s\ndeleting Claude 🤯💰",
+      "viewCount": 1120000,
+      "formattedViews": "1.1M"
+    },
+    {
+      "galleryIndex": 67,
+      "id": "explore-paired-hook-5be30f0749eec90b5a70bd18",
+      "title": "Hook 81",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kai.clm444/video/7643739505727425814",
+      "caption": "POV: you gave a chance to\nthe IT guy and he sent this...\nlike wtf 😭",
+      "viewCount": 2930000,
+      "formattedViews": "2.9M"
+    },
+    {
+      "galleryIndex": 68,
+      "id": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "title": "Hook 23",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbsysnCPKeO/",
+      "caption": "POV: you’re unemployed but\nrent is due tomorrow 💰",
+      "viewCount": 3190000,
+      "formattedViews": "3.2M"
+    },
+    {
+      "galleryIndex": 69,
+      "id": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
+      "title": "Hook 82",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@kai.clm444/video/7533605198246251798",
+      "caption": "ive spent 3HOURS book\nshopping and i just found\nthis now... like wtf 😭",
+      "viewCount": 460000,
+      "formattedViews": "460K"
+    },
+    {
+      "galleryIndex": 70,
+      "id": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "title": "Hook 24",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbV4y-vvPHN/",
+      "caption": "AI + coloring books\n= 💰💰💰",
+      "viewCount": 480000,
+      "formattedViews": "480K"
+    },
+    {
+      "galleryIndex": 71,
+      "id": "explore-paired-hook-607bfccda5e91e0d8731fa94",
+      "title": "Hook 83",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@salem_raena.ai/video/7457211945104575752",
+      "caption": "BRUH 💀 i just found out\nhow my little brother studies\nfor exams 😭",
+      "viewCount": 1170000,
+      "formattedViews": "1.2M"
+    },
+    {
+      "galleryIndex": 72,
+      "id": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "title": "Hook 25",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbKZS_ViycF/",
+      "caption": "= 💰💰💰/mo",
+      "viewCount": 910000,
+      "formattedViews": "910K"
+    },
+    {
+      "galleryIndex": 73,
+      "id": "explore-paired-hook-bee95bd7a34b5d2a72775282",
+      "title": "Hook 85",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@cleo_raena.ai/video/7412895654680284421",
+      "caption": "WTF did i just find in my\nLAST YEAR OF UNI 😭",
+      "viewCount": 1360000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 74,
+      "id": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "title": "Hook 26",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbSupmfPX0g/",
+      "caption": "Broke people are gonna\nKISS me after seeing\nTHIS 😭💸",
+      "viewCount": 3480000,
+      "formattedViews": "3.5M"
+    },
+    {
+      "galleryIndex": 75,
+      "id": "explore-paired-hook-717396089efc644caf411c79",
+      "title": "Hook 86",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@cleo_raena.ai/video/7459078077272968466",
+      "caption": "WTF 😭 i just found out\nhow my sister studies for her\nexams... 💀",
+      "viewCount": 1410000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 76,
+      "id": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "title": "Hook 27",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbQaxhfvTs8/",
+      "caption": "I owe my side income\nto this AI coloring book\n💰💰💰",
+      "viewCount": 1420000,
+      "formattedViews": "1.4M"
+    },
+    {
+      "galleryIndex": 77,
+      "id": "explore-paired-hook-164ad3e6923d5d0d576114a5",
+      "title": "Hook 87",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7636453059643723030",
+      "caption": "i can do WHAT in london??? 💀💀",
+      "viewCount": 230000,
+      "formattedViews": "230K"
+    },
+    {
+      "galleryIndex": 78,
+      "id": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "title": "Hook 29",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DZURnhfkahF/",
+      "caption": "“I use Chatgpt to help me code”\n🤮🤮🤮",
+      "viewCount": 320000,
+      "formattedViews": "320K"
+    },
+    {
+      "galleryIndex": 79,
+      "id": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "title": "Hook 88",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7643522575657749782",
+      "caption": "italian girls are you OKAY???",
+      "viewCount": 490000,
+      "formattedViews": "490K"
+    },
+    {
+      "galleryIndex": 80,
+      "id": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "title": "Hook 30",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbmLtx8vcVS/",
+      "caption": "new obsession unlocked:\nplaying a game where I\nhave access to a missing\nk-pop idol’s phone and I\nhave to figure out what\nhappened to her",
+      "viewCount": 1760000,
+      "formattedViews": "1.8M"
+    },
+    {
+      "galleryIndex": 81,
+      "id": "explore-paired-hook-349e499826f7491d91f6b712",
+      "title": "Hook 90",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@cookinwithmarg/video/7560783202235845920",
+      "caption": "uhmmm you're telling me i've been cooking for 3\nYEARS and NOW i find this????",
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    },
+    {
+      "galleryIndex": 82,
+      "id": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "title": "Hook 31",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaLyH9xhodO/",
+      "caption": "POV: you gave the IT guy\na chance 😭",
+      "viewCount": 1700000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 83,
+      "id": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
+      "title": "Hook 91",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@cookinwithmarg/video/7567862250690628897",
+      "caption": "Been cooking for 5+ years and NOW i find this??",
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 84,
+      "id": "explore-paired-hook-df58806df2ea040df347f267",
+      "title": "Hook 32",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DZYQrk7Rzkd/",
+      "caption": "pov: you’re in love with\na nerd 😭",
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    {
+      "galleryIndex": 85,
+      "id": "explore-paired-hook-c5e3806f418bbe37e864485a",
+      "title": "Hook 92",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@cookinwithmarg/video/7524061914234768673",
+      "caption": "3 years saving tiktok\nrecipes and NOW i\nfind this? 💀",
+      "viewCount": 3490000,
+      "formattedViews": "3.5M"
+    },
+    {
+      "galleryIndex": 86,
+      "id": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "title": "Hook 33",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaZJ1haJeJQ/",
+      "caption": "POV: U finally understood\nhow to use Claude\nfor marketing 😭",
+      "viewCount": 340000,
+      "formattedViews": "340K"
+    },
+    {
+      "galleryIndex": 87,
+      "id": "explore-paired-hook-61eb29067f56267684b7cfe6",
+      "title": "Hook 93",
+      "platform": "tiktok",
+      "sourceUrl": "https://www.tiktok.com/@studyfetch.kendall/video/7696034132408716575",
+      "caption": "a girl in my class just showed\nme what she uses to study 😭",
+      "viewCount": 1870000,
+      "formattedViews": "1.9M"
+    },
+    {
+      "galleryIndex": 88,
+      "id": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "title": "Hook 34",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaUEMY4vWsd/",
+      "caption": "“i edit all my videos manually\nin capcut”\n🤮🤮🤮",
+      "viewCount": 610000,
+      "formattedViews": "610K"
+    },
+    {
+      "galleryIndex": 89,
+      "id": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "title": "Hook 35",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DZxoFRohRor/",
+      "caption": "just thinking about all\nthe selfies I deleted before I\nknew about this",
+      "viewCount": 1770000,
+      "formattedViews": "1.8M"
+    },
+    {
+      "galleryIndex": 90,
+      "id": "explore-paired-hook-f1b5421be14d24803539be89",
+      "title": "Hook 36",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DY-VpUshUME/",
+      "caption": "so THIS is how creators talk\nfor 10 minutes without\nforgetting their words??",
+      "viewCount": 2410000,
+      "formattedViews": "2.4M"
+    },
+    {
+      "galleryIndex": 91,
+      "id": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "title": "Hook 37",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbcrI71uVCx/",
+      "caption": "so graphic designers have\nbeen using THIS instead of\nPinterest this WHOLE time??!",
+      "viewCount": 780000,
+      "formattedViews": "780K"
+    },
+    {
+      "galleryIndex": 92,
+      "id": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "title": "Hook 38",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Datg9kxKJoS/",
+      "caption": "I found a game where\nyou have to stalk a missing\ngirl's phone to find out\nwhat happened to her",
+      "viewCount": 1840000,
+      "formattedViews": "1.8M"
+    },
+    {
+      "galleryIndex": 93,
+      "id": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "title": "Hook 39",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbS5cqWSoMa/",
+      "caption": "I could literally kiss\nthe game dev that\nshowed me this 🤯😭",
+      "viewCount": 1810000,
+      "formattedViews": "1.8M"
+    },
+    {
+      "galleryIndex": 94,
+      "id": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "title": "Hook 40",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DbSFWSWMXRn/",
+      "caption": "“I use ChatGPT to make\nvideo games 🤮🤮🤮” / Go to Tesana.ai",
+      "viewCount": 1130000,
+      "formattedViews": "1.1M"
+    },
+    {
+      "galleryIndex": 95,
+      "id": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "title": "Hook 41",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaUKbzdpNFt/",
+      "caption": "HOW is this even LEGAL?!?",
+      "viewCount": 400000,
+      "formattedViews": "400K"
+    },
+    {
+      "galleryIndex": 96,
+      "id": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "title": "Hook 42",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Da20bziyPGS/",
+      "caption": "Imagine being\nUNEMPLOYED when\nthis EXISTS 🤯💀🤯",
+      "viewCount": 490000,
+      "formattedViews": "490K"
+    },
+    {
+      "galleryIndex": 97,
+      "id": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "title": "Hook 43",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Da8FMjIs4Da/",
+      "caption": "POV: How it feels\nfinally making your\ndream game 🔥 / GOOD 😆",
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    },
+    {
+      "galleryIndex": 98,
+      "id": "explore-paired-hook-643978050b8b91c838ce4985",
+      "title": "Hook 44",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DaiWvV_JH_4/",
+      "caption": "Kids YouTube + AI\n= 💰💰💰",
+      "viewCount": 600000,
+      "formattedViews": "600K"
+    },
+    {
+      "galleryIndex": 99,
+      "id": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "title": "Hook 45",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DZ7oSKzM_BD/",
+      "caption": "Gaming website that\nmake you rich in 2026\n🤯🤯💸💵💰",
+      "viewCount": 1700000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 100,
+      "id": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "title": "Hook 46",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/Da5kmSIyqp9/",
+      "caption": "How is this\nLEGAL 😭💀",
+      "viewCount": 360000,
+      "formattedViews": "360K"
+    },
+    {
+      "galleryIndex": 101,
+      "id": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "title": "Hook 64",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DdmGmGwg6Yf/",
+      "caption": "Travel Agents...\nare we cooked?? / Travel Agents...\nare we cooked??\nlook what I found... 😭😭",
+      "viewCount": 1670000,
+      "formattedViews": "1.7M"
+    },
+    {
+      "galleryIndex": 102,
+      "id": "explore-paired-hook-f12c90a72871c0cdaf3503db",
+      "title": "Hook 94",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DdQ8WlFKqTh/",
+      "caption": "",
+      "viewCount": 780000,
+      "formattedViews": "780K"
+    },
+    {
+      "galleryIndex": 103,
+      "id": "explore-paired-hook-095c5d08848977c4a1dda973",
+      "title": "Hook 95",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DdBqZe2KLXc/",
+      "caption": "",
+      "viewCount": 860000,
+      "formattedViews": "860K"
+    },
+    {
+      "galleryIndex": 104,
+      "id": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
+      "title": "Hook 96",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DcyAZFLqMyz/",
+      "caption": "= GOATED LEADS",
+      "viewCount": 920000,
+      "formattedViews": "920K"
+    },
+    {
+      "galleryIndex": 105,
+      "id": "explore-paired-hook-2822e820228a01fb4c4273a1",
+      "title": "Hook 97",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DVwSuFsjy0f/",
+      "caption": "I've literally been shopping on amazon for 5\nYEARS and NOW i find this???💀",
+      "viewCount": 2660000,
+      "formattedViews": "2.7M"
+    },
+    {
+      "galleryIndex": 106,
+      "id": "explore-paired-hook-a9289ca5bd17288593e63eee",
+      "title": "Hook 98",
+      "platform": "instagram",
+      "sourceUrl": "https://www.instagram.com/reel/DVmUhusEpxa/",
+      "caption": "No way I've been shopping on amazon for 4\nYEARS and NOW i find this 💀💀💀",
+      "viewCount": 1070000,
+      "formattedViews": "1.1M"
+    }
+  ]
+}

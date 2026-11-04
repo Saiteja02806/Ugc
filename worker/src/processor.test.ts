@@ -1136,3 +1136,17 @@ test("Carousel hold preserves queued jobs and attempts without executing or repo
     else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED = previous;
   }
 });
+
+
+test("Carousel pilot owner can execute a recovered job under the default hold",async()=>{
+ const old=process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;
+ try{
+  const {CAROUSEL_GENERATION_PILOT_USER_ID}=await import("./lib/carousel-generation-hold.js");
+  const job=createJob();job.job_type="generate_carousel";job.user_id=CAROUSEL_GENERATION_PILOT_USER_ID;
+  const store=createJobStore(job);let calls=0;
+  const done=await processRecoveredWorkerJob({config:createConfig(["generate_carousel"]),jobId:job.id,store,dependencies:{
+   runJob:async()=>{calls++;return {ok:true};},enqueueTrendingReconciliation:async()=>undefined,
+  }});
+  assert.equal(done,true);assert.equal(calls,1);assert.equal(job.status,"completed");
+ }finally{if(old===undefined)delete process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED;else process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED=old;}
+});

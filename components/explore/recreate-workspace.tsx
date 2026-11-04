@@ -198,6 +198,7 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
       {reference.isNew ? <span data-reference-new className={studio.referenceNewBadge}><span aria-hidden="true" className={studio.referenceNewDot} />New</span> : null}
+      {reference.formattedViews ? <span data-reference-views className={studio.referenceViewsBadge} title={`${reference.formattedViews} views`} aria-label={`${reference.formattedViews} views`}><EyeIcon className={studio.referenceViewsIcon} /><span>{reference.formattedViews}</span></span> : null}
       {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
       {!hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate data-reference-recreate-overlay data-selected={isSelected || undefined} className={studio.referenceRecreateButton}>
         <RotateCcw className="size-4" aria-hidden="true" />
@@ -220,6 +221,10 @@ export function ReferenceSourceAction({ source, label, canOpen, overlay = false,
     : <button type="button" title={source.kind === "profile" ? "Upgrade to Pro to view the creator profile" : "Upgrade to Pro to view the original post"} aria-label={`${label} — Upgrade to Pro`} data-reference-source-overlay={overlay || undefined} className={className} onClick={() => setUpgradeOpen(true)}>{content}</button>}
     <Dialog open={upgradeOpen && !sourceAllowed} onOpenChange={setUpgradeOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Upgrade to Pro</DialogTitle><DialogDescription>View reference sources on Instagram and TikTok with Pro.</DialogDescription></DialogHeader><Button nativeButton={false} render={<Link href="/pricing" />}>Upgrade to Pro</Button></DialogContent></Dialog>
   </>;
+}
+
+function EyeIcon({ className }: { className?: string }) {
+  return <svg className={className} width="13" height="11" viewBox="0 0 24 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M 2 7 C 5.5 1.5 18.5 1.5 22 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><circle cx="12" cy="13.5" r="3.6" fill="currentColor" /></svg>;
 }
 
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {

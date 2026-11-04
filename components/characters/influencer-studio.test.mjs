@@ -21,7 +21,7 @@ test("influencer registry has every category populated with traits", () => {
       assert.equal(trait.category, cat.id);
       assert.ok(trait.id.length > 0);
       assert.ok(trait.label.length > 0);
-      if (trait.id !== "outfit_none" && trait.id !== "outfit_color_as_shown") assert.ok(trait.promptSnippet.length > 0);
+      if (!["outfit_none", "outfit_color_as_shown", "accessory_none"].includes(trait.id)) assert.ok(trait.promptSnippet.length > 0);
     }
   }
 });
@@ -120,7 +120,7 @@ test("randomizeInfluencerSelection returns a valid populated selection state", (
   assert.ok(findTraitById(randomized.hairColorId));
   assert.ok(findTraitById(randomized.heightId));
   assert.ok(findTraitById(randomized.buildId));
-  assert.ok(randomized.accessoryIds.length > 0);
+  assert.ok(randomized.accessoryIds.every(id => id !== "accessory_none" && findTraitById(id)?.category === "accessories"));
   assert.equal(randomized.framing, "full");
   assert.equal(randomizeInfluencerSelection("half").framing, "half");
 

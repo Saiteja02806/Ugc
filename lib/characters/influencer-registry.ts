@@ -80,10 +80,10 @@ export const CHARACTER_TYPES: readonly InfluencerTrait[] = [
     imagePath: "/explore/influencer-studio/characters/3.png",
     promptSnippet: "extreme expressive viral creator face, distinctive exaggerated masculine features, neatly groomed mustache, high-energy creator presence",
   },
-  { id: "char_playful_mustache", label: "Playful Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/playful-mustache.png", promptSnippet: "playful expressive facial identity with large ears, rounded cheeks and a thick curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
 ];
 
 export const LEGACY_CHARACTER_ALIASES: readonly InfluencerTrait[] = [
+  { id: "char_playful_mustache", label: "Playful Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/playful-mustache.png", promptSnippet: "playful expressive facial identity with large ears, rounded cheeks and a thick curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
   // Retain lookup support for saved generations; omit from the live chooser.
   { id: "char_wide_eyed_mustache", label: "Wide-Eyed Mustache", category: "character_type", imagePath: "/explore/influencer-studio/characters/wide-eyed-mustache.png", promptSnippet: "distinctive expressive face with wide round eyes, prominent ears, long narrow nose and a curled mustache. Use this image for facial identity only; apply the independently selected hairstyle, accessories, outfit and background." },
   { ...CHARACTER_TYPES[0], id: "char_allura" },
@@ -204,14 +204,14 @@ export const ETHNICITIES: readonly InfluencerTrait[] = [
     label: "Indian",
     category: "ethnicity",
     imagePath: "/explore/influencer-studio/ethnicity/indian.png",
-    promptSnippet: "authentic South Asian heritage, distinctive Indian facial bone structure, warm golden-olive skin undertones, deep expressive dark-brown eyes, naturally defined dark eyebrows, effortless modern creator styling",
+    promptSnippet: "authentic South Asian heritage, distinctive Indian facial bone structure, warm golden-olive skin undertones, expressive gaze, naturally defined dark eyebrows, effortless modern creator styling",
   },
   {
     id: "ethnicity_middle_eastern",
     label: "Middle Eastern",
     category: "ethnicity",
     imagePath: "/explore/influencer-studio/ethnicity/middle-eastern.png",
-    promptSnippet: "authentic Middle Eastern heritage, warm olive skin undertones, dark expressive almond eyes, prominent refined facial contour, natural dense eyebrows",
+    promptSnippet: "authentic Middle Eastern heritage, warm olive skin undertones, expressive gaze, prominent refined facial contour, natural dense eyebrows",
     isDefault: true,
   },
   {
@@ -766,13 +766,13 @@ export const BUILDS: readonly InfluencerTrait[] = [
 ];
 
 export const ACCESSORIES: readonly InfluencerTrait[] = [
+  { id: "accessory_none", label: "No accessories", category: "accessories", promptSnippet: "", isDefault: true },
   {
     id: "accessory_headphones",
     label: "Matte Black Headphones",
     category: "accessories",
     imagePath: "/explore/influencer-studio/accessories/over-ear-headphones.png",
     promptSnippet: "wearing sleek minimalist matte-black over-ear headphones resting comfortably around ears, modern tech creator vibe",
-    isDefault: true,
   },
   {
     id: "accessory_earbuds",
@@ -920,7 +920,7 @@ export const DEFAULT_INFLUENCER_SELECTION: InfluencerSelectionState = {
   outfitColorId: "outfit_color_as_shown",
   heightId: "height_tall",
   buildId: "build_athletic",
-  accessoryIds: ["accessory_headphones"],
+  accessoryIds: [],
   framing: "full",
 };
 
@@ -928,6 +928,7 @@ export function randomizeInfluencerSelection(framing: PortraitFraming = "full"):
   function pickRandom<T>(items: readonly T[]): T {
     return items[Math.floor(Math.random() * items.length)];
   }
+  const accessory = pickRandom(ACCESSORIES);
   return {
     characterTypeId: pickRandom(CHARACTER_TYPES).id,
     backgroundId: pickRandom(BACKGROUNDS).id,
@@ -945,8 +946,21 @@ export function randomizeInfluencerSelection(framing: PortraitFraming = "full"):
     outfitColorId: "outfit_color_as_shown",
     heightId: pickRandom(HEIGHTS).id,
     buildId: pickRandom(BUILDS).id,
-    accessoryIds: [pickRandom(ACCESSORIES).id],
+    accessoryIds: accessory.id === "accessory_none" ? [] : [accessory.id],
     framing,
   };
 }
 
+
+
+/** An empty list is the existing no-accessory representation; never submit the UI-only choice as a reference. */
+export function toggleInfluencerAccessory(current: readonly string[], id: string): string[] {
+  if (id === "accessory_none") return [];
+  const selected = current.filter(value => value !== "accessory_none");
+  return selected.includes(id) ? selected.filter(value => value !== id) : [...selected, id];
+}
+
+export function isInfluencerAccessorySelected(current: readonly string[], id: string) {
+  const selected = current.filter(value => value !== "accessory_none");
+  return id === "accessory_none" ? selected.length === 0 : selected.includes(id);
+}

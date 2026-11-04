@@ -65,6 +65,7 @@ try {
  assert.match(await page.getByTitle('Keep head shape',{exact:true}).getAttribute('class'),/traitCardSelected/);
  await page.getByRole('button',{name:/^Head Shape /}).click();
  await page.getByRole('button',{name:/Accessories/}).click();
+ await page.getByTitle('Matte Black Headphones',{exact:true}).click();
  const label=page.locator('.cardSelectedPillText').filter({hasText:'Matte Black'});await label.waitFor();await label.scrollIntoViewIfNeeded();
  const r=await page.evaluate(()=>{const root=document.querySelector('.studioRoot').getBoundingClientRect(),cta=document.querySelector('.generateButton').getBoundingClientRect(),label=document.querySelector('.cardSelectedPillText'),style=getComputedStyle(label);return {rootBottom:root.bottom,ctaBottom:cta.bottom,overflow:document.documentElement.scrollWidth>innerWidth,color:style.color,stroke:style.webkitTextStrokeWidth,cards:[...document.querySelectorAll('.traitCard')].every(e=>e.getBoundingClientRect().right<=innerWidth),labels:[...document.querySelectorAll('.cardSelectedPillText')].every(e=>{const a=e.getBoundingClientRect(),b=e.closest('.traitCard').getBoundingClientRect();return a.left>=b.left&&a.right<=b.right})}});
  assert.equal(r.overflow,false);assert.equal(r.cards,true);assert.equal(r.labels,true);assert.equal(r.color,'rgb(255, 255, 255)');assert(parseFloat(r.stroke)>0);assert(r.rootBottom<=viewport.height+1);assert(r.ctaBottom<=viewport.height+1);await page.screenshot({path:path.join(root,'.tmp/character-ui/character-'+viewport.width+'.png'),fullPage:true});console.log('PASS',viewport,r);

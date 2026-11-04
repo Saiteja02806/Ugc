@@ -1,0 +1,1058 @@
+{
+  "/explore/influencer-studio/accessories/amber-aviators.png": {
+    "key": "catalog/character-studio/thumbnails/v1/a63ebecf50d85856d6adf4d2dbec971b08a91f462b98d9ff775a62069e0d7c9a.webp",
+    "sourceSha256": "d8fb0446d120e9386a873a8acb63386906376f33f8a4e0a23d3bd0fc8e857758",
+    "sha256": "a63ebecf50d85856d6adf4d2dbec971b08a91f462b98d9ff775a62069e0d7c9a",
+    "bytes": 12508,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/athletic-headband.png": {
+    "key": "catalog/character-studio/thumbnails/v1/156d0505f56c45588e7a3ca98c816427648322a79f07add7daf602b8aa9b618d.webp",
+    "sourceSha256": "9cd8aca12fdde2dc4ff4d3c45e795d2d90ff558bbd7c6f5276fc9be108dab4cb",
+    "sha256": "156d0505f56c45588e7a3ca98c816427648322a79f07add7daf602b8aa9b618d",
+    "bytes": 10846,
+    "width": 351,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/black-sunglasses.png": {
+    "key": "catalog/character-studio/thumbnails/v1/fabfd755407107f8e9827a00959ec8e1e857be06320f2bcefba6569982ea83c1.webp",
+    "sourceSha256": "8c78290071156386c4c6093638d7dcffbd7f34d8c68e004e13e840157764d5b5",
+    "sha256": "fabfd755407107f8e9827a00959ec8e1e857be06320f2bcefba6569982ea83c1",
+    "bytes": 12078,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/clear-hydrogel-patches.png": {
+    "key": "catalog/character-studio/thumbnails/v1/1ec6c204fe859fed6fade63b430c41c0ff6f9ecad11e24aea5323026f59c780e.webp",
+    "sourceSha256": "c10eae1cf90317298bc3245267668bd002743d5bc470c2f274581646a67c5276",
+    "sha256": "1ec6c204fe859fed6fade63b430c41c0ff6f9ecad11e24aea5323026f59c780e",
+    "bytes": 13058,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/designer-glasses.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b0f88a1bf1f6d7cf05ad1b650c2c7de194ce5912422bcccdb3ec2ee6cff31658.webp",
+    "sourceSha256": "d5a881aba933ebcd65ad806239c9ebf18a35a45d39ddb4c123cb127288d35565",
+    "sha256": "b0f88a1bf1f6d7cf05ad1b650c2c7de194ce5912422bcccdb3ec2ee6cff31658",
+    "bytes": 12824,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/gold-under-eye-patches.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2e3ae4863444e1eeec90eb78f4e8c80e82c4ef50a55d12475682fa28915ca75b.webp",
+    "sourceSha256": "0564436323458228d0d96ee98b9422f5f54c9f539c474429f81f41d1f1c66053",
+    "sha256": "2e3ae4863444e1eeec90eb78f4e8c80e82c4ef50a55d12475682fa28915ca75b",
+    "bytes": 13132,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/in-ear-earbuds.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2a1d2100f8558d9cc6741f2fc3c6b83df027f3f5adec96dce040f2a020ef1582.webp",
+    "sourceSha256": "adf3bdb5fff55d8da961203f1fb39a873dc914480382a091671826508e1dadb4",
+    "sha256": "2a1d2100f8558d9cc6741f2fc3c6b83df027f3f5adec96dce040f2a020ef1582",
+    "bytes": 10032,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/over-ear-headphones.png": {
+    "key": "catalog/character-studio/thumbnails/v1/116c4e09c7041e93821f5b090850998ec263c17cd22fa8f23814207187a61605.webp",
+    "sourceSha256": "7b443a36f24e9a4373dc1519bb21989c4b10c59149dc32a0006edb429895ccaa",
+    "sha256": "116c4e09c7041e93821f5b090850998ec263c17cd22fa8f23814207187a61605",
+    "bytes": 11772,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/pink-star-patches.png": {
+    "key": "catalog/character-studio/thumbnails/v1/751bfde26ee3a1f85c4a9a1c4123a8485bc667dcabd5a8fb7e67c14a712e81cd.webp",
+    "sourceSha256": "767133ac24a6259669242be463f18cd42ffa1dcf8c003cb5d9b11c38b89951e6",
+    "sha256": "751bfde26ee3a1f85c4a9a1c4123a8485bc667dcabd5a8fb7e67c14a712e81cd",
+    "bytes": 13636,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/rose-pink-patches.png": {
+    "key": "catalog/character-studio/thumbnails/v1/ad4fe9c1dc752f93cb057a8e696ac68cd9b886940cc17bf4c7b562d1038249b7.webp",
+    "sourceSha256": "6cd23f3f21c863be317d4964e53194e8d145664c31153b49e8ef38f0ca7c59a6",
+    "sha256": "ad4fe9c1dc752f93cb057a8e696ac68cd9b886940cc17bf4c7b562d1038249b7",
+    "bytes": 12948,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/accessories/smudged-noir.png": {
+    "key": "catalog/character-studio/thumbnails/v1/251acc187600b0d495d79051ddd12391b7fd7c422f3b792a9b5ecab582eaa9eb.webp",
+    "sourceSha256": "d3c6416659dfcb3d632574ff9a1aee4901685e28c0b139e041ec552d2f969fea",
+    "sha256": "251acc187600b0d495d79051ddd12391b7fd7c422f3b792a9b5ecab582eaa9eb",
+    "bytes": 11048,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/ai_influencer_fullbody_portrait.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/e113239cb3da0feaec02d7f48340271d81435f7bcb5024618e84e05f7dee6384.webp",
+    "sourceSha256": "b153b323badb5a51c1da3811a2855fdefc9a588d47749634fc3e68f9f5dbd77f",
+    "sha256": "e113239cb3da0feaec02d7f48340271d81435f7bcb5024618e84e05f7dee6384",
+    "bytes": 5968,
+    "width": 214,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Minimal Cream Room with Abstract Artwork.png": {
+    "key": "catalog/character-studio/thumbnails/v1/f6e986c007fea70e6a9f3650369d3119066a931f214b651c797f3b1049257b55.webp",
+    "sourceSha256": "c84f4d6d837c2ae2e67bd0353e1b2cf9fb656352988288d0f643fe0b97c87f42",
+    "sha256": "f6e986c007fea70e6a9f3650369d3119066a931f214b651c797f3b1049257b55",
+    "bytes": 3994,
+    "width": 348,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Minimalist Bedroom Wall with Mounted TV.png": {
+    "key": "catalog/character-studio/thumbnails/v1/05702594b6f0a7cfa82147259c35441a72f13ddd4ea359ab051e3b0da9ce7f45.webp",
+    "sourceSha256": "3941b49aae1c14e87ba95270cfae8cb7b33374b0e8c9846760f7622d5233afdf",
+    "sha256": "05702594b6f0a7cfa82147259c35441a72f13ddd4ea359ab051e3b0da9ce7f45",
+    "bytes": 1876,
+    "width": 221,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Minimalist Beige Ceiling and Draped Curtain.png": {
+    "key": "catalog/character-studio/thumbnails/v1/56ad7758004b46c9215662e47217b9a47345410cbce990c97108ea1796af9721.webp",
+    "sourceSha256": "e56fe3127b114c3b3240a751c0c4c2e308213de405b4f42054067a9e9b4dcac7",
+    "sha256": "56ad7758004b46c9215662e47217b9a47345410cbce990c97108ea1796af9721",
+    "bytes": 2246,
+    "width": 219,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Minimalist Beige Wall with Door and Switches.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d6862485bd731634b4ade54934315ccdbe092e9edec73f1b6c7fe8927d964b0a.webp",
+    "sourceSha256": "10452b3db5a336b59e089c374e4a058bf9dddb1fc6c3d3757046af828dfa1edb",
+    "sha256": "d6862485bd731634b4ade54934315ccdbe092e9edec73f1b6c7fe8927d964b0a",
+    "bytes": 2000,
+    "width": 209,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Modern Workspace with Coffee Station.png": {
+    "key": "catalog/character-studio/thumbnails/v1/025e30c6204acd2e41dc0d91f18ed443799ed31a9a9499f6282360f498ae92eb.webp",
+    "sourceSha256": "74fd709f1a161426982c474d4e3a2b7cc1d3b9660a2430df2c3729e40f1b0d24",
+    "sha256": "025e30c6204acd2e41dc0d91f18ed443799ed31a9a9499f6282360f498ae92eb",
+    "bytes": 5436,
+    "width": 213,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Softly Lit Bedroom with Floral Bed.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9bb6ee4df724ff1575aef09c7d8abceab74edfdb8de6b6b57e957c87aaa63b3d.webp",
+    "sourceSha256": "50ae424d0ac6ef15cab044f70aa8b9c665df74f35b8a130c1d31999b81cd2705",
+    "sha256": "9bb6ee4df724ff1575aef09c7d8abceab74edfdb8de6b6b57e957c87aaa63b3d",
+    "bytes": 4214,
+    "width": 213,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/Warm Beige Bedroom with Dark Wood Headboard.png": {
+    "key": "catalog/character-studio/thumbnails/v1/601c53e70efd7ed25abf97d6d8f4906951fa5292a6ee4b27ca45a68660c29c88.webp",
+    "sourceSha256": "ee806924083e7782121c1bcd4f9e3d15fe9b8ae1e599fdf8e4b5eed317e07fa8",
+    "sha256": "601c53e70efd7ed25abf97d6d8f4906951fa5292a6ee4b27ca45a68660c29c88",
+    "bytes": 5196,
+    "width": 216,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/car-interior.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/cd6c87e0926b9686c0ac60b12cb5b048ed69df66c7debf802977000beb64f776.webp",
+    "sourceSha256": "9e2060e8a66a1c419fda624c9d67c212227508cffc9946ada99ef901d81275ca",
+    "sha256": "cd6c87e0926b9686c0ac60b12cb5b048ed69df66c7debf802977000beb64f776",
+    "bytes": 17798,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/clean-studio.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/1e87e93cc9eec305af2fe150e6994e5d5445491c58938ea778463492a9b54e22.webp",
+    "sourceSha256": "42bd47f9d5504ddbd95543d42d0084f9bfaae39ea0d642b328002616db805710",
+    "sha256": "1e87e93cc9eec305af2fe150e6994e5d5445491c58938ea778463492a9b54e22",
+    "bytes": 4840,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/cozy-bedroom.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/3d009e31cea41fd9ce4be6d463b534be316be8ce4500f2190f3598a904d77613.webp",
+    "sourceSha256": "d83055bf0b5f39ba8dcfa7ce3882a49cc0f5ad1a2715843c6742da7f3bb61e65",
+    "sha256": "3d009e31cea41fd9ce4be6d463b534be316be8ce4500f2190f3598a904d77613",
+    "bytes": 23862,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/cozy-floral-bedroom.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9bb6ee4df724ff1575aef09c7d8abceab74edfdb8de6b6b57e957c87aaa63b3d.webp",
+    "sourceSha256": "50ae424d0ac6ef15cab044f70aa8b9c665df74f35b8a130c1d31999b81cd2705",
+    "sha256": "9bb6ee4df724ff1575aef09c7d8abceab74edfdb8de6b6b57e957c87aaa63b3d",
+    "bytes": 4214,
+    "width": 213,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/cozy-living-room.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/f8e11b7c3a332de6c58af24463488069bf520c3d604f023ad3807890b1606a29.webp",
+    "sourceSha256": "e32c7a29a71bb75c43c40994e251758d3af7985d519a0e8f80d333fc95bba806",
+    "sha256": "f8e11b7c3a332de6c58af24463488069bf520c3d604f023ad3807890b1606a29",
+    "bytes": 16002,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/cream-abstract-room.png": {
+    "key": "catalog/character-studio/thumbnails/v1/f6e986c007fea70e6a9f3650369d3119066a931f214b651c797f3b1049257b55.webp",
+    "sourceSha256": "c84f4d6d837c2ae2e67bd0353e1b2cf9fb656352988288d0f643fe0b97c87f42",
+    "sha256": "f6e986c007fea70e6a9f3650369d3119066a931f214b651c797f3b1049257b55",
+    "bytes": 3994,
+    "width": 348,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/domestic-door-wall.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d6862485bd731634b4ade54934315ccdbe092e9edec73f1b6c7fe8927d964b0a.webp",
+    "sourceSha256": "10452b3db5a336b59e089c374e4a058bf9dddb1fc6c3d3757046af828dfa1edb",
+    "sha256": "d6862485bd731634b4ade54934315ccdbe092e9edec73f1b6c7fe8927d964b0a",
+    "bytes": 2000,
+    "width": 209,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/draped-curtain-corner.png": {
+    "key": "catalog/character-studio/thumbnails/v1/56ad7758004b46c9215662e47217b9a47345410cbce990c97108ea1796af9721.webp",
+    "sourceSha256": "e56fe3127b114c3b3240a751c0c4c2e308213de405b4f42054067a9e9b4dcac7",
+    "sha256": "56ad7758004b46c9215662e47217b9a47345410cbce990c97108ea1796af9721",
+    "bytes": 2246,
+    "width": 219,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/minimalist-tv-bedroom.png": {
+    "key": "catalog/character-studio/thumbnails/v1/05702594b6f0a7cfa82147259c35441a72f13ddd4ea359ab051e3b0da9ce7f45.webp",
+    "sourceSha256": "3941b49aae1c14e87ba95270cfae8cb7b33374b0e8c9846760f7622d5233afdf",
+    "sha256": "05702594b6f0a7cfa82147259c35441a72f13ddd4ea359ab051e3b0da9ce7f45",
+    "bytes": 1876,
+    "width": 221,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/modern-kitchen.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/1991264ad7e0b151087fffe94b869c3d324a6b51cdc9b0b26b7dd90994ffcc8d.webp",
+    "sourceSha256": "9bd68811dea2cacf098e904b6b6cc349816f40847674885f0074be24a893a987",
+    "sha256": "1991264ad7e0b151087fffe94b869c3d324a6b51cdc9b0b26b7dd90994ffcc8d",
+    "bytes": 20378,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/modern-workspace.png": {
+    "key": "catalog/character-studio/thumbnails/v1/025e30c6204acd2e41dc0d91f18ed443799ed31a9a9499f6282360f498ae92eb.webp",
+    "sourceSha256": "74fd709f1a161426982c474d4e3a2b7cc1d3b9660a2430df2c3729e40f1b0d24",
+    "sha256": "025e30c6204acd2e41dc0d91f18ed443799ed31a9a9499f6282360f498ae92eb",
+    "bytes": 5436,
+    "width": 213,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/office-desk.jpg": {
+    "key": "catalog/character-studio/thumbnails/v1/1657139b1cf8bcf5aae99e22daf519370291a56adb13e31837e02bbd1ab9b5e0.webp",
+    "sourceSha256": "cdb31372360bf50b218314395448fc06e9c042d5c96fd73a9a1e5b7a35b5c427",
+    "sha256": "1657139b1cf8bcf5aae99e22daf519370291a56adb13e31837e02bbd1ab9b5e0",
+    "bytes": 13170,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/backgrounds/warm-wood-bedroom.png": {
+    "key": "catalog/character-studio/thumbnails/v1/601c53e70efd7ed25abf97d6d8f4906951fa5292a6ee4b27ca45a68660c29c88.webp",
+    "sourceSha256": "ee806924083e7782121c1bcd4f9e3d15fe9b8ae1e599fdf8e4b5eed317e07fa8",
+    "sha256": "601c53e70efd7ed25abf97d6d8f4906951fa5292a6ee4b27ca45a68660c29c88",
+    "bytes": 5196,
+    "width": 216,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/athletic.png": {
+    "key": "catalog/character-studio/thumbnails/v1/c681321d80f5c3632ce39b2f9e0fae3867599dcd4352dcb5eb57ffe792d274ae.webp",
+    "sourceSha256": "60dbe3e0d2b717d25982aa6c4de244f2909300db4d613e6d9d67c5bb5797e3ea",
+    "sha256": "c681321d80f5c3632ce39b2f9e0fae3867599dcd4352dcb5eb57ffe792d274ae",
+    "bytes": 4620,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/curvy.png": {
+    "key": "catalog/character-studio/thumbnails/v1/09cc028e8e9b934f9cd66a269443d2962ba17d25e894c405b0570611923f9bf3.webp",
+    "sourceSha256": "7667716afe70dd6ebf8e3dab5bdd62ee32db26531cb843364c8be112b41137c4",
+    "sha256": "09cc028e8e9b934f9cd66a269443d2962ba17d25e894c405b0570611923f9bf3",
+    "bytes": 4376,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/heavy.png": {
+    "key": "catalog/character-studio/thumbnails/v1/83aaf6eac012aa1b079d1d8c4b2ecbb8ac3612994f5d3a75a9912b066ff73b55.webp",
+    "sourceSha256": "bf116204f4d48a7ebf1817c6881c5033b6f7330eff2f9e35a8d68f0a8185a0cb",
+    "sha256": "83aaf6eac012aa1b079d1d8c4b2ecbb8ac3612994f5d3a75a9912b066ff73b55",
+    "bytes": 6598,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/natural-casual.png": {
+    "key": "catalog/character-studio/thumbnails/v1/0eab4090cbe64966049d3ea356643306b3aa7be9292bd3de75a2b9ec570747f7.webp",
+    "sourceSha256": "3ba0c1948dee8d781a818a41eed93b534717bc8b6b1c3bcbaf7e39e7636b294e",
+    "sha256": "0eab4090cbe64966049d3ea356643306b3aa7be9292bd3de75a2b9ec570747f7",
+    "bytes": 5000,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/slim.png": {
+    "key": "catalog/character-studio/thumbnails/v1/75eef7936f8fc35cb6c7f26af1cbb03348de144526123f044e5784d76a8bad5f.webp",
+    "sourceSha256": "caed0534b8ba14758b0466c4f97bc0c8582df71db63cfa9c7cb25350dd9c97ac",
+    "sha256": "75eef7936f8fc35cb6c7f26af1cbb03348de144526123f044e5784d76a8bad5f",
+    "bytes": 4288,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/build/ultra-muscular.png": {
+    "key": "catalog/character-studio/thumbnails/v1/87ff586b851913c1d883d35e28335dcd61ef75a0185a7dfd7c7f386d1cdf1239.webp",
+    "sourceSha256": "2280c575ac7cc88202b5db0861b4e4deec594e0483ebc00fee76a7ab4b8d6551",
+    "sha256": "87ff586b851913c1d883d35e28335dcd61ef75a0185a7dfd7c7f386d1cdf1239",
+    "bytes": 6654,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/1.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b388f0a58813efd5c89d46ff793dc4bae78674071b233f2fc79e1dbd5aed6ccc.webp",
+    "sourceSha256": "143599beb3beb65ea3bdb89b7e0de65b40adadef6c1330df76b20cc2ab432372",
+    "sha256": "b388f0a58813efd5c89d46ff793dc4bae78674071b233f2fc79e1dbd5aed6ccc",
+    "bytes": 7896,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/2.png": {
+    "key": "catalog/character-studio/thumbnails/v1/071bf0df869636468f8cc31cc8e52aa4842abd2f6df5c7ce8da6ebb9eb112b05.webp",
+    "sourceSha256": "5d6c2855ace8670d52246b704d1d43fb51f5f1d1107e875bc680b1028a1151b3",
+    "sha256": "071bf0df869636468f8cc31cc8e52aa4842abd2f6df5c7ce8da6ebb9eb112b05",
+    "bytes": 6364,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/3.png": {
+    "key": "catalog/character-studio/thumbnails/v1/4e2f8e7ad443dd99445435706b2d695464c2df89603c5e196af2fc3bf806768d.webp",
+    "sourceSha256": "7ca8214fc2e6bcc4b8ac50b14a1d3dbe0e0d8edb940e4d8c7b1d5bd582a04613",
+    "sha256": "4e2f8e7ad443dd99445435706b2d695464c2df89603c5e196af2fc3bf806768d",
+    "bytes": 11660,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/allura-approachable.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b388f0a58813efd5c89d46ff793dc4bae78674071b233f2fc79e1dbd5aed6ccc.webp",
+    "sourceSha256": "143599beb3beb65ea3bdb89b7e0de65b40adadef6c1330df76b20cc2ab432372",
+    "sha256": "b388f0a58813efd5c89d46ff793dc4bae78674071b233f2fc79e1dbd5aed6ccc",
+    "bytes": 7896,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/kora-editorial.png": {
+    "key": "catalog/character-studio/thumbnails/v1/071bf0df869636468f8cc31cc8e52aa4842abd2f6df5c7ce8da6ebb9eb112b05.webp",
+    "sourceSha256": "5d6c2855ace8670d52246b704d1d43fb51f5f1d1107e875bc680b1028a1151b3",
+    "sha256": "071bf0df869636468f8cc31cc8e52aa4842abd2f6df5c7ce8da6ebb9eb112b05",
+    "bytes": 6364,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/nico-viral.png": {
+    "key": "catalog/character-studio/thumbnails/v1/4e2f8e7ad443dd99445435706b2d695464c2df89603c5e196af2fc3bf806768d.webp",
+    "sourceSha256": "7ca8214fc2e6bcc4b8ac50b14a1d3dbe0e0d8edb940e4d8c7b1d5bd582a04613",
+    "sha256": "4e2f8e7ad443dd99445435706b2d695464c2df89603c5e196af2fc3bf806768d",
+    "bytes": 11660,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/playful-mustache.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b95c6aa1119e1a7edab31684e5b3dcbe0cc4d201e0f94f0892ddf7d93f0fb118.webp",
+    "sourceSha256": "6eb5daed8ee42cdd2d58996c0408fcd96392e72c1dad4584a57fd6c44afb244f",
+    "sha256": "b95c6aa1119e1a7edab31684e5b3dcbe0cc4d201e0f94f0892ddf7d93f0fb118",
+    "bytes": 14966,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/characters/wide-eyed-mustache.png": {
+    "key": "catalog/character-studio/thumbnails/v1/71a96305761685e6f71aa4c9d23ba3f45e37297a479606024aa1822ff72f23b9.webp",
+    "sourceSha256": "90c87155e5ebce2931fd35595b514015db19b61777c036925d243420c523e27c",
+    "sha256": "71a96305761685e6f71aa4c9d23ba3f45e37297a479606024aa1822ff72f23b9",
+    "bytes": 15924,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/african.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b6d008251247ff871151ec4b3eff5ed88264625c3924e18b2ca0e76c3dc59436.webp",
+    "sourceSha256": "0ec363331f016c23a0458bc82051ae09a90530af98596ca64fb4c676cb1cca12",
+    "sha256": "b6d008251247ff871151ec4b3eff5ed88264625c3924e18b2ca0e76c3dc59436",
+    "bytes": 12114,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/caucasian.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9a6a1d6071f000429a14bd11fa9cc4a1c63ed0e012bc7763d77bf086f2efa226.webp",
+    "sourceSha256": "d3f8c4d6a34f85736d3ba4ac443351117fb57c142834dc72a3a60a85310068bd",
+    "sha256": "9a6a1d6071f000429a14bd11fa9cc4a1c63ed0e012bc7763d77bf086f2efa226",
+    "bytes": 13866,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/east-asian.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d65ab14b8336123c49d12785c05ed3695e8e1f9c506eecfc910f123de7e471ef.webp",
+    "sourceSha256": "c7a2b7bbb460c8814a9763495860d7f9bfb07602d58ef0eb19e86ebad654c6fd",
+    "sha256": "d65ab14b8336123c49d12785c05ed3695e8e1f9c506eecfc910f123de7e471ef",
+    "bytes": 9440,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/indian.png": {
+    "key": "catalog/character-studio/thumbnails/v1/daf72f977106c1fca4ec704b4cb9d0248aba326b03260820f752f7ccbae22f63.webp",
+    "sourceSha256": "c795f5a814db689b4e8bd24948aa4aab6f7c2987eb9974ffd9029bd9d3191000",
+    "sha256": "daf72f977106c1fca4ec704b4cb9d0248aba326b03260820f752f7ccbae22f63",
+    "bytes": 17508,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/latina.png": {
+    "key": "catalog/character-studio/thumbnails/v1/92f776666f5f34eab9a8d7c71824258047da6b58c79aa0963bad1c1e6ad00caa.webp",
+    "sourceSha256": "d718692c0a723a9a448495ce65744ddf07cd853d37bd64d858a5b542aa494eb5",
+    "sha256": "92f776666f5f34eab9a8d7c71824258047da6b58c79aa0963bad1c1e6ad00caa",
+    "bytes": 13410,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/ethnicity/middle-eastern.png": {
+    "key": "catalog/character-studio/thumbnails/v1/cd664e44eb04b0b630607a6b706af6b860a58969655e7d94f7ed7a3386aa40e8.webp",
+    "sourceSha256": "b9fec6e6205a596a1d968f5d81d4192a1e7f70b89db1c6280d36d9b971deec67",
+    "sha256": "cd664e44eb04b0b630607a6b706af6b860a58969655e7d94f7ed7a3386aa40e8",
+    "bytes": 9970,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/almond.png": {
+    "key": "catalog/character-studio/thumbnails/v1/310c61561005c0809942d17a0e94a1e9ed77e0e5a80c12a2d01f0a98aba41e30.webp",
+    "sourceSha256": "31530a8af31571d5aad99ce4b773b6bc943007a7cd3454161ffc0b29b1313332",
+    "sha256": "310c61561005c0809942d17a0e94a1e9ed77e0e5a80c12a2d01f0a98aba41e30",
+    "bytes": 11052,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/deep-set.png": {
+    "key": "catalog/character-studio/thumbnails/v1/912e48de347091b97f152efe4d77e65c412085c8069efb9625bcb8415a467aa5.webp",
+    "sourceSha256": "53d4aca9f6db49542d9698c7b682fa06f3ab4f762b1c79496f4ffb729da79ae2",
+    "sha256": "912e48de347091b97f152efe4d77e65c412085c8069efb9625bcb8415a467aa5",
+    "bytes": 10338,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/downturned.png": {
+    "key": "catalog/character-studio/thumbnails/v1/4e7fbbf29fd5d3b1f3ff2caf703325302d419edfb18c31376643d49b6e1be4fa.webp",
+    "sourceSha256": "f3552b69e7cd427ec7c68f42b40d6d482dc6ae6f54ebcd77c1055244a82c7962",
+    "sha256": "4e7fbbf29fd5d3b1f3ff2caf703325302d419edfb18c31376643d49b6e1be4fa",
+    "bytes": 9356,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/hooded.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9a8f5b79e257dabadccd508e8f56eedcec391919db3599b78d2ad42ce811f61f.webp",
+    "sourceSha256": "fb596f0adbab2d487464d6b10d12608f4768ceb3e1e2da813943e70c659bb417",
+    "sha256": "9a8f5b79e257dabadccd508e8f56eedcec391919db3599b78d2ad42ce811f61f",
+    "bytes": 8816,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/narrow-sharp.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e89b03900520d7dbb0c8914a2211d4ed33a054fdcc74194b263bee2267481f33.webp",
+    "sourceSha256": "cdd844b8f32ea96d3f8d6f89cfe67e5f8a766a6d8f72d51d232c0345240f20be",
+    "sha256": "e89b03900520d7dbb0c8914a2211d4ed33a054fdcc74194b263bee2267481f33",
+    "bytes": 11126,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/relaxed.png": {
+    "key": "catalog/character-studio/thumbnails/v1/6ab97f7aace54521535072d2855d659b0379934badef9303863ec5684cd64fad.webp",
+    "sourceSha256": "cf9db85301ab6faa677c9208b22e4079eb7f41d029c0e925b0f2ccdc1c256f6d",
+    "sha256": "6ab97f7aace54521535072d2855d659b0379934badef9303863ec5684cd64fad",
+    "bytes": 10290,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/round.png": {
+    "key": "catalog/character-studio/thumbnails/v1/fb5f9f25147aabd048bf3372dbde709cd57b8e2aeea9faaf9a172e2f3c12bdb7.webp",
+    "sourceSha256": "fd00787790240a5dfdf1d899851aa86584f8dd4c74bb164cb67e7af63c56052b",
+    "sha256": "fb5f9f25147aabd048bf3372dbde709cd57b8e2aeea9faaf9a172e2f3c12bdb7",
+    "bytes": 12122,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/soft-almond.png": {
+    "key": "catalog/character-studio/thumbnails/v1/ad34a790a6c742b3b931a3b36822ca11609b2fa117a7f24dee8e3214f99d88e0.webp",
+    "sourceSha256": "610c30acae9b012f512bba46984018294a09370990131914d76c2daf92e92c8a",
+    "sha256": "ad34a790a6c742b3b931a3b36822ca11609b2fa117a7f24dee8e3214f99d88e0",
+    "bytes": 10890,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/upturned.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e5f50d3151b50bd89ea85b2a7bfba474bf3f2ac59d84b8e5c399ef3ea9a39f4c.webp",
+    "sourceSha256": "cfccbe67ade68bf55a1fcba1273ad3ef24d509b352593bbff07cc0d86a4f7c23",
+    "sha256": "e5f50d3151b50bd89ea85b2a7bfba474bf3f2ac59d84b8e5c399ef3ea9a39f4c",
+    "bytes": 11190,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/vibrant-open.png": {
+    "key": "catalog/character-studio/thumbnails/v1/cbcd578dbe3bd87ee9d3034ca063cdfbb843f3c111fd9f813bcf699ab199514e.webp",
+    "sourceSha256": "dd57d8ddcb1ca8fefeececf701bd72e891fef9607e0f0047f9a1e9b8aee8b2ee",
+    "sha256": "cbcd578dbe3bd87ee9d3034ca063cdfbb843f3c111fd9f813bcf699ab199514e",
+    "bytes": 11194,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/eyes/wide-doe.png": {
+    "key": "catalog/character-studio/thumbnails/v1/055a714e788fc3dbfaca1879c6e5b055b7b764a038ba95f5046b48083ea8c2f2.webp",
+    "sourceSha256": "4cbe93c607cf86bdcf07cd3d1c42f6aa84a4e2db8c63d9a98810f70511254477",
+    "sha256": "055a714e788fc3dbfaca1879c6e5b055b7b764a038ba95f5046b48083ea8c2f2",
+    "bytes": 12296,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/blunt-bob.png": {
+    "key": "catalog/character-studio/thumbnails/v1/56eec37b4ea5bd27487331d4e753f503d8b8cd4e82ad9fecbdbb990dbf45d355.webp",
+    "sourceSha256": "bca513e1a612c22059c5ff745236bcd77824db25e8381edb0e9e61afa65cb57d",
+    "sha256": "56eec37b4ea5bd27487331d4e753f503d8b8cd4e82ad9fecbdbb990dbf45d355",
+    "bytes": 13564,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/curls-afro.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d27166ac9f42de63f8c8bda5cd0cbf1759a9e6cf1bf5e705a237b9024ee9b2c5.webp",
+    "sourceSha256": "19a17b179b0339b15ddaf4cf1ba7a2ce0c76016bee58b44635afa78adbec51fc",
+    "sha256": "d27166ac9f42de63f8c8bda5cd0cbf1759a9e6cf1bf5e705a237b9024ee9b2c5",
+    "bytes": 6944,
+    "width": 382,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/curly-mullet.png": {
+    "key": "catalog/character-studio/thumbnails/v1/31755b8894018a71c83ecbf2a98135051b86b5512c6b7b9812942d3cd07a7778.webp",
+    "sourceSha256": "d4707dbd7f5785ce11e8fb6aca77a9c8cc392f9c4c42d6bc986a2c7fdef56b2a",
+    "sha256": "31755b8894018a71c83ecbf2a98135051b86b5512c6b7b9812942d3cd07a7778",
+    "bytes": 13966,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/flat-top.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d78276a559846d63706073412a06c04cd4c241c0d88b40ce8631ab672ead6bf8.webp",
+    "sourceSha256": "336860bce1bb2beb03768b60f35f48ec1488474a0f2af2f0471aa2c45ee1cebc",
+    "sha256": "d78276a559846d63706073412a06c04cd4c241c0d88b40ce8631ab672ead6bf8",
+    "bytes": 11280,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/layered-waves.png": {
+    "key": "catalog/character-studio/thumbnails/v1/ac2a64aa531071be14497889458d2bbbbd9e7597cfe895401925828543d19026.webp",
+    "sourceSha256": "a358e41ae80fc8d224e6b489dae9f73fc35dece4c1d178611d08316634da7039",
+    "sha256": "ac2a64aa531071be14497889458d2bbbbd9e7597cfe895401925828543d19026",
+    "bytes": 11092,
+    "width": 282,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/long-waves.png": {
+    "key": "catalog/character-studio/thumbnails/v1/c27c26e8a4a4f086f64a085b3c395a0f6e269442ab0c197ec4315f1b3b2d3eda.webp",
+    "sourceSha256": "084bac276278f1d07547b4a80df7cd9d69900b201a81b30a555cb0f241b3555f",
+    "sha256": "c27c26e8a4a4f086f64a085b3c395a0f6e269442ab0c197ec4315f1b3b2d3eda",
+    "bytes": 12928,
+    "width": 281,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/messy-updo.png": {
+    "key": "catalog/character-studio/thumbnails/v1/180bcc257a2c1cc9e8e4b544c2f6ad521913dae93c8c44b1c0b6174adb72c367.webp",
+    "sourceSha256": "a3babc284fb8ed79551d51244e5246a4fc53a01f4149d08fe1146d3ee6654f34",
+    "sha256": "180bcc257a2c1cc9e8e4b544c2f6ad521913dae93c8c44b1c0b6174adb72c367",
+    "bytes": 9406,
+    "width": 285,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/natural-bob.png": {
+    "key": "catalog/character-studio/thumbnails/v1/0a5ca9f2a58a11c53677e42d360a17f25b7d385d6ccd2b2c3aa8566d9edd96b9.webp",
+    "sourceSha256": "b08ff15d18956338f1e44acb770c1e9249bf0614ee89f9fb3a11fc4f4ff9378c",
+    "sha256": "0a5ca9f2a58a11c53677e42d360a17f25b7d385d6ccd2b2c3aa8566d9edd96b9",
+    "bytes": 9376,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/pin-curls.png": {
+    "key": "catalog/character-studio/thumbnails/v1/03066d2bb637740a27361883dffe670fd640703a71c0c0a52080f858c4daf200.webp",
+    "sourceSha256": "250ecd299f7e4d4c750291f5141271a9940eae70d1845378fcfca933987b5010",
+    "sha256": "03066d2bb637740a27361883dffe670fd640703a71c0c0a52080f858c4daf200",
+    "bytes": 8956,
+    "width": 205,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/rugged-crop.png": {
+    "key": "catalog/character-studio/thumbnails/v1/266f28fe53a372fca1ebdef3c5859b5641c70a1fbbeb0110ffe73c0a8b345521.webp",
+    "sourceSha256": "b42009f284dfb0c8a4b66c7c477f0e4aa159260bc2c0bee100e3342ebb24ec98",
+    "sha256": "266f28fe53a372fca1ebdef3c5859b5641c70a1fbbeb0110ffe73c0a8b345521",
+    "bytes": 15948,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/sculpted-curls.png": {
+    "key": "catalog/character-studio/thumbnails/v1/482617c7d828fffbdab8495956b6f45a2a1827ac080b08719b810f7bc85d284f.webp",
+    "sourceSha256": "a5d139fb1af6582300ad8892098ff29ea960167c510198c4542c6ba28fa9dd48",
+    "sha256": "482617c7d828fffbdab8495956b6f45a2a1827ac080b08719b810f7bc85d284f",
+    "bytes": 10744,
+    "width": 211,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/sleek-pixie.png": {
+    "key": "catalog/character-studio/thumbnails/v1/971d8f783c24986cbe0132a0a14c1bef513ffec1ea3875b3deb68f1e2e2bb96a.webp",
+    "sourceSha256": "b4500753580422b3e28ab947b71081bfd78c842668e1cc2d6a8f4cce3cc6e6e5",
+    "sha256": "971d8f783c24986cbe0132a0a14c1bef513ffec1ea3875b3deb68f1e2e2bb96a",
+    "bytes": 11924,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/soft-curls.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9c1925887461916f60f9c8d463e2bbeb2b7e0b0b2474c4664c42900957e98b56.webp",
+    "sourceSha256": "4ab6ece768763a6c8aebd3daca07104802ef8ef74ebeaf484d82c37ba9765590",
+    "sha256": "9c1925887461916f60f9c8d463e2bbeb2b7e0b0b2474c4664c42900957e98b56",
+    "bytes": 17156,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/space-buns.png": {
+    "key": "catalog/character-studio/thumbnails/v1/26f83303f4dc704c3143382b67b0ab33948dd0f0e24dd2611388e29eeab8b516.webp",
+    "sourceSha256": "fabf914607785f7ca68380cd88582b76fa2bdb289c41b7f9bd0f4a1f6372070f",
+    "sha256": "26f83303f4dc704c3143382b67b0ab33948dd0f0e24dd2611388e29eeab8b516",
+    "bytes": 16320,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/spiky-high-top.png": {
+    "key": "catalog/character-studio/thumbnails/v1/c40558b745d688f7f675f8d9f39c4968f4255ef71d18a7f9ab92a989a3891d46.webp",
+    "sourceSha256": "85bd913996d5b5bdfc68c5b6ebbdf640eaff6d47a8fdd67269b1d080eadf9bd2",
+    "sha256": "c40558b745d688f7f675f8d9f39c4968f4255ef71d18a7f9ab92a989a3891d46",
+    "bytes": 13214,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/tall-flat-top.png": {
+    "key": "catalog/character-studio/thumbnails/v1/f29d40849cc2882b5ecadef941bfba73c1dc6706b53bf321be05a7917ae42f2e.webp",
+    "sourceSha256": "95b58c923b2756ff27ecf044832c095e50f2909091f53a9282a4ad4a3fe46678",
+    "sha256": "f29d40849cc2882b5ecadef941bfba73c1dc6706b53bf321be05a7917ae42f2e",
+    "bytes": 9140,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/textured-crop.png": {
+    "key": "catalog/character-studio/thumbnails/v1/35517501c5fc04ce7b76d06f6756fe105c75edc9faf7cc33ae33eec730207bb8.webp",
+    "sourceSha256": "fd95855219963f961f2169aced1af8a075ebe4e2ac6667407209120e999594ad",
+    "sha256": "35517501c5fc04ce7b76d06f6756fe105c75edc9faf7cc33ae33eec730207bb8",
+    "bytes": 10954,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/tousled-shag.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d107813ad6b4308ab83895b8eb980e90d1236aca3e390676362baa98c4fc8a45.webp",
+    "sourceSha256": "0d7656564f5d0a6e433765e174c3df014db4d1dae2d0f409b3dc58adb1384257",
+    "sha256": "d107813ad6b4308ab83895b8eb980e90d1236aca3e390676362baa98c4fc8a45",
+    "bytes": 13946,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/updo.png": {
+    "key": "catalog/character-studio/thumbnails/v1/69431d00a3f948b61b44d50a3a0794729e22bf35b13ede599aac9b3f58c1b0f2.webp",
+    "sourceSha256": "f39ea96c721a325ddc505e078be8869630078b18345bd5ad831f4e605eca58d2",
+    "sha256": "69431d00a3f948b61b44d50a3a0794729e22bf35b13ede599aac9b3f58c1b0f2",
+    "bytes": 12796,
+    "width": 288,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/vintage-waves.png": {
+    "key": "catalog/character-studio/thumbnails/v1/227775d7a2fd97e9099eec9cef71566e4490c7e5cf8331ff2385eb4a7fe8012d.webp",
+    "sourceSha256": "6426adf3b335325bd5345b3037970846c677ee01d5f0cfca72b1e37849fd8ee0",
+    "sha256": "227775d7a2fd97e9099eec9cef71566e4490c7e5cf8331ff2385eb4a7fe8012d",
+    "bytes": 9134,
+    "width": 223,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/voluminous-curls.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e6152cc8f09574f94d39a44ebe10fa952f405495743ebb6541a7c06fb9bcce69.webp",
+    "sourceSha256": "2e1464c7016766ef7c106d75da506a8a3c6ee5947412f69b7fc8fe1122e0ceaa",
+    "sha256": "e6152cc8f09574f94d39a44ebe10fa952f405495743ebb6541a7c06fb9bcce69",
+    "bytes": 14738,
+    "width": 221,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/wavy-bowl-cut.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2d318047f2bd4dbe2cb89faf98de8ec57d374ec1278e68d9588ab0700343d586.webp",
+    "sourceSha256": "0e962d54cfb0276130bd72c63278ad6b353e256bd89fadfa7236e06b1316bf3e",
+    "sha256": "2d318047f2bd4dbe2cb89faf98de8ec57d374ec1278e68d9588ab0700343d586",
+    "bytes": 16680,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/hair-style/wavy-textured.png": {
+    "key": "catalog/character-studio/thumbnails/v1/62dee526fc0dc2e058431403585dc5c63bb7f7cee9ace93b6be3dab2073ace4b.webp",
+    "sourceSha256": "c209d0720f2b67115ef89944ef92d19a2bd0a0c3a95d5fbcf9cafe48a32a3bb8",
+    "sha256": "62dee526fc0dc2e058431403585dc5c63bb7f7cee9ace93b6be3dab2073ace4b",
+    "bytes": 11476,
+    "width": 379,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/avant-garde.png": {
+    "key": "catalog/character-studio/thumbnails/v1/68b1a9c375b6ca55558ce2f74735a4fa993a5ead24878af66122f614f3c9df32.webp",
+    "sourceSha256": "b43c75f168e69ad94b6daf1314e2204db1193575717c4df04876245b72829eae",
+    "sha256": "68b1a9c375b6ca55558ce2f74735a4fa993a5ead24878af66122f614f3c9df32",
+    "bytes": 7532,
+    "width": 382,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/broad-square-jaw.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e8eb02df5789ca1e3c9dbf80ab15fb9fc6ffa24886b1e470582d12f8019abbf4.webp",
+    "sourceSha256": "edf12bb808e49dd700e9f9ec1b3f3b2df5f0b85a3ad0935b923fd4e327c1976e",
+    "sha256": "e8eb02df5789ca1e3c9dbf80ab15fb9fc6ffa24886b1e470582d12f8019abbf4",
+    "bytes": 17790,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/chiseled.png": {
+    "key": "catalog/character-studio/thumbnails/v1/961a6281958f85c56de3ff5e483849907c03dc7238cd564f6d513f75457cee7f.webp",
+    "sourceSha256": "26e8091ea90fccca9a1cb6c90d57ebb7623b237ad7f7e098b821fbc2208bcb55",
+    "sha256": "961a6281958f85c56de3ff5e483849907c03dc7238cd564f6d513f75457cee7f",
+    "bytes": 17774,
+    "width": 384,
+    "height": 379
+  },
+  "/explore/influencer-studio/head-shape/classic-oval.png": {
+    "key": "catalog/character-studio/thumbnails/v1/4f686a93938165fbcaafc738c033577a8d2ce61cf0371f766de3cb1e99ce6365.webp",
+    "sourceSha256": "1b316e450dd5ce64fa9aeaa118375aa9dbb99dc8f02f1a385232b09ac0fa147f",
+    "sha256": "4f686a93938165fbcaafc738c033577a8d2ce61cf0371f766de3cb1e99ce6365",
+    "bytes": 9444,
+    "width": 382,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/diamond.png": {
+    "key": "catalog/character-studio/thumbnails/v1/079193863e336a889be855f286b53d085f5e0c87198a4cd698c1bd43be430bcb.webp",
+    "sourceSha256": "5bf73e518055e06cfb89a58c5e36fffaa3cbe75665d3b298bc363d9b48f98b14",
+    "sha256": "079193863e336a889be855f286b53d085f5e0c87198a4cd698c1bd43be430bcb",
+    "bytes": 7112,
+    "width": 383,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/elongated-oblong.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2b763752f4f445cec741e1b8c369983c23117df1ab1f1c1b4ed971fa3cf5c106.webp",
+    "sourceSha256": "3bb8708ddac7002347f2bbf47cfd1291b93e7f364dbc312f525b7477416b954a",
+    "sha256": "2b763752f4f445cec741e1b8c369983c23117df1ab1f1c1b4ed971fa3cf5c106",
+    "bytes": 6042,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/heart.png": {
+    "key": "catalog/character-studio/thumbnails/v1/7712a336982e9e42ef30ed2ee4371e0afafc7981d6789eae13f60a2492b24565.webp",
+    "sourceSha256": "b7f9766d72c8b14d985e95528c113ccb229daeeeea71411d44276f63305c2233",
+    "sha256": "7712a336982e9e42ef30ed2ee4371e0afafc7981d6789eae13f60a2492b24565",
+    "bytes": 8268,
+    "width": 381,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/inverted-triangle.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2950cbf4bc9d17b04d90cd86fa47d74a3954a47cb948ea20eb3a5327aba9275e.webp",
+    "sourceSha256": "a11d33ddf1e3da824188769e004c2360c935a0470e7d943c19491e6eaa1ecc0a",
+    "sha256": "2950cbf4bc9d17b04d90cd86fa47d74a3954a47cb948ea20eb3a5327aba9275e",
+    "bytes": 12308,
+    "width": 383,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/round.png": {
+    "key": "catalog/character-studio/thumbnails/v1/cacd027cd7e26e912c01e88ce9fe2ca726c8e1efadad80737afb997e222aaa25.webp",
+    "sourceSha256": "66fd39e56c3ef436ce5d9c92f7b2676408b3e31b6bddfa2030c6721d80835ea0",
+    "sha256": "cacd027cd7e26e912c01e88ce9fe2ca726c8e1efadad80737afb997e222aaa25",
+    "bytes": 6576,
+    "width": 381,
+    "height": 384
+  },
+  "/explore/influencer-studio/head-shape/square.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9fad421969595fe88605ba06898c02bd1aef40d7a45434c4ac90786402e3964d.webp",
+    "sourceSha256": "48d6fb444c9828542284b6fd8100ccd3388a10e3242b3b155396e61e63ff0328",
+    "sha256": "9fad421969595fe88605ba06898c02bd1aef40d7a45434c4ac90786402e3964d",
+    "bytes": 11930,
+    "width": 383,
+    "height": 384
+  },
+  "/explore/influencer-studio/height/petite.png": {
+    "key": "catalog/character-studio/thumbnails/v1/3a7b5aeec8fb4158315179bed9c9997e3c02537355a1d1be6ab12fe2a81ce6c7.webp",
+    "sourceSha256": "917cd824ae4147c41091eb81fce9b52f22b60f0d64159a4d379cbab5ffc5ef80",
+    "sha256": "3a7b5aeec8fb4158315179bed9c9997e3c02537355a1d1be6ab12fe2a81ce6c7",
+    "bytes": 4106,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/height/regular.png": {
+    "key": "catalog/character-studio/thumbnails/v1/bc7480b297808e942cf83a351439d9f538aec6ca0ebed319ee4fe79e7a8efe5a.webp",
+    "sourceSha256": "ef19ca163418200187cb81c85e16bb24fbeb80f46dac1a3f13c2a33ec6c9bf61",
+    "sha256": "bc7480b297808e942cf83a351439d9f538aec6ca0ebed319ee4fe79e7a8efe5a",
+    "bytes": 3620,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/height/tall.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e4e2beb45e4964add253981b3d3864de6a264c6fa79a37b6f46b5097336bd4c8.webp",
+    "sourceSha256": "a88e77254e81db8ae4f39a88eb8812ab1208f3161759a7c28abbe7a98c65eedb",
+    "sha256": "e4e2beb45e4964add253981b3d3864de6a264c6fa79a37b6f46b5097336bd4c8",
+    "bytes": 4948,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/neck/defined-muscular.png": {
+    "key": "catalog/character-studio/thumbnails/v1/1b8febcada741bbffed5f14347e296417155403abfb300d599c81b2c8d051962.webp",
+    "sourceSha256": "89560fb0b5476a9c7f1fe097b6ec9cc56564ee46267d6c049377e5dd4288766a",
+    "sha256": "1b8febcada741bbffed5f14347e296417155403abfb300d599c81b2c8d051962",
+    "bytes": 19320,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/neck/editorial-swan.png": {
+    "key": "catalog/character-studio/thumbnails/v1/52f8c042bf53406cb1714ae5d5a4df31bd39e4712b4d6b6588aa0207acb6ad2c.webp",
+    "sourceSha256": "9ea67607aba432c4500622b2f0976b077643e309294d76b135d523f5ec123016",
+    "sha256": "52f8c042bf53406cb1714ae5d5a4df31bd39e4712b4d6b6588aa0207acb6ad2c",
+    "bytes": 8800,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/neck/high-fashion-slender.png": {
+    "key": "catalog/character-studio/thumbnails/v1/9ddc8a7f5ea7ca4a4248c75c04c1595e3d6272e41eae6c26a68f8d36e8d26f59.webp",
+    "sourceSha256": "9f14cd3df1079c0a481686edb6d3d7a6de56a76cf44c5fc04828ef6131315015",
+    "sha256": "9ddc8a7f5ea7ca4a4248c75c04c1595e3d6272e41eae6c26a68f8d36e8d26f59",
+    "bytes": 19410,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/neck/natural-athletic.png": {
+    "key": "catalog/character-studio/thumbnails/v1/c243df18da01804647e20efb66b3ec6b149d4ab86c8824fab1f914d1c8dbb495.webp",
+    "sourceSha256": "10499ca1d46b14a22baf95e9aa05975a5fd68bdb643b1fed2cf5190656c1e6ee",
+    "sha256": "c243df18da01804647e20efb66b3ec6b149d4ab86c8824fab1f914d1c8dbb495",
+    "bytes": 7170,
+    "width": 384,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-bowling-shirt.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e196385d72d6bca2f2310331ceb8bd5891eb867d0068a2169e6c28d1a7fb7126.webp",
+    "sourceSha256": "9ddfea9d99c19a95907a7b93e181769bc5c2609114fab9d9a738db9e00649bbe",
+    "sha256": "e196385d72d6bca2f2310331ceb8bd5891eb867d0068a2169e6c28d1a7fb7126",
+    "bytes": 5222,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-cardigan-capris.png": {
+    "key": "catalog/character-studio/thumbnails/v1/7a1baed09b5e749d49b49f37d9790b8fbeba030333b6ca2ce3c643fc84d59d14.webp",
+    "sourceSha256": "5af537fdcf3a1d7f8d3fbb24f0fadbb215dfe21693179091e95da5cbf456bc20",
+    "sha256": "7a1baed09b5e749d49b49f37d9790b8fbeba030333b6ca2ce3c643fc84d59d14",
+    "bytes": 4974,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-floral-swing-dress.png": {
+    "key": "catalog/character-studio/thumbnails/v1/70ec2b5edc7b21d5ac319606504419838825413ef053b82917452b926443cc5e.webp",
+    "sourceSha256": "c1fc0fe5948be8961a024273aaa33591b1431644e4311698d70d93c093218844",
+    "sha256": "70ec2b5edc7b21d5ac319606504419838825413ef053b82917452b926443cc5e",
+    "bytes": 10954,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-grey-suit.png": {
+    "key": "catalog/character-studio/thumbnails/v1/ca04c0b1c56ddf7d1651bce5147e9c7828e4da01508b443e7ed9132c2eefaca8.webp",
+    "sourceSha256": "2e77593d96d0f1951b74a62fdc8006822a70fc99cb8b27419c10c811fcad298c",
+    "sha256": "ca04c0b1c56ddf7d1651bce5147e9c7828e4da01508b443e7ed9132c2eefaca8",
+    "bytes": 4566,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-leather-jacket.png": {
+    "key": "catalog/character-studio/thumbnails/v1/039a2f5bc33588aaeda6223ce3288af9a6e9a6f9df8ec74656ad8b37c4e05e0d.webp",
+    "sourceSha256": "9b18599bf71b935bf542dce494df63a507c5572603c4dc598600a33d41b4e0d2",
+    "sha256": "039a2f5bc33588aaeda6223ce3288af9a6e9a6f9df8ec74656ad8b37c4e05e0d",
+    "bytes": 4436,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-pencil-skirt.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e451b73735a4bbe175570719b533c8e7ed5e10d1b099fac85d36ac232c2ffcbb.webp",
+    "sourceSha256": "17585c0b9ed5509c2288db108756b0d5f040a2693af8b3d577fe648ded64d3fe",
+    "sha256": "e451b73735a4bbe175570719b533c8e7ed5e10d1b099fac85d36ac232c2ffcbb",
+    "bytes": 4388,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1950s-sweater-vest.png": {
+    "key": "catalog/character-studio/thumbnails/v1/7910ec0700f50eaafa1ce4d4db62e43e250060565db97c30d545b66b3eca0b81.webp",
+    "sourceSha256": "b6ec131ef78a35fd471045b6d9e2ee7e6a5c1f5350cab439666cf31092d12c15",
+    "sha256": "7910ec0700f50eaafa1ce4d4db62e43e250060565db97c30d545b66b3eca0b81",
+    "bytes": 4344,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1980s-colorblock-sweater.png": {
+    "key": "catalog/character-studio/thumbnails/v1/f9d16802528eb3705e0eedb4436baddb61f1f4983abd85035a66042a44508ad4.webp",
+    "sourceSha256": "308d26ce68f96fbee74e17c5eb82a32395bcfdf6100f4eec942665dbd1006007",
+    "sha256": "f9d16802528eb3705e0eedb4436baddb61f1f4983abd85035a66042a44508ad4",
+    "bytes": 5332,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1980s-denim-graphic-tee.png": {
+    "key": "catalog/character-studio/thumbnails/v1/efd0d1fde302946148f0ae91182fbc7c2769383143c0a66f74e9d9253bb45c5e.webp",
+    "sourceSha256": "b552df1c2e1731cbbfff44bc4a2fbe44f37a0afda964aa991d6c228cf083e079",
+    "sha256": "efd0d1fde302946148f0ae91182fbc7c2769383143c0a66f74e9d9253bb45c5e",
+    "bytes": 8626,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1980s-pink-blouse-skirt.png": {
+    "key": "catalog/character-studio/thumbnails/v1/865dd4b22f57b2b208dbd24956086d6f9f2ec1d91c72cacfff867196bd26c83c.webp",
+    "sourceSha256": "ce58e5377e2a8137404ecda384063028ae2d9412ab87b6697e65c28f3cb753ce",
+    "sha256": "865dd4b22f57b2b208dbd24956086d6f9f2ec1d91c72cacfff867196bd26c83c",
+    "bytes": 8636,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1980s-retro-denim.png": {
+    "key": "catalog/character-studio/thumbnails/v1/a417faa4661aa3afe1478eb3e9a1c53a9c7f647298e7a7565c6051527cd66cc7.webp",
+    "sourceSha256": "e366c5adf54d5ed8e3b829b737e78a0e937c7b372f4c8ed35ed8f81ab60fd359",
+    "sha256": "a417faa4661aa3afe1478eb3e9a1c53a9c7f647298e7a7565c6051527cd66cc7",
+    "bytes": 7182,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/1980s-vintage-denim.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2885a57c46101efaa0bce73cc737239560967e980a608893bf99d4f802d0d8a8.webp",
+    "sourceSha256": "07a4c425e344c57833f19034024630582596ea6706ce526de720b05cba7012bf",
+    "sha256": "2885a57c46101efaa0bce73cc737239560967e980a608893bf99d4f802d0d8a8",
+    "bytes": 7522,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-baggy-denim-shirt.png": {
+    "key": "catalog/character-studio/thumbnails/v1/39422b01eac7f2426d7d4e0d4e7f038ccded571c0f98b73b106eac02dd81f426.webp",
+    "sourceSha256": "69b1df6fad667315483c329262bec6830cec9521828ad261d323690879b06beb",
+    "sha256": "39422b01eac7f2426d7d4e0d4e7f038ccded571c0f98b73b106eac02dd81f426",
+    "bytes": 6056,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-denim-mini-skirt.png": {
+    "key": "catalog/character-studio/thumbnails/v1/92fe6411a35c6f937df5d7f80eafc389ca67962dd78770fb6bc9cdbe693322c0.webp",
+    "sourceSha256": "49c71065bda736c328ded0360c382ced3b00b8a38b82b50885003d8c4fa3dab3",
+    "sha256": "92fe6411a35c6f937df5d7f80eafc389ca67962dd78770fb6bc9cdbe693322c0",
+    "bytes": 5900,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-layered-polo.png": {
+    "key": "catalog/character-studio/thumbnails/v1/0b682ef088dd373571f096b438fdb6e36f9b85c9ede03c04ac635a79cbcdf400.webp",
+    "sourceSha256": "97c61305eece69ad3661a4bde9f056be309b488d581397edd65bfc1e3699995c",
+    "sha256": "0b682ef088dd373571f096b438fdb6e36f9b85c9ede03c04ac635a79cbcdf400",
+    "bytes": 6552,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-pink-cardigan.png": {
+    "key": "catalog/character-studio/thumbnails/v1/67a03aa9371b5757e9574c3c5f1dae76e277378c3dadefe224284ed41f74e383.webp",
+    "sourceSha256": "2c220d65c61a77e6a4aed4e3a3f22f3fa5f9f5fd8dd81b3f86943fc308b3989f",
+    "sha256": "67a03aa9371b5757e9574c3c5f1dae76e277378c3dadefe224284ed41f74e383",
+    "bytes": 5676,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-pink-tracksuit.png": {
+    "key": "catalog/character-studio/thumbnails/v1/b92f6f530e4898bf5c750121b83302beca2d3346b5289f761e8f4de8fa6f5b94.webp",
+    "sourceSha256": "edecae7fa19a227d5f11209390cc81ac98bb986748cd497f0edf250b1a56501b",
+    "sha256": "b92f6f530e4898bf5c750121b83302beca2d3346b5289f761e8f4de8fa6f5b94",
+    "bytes": 6362,
+    "width": 307,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-relaxed-striped-polo.png": {
+    "key": "catalog/character-studio/thumbnails/v1/2cea3c2de639eefcaa3a48f38ac7525718ac8a6d0d8b5ef392b4c87c9ae9f341.webp",
+    "sourceSha256": "230ef9f4a78ca2421e93f4efbdca1732e13d3cadda36f2f67b3052ba431085e1",
+    "sha256": "2cea3c2de639eefcaa3a48f38ac7525718ac8a6d0d8b5ef392b4c87c9ae9f341",
+    "bytes": 6306,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2000s-striped-tee.png": {
+    "key": "catalog/character-studio/thumbnails/v1/c7ed0f6c295a4eff7cd078ce7b801285dbf3f389290af0f71136f94e2b08d2a7.webp",
+    "sourceSha256": "714de361bf5fc3f8bb5d5a31e50e4169de30509cee3ae2b72dd503c28ea9e825",
+    "sha256": "c7ed0f6c295a4eff7cd078ce7b801285dbf3f389290af0f71136f94e2b08d2a7",
+    "bytes": 5426,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-cargo-tank.png": {
+    "key": "catalog/character-studio/thumbnails/v1/7bf8251191d9f0f0a61e34fa7b35c31b2b21c863b8ad8987f6223bfce5c07621.webp",
+    "sourceSha256": "680a412de250da83068b7a6f04e37aefa0f1777df00a45584ca772918827384b",
+    "sha256": "7bf8251191d9f0f0a61e34fa7b35c31b2b21c863b8ad8987f6223bfce5c07621",
+    "bytes": 6344,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-cream-linen.png": {
+    "key": "catalog/character-studio/thumbnails/v1/52f697d6a52a7dc6ee792c3d0890d13c2e8ecb11936c87f96340720634d04ba0.webp",
+    "sourceSha256": "6cb4c6517d0cf123764631e71bcd9641245a2468db30fceb0eec4f3014f5566a",
+    "sha256": "52f697d6a52a7dc6ee792c3d0890d13c2e8ecb11936c87f96340720634d04ba0",
+    "bytes": 3632,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-day-dress.png": {
+    "key": "catalog/character-studio/thumbnails/v1/e1a0c8bd8c8b81629aa18107b522b13fe361391918d2be8a0f54131b2a3def46.webp",
+    "sourceSha256": "9e7fb09fe908830dfcd026ee647253576aeabdda4710aa7b6a3d15707cab2228",
+    "sha256": "e1a0c8bd8c8b81629aa18107b522b13fe361391918d2be8a0f54131b2a3def46",
+    "bytes": 4694,
+    "width": 230,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-floral-maxi-dress.png": {
+    "key": "catalog/character-studio/thumbnails/v1/449f6d98070dbf94d3699af90595656355704442cd74de00b129eccd4121deaf.webp",
+    "sourceSha256": "3a184d56a4c531efa65a2e7b354a8ba9a6ae3a4d49ab30683dd64cb638013612",
+    "sha256": "449f6d98070dbf94d3699af90595656355704442cd74de00b129eccd4121deaf",
+    "bytes": 9350,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-knit-layer.png": {
+    "key": "catalog/character-studio/thumbnails/v1/56c55f2d0e19964c6362cf53782f0c56fb356a5cf6c19babec6ef3094341ab8c.webp",
+    "sourceSha256": "f73812c87668ef6486c0f2af29a522d3f356aa4ade18407a7ee9aa75b457273e",
+    "sha256": "56c55f2d0e19964c6362cf53782f0c56fb356a5cf6c19babec6ef3094341ab8c",
+    "bytes": 3988,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-leather-jacket.png": {
+    "key": "catalog/character-studio/thumbnails/v1/493bb68fefb99e972195000c90f82af91a19f705462cc4db91bcc004345e3e7d.webp",
+    "sourceSha256": "600eb1da599bbebc73db67656a2491b38fabdc225b8be68029e896d8efb63025",
+    "sha256": "493bb68fefb99e972195000c90f82af91a19f705462cc4db91bcc004345e3e7d",
+    "bytes": 4836,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-plaid-pajamas.png": {
+    "key": "catalog/character-studio/thumbnails/v1/21c4590b611818e4856f01a41117becdc65a51a992aca4198096a8c803d2ee9f.webp",
+    "sourceSha256": "b2b2ff4a0158ffa90f902222eafb1c721e2cd45bf05ed17285cd08f974edb4b3",
+    "sha256": "21c4590b611818e4856f01a41117becdc65a51a992aca4198096a8c803d2ee9f",
+    "bytes": 5788,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-satin-dress.png": {
+    "key": "catalog/character-studio/thumbnails/v1/0d27f9a6e2caa1835ab40da700f188483d7321e64ad4edf8422758f3ba2b792a.webp",
+    "sourceSha256": "bd25705612a02f426cb8537a4d67736e03333b4fda028291bb5d9ec69b966202",
+    "sha256": "0d27f9a6e2caa1835ab40da700f188483d7321e64ad4edf8422758f3ba2b792a",
+    "bytes": 4936,
+    "width": 230,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-streetwear-hoodie.png": {
+    "key": "catalog/character-studio/thumbnails/v1/d1b533344dd9838534d056cd3b0f0c9ae4082afabcfee8bed540011688855dbf.webp",
+    "sourceSha256": "bf84a2d74b17aa83806e290faa8c14cec35688f457c5e4d623cd1c7b2b972df8",
+    "sha256": "d1b533344dd9838534d056cd3b0f0c9ae4082afabcfee8bed540011688855dbf",
+    "bytes": 4686,
+    "width": 256,
+    "height": 384
+  },
+  "/explore/influencer-studio/outfits/2025-white-tee-jeans.png": {
+    "key": "catalog/character-studio/thumbnails/v1/7a5f15fcc7ab6e3d9e2376316dfc102c0251cfd4343594fcf8f875b219fda2c6.webp",
+    "sourceSha256": "1a470fa76524559e1de6d3820572a4cdb178785041cad35ccbbb260ef71e4bd5",
+    "sha256": "7a5f15fcc7ab6e3d9e2376316dfc102c0251cfd4343594fcf8f875b219fda2c6",
+    "bytes": 4414,
+    "width": 230,
+    "height": 384
+  }
+}

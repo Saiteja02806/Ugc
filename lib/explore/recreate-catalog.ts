@@ -14,6 +14,8 @@ import {
 } from "./wall-text-video-library";
 import type { RecreateReference, ReferenceSlide } from "./recreate-types";
 import { getReferenceVideoPrompt } from "./reference-video-prompts";
+import { getHookReferenceViews } from "./hook-reference-views";
+import { getSlideshowReferenceViews } from "./slideshow-reference-views";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import { getHookReferenceReleaseItems, isHookReferenceReleaseActive } from "@/worker/src/lib/explore-hook-reference-release";
 
@@ -41,22 +43,26 @@ const importedItems = importedCatalog.mediaStatus === "published"
   : [];
 
 export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
-  const hooks = getExploreHookVideos(includeArchivedHooks).map((item): RecreateReference => ({
-    category: null,
-    categoryLabel: null,
-    format: "hook",
-    id: item.id,
-    posterUrl: item.posterUrl,
-    slides: [],
-    title: "Hook",
-    videoUrl: item.videoUrl,
-    ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
-    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
-    ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
-    ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
-    ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
-    ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
-  }));
+  const hooks = getExploreHookVideos(includeArchivedHooks).map((item): RecreateReference => {
+    const views = getHookReferenceViews(item.id);
+    return {
+      category: null,
+      categoryLabel: null,
+      format: "hook",
+      id: item.id,
+      posterUrl: item.posterUrl,
+      slides: [],
+      title: "Hook",
+      videoUrl: item.videoUrl,
+      ...(views ? { viewCount: views.viewCount, formattedViews: views.formattedViews } : {}),
+      ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
+      ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+      ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
+      ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
+      ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
+      ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
+    };
+  });
   const existingWallText = getExploreWallTextVideos().map((item, index): RecreateReference => ({
     category: item.category ?? (item.pairedAudio ? null : "productivity"),
     categoryLabel: item.categoryLabel ?? (item.pairedAudio ? null : "Productivity"),
@@ -115,6 +121,7 @@ export function getLocalRecreateReferences(): RecreateReference[] {
 
 function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAssetUrl): RecreateReference {
   const source = item.format === "slideshow" ? slideshowSources.items.find(source => source.referenceId === item.id) : undefined;
+  const views = item.format === "slideshow" ? getSlideshowReferenceViews(item.id) : undefined;
   const slides: ReferenceSlide[] = item.slides.map((slide) => ({
     height: slide.height,
     id: slide.id,
@@ -130,6 +137,7 @@ function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAs
     id: item.id,
     posterUrl: assetUrl(item.posterFile),
     slides,
+    ...(views ? { viewCount: views.viewCount, formattedViews: views.formattedViews } : {}),
     ...(source ? { sourceUrl: source.sourceUrl, sourcePlatform: "tiktok" as const, sourceKind: source.sourceKind === "profile" ? "profile" as const : "post" as const } : {}),
     // Catalogue sequence numbers identify imports, not the user's topic.
     title: item.format === "slideshow" ? item.categoryLabel?.trim() || item.title : item.title,

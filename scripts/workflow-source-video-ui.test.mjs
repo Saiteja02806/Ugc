@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { resolveWorkflowScheduleDraft } from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : { type, props };
@@ -141,12 +142,14 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => localMedia },
       "./use-talking-head-reference": { useTalkingHeadReference: () => ({ videoReference: localMedia, selectedId: null, instructions: "", query: { data: [], isPending: false, isError: false }, choose: async () => true }) },
       "./talking-head-references": { TalkingHeadReferences: "talking-references" },
+      "./talking-head-script-section": { TalkingHeadScriptSection: "talking-head-script" },
+      "@/lib/explore/talking-head-script-remix": { estimateTalkingHeadSpeechSeconds: text => Math.ceil(text.trim().split(/\s+/u).length / 2.8) },
       "./talking-head-references.module.css": css,
       "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null, remove() {}, clearError() {} }) },
       "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: () => ({ maxImages: 6 }) },
       "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
-      "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedAccountIds: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
+      "@/lib/explore/workflow-scheduling-draft": { resolveWorkflowScheduleDraft, workflowSelectedAccounts: () => [], workflowSelectedAccountIds: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };

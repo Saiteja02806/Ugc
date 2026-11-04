@@ -67,6 +67,7 @@ test("all three workflow cards keep real links and place feedback inside the cor
   const { ExploreWorkflowCard } = load("components/explore/explore-workflow-card.tsx", {
     "@/components/layout/workspace-navigation-feedback": link,
     "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
+    "@/components/explore/use-explore-workflow-preload": { useExploreWorkflowPreload: () => () => {} },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const workflow of workflows.EXPLORE_WORKFLOWS) {

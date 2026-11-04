@@ -288,3 +288,24 @@ test("final public references keep the real last blink and avoid inventing a pal
   assert.equal(getHookKeyframePromptPreview({ ...opening, motionInstructions: "My own movement." }).directions, "My own movement.");
  }
 });
+
+test("five reviewed mouth performances survive both sound modes and explicit user edits", () => {
+  const ids = ["11f2baa840d10b65bc4c4dee", "43f2c2d266d23e3af05875d8", "09c4e9b5de6a85f0f4c371da", "4ddf4d0f6dc4493f7eb6572f", "f216fd8e9397a7747a445ab7"];
+  for (const suffix of ids) {
+    const referenceId = "explore-paired-hook-" + suffix;
+    const source = hookKeyframeMotionCatalog[referenceId];
+    const base = createHookKeyframeDraft({ownerId:"owner", draftId:"11111111-1111-4111-8111-111111111111", referenceId, sourceSha256:source.sourceSha256});
+    const previews = [false,true].map(generateAudio => getHookKeyframePromptPreview({...base,generateAudio}, "hook", undefined, undefined, undefined, source.sourceDurationSeconds));
+    assert.equal(previews[0].directions,previews[1].directions);
+    for (const preview of previews) {
+      assert.equal(preview.animationError,null);
+      assert.match(preview.directions,/lips|lip purse/);
+      assert.doesNotMatch(preview.animationPrompt!,/PHASE \[/);
+    }
+    assert.match(previews[0].animationPrompt!,/Preserve every instructed lip and jaw movement/);
+    assert.match(previews[1].animationPrompt!,/matching brief vocal reaction/);
+    for (const motionInstructions of ["My deliberate movement.", ""]) {
+      assert.equal(getHookKeyframePromptPreview({...base,motionInstructions}).directions,motionInstructions);
+    }
+  }
+});

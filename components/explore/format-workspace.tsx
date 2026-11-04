@@ -259,7 +259,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     queryKey: ["recreate-references", 4, user?.uid ?? "signed-out"],
-    queryFn: ({ signal }) => fetchRecreateReferences(signal), staleTime: 30 * 60_000, retry: 1,
+    queryFn: ({ signal }) => fetchRecreateReferences(signal, user?.uid), staleTime: 30 * 60_000, retry: 1,
   });
   const referenceData = previewReferences ?? referencesQuery.data ?? EMPTY;
   const creatorAccounts = useCreatorAccounts(user, (format === "hook" || format === "slideshow") && !localPreview,

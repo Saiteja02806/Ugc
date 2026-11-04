@@ -41,7 +41,7 @@ const tick = () => new Promise(setImmediate);
 
 test("retired Talking Head cards are hidden in both modes while archived saved references restore", async () => {
   const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction"];
-  const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-surprised-story", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny"];
+  const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-surprised-story", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny", "talking-carla-eatsss", "talking-taliameals"];
   const jsx = (type, props) => ({ type, props });
   let warmed = 0, chosen = 0;
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
@@ -54,6 +54,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     "./talking-head-references.module.css": { default: {} },
     "./workflow-studio.module.css": { default: { referenceRecreateButton: "referenceRecreateButton" } },
     "./lazy-hook-starting-frame-workspace": { preloadHookStartingFrameWorkspace: async () => { warmed++; } },
+    "./use-starting-frame-preload": { useStartingFramePreload: () => () => {} },
   });
   function nodes(value) {
     if (!value || typeof value !== "object") return [];
@@ -84,8 +85,8 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
 });
 
 test("catalogue preserves nine archival clips and all eleven supplied additions, including full-length previews", () => {
-  assert.equal(catalogue.items.length, 23);
-  assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 12);
+  assert.equal(catalogue.items.length, 25);
+  assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 14);
   assert.equal(new Set(catalogue.items.map(item => item.id)).size, catalogue.items.length);
   for (const item of catalogue.items) {
     assert.match(item.id, /^talking-[a-z0-9-]+$/);

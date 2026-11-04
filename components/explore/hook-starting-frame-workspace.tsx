@@ -52,12 +52,13 @@ export type HookKeyframePreviewRuntime = {
   submit: (body: Record<string, unknown>) => Promise<{ ok: boolean; status: number; value: Record<string, unknown> }>;
 };
 /** Admission remains behind the server release gate; opening never submits inference. */
-export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime, presentation = "dialog", preparationFormat = "hook" }: {
+export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime, presentation = "dialog", preparationFormat = "hook", scriptSection }: {
   reference: RecreateReference; ownerId: string | null; draftId: string; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
   presentation?: "dialog" | "workspace" | "recreation";
   preparationFormat?: StartingFrameWorkflow;
+  scriptSection?: React.ReactNode;
 }) {
   const sourceSha256 = hookSourceSha256(reference.videoUrl) ?? (/^[a-f0-9]{64}$/.test(reference.sourceSha256 ?? "") ? reference.sourceSha256! : null);
   const scope = useMemo(() => ownerId && sourceSha256 ? { ownerId, draftId, referenceId: reference.id, sourceSha256 } : null,
@@ -65,11 +66,11 @@ export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClos
   if (!ownerId) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="status">Sign in to choose your influencer and prepare a starting image.</p></PreparationDialog>;
   if (!sourceSha256) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="alert">Choose an available Hook reference to prepare its opening frame.</p></PreparationDialog>;
   return <OwnedPreparation key={`${ownerId}:${draftId}:${reference.id}:${sourceSha256}`} reference={reference}
-    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame} presentation={presentation} preparationFormat={preparationFormat}
+    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame} presentation={presentation} preparationFormat={preparationFormat} scriptSection={scriptSection}
     previewRuntime={process.env.NODE_ENV === "development" ? previewRuntime : undefined} />;
 }
 
-function PreparationDialog({ children, footer, onClose, presentation = "dialog" }: { children: React.ReactNode; footer?: React.ReactNode; onClose: () => void; presentation?: "dialog" | "workspace" | "recreation" }) {
+function PreparationDialog({ children, footer, navigation, onClose, presentation = "dialog" }: { children: React.ReactNode; footer?: React.ReactNode; navigation?: React.ReactNode; onClose: () => void; presentation?: "dialog" | "workspace" | "recreation" }) {
   const title = useRef<HTMLHeadingElement | null>(null);
   useEffect(() => { if (presentation === "workspace") title.current?.focus({ preventScroll: true }); }, [presentation]);
   if (presentation === "workspace") return <section className={styles.workspace} aria-label="Create your starting frame">
@@ -78,28 +79,35 @@ function PreparationDialog({ children, footer, onClose, presentation = "dialog" 
       <h2 ref={title} tabIndex={-1} className={styles.title}>Create your starting frame</h2>
       <p>Keep the scene. Choose your person. Review the image before making a video.</p>
     </header>
+    {navigation}
     {children}
   </section>;
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent className={`${styles.dialog} ${presentation === "recreation" ? styles.recreationDialog : ""}`} initialFocus={title}>
       <header className={styles.header}>
-        <DialogTitle ref={title} tabIndex={-1} className={styles.title}>Create your starting frame</DialogTitle>
-        <DialogDescription>Keep the scene. Choose your person. Review the image before making a video.</DialogDescription>
+        <DialogTitle ref={title} tabIndex={-1} className={styles.title}>{navigation ? "Recreate Talking Head" : "Create your starting frame"}</DialogTitle>
+        <DialogDescription>{navigation ? "Prepare your starting frame and script, then continue to video." : "Keep the scene. Choose your person. Review the image before making a video."}</DialogDescription>
       </header>
+      {navigation}
       {presentation === "recreation" ? <div className={styles.recreationContent} data-recreation-scroll>{children}</div> : children}
       {footer}
     </DialogContent>
   </Dialog>;
 }
 
-function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime, presentation, preparationFormat }: {
+function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime, presentation, preparationFormat, scriptSection }: {
   reference: RecreateReference; scope: HookKeyframeScope; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
   presentation?: "dialog" | "workspace" | "recreation";
   preparationFormat: StartingFrameWorkflow;
+  scriptSection?: React.ReactNode;
 }) {
   const [draft, setDraft] = useState<HookKeyframeDraft>(() => createHookKeyframeDraft(scope));
+  // Visibility alone changes: job polling, admitted batches and the script stay mounted.
+  const [activeSection, setActiveSection] = useState<"frame" | "script">("frame");
+  const hasScriptSection = preparationFormat === "talking_head" && Boolean(scriptSection);
+  const sectionId = `preparation-${scope.draftId}-${scope.referenceId}`;
   const [savedPrompt, setSavedPrompt] = useState<{ text: string; useDefault: boolean } | null>(null);
   const promptPreferenceKey = `ugc-starting-image-prompt:v1:${encodeURIComponent(scope.ownerId)}`;
   const [images, setImages] = useState<AIStudioReferenceMedia[]>([]);
@@ -165,7 +173,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const readableEntries = variations?.entries.filter(entry => entry.state !== "planned" && entry.state !== "rejected") ?? [];
   const imageJobQueries = useQueries({ queries: readableEntries.map(({ checkpoint }) => ({
     queryKey: ["hook-starting-image-job", scope.ownerId, scope.draftId, checkpoint.requestKey, checkpoint.jobId],
-    enabled: checkpointRestored, ...startingImageStatusPolling,
+    enabled: checkpointRestored && !submittingImage, ...startingImageStatusPolling,
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const body = await keyframeRead(checkpoint.jobId ? `?jobId=${encodeURIComponent(checkpoint.jobId)}` : `?requestKey=${encodeURIComponent(checkpoint.requestKey)}`, signal);
       return verifiedHookKeyframeJob(body.job, checkpoint);
@@ -203,7 +211,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   }, [terminalJobsKey, checkpointRestored, submittingImage, checkpointKey, variationsKey, scope]);
   useEffect(() => {
     const body = scrollBody.current, section = generatedSection.current;
-    if (presentation !== "recreation" && completedImageAssetId && body && section) {
+    if (presentation !== "recreation" && (!hasScriptSection || activeSection === "frame") && completedImageAssetId && body && section) {
       const scroller = presentation === "workspace" ? body.closest<HTMLElement>("[data-starting-frame-stage]") ?? body : body;
       const viewport = scroller.getBoundingClientRect(), result = section.getBoundingClientRect();
       const actions = presentation === "workspace" ? body.querySelector<HTMLElement>('[aria-label="Starting image actions"]')?.getBoundingClientRect() : null;
@@ -212,7 +220,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         scroller.scrollTo({ top: scroller.scrollTop + result.top - viewport.top - 12, behavior: "instant" });
       }
     }
-  }, [completedImageAssetId, presentation]);
+  }, [completedImageAssetId, presentation, hasScriptSection, activeSection]);
   async function keyframeRead(query: string, signal?: AbortSignal) {
     if (previewRuntime) return previewRuntime.read(query, signal);
     return withReadDeadline(async bounded => {
@@ -596,13 +604,32 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s video instructions need review before its starting image can be used for animation.</p> : null}
         {resultActions}
       </section> : null;
-  return <PreparationDialog presentation={presentation} onClose={() => {
+  const sectionNavigation = hasScriptSection ? <div className={styles.preparationNavigation}>
+    <div role="tablist" aria-label="Talking Head preparation" className={styles.preparationTabs}>
+      {([['frame', 'Starting frame'], ['script', 'Script & Remix']] as const).map(([section, label], index) => <button key={section}
+        type="button" role="tab" id={`${sectionId}-${section}-tab`} aria-controls={`${sectionId}-${section}-panel`}
+        aria-selected={activeSection === section} tabIndex={activeSection === section ? 0 : -1}
+        onClick={() => setActiveSection(section)} onKeyDown={event => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
+          setActiveSection(next === 0 ? "frame" : "script");
+          (event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next])?.focus();
+        }}><span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>{label}
+        {section === "frame" && creatingImage ? <Loader2 aria-label="Generating" className="animate-spin motion-reduce:animate-none" /> : null}
+      </button>)}
+    </div>
+    <p role="status" className={styles.preparationProgress}>{creatingImage ? "Your starting frame is generating. You can work on your script." : imageJob?.output ? "Your starting frame is ready to review in Starting frame." : "Generate your frame and adapt your script in either order."}</p>
+  </div> : undefined;
+  return <PreparationDialog presentation={presentation} navigation={sectionNavigation} onClose={() => {
     mounted.current = false;
     revision.current += 1;
     influencerRequest.current?.abort();
     onClose();
   }}>
-    <div ref={scrollBody} className={styles.body} data-has-result={Boolean(readableEntries.length)}>
+    <div ref={scrollBody} className={styles.body} data-has-result={Boolean(readableEntries.length)}
+      role={hasScriptSection ? "tabpanel" : undefined} id={hasScriptSection ? `${sectionId}-frame-panel` : undefined}
+      aria-labelledby={hasScriptSection ? `${sectionId}-frame-tab` : undefined} hidden={hasScriptSection && activeSection !== "frame"}>
       <div className={styles.visuals}>
       <section className={styles.scene} style={frameStyle} data-recreation-step={presentation === "recreation" ? "source" : undefined} aria-label="Selected source frame">
         <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">1</span> : null}Source frame</h2><p>{reference.title} · Original scene</p></div><ImageIcon aria-hidden="true" /></div>
@@ -659,7 +686,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       </div>
       <section className={styles.actions} aria-label="Starting image actions">
         {presentation === "recreation" ? <h2 className={styles.settingsHeading}>Generation settings</h2> : null}
-        {preparationFormat === "talking_head" ? <p className={styles.notice}>After choosing an image, review your own spoken script and Sound setting. Your Demo stays separate.</p> : preparationFormat === "wall_text" ? <p className={styles.notice}>Create the background image here. Add and style your editable overlay text in Edit after generating the video.</p> : null}
+        {preparationFormat === "talking_head" && !hasScriptSection ? <p className={styles.notice}>After choosing an image, review your own spoken script and Sound setting. Your Demo stays separate.</p> : preparationFormat === "wall_text" ? <p className={styles.notice}>Create the background image here. Add and style your editable overlay text in Edit after generating the video.</p> : null}
         <div className={styles.actionMeta}>
           <div className={styles.generationChoices}>
           <div className={styles.modelField}>{presentation === "recreation" ? <span>Image model</span> : null}<AiStudioSettingSelect ariaLabel="Starting image model" className={styles.modelChoice} size="sm"
@@ -689,6 +716,10 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       </section>
       {presentation === "recreation" ? generatedPreview : null}
     </div>
+    {hasScriptSection ? <div className={styles.scriptPanel} role="tabpanel" id={`${sectionId}-script-panel`}
+      aria-labelledby={`${sectionId}-script-tab`} hidden={activeSection !== "script"}>
+      {scriptSection}
+    </div> : null}
     <Dialog open={Boolean(enlargedImage)} onOpenChange={open => { if (!open) setEnlargedImage(null); }}>
       <DialogContent className={styles.zoomDialog} finalFocus={previewTrigger}>
         <div className={styles.zoomHeader}><DialogTitle>{enlargedImage?.title ?? "Image preview"}</DialogTitle>

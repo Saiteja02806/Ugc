@@ -9,6 +9,7 @@ import { createWorkflowGenerationSettings } from "../lib/explore/workflow-genera
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import { workflowVisitStorage } from "../lib/explore/workflow-visit-storage.ts";
 import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
+import * as creditPolicy from "../lib/billing/generation-credit-policy.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const media = n => ({ id: id(n), title: `Video ${n}`, url: `https://media.test/${n}.mp4`, status: "ready", collection: "video", mimeType: "video/mp4", sourceType: "generated_video", durationSeconds: 5, fileSizeBytes: 1000 });
@@ -121,6 +122,7 @@ test("token and media parsing stalls leave bounded recovery errors without expos
 function generationHarness(selection, available = [media(1), media(2)]) {
   const h = hooks(), callbacks = [], jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
   const testModule = load("components/explore/workflow-generation-boundary.tsx", { react: h.react, "react/jsx-runtime": jsx,
+    "@/lib/billing/generation-credit-policy": creditPolicy,
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries() {} }), useQueries: ({ queries }) => queries.map(query => { const data = available.find(asset => asset.id === query.queryKey[2]); return { data, isPending: false, isError: !data }; }) },
     "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { userId: "owner-a", videoGenerationCreditsPerSecond: 1, creditsRemaining: 100 }, isPending: false }) },
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" }, "@/contexts/auth-context": {}, "@/lib/ai-studio/access-policy": {}, "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [] },

@@ -47,5 +47,8 @@ for (const asset of assets.values()) {
   }
   console.log(`Verified ${asset.key}`);
 }
+await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames(manifest.items.map(item => ({
+  ...item, filePath: path.join(root, ".tmp/explore-paired-references/media", `${item.videoSha256}.mp4`),
+})));
 writeFileSync(manifestPath, `${JSON.stringify({ ...manifest, mediaStatus: "published" }, null, 2)}\n`);
 console.log(JSON.stringify({ registeredPairs: manifest.items.length, verifiedObjects: assets.size, uploadedObjects: uploaded }));

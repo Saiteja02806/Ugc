@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as policy from "../worker/src/lib/hook-starting-frame-video.ts";
+import * as photoSelection from "../lib/explore/starting-frame-photo-selection.ts";
 import { startingFrameAnimationInput, startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
 
 const frame = { assetId: "frame-asset", jobId: "frame-job", referenceId: "hook-reference", url: "https://owned.test/frame.png" };
@@ -31,6 +32,7 @@ function harness({ resolveAsset = async id => photo(id).asset } = {}) {
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" },
     "@/lib/http/read-deadline": { withReadDeadline: (fn, signal) => fn(signal ?? new AbortController().signal) },
     "@/worker/src/lib/hook-starting-frame-video": policy,
+    "@/lib/explore/starting-frame-photo-selection": photoSelection,
     "./starting-frame-animation-references.module.css": { default: {} },
   };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText,
@@ -52,7 +54,7 @@ test("the payload keeps first-frame identity and ordered face references in sepa
     referenceImageUrls: photos.map(value => value.asset.url), imageReferencePurpose: "person" });
   assert.deepEqual(startingFrameAnimationInput(frame, []), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId });
   assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /starting image alone.*kept/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /selections are kept/);
   assert.match(startingFrameFaceReferenceError("seedance_2_5", frame, photos), /starting image alone/);
   assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /starting image alone/);
   assert.match(startingFrameFaceReferenceError("google_omni", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /starting image alone/);
@@ -67,8 +69,8 @@ test("scene history and optional faces have independent selectors and removals",
   assert.equal(first.faces.startingFrame, undefined);
   assert.equal(first.faces.inlineImagePicker, true);
   assert.equal(first.faces.heading, "Your photos");
-  assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), false);
-  assert.equal(h.changes.length, 0);
+  assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), true);
+  assert.equal(h.changes.length, 1);
   const photos = [photo("face-a")], nextFrame = { ...frame, assetId: "other-frame" };
   const next = h.render({ frame: nextFrame, photos });
   assert.equal(next.faces.imageSelections, photos);
@@ -80,13 +82,14 @@ test("scene history and optional faces have independent selectors and removals",
   assert.deepEqual(Array.from(photos, value => value.asset.id), ["face-a"]);
 });
 
-test("unsupported models retain removable face photos and block adding or selecting them", async () => {
+test("photo selection stays available without changing the selected model or starting frame", async () => {
   const h = harness(), photos = [photo("face-a")], result = h.render({ model: "wan_3_0", photos });
   assert.equal(result.faces.imageSelections, photos);
-  assert.equal(result.faces.imagePickerDisabled, true);
+  assert.equal(result.faces.imagePickerDisabled, false);
+  assert.equal(result.faces.maxImages, 5);
   assert.equal(result.faces.disabled, false);
-  assert.equal(await result.faces.influencerLibrary.onSelect({ mediaAssetId: "face-b" }), false);
-  assert.equal(h.changes.length, 0);
+  assert.equal(await result.faces.influencerLibrary.onSelect({ mediaAssetId: "face-b" }), true);
+  assert.equal(h.changes.length, 1);
   result.faces.onImagesChange([]);
   assert.equal(h.changes.at(-1).length, 0);
   assert.equal(h.clearedFrames(), 0);
@@ -98,6 +101,9 @@ test("a stale influencer read cannot add photos after frame/model changes or lea
   const h = harness({ resolveAsset: () => new Promise(done => { resolve = done; notifyRead(); }) });
   const first = h.render();
   const selection = first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" });
+  await readStarted;
+  h.render({frame:{...frame,assetId:"new-frame"}});
+  resolve(photo("face-a").asset);
   assert.equal(await selection, false);
   assert.equal(h.changes.length, 0);
   h.unmount(); assert.equal(h.pending.at(-1), false);

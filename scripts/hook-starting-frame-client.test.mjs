@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { getCuratedHookFrame } from "../worker/src/lib/hook-curated-frames.ts";
 import curatedFrames from "../worker/src/lib/hook-curated-frames.json" with { type: "json" };
+import { createStartingFrameCache } from "../lib/explore/starting-frame-cache.ts";
 
 const sha = "a".repeat(64), png = Buffer.from("decoded PNG fixture"), pngSha = createHash("sha256").update(png).digest("hex");
 function fixture({ token = "owner-token", headerChanges = {}, body = png, status = 200, error } = {}) {
@@ -22,8 +23,9 @@ function fixture({ token = "owner-token", headerChanges = {}, body = png, status
       "X-Hook-Frame-Width": "720", "X-Hook-Frame-Height": "1280", ...headerChanges,
     } });
   }, require(name) {
+    if (name === "./starting-frame-cache") return { createStartingFrameCache };
     if (name.includes("hook-curated-frames")) return { getCuratedHookFrame };
-    if (name === "../firebase/auth") return { getCurrentUserIdToken: async owner => { owners.push(owner); return token; } };
+    if (name === "../firebase/auth") return { getCurrentUserIdToken: async owner => { owners.push(owner); return typeof token === "function" ? token(owner) : token; } };
     if (name === "../http/read-deadline") return { withReadDeadline: (fn, signal) => fn(signal ?? new AbortController().signal) };
     throw Error(`Unexpected import ${name}`);
   } });
@@ -39,6 +41,18 @@ test("client sends only catalogue identity, verifies the actual bytes and retain
   assert.equal(result.sourceSha256, sha); assert.equal(result.frame.sha256, pngSha);
   assert.equal(result.frame.index, 0); assert.equal(result.frame.width, 720); assert.equal(result.frame.height, 1280);
   assert.equal(Buffer.from(await result.blob.arrayBuffer()).compare(png), 0);
+});
+
+test("intent preload and modal share one verified response; cache hits still authenticate and sign-out cannot expose cached bytes", async () => {
+  let signedIn = true;
+  const h = fixture({ token: () => signedIn ? "token" : null });
+  const input = { ownerId: "owner", referenceId: "hook-01", sourceSha256: sha };
+  await Promise.all([h.exports.prefetchHookStartingFrame(input), h.run()]);
+  assert.equal(h.calls.length, 1);
+  assert.equal((await h.run()).frame.sha256, pngSha); assert.equal(h.calls.length, 1);
+  signedIn = false; await assert.rejects(h.run(), /Sign in/); assert.equal(h.calls.length, 1);
+  signedIn = true; await h.run(); assert.equal(h.calls.length, 1);
+  assert(h.owners.length >= 4);
 });
 test("stale source, poster/nonzero frame, malformed dimensions and partial downloads cannot become the starting image", async () => {
   for (const headerChanges of [{ "X-Hook-Source-Sha256": "b".repeat(64) }, { "X-Hook-Frame-Index": "1" },

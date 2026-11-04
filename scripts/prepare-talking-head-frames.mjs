@@ -2,9 +2,10 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { decodeHookFirstFrame } from "../lib/explore/hook-source-frame.ts";
 
-// Offline, exact frame-zero preparation. No provider, storage or database writes.
+// Exact frame-zero preparation. --write also prepares verified backend PNGs before publishing the local manifest.
 const sources = JSON.parse(await readFile("lib/explore/talking-head-source-manifest.json", "utf8"));
 const write = process.argv.includes("--write");
+if (write) (await import("@next/env")).default.loadEnvConfig(process.cwd());
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const items = [];
 if (write) await mkdir("public/explore/talking-head-frames/v1", { recursive: true });
@@ -20,6 +21,9 @@ for (const source of sources.items) {
   items.push(item);
 }
 const manifest = { version: 1, extractor: "frame0-png-v1", items };
+if (write) await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames(sources.items.map(source => ({
+  id: source.id, videoSha256: source.sourceSha256, filePath: `public${source.file}`, width: source.width, height: source.height,
+})));
 if (write) await writeFile("lib/explore/talking-head-frames.json", JSON.stringify(manifest, null, 2) + "\n");
 else if (JSON.stringify(JSON.parse(await readFile("lib/explore/talking-head-frames.json", "utf8"))) !== JSON.stringify(manifest)) throw Error("Prepared manifest changed");
 console.log(`Verified ${items.length} source hashes and exact frame-zero PNGs${write ? "; prepared locally" : ""}.`);

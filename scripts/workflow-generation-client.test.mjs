@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
 import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
+import * as creditPolicy from "../lib/billing/generation-credit-policy.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, globals = {}) => {
@@ -13,7 +14,7 @@ const load = (file, imports = {}, globals = {}) => {
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported,
     Error,
-    require(name) { if (name === "../http/read-deadline") return readDeadline; if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
+    require(name) { if (name === "@/lib/billing/generation-credit-policy") return creditPolicy; if (name === "../http/read-deadline") return readDeadline; if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
     ...globals,
   });
   return exported;
@@ -21,6 +22,7 @@ const load = (file, imports = {}, globals = {}) => {
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "./talking-head-script-input": load("lib/explore/talking-head-script-input.ts"),
   "./starting-frame-animation-input": { startingFrameFaceReferenceError },
   "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),
   "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
@@ -84,8 +86,8 @@ test("Talking Head starting-frame requests preserve script and owned identities 
 
 test("Talking Head approved image with voice uses explicit reference mode on WAN and Seedance", async () => {
   for (const model of ["wan_3_0", "seedance_2_5"]) {
-    const actual = harness({ uploadReference: async () => ({url:"https://storage.googleapis.com/test/voice.mp3",assetId:"11111111-1111-4111-8111-111111111111",duration:4}) });
-    await actual.client.generate(draft({ startingFrame, audioReference:{url:"blob:voice",file:{type:"audio/mpeg",size:1024},duration:4}, settings:settings.normalizeWorkflowGenerationSettings({model,duration:4}) }));
+    const actual = harness({ uploadReference: async () => ({url:"https://storage.googleapis.com/test/voice.mp3",assetId:"11111111-1111-4111-8111-111111111111",duration:5}) });
+    await actual.client.generate(draft({ startingFrame, audioReference:{url:"blob:voice",file:{type:"audio/mpeg",size:1024},duration:5}, settings:settings.normalizeWorkflowGenerationSettings({model,duration:4}) }));
     const body=JSON.parse(actual.calls[0].body);
     assert.equal(body.startingFrameMode,"image_voice_reference");assert.equal(body.generateAudio,true);
     assert.equal(body.startingFrameAssetId,startingFrame.assetId);assert.equal(body.startingFrameJobId,startingFrame.jobId);
@@ -722,7 +724,7 @@ test("the connected atomic controller retains a partial or malformed acknowledge
 test("access, credits, account mismatch and malformed billing fail closed before submission", async () => {
   for (const overrides of [
     { access: "signed_out" }, { billing: { data: null, isError: false, isPending: true } },
-    ...[0, -1, NaN, Infinity].map((rate) => ({ billing: { data: { userId: "owner-a", creditsRemaining: 100, videoGenerationCreditsPerSecond: rate }, isError: false, isPending: false } })),
+    ...[0, -1, NaN, Infinity].map((balance) => ({ billing: { data: { userId: "owner-a", creditsRemaining: balance, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false } })),
     { billing: { data: { userId: "owner-b", creditsRemaining: 100, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false } },
     { billing: { data: { userId: "owner-a", creditsRemaining: 1, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false } },
   ]) {

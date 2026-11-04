@@ -571,3 +571,88 @@ test("display-only animation frame survives uploaded photo selection and unsuppo
   assert.equal(updates.at(-1).length,0);
   assert.equal(cleared,0);
 });
+
+test("approved-frame Change labels and selected checks distinguish face photos from the starting frame", async () => {
+  const available = Array.from({ length: 6 }, (_, i) => savedImage(`face-${i + 1}`));
+  let selected = available.slice(0, 5).map(asset => ({ kind: "image", asset })), cleared = 0;
+  const frame = { assetId: "approved-frame", url: "https://owned.test/approved-frame.png", width: 720, height: 1280 };
+  const h = harness(async () => assert.fail("Existing library photos need no upload"), { images: available });
+  const render = () => h.render({ startingFramePreview: frame, imagePurpose: "person", videoInputEnabled: false,
+    selection: selected[0] ?? null, imageSelections: selected, maxImages: 5, onSelectStartingFrame() {},
+    onClearStartingFrame: () => { cleared++; }, onImagesChange: photos => { selected = photos; },
+    onChange: photo => { selected = photo ? [...selected, photo] : []; } });
+  let tree = render();
+  const trigger = h.all(tree, n => n.type === "DialogTrigger")[0];
+  assert.equal(trigger.props.render.props["aria-label"], "Change starting frame or person photos");
+  h.all(tree, n => n.type === "Dialog")[0].props.onOpenChange(true);
+  tree = render();
+  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose person photos");
+  assert.match(h.all(tree, n => n.type === "DialogDescription")[0].props.children, /face reference photos[\s\S]*starting frame stays selected/);
+  const buttons = () => h.all(render(), n => n.type === "Button" && n.props["aria-label"] === "Use your image my-reference.png");
+  assert.deepEqual(buttons().map(n => n.props["aria-pressed"]), [true, true, true, true, true, false]);
+  assert.equal(buttons()[5].props.disabled, true, "Adding is disabled at the five-photo cap");
+  assert.equal(buttons()[0].props.disabled, false, "Selected photos can still be removed at the cap");
+  await buttons()[0].props.onClick();
+  assert.deepEqual(selected.map(p => p.asset.id), available.slice(1, 5).map(a => a.id));
+  assert.equal(buttons()[5].props.disabled, false);
+  await buttons()[5].props.onClick(); await flush();
+  assert.deepEqual(selected.map(p => p.asset.id), available.slice(1).map(a => a.id));
+  tree = render();
+  assert.ok(h.all(tree, n => n.props?.role === "status").some(n => n.props.children === "5 of 5 images selected"));
+  assert.equal(h.all(tree, n => n.type === "ImagePreview" && n.props.name === "Starting frame")[0].props.url, frame.url);
+  h.all(tree, n => n.type === "Button" && n.props["aria-label"] === "Clear selected photos")[0].props.onClick();
+  assert.equal(selected.length, 0); assert.equal(cleared, 0);
+  assert.ok(h.all(render(), n => n.props?.role === "status").some(n => n.props.children === "0 of 5 images selected"));
+  // Closing and reopening does not restore the removed photos or clear the scene.
+  h.all(render(), n => n.type === "Button" && n.props.children === "Done")[0].props.onClick();
+  h.all(render(), n => n.type === "Dialog")[0].props.onOpenChange(true);
+  assert.equal(selected.length, 0); assert.equal(cleared, 0);
+});
+
+test("uploading more person photos appends to the approved-frame selection and preserves the scene", async () => {
+  const original = { kind: "image", asset: savedImage("original-person") };
+  let selected = [original], cleared = 0;
+  const frame = { assetId: "approved-frame", url: "https://owned.test/approved-frame.png", width: 720, height: 1280 };
+  const h = harness(async file => ({ kind: "image", asset: { ...savedImage(file.name), fileName: file.name } }));
+  const render = () => h.render({ startingFramePreview: frame, imagePurpose: "person", videoInputEnabled: false,
+    selection: selected[0], imageSelections: selected, maxImages: 5, onClearStartingFrame: () => { cleared++; },
+    onImagesChange: photos => { selected = photos; } });
+  const files = [new File(["a"], "added-a.png", { type: "image/png" }), new File(["b"], "added-b.png", { type: "image/png" })];
+  const input = h.all(render(), n => n.type === "input" && n.props["aria-label"] === "Choose optional image reference")[0];
+  assert.equal(input.props.disabled, false); assert.equal(input.props.multiple, true);
+  input.props.onChange({ currentTarget: { files, value: "selected" } }); await flush();
+  assert.deepEqual(Array.from(selected, p => p.asset.id), ["original-person", "added-a.png", "added-b.png"]);
+  assert.equal(cleared, 0);
+  assert.equal(h.all(render(), n => n.type === "ImagePreview" && n.props.name === "Starting frame")[0].props.url, frame.url);
+});
+
+test("Starting frames marks the approved scene separately from selected person photos", () => {
+  const frame = { assetId: "approved-frame", jobId: "frame-job", url: "https://owned.test/approved-frame.png", width: 720, height: 1280 };
+  const other = { ...frame, assetId: "other-frame", jobId: "other-job" };
+  const photos = [{ kind: "image", asset: savedImage("person-photo") }];
+  const h = harness(async () => assert.fail("No upload"), { frames: [frame, other], images: photos.map(p => p.asset) });
+  const render = () => h.render({ startingFramePreview: frame, imagePurpose: "person", videoInputEnabled: false,
+    selection: photos[0], imageSelections: photos, maxImages: 5, onSelectStartingFrame() {}, onImagesChange() {} });
+  h.all(render(), n => n.type === "Dialog")[0].props.onOpenChange(true);
+  let tree = render();
+  const sourceTabs = h.all(tree, n => n.type === "TabsRoot")[0];
+  sourceTabs.props.onValueChange("starting"); tree = render();
+  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose starting frame");
+  const frames = h.all(tree, n => n.type === "Button" && /^Use saved starting frame /.test(n.props["aria-label"] ?? ""));
+  assert.deepEqual(frames.map(n => n.props["aria-pressed"]), [true, false]);
+  assert.equal(photos.length, 1); assert.equal(photos[0].asset.id, "person-photo");
+  sourceTabs.props.onValueChange("user"); tree = render();
+  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose person photos");
+  assert.equal(h.all(tree, n => n.type === "Button" && n.props["aria-label"] === "Use your image my-reference.png")[0].props["aria-pressed"], true);
+  assert.ok(h.all(tree, n => n.props?.role === "status").some(n => n.props.children === "1 of 5 images selected"));
+});
+
+test("a photo-only Change action does not promise an unavailable starting-frame selector", () => {
+  const h = harness(async () => assert.fail("No upload"));
+  const tree = h.render({ startingFramePreview: { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 },
+    imagePurpose: "person", videoInputEnabled: false, imageSelections: [], onImagesChange() {} });
+  const trigger = h.all(tree, n => n.type === "DialogTrigger")[0].props.render;
+  assert.equal(trigger.props["aria-label"], "Change person photos");
+  assert.equal(trigger.props.title, "Manage your person photos");
+  assert.equal(h.all(tree, n => n.type === "TabsTab" && n.props.value === "starting").length, 0);
+});

@@ -76,6 +76,9 @@ for (const [index, item] of plan.items.entries()) {
   }
 }
 
+await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames(manifest.items.filter(item => item.videoFile && ["hook", "wall_text"].includes(item.format)).map(item => ({
+  id: item.id, videoSha256: item.videoFile.slice(0, 64), filePath: path.join(assetsDirectory, item.videoFile),
+})));
 writePublishedManifest(manifestPath, manifest);
 console.log(`Import complete: ${plan.items.length} assets are verified under ${STORAGE_PREFIX}/.`);
 
@@ -174,7 +177,7 @@ function getFileHash(bytes) {
 
 function isMissingObjectError(error) {
   return typeof error === "object" && error !== null &&
-    (("code" in error && error.code === "NoSuchKey") || ("Code" in error && error.Code === "NoSuchKey"));
+    (("code" in error && [404, "NoSuchKey"].includes(error.code)) || ("Code" in error && error.Code === "NoSuchKey"));
 }
 
 function assertRuntimeReady() {

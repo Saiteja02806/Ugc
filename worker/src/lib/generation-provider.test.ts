@@ -10,6 +10,7 @@ import {
   ProviderInsufficientCreditsError,
   ProviderSubmissionUncertainError,
   ProviderOutputCollectionError,
+  ProviderImageResponseError,
   toProviderPollingRetry,
 } from "./generation-provider.js";
 import type { SupabaseJobStore } from "./supabase.js";
@@ -44,6 +45,25 @@ test("uses a stable fingerprint for the same provider request", () => {
     createGenerationRequestFingerprint({ prompt: "hello", settings: { b: 2, a: 1 } }),
     createGenerationRequestFingerprint({ settings: { a: 1, b: 2 }, prompt: "hello" }),
   );
+});
+
+test("completed image response without output is terminal; incomplete response remains uncertain; neither can retry automatically", async () => {
+  for (const completed of [true, false]) {
+    const writes: { status: string; retryAllowed?: boolean; errorMessage: string }[] = [];
+    const store = {
+      markGenerationProviderFailed: async (p: Parameters<SupabaseJobStore["markGenerationProviderFailed"]>[0]) => { writes.push({ ...p, status: "failed" }); },
+      markGenerationProviderSubmissionUncertain: async (p: Parameters<SupabaseJobStore["markGenerationProviderSubmissionUncertain"]>[0]) => { writes.push({ ...p, status: "uncertain" }); },
+    } as unknown as SupabaseJobStore;
+    const error = new ProviderImageResponseError(completed, completed ? "stop" : null, "gen-known");
+    await assert.rejects(persistProviderSubmissionFailure({ error, store, jobId: "job", operationKey: "scene" }), caught => {
+      assert(caught instanceof Error);
+      assert.match(caught.message, /no image|without an image/);
+      assert.equal(caught instanceof ProviderSubmissionUncertainError, !completed); return true;
+    });
+    assert.equal(writes[0].status, completed ? "failed" : "uncertain");
+    assert.notEqual(writes[0].retryAllowed, true);
+    assert.match(writes[0].errorMessage, /gen-known/);
+  }
 });
 
 test("only a fresh reservation can submit a provider request", () => {

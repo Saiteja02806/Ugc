@@ -11,7 +11,7 @@ const catalog = [1, 2].map(number => ({ id: `account-${number}`, label: `Creator
 const privateUrl = catalog[0].items[0].videoUrl;
 const tick = async () => { for (let index = 0; index < 12; index++) await new Promise(resolve => setImmediate(resolve)); };
 
-function harness(file, { fetcher = async () => new Response("private", { headers: { "content-type": "image/png" } }) } = {}) {
+function harness(file, { fetcher = async () => new Response("private", { headers: { "content-type": "image/png" } }), data = catalog } = {}) {
   let cursor = 0, user = owner;
   const states = [], effects = [], tokens = [], requests = [], revoked = [], created = [];
   const exported = {};
@@ -26,7 +26,7 @@ function harness(file, { fetcher = async () => new Response("private", { headers
   };
   const imports = {
     react,
-    "@tanstack/react-query": { useQuery: () => ({ data: catalog, isError: false, refetch() {} }) },
+    "@tanstack/react-query": { useQuery: () => ({ data, isError: false, refetch() {} }) },
     "@/contexts/auth-context": { useAuth: () => ({ user }) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async id => { tokens.push(id); return "owner-token"; } },
     "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: value => value?.emailVerified === true && value.email === owner.email,
@@ -83,6 +83,51 @@ test("a failed account still does not block another account's gallery or canonic
   assert.equal(result.account.items.length, 6); assert.equal(result.error, null); assert.equal(result.references.length, 12);
   result.select("account-2"); result = render(); assert.match(result.error, /could not be loaded/); assert.equal(result.loading, false);
   h.unmount(); assert.equal(h.revoked.length, h.created.length);
+});
+
+test("private slideshow gallery publishes complete first batch before later items; all canonical selections remain recoverable", async () => {
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const data = [{ id: "slides", items: Array.from({ length: 6 }, (_, index) => ({
+    id: `creator-slideshow-${index}`, format: "slideshow", posterUrl: `/private/${index}/0`,
+    slides: [0, 1].map(slide => ({ id: `${index}-${slide}`, url: `/private/${index}/${slide}`, generationUrl: `https://owned.example/${index}/${slide}` })),
+  })) }];
+  const h = harness("use-creator-accounts.ts", { data, fetcher: async url => {
+    if (/\/private\/[345]\//.test(url)) await blocked;
+    return new Response("slide", { headers: { "content-type": "image/jpeg" } });
+  } });
+  const render = () => h.render((module, user) => module.useCreatorAccounts(user, true, null, "slideshow"));
+  let result = render(); result.select("slides"); render();
+  await tick(); result = render();
+  assert.equal(result.loading, false);
+  assert.equal(result.account.items.length, 3);
+  assert.ok(result.account.items.every(item => item.slides.every(slide => slide.url.startsWith("blob:"))));
+  assert.equal(result.references.length, 6, "pending saved references must remain resolvable");
+  assert.equal(result.references[5].slides[0].generationUrl, "https://owned.example/5/0");
+  release(); await tick(); result = render();
+  assert.equal(result.account.items.length, 6);
+  assert.equal(new Set(result.account.items.map(item => item.id)).size, 6);
+  assert.ok(h.requests.every(request => request.options.headers.Authorization === "Bearer owner-token"));
+  h.unmount(); assert.equal(h.revoked.length, h.created.length);
+});
+
+test("unmounting a partially loaded slideshow account blocks late publication and revokes completed previews", async () => {
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const data = [{ id: "slides", items: Array.from({ length: 4 }, (_, index) => ({
+    id: `creator-slideshow-${index}`, format: "slideshow", slides: [{ id: String(index), url: `/private/${index}` }],
+  })) }];
+  const h = harness("use-creator-accounts.ts", { data, fetcher: async url => {
+    if (url.endsWith("/3")) await blocked;
+    return new Response("slide", { headers: { "content-type": "image/png" } });
+  } });
+  const render = () => h.render((module, user) => module.useCreatorAccounts(user, true, null, "slideshow"));
+  let result = render(); result.select("slides"); render(); await tick();
+  assert.equal(render().account.items.length, 3);
+  h.unmount(); release(); await tick();
+  assert.equal(h.created.length, 3, "late response cannot create another blob URL");
+  assert.equal(h.revoked.length, 3);
+  assert.equal(render().account, undefined);
 });
 
 test("private videos fetch only on interest, retain the ready preview on leave and revoke it on logout", async () => {

@@ -192,8 +192,8 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
     throw new Error("Choose a supported animation duration and sound setting.");
   }
   const sound = input.generateAudio
-    ? "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add spoken words, dialogue, singing or lip-sync unless separately requested."
-    : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.";
+    ? "SOUND SETTING: ON. Preserve the timed lip and jaw movements above and generate a matching brief vocal reaction synchronized to them. If exact reaction words are explicitly supplied, voice those words; otherwise use a natural nonverbal reaction without inventing a sentence. Natural ambient sound is allowed."
+    : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Preserve every instructed lip and jaw movement, including visible word articulation, at the same timing without audible sound. Do not replace the mouth performance with a closed or motionless mouth.";
   return [
     `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",

@@ -9,7 +9,7 @@ import {
   performOpenRouterFaceSwap,
   OPENROUTER_GEMINI_3_PRO_IMAGE_MODEL,
 } from "./openrouter-gemini-image.js";
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderRequestNotSubmittedError, ProviderImageResponseError } from "./generation-provider.js";
 
 const apiKey = "test-openrouter-key";
 const testPrompt = "A photorealistic starting frame recreation with influencer identity.";
@@ -169,6 +169,21 @@ test("generateOpenRouterGeminiImage rejects when upstream returns error", async 
     ),
     /OpenRouter image generation failed with HTTP 429/,
   );
+});
+
+test("empty image responses distinguish completed outcomes from incomplete responses without leaking response text", async () => {
+  for (const finish_reason of ["stop", "content_filter", "length", "error", undefined, "tool_calls"]) {
+    await assert.rejects(generateOpenRouterGeminiImage({ prompt: testPrompt, aspectRatio: "9:16" }, {
+      apiKey, fetchImpl: async () => Response.json({ id: "gen-test-123", choices: [{ finish_reason,
+        message: { content: "PRIVATE RESPONSE TEXT", refusal: "PRIVATE REFUSAL" } }] }),
+    }), error => {
+      assert(error instanceof ProviderImageResponseError);
+      assert.equal(error.completed, ["stop", "content_filter", "length", "error"].includes(finish_reason ?? ""));
+      assert.equal(error.requestId, "gen-test-123");
+      assert.doesNotMatch(error.message, /PRIVATE/);
+      return true;
+    });
+  }
 });
 
 test("performOpenRouterFaceSwap sends two images to Stage 2 prompt and returns harmonized buffer", async () => {

@@ -1989,11 +1989,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.24737289980408067–0.49474579960816134]: Hold the glasses low at screen-left, eyes widened toward the laptop, then bring the gaze toward the lens."
+            "action": "PHASE [0.24737289980408067–0.49474579960816134]: Hold the glasses low at screen-left, eyes widened toward the laptop, then bring the gaze toward the lens. Keep the jaw open initially, then draw the lips forward into a small rounded opening and reopen the jaw as the gaze reaches the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.49474579960816134–0.7215041880231937]: Lift the keyboard hand and reach it forward toward the filming device while retaining the glasses in the other hand."
+            "action": "PHASE [0.49474579960816134–0.7215041880231937]: Lift the keyboard hand and reach it forward toward the filming device while retaining the glasses in the other hand. Briefly narrow the lip opening at the start of the reach, then drop the jaw open again before the arm reaches full extension."
           },
           {
             "phase": "middle",
@@ -2199,11 +2199,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.46–0.70]: Knit the brows and purse the lips into a smaller rounded shape while keeping the glasses on."
+            "action": "PHASE [0.46–0.70]: Knit the brows and purse the lips into a smaller rounded shape while keeping the glasses on. Bring the lips forward into a compact rounded opening, briefly narrow it further, then begin releasing the purse."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.70–0.85]: Open the mouth again and continue the wide-eyed sideways stare, grip unchanged."
+            "action": "PHASE [0.70–0.85]: Open the mouth again and continue the wide-eyed sideways stare, grip unchanged. Release the rounded lips and lower the jaw into the earlier open shape, with the lower lip relaxing downward."
           },
           {
             "phase": "ending",
@@ -2516,11 +2516,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.51–0.82]: Knit the brows and purse the lips while keeping the glasses temple at the lower lip."
+            "action": "PHASE [0.51–0.82]: Knit the brows and purse the lips as the glasses temple begins moving clear of the lower lip. Round the lips forward into a small opening while lifting the glasses tip just clear of the lower lip."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.82–1]: Move the glasses temple away from the lower lip as the jaw opens into a wide-eyed surprised reaction; keep holding the glasses below the face."
+            "action": "PHASE [0.82–1]: Move the glasses temple away from the lower lip as the jaw opens into a wide-eyed surprised reaction; keep holding the glasses below the face. Release the lip purse and lower the jaw distinctly, exposing the dark mouth opening while the glasses tip stays below it."
           }
         ],
         "camera": "Keep the close portrait camera steady.",

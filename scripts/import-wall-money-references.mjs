@@ -117,6 +117,9 @@ for (const o of objects.values()) {
   }
   console.log(`Verified ${o.key}`);
 }
+await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames(items.map(item => ({
+  ...item, filePath: path.join(stage, `${item.videoSha256}.mp4`),
+})));
 if (fs.readFileSync(textFile, "utf8") !== frozenText || fs.readFileSync(batchFile, "utf8") !== frozenBatch) throw Error("Catalog changed during upload; no activation.");
 batch.status = "published";
 atomicJsonSync(textFile, text); atomicJsonSync(batchFile, batches);

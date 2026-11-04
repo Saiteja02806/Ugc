@@ -3,46 +3,56 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import viewsRegistry from "../lib/explore/slideshow-reference-views.json" with { type: "json" };
-import { getSlideshowReferenceViews, getAllSlideshowReferenceViews } from "../lib/explore/slideshow-reference-views.ts";
+import { getSlideshowReferenceViews } from "../lib/explore/slideshow-reference-views.ts";
 
-test("slideshow views registry contains all 86 entries with valid counts and formats", () => {
-  assert.equal(viewsRegistry.items.length, 86);
+test("slideshow views registry contains only live-verified entries with real post URLs", () => {
+  assert.equal(viewsRegistry.items.length, 28);
   for (const item of viewsRegistry.items) {
-    assert.ok(
-      item.id.startsWith("explore-slideshow-") || item.id.startsWith("creator-slideshow-"),
-      `Unexpected id: ${item.id}`
-    );
+    assert.ok(item.id.startsWith("explore-slideshow-"), `Unexpected id: ${item.id}`);
     assert.ok(typeof item.title === "string" && item.title.length > 0);
-    assert.ok(typeof item.viewCount === "number" && item.viewCount >= 80000);
+    assert.ok(typeof item.sourceUrl === "string" && item.sourceUrl.length > 0);
+    assert.equal(item.status, "verified_live");
+    assert.ok(typeof item.viewCount === "number" && item.viewCount > 0);
     assert.match(item.formattedViews, /^[0-9]+(?:\.[0-9]+)?[KM]$/);
-    assert.ok(typeof item.slidesCount === "number" && item.slidesCount >= 2);
   }
 });
 
-test("getSlideshowReferenceViews retrieves exact views for published and creator slideshows", () => {
-  const published1 = getSlideshowReferenceViews("explore-slideshow-fitness-2ac394bae86d6779");
-  assert.ok(published1);
-  assert.equal(published1.formattedViews, "2.5M");
-  assert.equal(published1.viewCount, 2510000);
+test("slideshows with NO link or profile links have NO view badge (zero hallucinated views)", () => {
+  // Fitness 01 has NO link
+  const fitness01 = getSlideshowReferenceViews("explore-slideshow-fitness-2ac394bae86d6779");
+  assert.equal(fitness01, undefined);
 
-  const fullItem = getAllSlideshowReferenceViews().find(item => item.id === "explore-slideshow-fitness-2ac394bae86d6779");
-  assert.ok(fullItem);
-  assert.equal(fullItem.slidesCount, 6);
+  // Calory Tracking 01 has only a profile link (@jessicas_tt), not a specific post
+  const calory01 = getSlideshowReferenceViews("explore-slideshow-calory-tracking-4b4e24290206c567");
+  assert.equal(calory01, undefined);
 
-  const published2 = getSlideshowReferenceViews("explore-slideshow-fitness-a71a84ea4c2dc19f");
-  assert.ok(published2);
-  assert.equal(published2.formattedViews, "390K");
-
+  // Creator slideshow accounts have no public post link
   const creator1 = getSlideshowReferenceViews("creator-slideshow-01");
-  assert.ok(creator1);
-  assert.equal(creator1.formattedViews, "370K");
-
-  const creator10 = getSlideshowReferenceViews("creator-slideshow-10");
-  assert.ok(creator10);
-  assert.equal(creator10.formattedViews, "2.4M");
+  assert.equal(creator1, undefined);
 });
 
-test("recreate-catalog and creator-slideshows attach views to slideshow references", () => {
+test("getSlideshowReferenceViews retrieves exact real-time views for verified photo carousels", () => {
+  // Fitness 07 (TikTok photo carousel 7561011445400456470)
+  const fitness07 = getSlideshowReferenceViews("explore-slideshow-fitness-82f920de67e28907");
+  assert.ok(fitness07);
+  assert.equal(fitness07.verifiedLive, true);
+  assert.equal(fitness07.formattedViews, "17M");
+  assert.ok(fitness07.viewCount > 16000000);
+
+  // Focus 01 (TikTok photo carousel 7686157916675542294)
+  const focus01 = getSlideshowReferenceViews("explore-slideshow-nota-f79553cb5f15c74e");
+  assert.ok(focus01);
+  assert.equal(focus01.verifiedLive, true);
+  assert.equal(focus01.formattedViews, "43M");
+
+  // Calory Tracking 08 (TikTok photo carousel 7617820692473531670)
+  const calory08 = getSlideshowReferenceViews("explore-slideshow-calory-tracking-ee89585cf07b2853");
+  assert.ok(calory08);
+  assert.equal(calory08.verifiedLive, true);
+  assert.equal(calory08.formattedViews, "12M");
+});
+
+test("recreate-catalog and creator-slideshows attach views to slideshow references only when verified", () => {
   const catalogSource = fs.readFileSync(path.resolve("lib/explore/recreate-catalog.ts"), "utf8");
   assert.match(catalogSource, /getSlideshowReferenceViews/);
   assert.match(catalogSource, /views\s*=\s*item\.format === "slideshow"\s*\?\s*getSlideshowReferenceViews/);
@@ -55,8 +65,8 @@ test("recreate-catalog and creator-slideshows attach views to slideshow referenc
 
 test("ReferenceCard renders views badge without colliding with bottom-left slide count badge", () => {
   const workspaceSource = fs.readFileSync(path.resolve("components/explore/recreate-workspace.tsx"), "utf8");
-  // Views badge is rendered on ReferenceCard
-  assert.match(workspaceSource, /data-reference-views/);
+  // Views badge is rendered conditionally ONLY when formattedViews exists
+  assert.match(workspaceSource, /reference\.formattedViews\s*\?\s*<span data-reference-views/);
   assert.match(workspaceSource, /studio\.referenceViewsBadge/);
   assert.match(workspaceSource, /EyeIcon/);
   assert.match(workspaceSource, /reference\.formattedViews/);

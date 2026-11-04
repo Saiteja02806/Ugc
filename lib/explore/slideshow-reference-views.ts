@@ -3,20 +3,19 @@ import viewsRegistry from "./slideshow-reference-views.json" with { type: "json"
 export type SlideshowReferenceViewEntry = {
   viewCount: number;
   formattedViews: string;
+  verifiedLive?: boolean;
+  sourceUrl?: string;
 };
 
 export type SlideshowReferenceFullEntry = {
-  galleryIndex: number;
   id: string;
   title: string;
-  category: string;
-  slidesCount: number;
-  platform: "tiktok" | "internal";
+  category?: string;
+  slidesCount?: number;
   sourceUrl: string | null;
-  sourceKind: string | null;
-  coverText: string;
   viewCount: number;
   formattedViews: string;
+  status: string;
 };
 
 const viewsByReferenceId = viewsRegistry.viewsByReferenceId as Record<string, SlideshowReferenceViewEntry>;

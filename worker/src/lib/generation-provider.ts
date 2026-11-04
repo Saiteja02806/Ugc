@@ -53,11 +53,22 @@ export class ProviderOutputCollectionError extends RetryableJobError {
 export class ProviderSubmissionUncertainError extends Error {
   readonly code = "provider_submission_uncertain";
 
-  constructor() {
+  constructor(reason?: string) {
     super(
-      "The provider may have accepted this generation, so it was stopped instead of submitting a duplicate paid request.",
+      reason ?? "The provider may have accepted this generation, so it was stopped instead of submitting a duplicate paid request.",
     );
     this.name = "ProviderSubmissionUncertainError";
+  }
+}
+
+/** Received image response diagnostics. An incomplete response remains ambiguous; no automatic paid retry. */
+export class ProviderImageResponseError extends Error {
+  readonly code = "provider_image_missing";
+  constructor(public completed: boolean, public finishReason: string | null, public requestId: string | null) {
+    super(completed
+      ? `The image provider returned a completed response without an image${finishReason === "content_filter" ? " (content filter)" : ""}. No usable image was returned. [finish=${finishReason}; request=${requestId ?? "unavailable"}]`
+      : `The image provider returned no image and did not confirm a completed result. This request will not be submitted again automatically. [finish=${finishReason ?? "unknown"}; request=${requestId ?? "unavailable"}]`);
+    this.name = "ProviderImageResponseError";
   }
 }
 
@@ -140,7 +151,7 @@ export async function persistProviderSubmissionFailure(params: {
     jobId: params.jobId,
     operationKey: params.operationKey,
   });
-  throw new ProviderSubmissionUncertainError();
+  throw new ProviderSubmissionUncertainError(params.error instanceof ProviderImageResponseError ? params.error.message : undefined);
 }
 
 export function toProviderPollingRetry(error: unknown) {
@@ -158,6 +169,7 @@ export function toProviderPollingRetry(error: unknown) {
 }
 
 function classifySubmissionFailure(error: unknown) {
+  if (error instanceof ProviderImageResponseError) return error.completed ? "permanent_rejection" : "uncertain";
   if (isProviderBalanceFailure(getStringErrorField(error, "code"), getErrorMessage(error))) {
     return "permanent_rejection";
   }

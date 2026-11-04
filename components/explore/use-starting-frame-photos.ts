@@ -4,8 +4,7 @@ import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
-import { hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
-import { startingFramePhotoKey, readStartingFramePhotos, serializeStartingFramePhotos } from "@/lib/explore/starting-frame-photo-selection";
+import { STARTING_FRAME_PHOTO_SELECTION_LIMIT, startingFramePhotoKey, readStartingFramePhotos, serializeStartingFramePhotos } from "@/lib/explore/starting-frame-photo-selection";
 
 const photoStore = (tabScoped: boolean) => tabScoped ? sessionStorage : localStorage;
 
@@ -14,7 +13,7 @@ const photoStore = (tabScoped: boolean) => tabScoped ? sessionStorage : localSto
 export function useStartingFramePhotos(frame: HookStartingFrameSelection | undefined, model: string, enabled: boolean,
   apply: (photos: AIStudioReferenceMedia[]) => void, tabScoped = false) {
   const key = frame ? startingFramePhotoKey(frame) : null;
-  const limit = hookStartingFrameFaceReferenceLimit(model);
+  const limit = STARTING_FRAME_PHOTO_SELECTION_LIMIT;
   const loadKey = enabled && key && limit ? `${key}:${model}:${tabScoped ? "tab" : "shared"}` : null;
   const [state, setState] = useState<{ key: string | null; pending: boolean; error: string | null }>({ key: null, pending: false, error: null });
   const applyRef = useRef(apply), revision = useRef(0);

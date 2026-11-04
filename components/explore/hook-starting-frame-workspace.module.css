@@ -110,6 +110,23 @@
 /* Recreate keeps source, person/settings and selected result visible together. */
 .dialog.recreationDialog { --preview-height: clamp(220px, calc(100dvh - 430px), 400px); width: min(1100px, calc(100vw - 32px)); max-width: min(1100px, calc(100vw - 32px)); overflow: hidden; border-radius: 26px; border-color: color-mix(in srgb, var(--foreground) 10%, transparent); box-shadow: 0 24px 80px #0000003d, 0 2px 12px #00000014; }
 .recreationContent { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
+.dialog:has(.preparationNavigation) { height: min(760px, calc(100dvh - 32px)); }
+.preparationNavigation { flex: none; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+.preparationTabs { display: flex; gap: 6px; }
+.preparationTabs > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 8px 14px; border-radius: 10px; font-size: 13px; color: var(--muted-foreground); }
+.preparationTabs > button[aria-selected="true"] { background: color-mix(in srgb, var(--foreground) 10%, transparent); color: var(--foreground); }
+.preparationTabs > button:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
+.preparationTabs > button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.preparationTabs svg { width: 14px; height: 14px; }
+.preparationProgress { margin-top: 8px; font-size: 11px; line-height: 1.5; color: var(--muted-foreground); }
+.scriptPanel { max-width: 760px; margin-inline: auto; padding: 24px; }
+.scriptPanel > section { border: 0; padding: 0; }
+.body[hidden], .scriptPanel[hidden] { display: none; }
+@media (max-width: 560px) {
+  .preparationNavigation { padding: 10px 16px; }
+  .preparationTabs > button { flex: 1; padding-inline: 6px; gap: 6px; font-size: 12px; }
+  .scriptPanel { padding: 20px 16px; }
+}
 .openingStatus { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 200px; padding: 32px; color: var(--muted-foreground); }
 .openingStatus svg { width: 18px; height: 18px; }
 .recreationDialog .header { padding: 20px 56px 16px 24px; border-bottom-color: color-mix(in srgb, var(--foreground) 7%, transparent); }

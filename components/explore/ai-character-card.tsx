@@ -8,7 +8,7 @@ import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicato
 import styles from "@/components/explore/explore-workspace.module.css";
 import { cn } from "@/lib/utils";
 
-const CHARACTER_COVER = "/explore/covers/ai-character-promo-a9175c67de7d.mp4";
+const CHARACTER_COVER = "/explore/covers/ai-character-promo-08c4637b2b16.mp4";
 const CHARACTER_POSTER = "/explore/covers/ai-character-promo-opening-5d3b46093a26.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {

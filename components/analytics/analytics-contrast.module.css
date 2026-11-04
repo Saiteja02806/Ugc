@@ -1,0 +1,26 @@
+/* Keep contrast adjustments local to Analytics; other workspaces retain their palette. */
+.workspace {
+  --analytics-views: #b94320;
+  --analytics-reach: #b31c61;
+  --analytics-interactions: #0369a1;
+}
+
+:global(.dark) .workspace {
+  --background: #101012;
+  --card: #19191d;
+  --card-muted: #131316;
+  --surface-subtle: #131316;
+  --border: #3c3c43;
+  --muted: #c5c9d3;
+  --muted-subtle: #adb4c2;
+  --muted-foreground: #adb4c2;
+  --analytics-views: #ff956f;
+  --analytics-reach: #f58cb7;
+  --analytics-interactions: #6dcdf5;
+}
+
+/* The shared mark defaults to black. Only Analytics opts into this fill,
+   including its portaled account menu, without recoloring other brand marks. */
+.tiktok {
+  fill: var(--foreground-strong);
+}

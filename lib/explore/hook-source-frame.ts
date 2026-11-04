@@ -214,7 +214,7 @@ export function createHookSourceFrameService(options: {
       return { ...checkedFrame(object.bytes, source), referenceId, workflow: "hook", frameIndex: object.frame.index, frameTimeSeconds: object.frame.timeSeconds };
     }
     const source = options.items ? checkedSource(referenceId, options.items()) : await resolveStartingFrameSource(referenceId);
-    if (!options.items && source.workflow === "talking_head") {
+    if (!options.items && !options.storedOnly && source.workflow === "talking_head") {
       const prepared = talkingFrames.items.find(item => item.id === referenceId && item.sourceSha256 === source.videoSha256);
       if (!prepared || prepared.frameIndex !== 0 || prepared.frameTimeSeconds !== 0 || prepared.path !== `/explore/talking-head-frames/v1/${referenceId}.png`) throw new HookSourceFrameError("This reference's starting frame needs preparation.", 503);
       const frame = checkedFrame(await readFile(join(process.cwd(), "public/explore/talking-head-frames/v1", `${referenceId}.png`)), source);
@@ -249,7 +249,7 @@ export function createHookSourceFrameService(options: {
       work = (async () => {
         const wallStore = source.workflow === "wall_text" && (!options.items || options.wallFrameStore)
           ? options.wallFrameStore ?? (await import("./hook-source-frame-store.ts")).createStoredHookFrames() : null;
-        if (wallStore) {
+        if (wallStore && !options.storedOnly) {
           const stored = await wallStore.read(source.videoSha256);
           if (stored) return remember(key, checkedFrame(stored.png, source));
         }
@@ -291,5 +291,8 @@ export function createHookSourceFrameService(options: {
 }
 
 export const getHookSourceFrame = createHookSourceFrameService();
-/** Server-only t=0 resolver. It never changes the existing curated preview path. */
-export const getHookOpeningSourceFrame = createHookSourceFrameService({ useCuratedFrame: false });
+/** Interactive openings read prepared storage only; extraction belongs to catalogue preparation. */
+export function createHookOpeningSourceFrameService(options: Parameters<typeof createHookSourceFrameService>[0] = {}) {
+  return createHookSourceFrameService({ ...options, useCuratedFrame: false, storedOnly: true });
+}
+export const getHookOpeningSourceFrame = createHookOpeningSourceFrameService();

@@ -30,14 +30,23 @@ const geistSans = localFont({
       style: "normal",
       weight: "100 900",
     },
-    {
-      path: "../node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2",
-      style: "italic",
-      weight: "100 900",
-    },
   ],
   display: "swap",
   variable: "--font-geist-sans",
+  declarations: [{ prop: "font-family", value: "geistSans" }],
+});
+
+// Register italic in the same family, but let actual italic text request it.
+// next/font's preload option applies to an entire call, not individual sources.
+const geistSansItalic = localFont({
+  src: "../node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2",
+  style: "italic",
+  weight: "100 900",
+  display: "swap",
+  preload: false,
+  adjustFontFallback: false,
+  declarations: [{ prop: "font-family", value: "geistSans" }],
+  variable: "--font-geist-sans-italic",
 });
 
 // Keep the original workspace faces/variables available, but request them only
@@ -176,7 +185,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${brandSerif.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${arialBoldWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${geistSansItalic.variable} ${brandSerif.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${arialBoldWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,

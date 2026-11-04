@@ -5,6 +5,7 @@ import type { HookStartingFrameSelection } from "./hook-keyframe-client";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
 import { startingFrameFaceReferenceError } from "./starting-frame-animation-input";
 import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline";
+import { talkingHeadScriptInputError } from "./talking-head-script-input";
 
 export const WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -15,6 +16,7 @@ export type WorkflowGenerationDraft = {
   kind: WorkflowKind;
   workflow?: "talking_head" | "hook" | "phone" | "wall_text";
   instructions: string;
+  talkingHeadScript?: string;
   /** Editable reference directions shown beside the user's own instructions. */
   referenceInstructions?: string;
   settings: WorkflowGenerationSettings;
@@ -37,7 +39,8 @@ export type WorkflowGenerationBatch = {
 const JOB_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 
-export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions">) {
+export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions" | "talkingHeadScript">) {
+  if (draft.talkingHeadScript !== undefined) return normalizeAIStudioPrompt(draft.referenceInstructions ?? "") || "Perform the approved talking-head script naturally in the approved scene. Keep the camera stable with subtle gestures.";
   const own = normalizeAIStudioPrompt(draft.instructions);
   const reference = normalizeAIStudioPrompt(draft.referenceInstructions ?? "");
   return reference ? `Reference instructions:\n${reference}\n\nYour instructions:\n${own}` : own;
@@ -54,6 +57,11 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   // stale reference until the user replaces or removes the rejected input.
   if (draft.referencesError) return draft.referencesError;
   if (!normalizeAIStudioPrompt(draft.instructions)) return "Write your instructions before generating a video.";
+  if (draft.talkingHeadScript !== undefined) {
+    if (draft.workflow !== "talking_head" || !draft.startingFrame) return "Choose an approved Talking Head starting frame for this script.";
+    const scriptError = talkingHeadScriptInputError(draft.talkingHeadScript, draft.settings.duration, draft.startingFrame.generateAudio);
+    if (scriptError) return scriptError;
+  }
   const prompt = workflowGenerationPrompt(draft);
   const lengthError = getAIStudioPromptLengthError(prompt, draft.settings.model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH);
   if (lengthError) return lengthError;
@@ -186,11 +194,12 @@ export function createWorkflowGenerationClient(dependencies: {
       // Snapshot the click, so later edits cannot change an in-flight request.
       const settings = { ...draft.settings };
       const prompt = workflowGenerationPrompt(draft);
+      const talkingHeadScript = draft.talkingHeadScript;
       const images = (draft.startingFrame ? draft.startingFramePhotos ?? [] : selectedWorkflowImages(draft)).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
       const startingFrame = draft.startingFrame ? { ...draft.startingFrame } : null;
-      const fingerprint = JSON.stringify({ kind: draft.kind, prompt, settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url, startingFrame: startingFrame ? { assetId: startingFrame.assetId, jobId: startingFrame.jobId, referenceId: startingFrame.referenceId, generateAudio: startingFrame.generateAudio } : null });
+      const fingerprint = JSON.stringify({ kind: draft.kind, prompt, ...(talkingHeadScript !== undefined ? { talkingHeadScript } : {}), settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url, startingFrame: startingFrame ? { assetId: startingFrame.assetId, jobId: startingFrame.jobId, referenceId: startingFrame.referenceId, generateAudio: startingFrame.generateAudio } : null });
       if (pending?.attempted && pending.fingerprint !== fingerprint) {
         throw new Error("The previous request has not been confirmed. Restore its original instructions, references and settings, then retry to recover its saved status before starting a different request.");
       }
@@ -219,6 +228,7 @@ export function createWorkflowGenerationClient(dependencies: {
           const videoReference = await prepareMedia(video, "video"), audioReference = await prepareMedia(audio, "audio");
           submission.body = JSON.stringify({
             prompt,
+            ...(talkingHeadScript !== undefined ? { talkingHeadScript } : {}),
             model: settings.model,
             durationSeconds: settings.duration,
             quantity: settings.quantity,

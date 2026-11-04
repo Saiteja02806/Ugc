@@ -1,0 +1,1497 @@
+{
+  "version": 1,
+  "policy": "full-source-asr-plus-editable-hook-draft-v1",
+  "items": [
+    {
+      "referenceId": "talking-car-story",
+      "sourceSha256": "1c46b8fd23de99bf7bb5b21af96ad4d15fd17a1ff628662bbc24381560d216e1",
+      "durationMs": 9467,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:31.721Z",
+      "transcriptSha256": "686bdeff028822ce82f95ac27b9b3426f2e8f7401e3fd8ef30a783884b3d128d",
+      "fullText": "If I lost everything and I needed to make $20,000 by the end of the month, this is exactly what I would do. All you need for this is your phone and preferably a brain smarter than a 5-year-old, but that part is optional.",
+      "hookText": "If I lost everything and I needed to make $20,000 by the end of the month, this is exactly what I would do. All you need for this is your phone and preferably a brain smarter than a 5-year-old, but that part is optional.",
+      "hookStartMs": 0,
+      "hookEndMs": 9200,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 44,
+      "segments": [
+        {
+          "text": "If I lost everything and I needed to make $20,000 by the end of the month, this is exactly what I would do.",
+          "startMs": 0,
+          "endMs": 4800
+        },
+        {
+          "text": "All you need for this is your phone and preferably a brain smarter than a 5-year-old, but that part is optional.",
+          "startMs": 5120,
+          "endMs": 9200
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-warm-story",
+      "sourceSha256": "3886962301192b9fb45106d3817a2268a20714176e51dd759eef985ea80857f0",
+      "durationMs": 35267,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:35.534Z",
+      "transcriptSha256": "15e88cd60ac125828775a24ec7f61bbf2b702c73b6a46dcb5ccff906fa7fe07b",
+      "fullText": "Universe, send the girl on the other side of this screen so much money that she has more money than is physically possible to spend. Make the girl on the other side of the screen earn 10k a week. Bless the girl on the other side of the screen so that she can go to Pilates whenever she wants, drive her Porsche to get her matcha, she lives in the penthouse, she makes the millions. Give her all of it. Let her spoil whoever she wants, whenever she wants, travel wherever. I've been listening to these audio visualizations on the Stella app and I've been having 10k weeks back to back. Try it for yourself, see what happens, and may the universe bless you with abundance, diva.",
+      "hookText": "Universe, send the girl on the other side of this screen so much money that she has more money than is physically possible to spend. Make the girl on the other side of the screen earn 10k a week. Bless the girl on the other side of the screen so that she can go to Pilates whenever she wants, drive her Porsche to get her matcha, she lives in the penthouse, she makes the millions. Give her all of it. Let her spoil whoever she wants, whenever she wants, travel wherever.",
+      "hookStartMs": 0,
+      "hookEndMs": 24780,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 9,
+      "hookWordCount": 91,
+      "segments": [
+        {
+          "text": "Universe, send the girl on the other side of this screen so much money that she has more money than",
+          "startMs": 0,
+          "endMs": 5160
+        },
+        {
+          "text": "is physically possible to spend. Make the girl on the other side of the screen earn 10k a week.",
+          "startMs": 5160,
+          "endMs": 9880
+        },
+        {
+          "text": "Bless the girl on the other side of the screen so that she can go to Pilates whenever she wants,",
+          "startMs": 10400,
+          "endMs": 15120
+        },
+        {
+          "text": "drive her Porsche to get her matcha, she lives in the penthouse, she makes the millions. Give her",
+          "startMs": 15440,
+          "endMs": 20080
+        },
+        {
+          "text": "all of it. Let her spoil whoever she wants, whenever she wants, travel wherever. I've",
+          "startMs": 20080,
+          "endMs": 25220
+        },
+        {
+          "text": "been listening to these audio visualizations on the Stella app and I've been having 10k weeks",
+          "startMs": 25220,
+          "endMs": 29480
+        },
+        {
+          "text": "back to back. Try it for yourself, see what happens, and may the universe bless you with",
+          "startMs": 29480,
+          "endMs": 34020
+        },
+        {
+          "text": "abundance, diva.",
+          "startMs": 34020,
+          "endMs": 34380
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-outdoor-discovery",
+      "sourceSha256": "7a7d511452ae50b99d82d6b6bfbc06d6eaa308d7d7c6b4118401d50e45b55956",
+      "durationMs": 14140,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:38.200Z",
+      "transcriptSha256": "e5a5208d8417d04f71f8ad9f97286e21eeac05088a3f8d451a88ffad0ef9e27b",
+      "fullText": "Is this for real? Look at this. The reason you can see weird things on his legs and a boxy look around his butt is because he's wearing a bionic exoskeleton. This is what that looks like. This is what he's wearing. The end of it. Like this is because he had",
+      "hookText": "Is this for real? Look at this. The reason you can see weird things on his legs and a boxy look around his butt is because he's wearing a bionic exoskeleton. This is what that looks like. This is what he's wearing. The end of it. Like this is because he had",
+      "hookStartMs": 0,
+      "hookEndMs": 14060,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 1,
+      "hookWordCount": 52,
+      "segments": [
+        {
+          "text": "Is this for real? Look at this.",
+          "startMs": 0,
+          "endMs": 1260
+        },
+        {
+          "text": "The reason you can see weird things on his legs and a boxy look around his butt",
+          "startMs": 1300,
+          "endMs": 5320
+        },
+        {
+          "text": "is because he's wearing a bionic exoskeleton.",
+          "startMs": 5320,
+          "endMs": 8120
+        },
+        {
+          "text": "This is what that looks like.",
+          "startMs": 8440,
+          "endMs": 9700
+        },
+        {
+          "text": "This is what he's wearing.",
+          "startMs": 10040,
+          "endMs": 10940
+        },
+        {
+          "text": "The end of it.",
+          "startMs": 11260,
+          "endMs": 12060
+        },
+        {
+          "text": "Like this is because he had",
+          "startMs": 12360,
+          "endMs": 14060
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-outdoor-reaction",
+      "sourceSha256": "5e06af86ed7c05fd5016747f5a4cacac93b6693cdc6b8329600a025058aa0758",
+      "durationMs": 10355,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:41.648Z",
+      "transcriptSha256": "61b993ff17e6cdfe6770845665d0b46d8fe7258859a174c0c888a7c000b78719",
+      "fullText": "Yo, so apparently gmail is being sued and they owe us 425 million dollars So if your account ends in that you were doing anyway, it's in their privacy policy, but the jury",
+      "hookText": "Yo, so apparently gmail is being sued and they owe us 425 million dollars So if your account ends in that you were doing anyway, it's in their privacy policy, but the jury",
+      "hookStartMs": 0,
+      "hookEndMs": 10320,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 33,
+      "segments": [
+        {
+          "text": "Yo, so apparently gmail is being sued and they owe us 425 million dollars",
+          "startMs": 600,
+          "endMs": 6140
+        },
+        {
+          "text": "So if your account ends in that you were doing anyway, it's in their privacy policy, but the jury",
+          "startMs": 6140,
+          "endMs": 10320
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-room-explainer",
+      "sourceSha256": "56279887d29bf626568bee9625c91de14c7f9fad5d22ddcac4181097d3948e39",
+      "durationMs": 7967,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:44.379Z",
+      "transcriptSha256": "615d255d23cd1bd14719bb2f324e3ef0cd5ef4e2676f63e96ab605b0e2ded66e",
+      "fullText": "Okay, if you're going to nursing, pharmacy, radiology, or pre-med, or really any other healthcare profession, you're going to need these websites. Trust me.",
+      "hookText": "Okay, if you're going to nursing, pharmacy, radiology, or pre-med, or really any other healthcare profession, you're going to need these websites. Trust me.",
+      "hookStartMs": 0,
+      "hookEndMs": 7800,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 24,
+      "segments": [
+        {
+          "text": "Okay, if you're going to nursing, pharmacy, radiology, or pre-med, or really any other healthcare profession,",
+          "startMs": 0,
+          "endMs": 5360
+        },
+        {
+          "text": "you're going to need these websites. Trust me.",
+          "startMs": 5800,
+          "endMs": 7800
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-car-explainer",
+      "sourceSha256": "dca547f20d9ea453cbd99f5e0cde2a475016da41633396e353c93723becd67b9",
+      "durationMs": 46416,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:48.210Z",
+      "transcriptSha256": "179ae751a74f5740ae80b198449b2408fd7b42f5ef2b5eb15c791de259f12607",
+      "fullText": "negative side effects of vaping that i didn't realize were because of vaping until i quit number one is brain fog and trouble concentrating i literally cannot hold a single thought to save my life i had trouble concentrating on literally anything and now that i've stopped vaping, i- the mental clarity is insane okay the next one is crazy because i literally went to the doctor for this digestive issues, stomach pain constantly, nicotine is affecting your stomach since i've stopped vaping, my stomach- i haven't had any stomach pain this week i'm still tracking my journey on vape quitter which is helping me a lot as well but one last thing i noticed was also anger, constant anger which was tied in with anxiety so just being angry all the time and having to find my vape to calm my stress, calm my anger, which just made it worse if you're looking to quit, here is your sign",
+      "hookText": "negative side effects of vaping that i didn't realize were because of vaping until i quit",
+      "hookStartMs": 0,
+      "hookEndMs": 4080,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 4,
+      "hookWordCount": 16,
+      "segments": [
+        {
+          "text": "negative side effects of vaping that i didn't realize were because of vaping until i quit",
+          "startMs": 0,
+          "endMs": 4080
+        },
+        {
+          "text": "number one is brain fog and trouble concentrating",
+          "startMs": 4080,
+          "endMs": 6880
+        },
+        {
+          "text": "i literally cannot hold a single thought to save my life",
+          "startMs": 7120,
+          "endMs": 10680
+        },
+        {
+          "text": "i had trouble concentrating on literally anything",
+          "startMs": 10680,
+          "endMs": 13340
+        },
+        {
+          "text": "and now that i've stopped vaping, i- the mental clarity is insane",
+          "startMs": 13560,
+          "endMs": 17620
+        },
+        {
+          "text": "okay the next one is crazy because i literally went to the doctor for this",
+          "startMs": 17620,
+          "endMs": 20620
+        },
+        {
+          "text": "digestive issues, stomach pain constantly, nicotine is affecting your stomach",
+          "startMs": 20780,
+          "endMs": 25380
+        },
+        {
+          "text": "since i've stopped vaping, my stomach- i haven't had any stomach pain this week",
+          "startMs": 25380,
+          "endMs": 28860
+        },
+        {
+          "text": "i'm still tracking my journey on vape quitter which is helping me a lot as well",
+          "startMs": 28860,
+          "endMs": 32180
+        },
+        {
+          "text": "but one last thing i noticed was also anger, constant anger",
+          "startMs": 32180,
+          "endMs": 35080
+        },
+        {
+          "text": "which was tied in with anxiety so just being angry all the time and having to",
+          "startMs": 35200,
+          "endMs": 39580
+        },
+        {
+          "text": "find my vape to calm my stress, calm my anger, which just",
+          "startMs": 39580,
+          "endMs": 43780
+        },
+        {
+          "text": "made it worse if you're looking to quit, here is your sign",
+          "startMs": 43780,
+          "endMs": 46280
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-discovery",
+      "sourceSha256": "44b3755fb54b4748618a5f445d0d57c52b658dd492d2438869649892dfa51999",
+      "durationMs": 2207,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:50.665Z",
+      "transcriptSha256": "5f78dea8620e63b4dc88d14fea177502f4a13191e381c1044fbc2bdecc2c1792",
+      "fullText": "Um, this is crazy.",
+      "hookText": "Um, this is crazy.",
+      "hookStartMs": 0,
+      "hookEndMs": 1340,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 4,
+      "segments": [
+        {
+          "text": "Um, this is crazy.",
+          "startMs": 0,
+          "endMs": 1340
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-surprised-story",
+      "sourceSha256": "19004ffd28c04c4cc1239da185e7b254a804a0584d83ed6d1839f1e4da837894",
+      "durationMs": 1567,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:52.703Z",
+      "transcriptSha256": "63b94e1d514a8d5c793574b08c07c8a3ff29de8a0015a2b503c5f568fad84bee",
+      "fullText": "No way!",
+      "hookText": "No way!",
+      "hookStartMs": 0,
+      "hookEndMs": 1000,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 2,
+      "segments": [
+        {
+          "text": "No way!",
+          "startMs": 0,
+          "endMs": 1000
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-mug-story",
+      "sourceSha256": "1d143078e4496d1d4045f1f2ca8798be8c94bb4d4b07328a442f6633a63dc6a5",
+      "durationMs": 27867,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:51:56.089Z",
+      "transcriptSha256": "e67129c86d5597c138356f89b2bbc80d045f96a6b2c835883830ce5444f096da",
+      "fullText": "I didn't procrastinate for exams because I was dumb, I procrastinated because I was overwhelmed and afraid of failure, but this is how I went from being a complete mess to having my life together academically. During my freshman year, I could not force myself to study, like I knew that I had to, I just didn't know where to start, what to focus on, or if I was even studying the right stuff so I would just avoid it altogether. But one night when I was up at 3am cramming, my roommate showed me this way of studying that actually made me feel calm instead of panicked and ever since then, I've gotten straight A's and 8 hours of sleep.",
+      "hookText": "I didn't procrastinate for exams because I was dumb, I procrastinated because I was overwhelmed and afraid of failure, but this is how I went from being a complete mess to having my life together academically. During my freshman year, I could not force myself to study, like I knew that I had to, I just didn't know where to start, what to focus on, or if I was even studying the right stuff so I would just avoid it altogether. But one night when I was up at 3am cramming, my roommate showed me this way of studying that actually made me feel calm instead of panicked and ever since then, I've gotten straight A's and 8 hours of sleep.",
+      "hookStartMs": 0,
+      "hookEndMs": 27780,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 4,
+      "hookWordCount": 121,
+      "segments": [
+        {
+          "text": "I didn't procrastinate for exams because I was dumb, I procrastinated because I was overwhelmed",
+          "startMs": 0,
+          "endMs": 4140
+        },
+        {
+          "text": "and afraid of failure, but this is how I went from being a complete mess to having my life",
+          "startMs": 4140,
+          "endMs": 8280
+        },
+        {
+          "text": "together academically.",
+          "startMs": 8400,
+          "endMs": 9200
+        },
+        {
+          "text": "During my freshman year, I could not force myself to study, like I knew that I had to,",
+          "startMs": 9460,
+          "endMs": 13060
+        },
+        {
+          "text": "I just didn't know where to start, what to focus on, or if I was even studying the right",
+          "startMs": 13140,
+          "endMs": 16700
+        },
+        {
+          "text": "stuff so I would just avoid it altogether.",
+          "startMs": 16700,
+          "endMs": 18300
+        },
+        {
+          "text": "But one night when I was up at 3am cramming, my roommate showed me this way of studying",
+          "startMs": 18400,
+          "endMs": 21840
+        },
+        {
+          "text": "that actually made me feel calm instead of panicked and ever since then, I've gotten",
+          "startMs": 21840,
+          "endMs": 25820
+        },
+        {
+          "text": "straight A's and 8 hours of sleep.",
+          "startMs": 25820,
+          "endMs": 27780
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-sophia-designsthings",
+      "sourceSha256": "cb8b08f63bd15c4ef512e83741893dd5ab856e017b27b8b7adb2dbc7aa68bdba",
+      "durationMs": 40434,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:01.919Z",
+      "transcriptSha256": "f5de1ff8b6032d9d4a0fab6ac6a17894379de35416dfd932ff1b142563948b72",
+      "fullText": "I just found a side hustle that 13 year olds are doing and printing. Even if you're a complete idiot, you can do this. Let me show you how they're doing it because it's ridiculously easy. First, make sure you save this video because I know you're not going to remember. Basically, you're going to make an app. And I know that sounds complicated, but there's an A.I. that will do it for you. So you just have to have the idea and that you can get from chat GPT. So go to chat GPT, get it to give you a list of app ideas. Pick the one that you like the best. Go to natively dot dev. Just describe the app idea that you got from chat GPT. Literally just wait like five minutes and it makes the entire app for you. You can test it and you can even put it on your phone with the QR code to actually use it for real. And then you can publish it to the app store. Then if you add a paywall, you'll be able to make money every time someone downloads your app and then you're done. If you want me to show you how to add the paywall, comment, follow. And I'll do that in the next one.",
+      "hookText": "I just found a side hustle that 13 year olds are doing and printing. Even if you're a complete idiot, you can do this. Let me show you how they're doing it because it's ridiculously easy.",
+      "hookStartMs": 0,
+      "hookEndMs": 7320,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 10,
+      "hookWordCount": 36,
+      "segments": [
+        {
+          "text": "I just found a side hustle that 13 year olds are doing and printing.",
+          "startMs": 0,
+          "endMs": 3280
+        },
+        {
+          "text": "Even if you're a complete idiot, you can do this.",
+          "startMs": 3560,
+          "endMs": 5120
+        },
+        {
+          "text": "Let me show you how they're doing it because it's ridiculously easy.",
+          "startMs": 5200,
+          "endMs": 7320
+        },
+        {
+          "text": "First, make sure you save this video because I know you're not going to remember.",
+          "startMs": 7480,
+          "endMs": 9500
+        },
+        {
+          "text": "Basically, you're going to make an app.",
+          "startMs": 9900,
+          "endMs": 10700
+        },
+        {
+          "text": "And I know that sounds complicated, but there's an A.I.",
+          "startMs": 10740,
+          "endMs": 12820
+        },
+        {
+          "text": "that will do it for you.",
+          "startMs": 12820,
+          "endMs": 13860
+        },
+        {
+          "text": "So you just have to have the idea and that you can get from chat GPT.",
+          "startMs": 13860,
+          "endMs": 16680
+        },
+        {
+          "text": "So go to chat GPT, get it to give you a list of app ideas.",
+          "startMs": 16700,
+          "endMs": 19340
+        },
+        {
+          "text": "Pick the one that you like the best.",
+          "startMs": 19520,
+          "endMs": 20620
+        },
+        {
+          "text": "Go to natively dot dev.",
+          "startMs": 20820,
+          "endMs": 21820
+        },
+        {
+          "text": "Just describe the app idea that you got from chat GPT.",
+          "startMs": 21920,
+          "endMs": 24300
+        },
+        {
+          "text": "Literally just wait like five minutes and it makes the entire app for you.",
+          "startMs": 24440,
+          "endMs": 27620
+        },
+        {
+          "text": "You can test it and you can even put it on your phone",
+          "startMs": 27620,
+          "endMs": 29560
+        },
+        {
+          "text": "with the QR code to actually use it for real.",
+          "startMs": 29560,
+          "endMs": 31420
+        },
+        {
+          "text": "And then you can publish it to the app store.",
+          "startMs": 31500,
+          "endMs": 32880
+        },
+        {
+          "text": "Then if you add a paywall, you'll be able to make money",
+          "startMs": 33040,
+          "endMs": 34860
+        },
+        {
+          "text": "every time someone downloads your app and then you're done.",
+          "startMs": 34940,
+          "endMs": 37060
+        },
+        {
+          "text": "If you want me to show you how to add the paywall, comment, follow.",
+          "startMs": 37160,
+          "endMs": 39280
+        },
+        {
+          "text": "And I'll do that in the next one.",
+          "startMs": 39400,
+          "endMs": 40340
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-emmgr4c3",
+      "sourceSha256": "ed5d74058f3cb9539b8812a42be3c37b69dd6e28201d4e5ba4016ba89372f0fe",
+      "durationMs": 33877,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:04.705Z",
+      "transcriptSha256": "a57409d2214c77ddb82cd0ea89ebccc71622b11be35429c5fe0bea5eff4199d9",
+      "fullText": "If you cruise at least once per year and you're not doing this, then you're basically leaving money on the table. As an avid cruiser, there are only a couple of things I do before a trip that are like mandatory now, but this is one of them and I'll show you. I will always go to this app and put my booking code in there and watch the price drop because you can file a claim for more money back. So when I get this money back, a lot of times I'll put that toward my next cruise and I'll have multiple booked at once and just continue to get money back when the price is dropping and they're trying to like get rid of the cabins really quick.",
+      "hookText": "If you cruise at least once per year and you're not doing this, then you're basically leaving money on the table. As an avid cruiser, there are only a couple of things I do before a trip that are like mandatory now, but this is one of them and I'll show you.",
+      "hookStartMs": 0,
+      "hookEndMs": 12720,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 6,
+      "hookWordCount": 52,
+      "segments": [
+        {
+          "text": "If you cruise at least once per year and you're not doing this,",
+          "startMs": 0,
+          "endMs": 3100
+        },
+        {
+          "text": "then you're basically leaving money on the table.",
+          "startMs": 3180,
+          "endMs": 4920
+        },
+        {
+          "text": "As an avid cruiser,",
+          "startMs": 5520,
+          "endMs": 6260
+        },
+        {
+          "text": "there are only a couple of things I do before a trip that are like mandatory now,",
+          "startMs": 6400,
+          "endMs": 9880
+        },
+        {
+          "text": "but this is one of them and I'll show you.",
+          "startMs": 9960,
+          "endMs": 12720
+        },
+        {
+          "text": "I will always go to this app and put my booking code in there and",
+          "startMs": 12880,
+          "endMs": 18060
+        },
+        {
+          "text": "watch the price drop because you can file a claim for more money back.",
+          "startMs": 18080,
+          "endMs": 22080
+        },
+        {
+          "text": "So when I get this money back,",
+          "startMs": 22120,
+          "endMs": 23620
+        },
+        {
+          "text": "a lot of times I'll put that toward my next cruise and I'll have multiple",
+          "startMs": 23620,
+          "endMs": 27480
+        },
+        {
+          "text": "booked at once and just continue to get money back when the price is dropping",
+          "startMs": 27480,
+          "endMs": 31340
+        },
+        {
+          "text": "and they're trying to like get rid of the cabins really quick.",
+          "startMs": 31340,
+          "endMs": 33620
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-tessam-bible",
+      "sourceSha256": "cd70ead6e92ea81cf2d9adcc94c98d8d12ae8bb500e6e290d778b6a2eb1993aa",
+      "durationMs": 15834,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:06.048Z",
+      "transcriptSha256": "4f359809ba3a85e03b6ba9824d620f8795a217d1c15ea743edea40191b84b310",
+      "fullText": "God blessed the girl who read through the entire Bible but made it sound like tea. Listen to this.",
+      "hookText": "God bless the girl who read through the entire Bible but made it sound like tea. Listen to this.",
+      "hookStartMs": 0,
+      "hookEndMs": 4900,
+      "review": "draft",
+      "corrections": [
+        "Opening 'God bless' corroborated by visible source captions; raw transcript preserved."
+      ],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 19,
+      "segments": [
+        {
+          "text": "God blessed the girl who read through the entire Bible but made it sound like tea.",
+          "startMs": 0,
+          "endMs": 3880
+        },
+        {
+          "text": "Listen to this.",
+          "startMs": 4140,
+          "endMs": 4900
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-websites-explainer",
+      "sourceSha256": "35cae40f926025ec664d9d0a30efa846f5e48bfdb8ec6970cd9cc95fb9bda2c5",
+      "durationMs": 26956,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:11.277Z",
+      "transcriptSha256": "e63c232aaad794553e2b5e9dafffb3b71a745d01cedcfd3d31705f4792c2446e",
+      "fullText": "Top 3 websites the government doesn't want you knowing about. The first one is called Doolo. It'll give you access to streaming services for free, including the new Spider-Man movie and the Odyssey. Go to ron.ai, click on App Builder, paste in your app idea, and click build. Give it a couple minutes, and just like that, you can build unlimited apps using ron.ai. Go to this website. It'll give you access to every single premium version of any AI that's out there. Comment app for the full breakdown.",
+      "hookText": "Top 3 websites the government doesn't want you knowing about.",
+      "hookStartMs": 0,
+      "hookEndMs": 2740,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "wordTimingWarnings": 4,
+      "hookWordCount": 10,
+      "segments": [
+        {
+          "text": "Top 3 websites the government doesn't want you knowing about.",
+          "startMs": 0,
+          "endMs": 2740
+        },
+        {
+          "text": "The first one is called Doolo.",
+          "startMs": 2900,
+          "endMs": 4160
+        },
+        {
+          "text": "It'll give you access to streaming services for free, including the new Spider-Man movie",
+          "startMs": 4300,
+          "endMs": 9160
+        },
+        {
+          "text": "and the Odyssey.",
+          "startMs": 9160,
+          "endMs": 10020
+        },
+        {
+          "text": "Go to ron.ai, click on App Builder, paste in your app idea, and click build.",
+          "startMs": 10280,
+          "endMs": 14540
+        },
+        {
+          "text": "Give it a couple minutes, and just like that, you can build unlimited apps using ron.ai.",
+          "startMs": 14620,
+          "endMs": 19300
+        },
+        {
+          "text": "Go to this website.",
+          "startMs": 19380,
+          "endMs": 20300
+        },
+        {
+          "text": "It'll give you access to every single premium version of any AI that's out there.",
+          "startMs": 20440,
+          "endMs": 24820
+        },
+        {
+          "text": "Comment app for the full breakdown.",
+          "startMs": 24900,
+          "endMs": 26620
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-katiemeidt8",
+      "sourceSha256": "7e618e5837d714716d606720d5c8a43dcbe57086725af49c059c2be672583d37",
+      "durationMs": 65534,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:16.055Z",
+      "transcriptSha256": "b37a96e251216e604916e0d777fe24afbc4adaef02b61e2e77f55a0a37c94325",
+      "fullText": "Hot take, but kids are only using ChatGBT because the system has made school more about getting grades than actually learning. And that's why the education system is fricked. So if you're interested in learning, please ditch ChatGBT and switch it for something that doesn't actually give you brain rot. One that professors actually support because it builds your critical thinking instead of replacing it. So let me show you. Just go to this website and you're just going to load your lecture slides right here. And this website is going to create beautiful organized notes for you to read. It has so many ways to test your knowledge. My personal favorite being multiple choice because if you get an answer wrong, you can go down here to correct answer explain and it explains to you the correct answer. If you're still having trouble, you can go up here to live chat box and put in any further questions that you have. Up here, it tells you what you don't know to what you do know. Tutor lessons is also great because when you go through it, basically just gives you a more in-depth explanation and asks you like to apply your knowledge. So save this video for later and follow me for more study tips.",
+      "hookText": "Hot take, but kids are only using ChatGPT because the system has made school more about getting grades than actually learning. And that's why the education system is fricked. So if you're interested in learning, please ditch ChatGPT and switch it for something that doesn't actually give you brain rot. One that professors actually support because it builds your critical thinking instead of replacing it. So let me show you.",
+      "hookStartMs": 0,
+      "hookEndMs": 26480,
+      "review": "draft",
+      "corrections": [
+        "ChatGPT spelling corroborated by visible source captions; raw transcript preserved."
+      ],
+      "wordTimingWarnings": 9,
+      "hookWordCount": 70,
+      "segments": [
+        {
+          "text": "Hot take, but kids are only using ChatGBT because the system has made school more about getting",
+          "startMs": 0,
+          "endMs": 7000
+        },
+        {
+          "text": "grades than actually learning. And that's why the education system is fricked. So if you're",
+          "startMs": 7000,
+          "endMs": 13320
+        },
+        {
+          "text": "interested in learning, please ditch ChatGBT and switch it for something that doesn't actually",
+          "startMs": 13320,
+          "endMs": 18480
+        },
+        {
+          "text": "give you brain rot. One that professors actually support because it builds your critical thinking",
+          "startMs": 18480,
+          "endMs": 23180
+        },
+        {
+          "text": "instead of replacing it. So let me show you. Just go to this website and you're just going to",
+          "startMs": 23320,
+          "endMs": 28880
+        },
+        {
+          "text": "load your lecture slides right here. And this website is going to create beautiful organized",
+          "startMs": 29160,
+          "endMs": 33660
+        },
+        {
+          "text": "notes for you to read. It has so many ways to test your knowledge. My personal favorite being",
+          "startMs": 33660,
+          "endMs": 39920
+        },
+        {
+          "text": "multiple choice because if you get an answer wrong, you can go down here to correct answer",
+          "startMs": 39920,
+          "endMs": 44000
+        },
+        {
+          "text": "explain and it explains to you the correct answer. If you're still having trouble, you can go up here",
+          "startMs": 44000,
+          "endMs": 47700
+        },
+        {
+          "text": "to live chat box and put in any further questions that you have. Up here, it tells you what you",
+          "startMs": 47700,
+          "endMs": 52600
+        },
+        {
+          "text": "don't know to what you do know. Tutor lessons is also great because when you go through it,",
+          "startMs": 52600,
+          "endMs": 57500
+        },
+        {
+          "text": "basically just gives you a more in-depth explanation and asks you like to apply",
+          "startMs": 57500,
+          "endMs": 61100
+        },
+        {
+          "text": "your knowledge. So save this video for later and follow me for more study tips.",
+          "startMs": 61100,
+          "endMs": 65300
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-studyfetchlauren",
+      "sourceSha256": "1f79a8e9fff58383be7683f30dec32481e923c37fe8e1dada9749d28ff4b1703",
+      "durationMs": 61867,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:20.557Z",
+      "transcriptSha256": "2c1ad99618a5c0b644fec5ec67a73108efa64328765639f18421a8cc09225774",
+      "fullText": "I studied for one day and I got a 92 on my exam and it's not just like a regular smegular GE. This is genetics. Let me show you. You want to go into study fetch and then you just want to go into YouTube and look up whatever your subject is. You want to copy this YouTube video, load the material set. You can get either really detailed notes or summarized notes, flashcard sets, or practice tests. All of my classmates spent so much time manually creating these genetics flashcards and there we go. They transcribed the entire video and gave me high level overviews of each section. Okay so here they generated my practice quiz. Best part is they have a live lecture function as well so you can actually have the AI take notes for you and you can pay attention in class instead of focus on writing things down. If you guys give it a try, let me know what you guys think. Good night. I'm actually gonna get some sleep now. I'm so tired.",
+      "hookText": "I studied for one day and I got a 92 on my exam and it's not just like a regular smegular GE. This is genetics. Let me show you.",
+      "hookStartMs": 0,
+      "hookEndMs": 10860,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "wordTimingWarnings": 2,
+      "hookWordCount": 29,
+      "segments": [
+        {
+          "text": "I studied for one day and I got a 92 on my exam and it's not just like a regular smegular GE.",
+          "startMs": 0,
+          "endMs": 7540
+        },
+        {
+          "text": "This is genetics. Let me show you. You want to go into study fetch and then you just want to",
+          "startMs": 7880,
+          "endMs": 13780
+        },
+        {
+          "text": "go into YouTube and look up whatever your subject is. You want to copy this YouTube video, load the",
+          "startMs": 13780,
+          "endMs": 18880
+        },
+        {
+          "text": "material set. You can get either really detailed notes or summarized notes, flashcard sets, or",
+          "startMs": 19660,
+          "endMs": 26240
+        },
+        {
+          "text": "practice tests. All of my classmates spent so much time manually creating these genetics flashcards",
+          "startMs": 26260,
+          "endMs": 32860
+        },
+        {
+          "text": "and there we go. They transcribed the entire video and gave me high level overviews of",
+          "startMs": 33120,
+          "endMs": 38580
+        },
+        {
+          "text": "each section. Okay so here they generated my practice quiz. Best part is they have a live",
+          "startMs": 39140,
+          "endMs": 44820
+        },
+        {
+          "text": "lecture function as well so you can actually have the AI take notes for you and you can",
+          "startMs": 44820,
+          "endMs": 49820
+        },
+        {
+          "text": "pay attention in class instead of focus on writing things down. If you guys give it a try,",
+          "startMs": 49820,
+          "endMs": 55140
+        },
+        {
+          "text": "let me know what you guys think. Good night. I'm actually gonna get some sleep now. I'm so tired.",
+          "startMs": 55140,
+          "endMs": 61020
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-sidghst",
+      "sourceSha256": "3adc2abfaf7b9f9e0ac8cd46966134dae52a50ae87c28f01d306844543ab657b",
+      "durationMs": 9821,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:23.371Z",
+      "transcriptSha256": "dd4b664919a734d2a7edde14b002f623d045909ba506eb1798322d6775f64647",
+      "fullText": "and if you think your boyfriend's stupid, just know that he left his phone in here while he went to move his car genius",
+      "hookText": "and if you think your boyfriend's stupid, just know that he left his phone in here while he went to move his car genius",
+      "hookStartMs": 0,
+      "hookEndMs": 9540,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 1,
+      "hookWordCount": 24,
+      "segments": [
+        {
+          "text": "and if you think your boyfriend's stupid, just know that he left his phone in here while he went to move his car",
+          "startMs": 0,
+          "endMs": 3880
+        },
+        {
+          "text": "genius",
+          "startMs": 9300,
+          "endMs": 9540
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-studywithsab",
+      "sourceSha256": "4214382ffaf941e75b0e4aafb2509864097c913e0fe3da219a85b54fc77921c4",
+      "durationMs": 60767,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:29.439Z",
+      "transcriptSha256": "a1de4c28059f3b2fa2299a85d5c7e01d97dafec02c48f6f3fc80a972aad7b58f",
+      "fullText": "Aw, you're too tired to study? That's okay, totally fine. Just imagine in the future your ops become your boss. Imagine your kids looking at the menu prices in the restaurant. Just imagine the we regret to inform you email from your dream school. Imagine staying in your hometown forever because you couldn't afford to leave. Imagine wanting to buy something nice for your parents and never being able to, or even worse, your parents working every single day for the rest of their lives. Imagine all the countries you want to visit that you'll never be able to see in person. Imagine your kids showing up empty handed to their friend's birthday party just because you couldn't afford to buy a gift. Imagine all the people who supported you, believed in you, invested in you, watch you give up. If you don't want to lock in, that's fine, but you know who is? The ops. The ops are locking in. I get it, studying is difficult and time consuming, but you do not want to have regrets later in life. We're all going to be successful, so here's how I study in the most efficient way. Whenever I have an exam coming up, I go to this app, and then I just upload all my content that I need. It makes a study guide with whatever you upload, but I like to practice with active recall using the quizzes. And I basically just spam them until I've learned everything. You can customize the quizzes by topic or also by the way you're going to be tested. If you make it big one day, just remember this video.",
+      "hookText": "Aw, you're too tired to study? That's okay, totally fine. Just imagine in the future your ops become your boss. Imagine your kids looking at the menu prices in the restaurant. Just imagine the we regret to inform you email from your dream school. Imagine staying in your hometown forever because you couldn't afford to leave. Imagine wanting to buy something nice for your parents and never being able to, or even worse, your parents working every single day for the rest of their lives. Imagine all the countries you want to visit that you'll never be able to see in person. Imagine your kids showing up empty handed to their friend's birthday party just because you couldn't afford to buy a gift. Imagine all the people who supported you, believed in you, invested in you, watch you give up. If you don't want to lock in, that's fine, but you know who is? The ops. The ops are locking in. I get it, studying is difficult and time consuming, but you do not want to have regrets later in life. We're all going to be successful, so here's how I study in the most efficient way.",
+      "hookStartMs": 0,
+      "hookEndMs": 44380,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "wordTimingWarnings": 27,
+      "hookWordCount": 197,
+      "segments": [
+        {
+          "text": "Aw, you're too tired to study?",
+          "startMs": 0,
+          "endMs": 1540
+        },
+        {
+          "text": "That's okay, totally fine.",
+          "startMs": 1700,
+          "endMs": 2640
+        },
+        {
+          "text": "Just imagine in the future your ops become your boss.",
+          "startMs": 2700,
+          "endMs": 5440
+        },
+        {
+          "text": "Imagine your kids looking at the menu prices",
+          "startMs": 6420,
+          "endMs": 7840
+        },
+        {
+          "text": "in the restaurant.",
+          "startMs": 7840,
+          "endMs": 8480
+        },
+        {
+          "text": "Just imagine the we regret to inform you email",
+          "startMs": 8740,
+          "endMs": 10620
+        },
+        {
+          "text": "from your dream school.",
+          "startMs": 10620,
+          "endMs": 11460
+        },
+        {
+          "text": "Imagine staying in your hometown forever",
+          "startMs": 12100,
+          "endMs": 13480
+        },
+        {
+          "text": "because you couldn't afford to leave.",
+          "startMs": 13480,
+          "endMs": 15000
+        },
+        {
+          "text": "Imagine wanting to buy something nice for your parents",
+          "startMs": 15600,
+          "endMs": 17120
+        },
+        {
+          "text": "and never being able to,",
+          "startMs": 17120,
+          "endMs": 18000
+        },
+        {
+          "text": "or even worse, your parents working every single day",
+          "startMs": 18100,
+          "endMs": 20140
+        },
+        {
+          "text": "for the rest of their lives.",
+          "startMs": 20140,
+          "endMs": 21080
+        },
+        {
+          "text": "Imagine all the countries you want to visit",
+          "startMs": 21420,
+          "endMs": 22700
+        },
+        {
+          "text": "that you'll never be able to see in person.",
+          "startMs": 22700,
+          "endMs": 24140
+        },
+        {
+          "text": "Imagine your kids showing up empty handed",
+          "startMs": 24620,
+          "endMs": 25960
+        },
+        {
+          "text": "to their friend's birthday party",
+          "startMs": 25960,
+          "endMs": 27140
+        },
+        {
+          "text": "just because you couldn't afford to buy a gift.",
+          "startMs": 27140,
+          "endMs": 29040
+        },
+        {
+          "text": "Imagine all the people who supported you,",
+          "startMs": 29040,
+          "endMs": 30760
+        },
+        {
+          "text": "believed in you, invested in you,",
+          "startMs": 30860,
+          "endMs": 32280
+        },
+        {
+          "text": "watch you give up.",
+          "startMs": 32620,
+          "endMs": 33460
+        },
+        {
+          "text": "If you don't want to lock in, that's fine,",
+          "startMs": 33740,
+          "endMs": 34560
+        },
+        {
+          "text": "but you know who is?",
+          "startMs": 34600,
+          "endMs": 35200
+        },
+        {
+          "text": "The ops.",
+          "startMs": 35300,
+          "endMs": 35660
+        },
+        {
+          "text": "The ops are locking in.",
+          "startMs": 35900,
+          "endMs": 37020
+        },
+        {
+          "text": "I get it, studying is difficult and time consuming,",
+          "startMs": 37120,
+          "endMs": 39320
+        },
+        {
+          "text": "but you do not want to have regrets later in life.",
+          "startMs": 39440,
+          "endMs": 41440
+        },
+        {
+          "text": "We're all going to be successful,",
+          "startMs": 41520,
+          "endMs": 42380
+        },
+        {
+          "text": "so here's how I study in the most efficient way.",
+          "startMs": 42520,
+          "endMs": 44380
+        },
+        {
+          "text": "Whenever I have an exam coming up,",
+          "startMs": 44540,
+          "endMs": 45860
+        },
+        {
+          "text": "I go to this app,",
+          "startMs": 45880,
+          "endMs": 46700
+        },
+        {
+          "text": "and then I just upload all my content that I need.",
+          "startMs": 46760,
+          "endMs": 48780
+        },
+        {
+          "text": "It makes a study guide with whatever you upload,",
+          "startMs": 49060,
+          "endMs": 50660
+        },
+        {
+          "text": "but I like to practice with active recall using the quizzes.",
+          "startMs": 50800,
+          "endMs": 53200
+        },
+        {
+          "text": "And I basically just spam them",
+          "startMs": 53320,
+          "endMs": 54600
+        },
+        {
+          "text": "until I've learned everything.",
+          "startMs": 54600,
+          "endMs": 55520
+        },
+        {
+          "text": "You can customize the quizzes by topic",
+          "startMs": 55680,
+          "endMs": 57320
+        },
+        {
+          "text": "or also by the way you're going to be tested.",
+          "startMs": 57320,
+          "endMs": 58740
+        },
+        {
+          "text": "If you make it big one day, just remember this video.",
+          "startMs": 58740,
+          "endMs": 60520
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-bittenbyaturtle",
+      "sourceSha256": "3b948b9c011b6d80696b90e3b55e13deecb77b45925e04575e7669949b69b352",
+      "durationMs": 14400,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:31.777Z",
+      "transcriptSha256": "e8b5d0d0c679e5ac7233a54f354a9bb7d843530f6953e6755d70fcb761dc3ed7",
+      "fullText": "Okay, I actually cannot believe this right now",
+      "hookText": "Okay, I actually cannot believe this right now",
+      "hookStartMs": 0,
+      "hookEndMs": 4040,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 8,
+      "segments": [
+        {
+          "text": "Okay, I actually cannot believe this right now",
+          "startMs": 0,
+          "endMs": 4040
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-studywithsawyer",
+      "sourceSha256": "26d8506af4ed2a495f9f52b8e12e855126d34e715b043fe3cfda1971efa89177",
+      "durationMs": 47000,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:34.774Z",
+      "transcriptSha256": "ba518e603a3eabaf7a013b3364dea8a3c8fd024d0dbc85fad12b4056984283d1",
+      "fullText": "so they just made it pretty much impossible to use chatubt or any kind of ai in college because now whenever i pull up my paper there's a new button you go down here you press it and then watch writing report and what this basically does is you press play and it'll show exactly what you started with and then what you wrote to like change the text and then it'll say who did what how natural it sounds this one's a bit iffy but it has pauses errors and proof of effort and then it shows you how long it took to wrote the edits and pastes you can't even just paste in ai and then edit it anymore",
+      "hookText": "so they just made it pretty much impossible to use ChatGPT or any kind of ai in college",
+      "hookStartMs": 0,
+      "hookEndMs": 7980,
+      "review": "draft",
+      "corrections": [
+        "ChatGPT spelling corroborated by the source caption at 4s; raw transcript preserved."
+      ],
+      "wordTimingWarnings": 1,
+      "hookWordCount": 18,
+      "segments": [
+        {
+          "text": "so they just made it pretty much impossible to use chatubt or any kind of ai in college",
+          "startMs": 0,
+          "endMs": 7980
+        },
+        {
+          "text": "because now whenever i pull up my paper there's a new button you go down here you press it and",
+          "startMs": 7980,
+          "endMs": 16980
+        },
+        {
+          "text": "then watch writing report and what this basically does is you press play and it'll show exactly",
+          "startMs": 16980,
+          "endMs": 24220
+        },
+        {
+          "text": "what you started with and then what you wrote to like change the text and then it'll say who did",
+          "startMs": 24220,
+          "endMs": 31560
+        },
+        {
+          "text": "what how natural it sounds this one's a bit iffy but it has pauses errors and proof of effort",
+          "startMs": 31560,
+          "endMs": 38540
+        },
+        {
+          "text": "and then it shows you how long it took to wrote the edits and pastes",
+          "startMs": 38640,
+          "endMs": 43080
+        },
+        {
+          "text": "you can't even just paste in ai and then edit it anymore",
+          "startMs": 43080,
+          "endMs": 46680
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-mumtipswithginny",
+      "sourceSha256": "44959584161e80cf3468c5514d517d00523577188538b9e32666d03b154a3ccd",
+      "durationMs": 33867,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:37.321Z",
+      "transcriptSha256": "d87763409ee7a0a2555d45542eaa6a7c1f3c67280566109266899ea2586a418e",
+      "fullText": "How tall will your teenager be? I wanted a clearer answer than just guessing, so we started using an app called GoTall that gives a really realistic prediction of height by looking at current height, parent's height, height of grandparents, development stage and things like activity and sleep and it puts it all together and it gives you a realistic height prediction and honestly it just made everything feel clearer and gave my teenager such reassurance. If you want to give this a try then comment height and I'll send you the link.",
+      "hookText": "How tall will your teenager be? I wanted a clearer answer than just guessing,",
+      "hookStartMs": 0,
+      "hookEndMs": 5160,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 1,
+      "hookWordCount": 14,
+      "segments": [
+        {
+          "text": "How tall will your teenager be? I wanted a clearer answer than just guessing, so we started using an",
+          "startMs": 0,
+          "endMs": 6680
+        },
+        {
+          "text": "app called GoTall that gives a really realistic prediction of height by looking at current height,",
+          "startMs": 6680,
+          "endMs": 12280
+        },
+        {
+          "text": "parent's height, height of grandparents, development stage and things like activity",
+          "startMs": 12660,
+          "endMs": 18620
+        },
+        {
+          "text": "and sleep and it puts it all together and it gives you a realistic height prediction",
+          "startMs": 18620,
+          "endMs": 23880
+        },
+        {
+          "text": "and honestly it just made everything feel clearer and gave my teenager such reassurance.",
+          "startMs": 23880,
+          "endMs": 29900
+        },
+        {
+          "text": "If you want to give this a try then comment height and I'll send you the link.",
+          "startMs": 30360,
+          "endMs": 33800
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-car-story-full",
+      "sourceSha256": "5ab551835c6b43f809349f263318057dc10894cc75b68ca066cbd2c3708933a8",
+      "durationMs": 48500,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:44.341Z",
+      "transcriptSha256": "84da53403c2ecaf2a4dbb929503a6cfc0d3eae717038b8cdaafb90a4e886f96c",
+      "fullText": "if i lost everything and i needed to make $20,000 by the end of the month this is exactly what i would do. all you need for this is your phone and preferably a brain smarter than a five-year-old, but that part is optional. you'll go to youtube and find a baby show with a lot of views. on average youtube pays one to fifteen thousand dollars per million views. so once you pick a video to use as inspiration, go down to the description to find the transcripts. copy the transcript and then go to swaga.ai and go to the chat tab. then paste the transcripts and ask it make you a prompt for a similar video using this inspiration. if you want the exact more detailed prompt i use, comment prompt. and then take the prompt it gave you and then go up to the video tab. this is where it's going to generate the video for you. make sure it's on sora, 916 aspect ratio, and 12 seconds. a couple minutes later this is the video you're going to post.",
+      "hookText": "if i lost everything and i needed to make $20,000 by the end of the month this is exactly what i would do. all you need for this is your phone and preferably a brain smarter than a five-year-old, but that part is optional.",
+      "hookStartMs": 0,
+      "hookEndMs": 9240,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 7,
+      "hookWordCount": 44,
+      "segments": [
+        {
+          "text": "if i lost everything and i needed to make $20,000 by the end of the month this is exactly what i",
+          "startMs": 0,
+          "endMs": 4420
+        },
+        {
+          "text": "would do. all you need for this is your phone and preferably a brain smarter than a five-year-old,",
+          "startMs": 4420,
+          "endMs": 8260
+        },
+        {
+          "text": "but that part is optional. you'll go to youtube and find a baby show with a lot of views.",
+          "startMs": 8300,
+          "endMs": 12160
+        },
+        {
+          "text": "on average youtube pays one to fifteen thousand dollars per million views. so once you pick a",
+          "startMs": 12280,
+          "endMs": 17380
+        },
+        {
+          "text": "video to use as inspiration, go down to the description to find the transcripts. copy the",
+          "startMs": 17380,
+          "endMs": 22120
+        },
+        {
+          "text": "transcript and then go to swaga.ai and go to the chat tab. then paste the transcripts and ask it",
+          "startMs": 22120,
+          "endMs": 27460
+        },
+        {
+          "text": "make you a prompt for a similar video using this inspiration. if you want the exact more detailed",
+          "startMs": 27460,
+          "endMs": 32320
+        },
+        {
+          "text": "prompt i use, comment prompt. and then take the prompt it gave you and then go up to the video tab.",
+          "startMs": 32320,
+          "endMs": 37120
+        },
+        {
+          "text": "this is where it's going to generate the video for you. make sure it's on sora,",
+          "startMs": 37340,
+          "endMs": 40560
+        },
+        {
+          "text": "916 aspect ratio, and 12 seconds. a couple minutes later this is the video you're going to post.",
+          "startMs": 41100,
+          "endMs": 46500
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-room-explainer-full",
+      "sourceSha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "durationMs": 42027,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:49.820Z",
+      "transcriptSha256": "dd93e93ae38738316107f314af589ebb70f2c5e738dbe1fca485423853f48fab",
+      "fullText": "Okay, if you're going to nursing, pharmacy, radiology, or pre-med, or really any other healthcare profession, you're going to need these websites. Trust me. First is anatomylearning.com. It gives you detailed 3D models of any anatomical structure, so you never have to worry about anatomy again. Anatomy and physiology is one of the hardest courses you'll ever take, so this will save your life. Second is turbo.ai. You can take any YouTube video, paste in the link, and it'll generate a detailed lesson plan, just like Duolingo. My favorite part is the quiz section, and I like to spam these in order to prepare for my exams. This website literally helped me ace all of my classes. The last one is Anna's Archive. It has all the textbooks you could ever need completely for free. Those things are so expensive, and it saved me so much money. Follow for more pre-med advice.",
+      "hookText": "Okay, if you're going to nursing, pharmacy, radiology, or pre-med, or really any other healthcare profession, you're going to need these websites. Trust me.",
+      "hookStartMs": 0,
+      "hookEndMs": 7780,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 11,
+      "hookWordCount": 24,
+      "segments": [
+        {
+          "text": "Okay, if you're going to nursing, pharmacy,",
+          "startMs": 0,
+          "endMs": 2100
+        },
+        {
+          "text": "radiology, or pre-med,",
+          "startMs": 2600,
+          "endMs": 3720
+        },
+        {
+          "text": "or really any other healthcare profession,",
+          "startMs": 3880,
+          "endMs": 5360
+        },
+        {
+          "text": "you're going to need these websites.",
+          "startMs": 5740,
+          "endMs": 7000
+        },
+        {
+          "text": "Trust me.",
+          "startMs": 7540,
+          "endMs": 7780
+        },
+        {
+          "text": "First is anatomylearning.com.",
+          "startMs": 8100,
+          "endMs": 9600
+        },
+        {
+          "text": "It gives you detailed 3D models",
+          "startMs": 9680,
+          "endMs": 11040
+        },
+        {
+          "text": "of any anatomical structure,",
+          "startMs": 11040,
+          "endMs": 12380
+        },
+        {
+          "text": "so you never have to worry about anatomy again.",
+          "startMs": 12660,
+          "endMs": 14440
+        },
+        {
+          "text": "Anatomy and physiology is one of the hardest courses",
+          "startMs": 14720,
+          "endMs": 16500
+        },
+        {
+          "text": "you'll ever take, so this will save your life.",
+          "startMs": 16500,
+          "endMs": 18380
+        },
+        {
+          "text": "Second is turbo.ai.",
+          "startMs": 18500,
+          "endMs": 20120
+        },
+        {
+          "text": "You can take any YouTube video, paste in the link,",
+          "startMs": 20380,
+          "endMs": 22620
+        },
+        {
+          "text": "and it'll generate a detailed lesson plan,",
+          "startMs": 23000,
+          "endMs": 24840
+        },
+        {
+          "text": "just like Duolingo.",
+          "startMs": 24980,
+          "endMs": 25660
+        },
+        {
+          "text": "My favorite part is the quiz section,",
+          "startMs": 25800,
+          "endMs": 27320
+        },
+        {
+          "text": "and I like to spam these in order to prepare for my exams.",
+          "startMs": 27400,
+          "endMs": 29520
+        },
+        {
+          "text": "This website literally helped me ace all of my classes.",
+          "startMs": 29520,
+          "endMs": 32180
+        },
+        {
+          "text": "The last one is Anna's Archive.",
+          "startMs": 32640,
+          "endMs": 34000
+        },
+        {
+          "text": "It has all the textbooks you could ever need",
+          "startMs": 34260,
+          "endMs": 35760
+        },
+        {
+          "text": "completely for free.",
+          "startMs": 35760,
+          "endMs": 36660
+        },
+        {
+          "text": "Those things are so expensive,",
+          "startMs": 36920,
+          "endMs": 37940
+        },
+        {
+          "text": "and it saved me so much money.",
+          "startMs": 37980,
+          "endMs": 39320
+        },
+        {
+          "text": "Follow for more pre-med advice.",
+          "startMs": 40200,
+          "endMs": 41300
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-discovery-full",
+      "sourceSha256": "02d20ab91be3e3375f7ab78b29e7dfb6d268866d70488bd39d4af263df250207",
+      "durationMs": 43838,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:53.564Z",
+      "transcriptSha256": "c9e99941da40efa885941d6a962c1b57b2c6f15baff9eb856f165067d619811e",
+      "fullText": "Um, this is crazy.",
+      "hookText": "Um, this is crazy.",
+      "hookStartMs": 0,
+      "hookEndMs": 1560,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 4,
+      "segments": [
+        {
+          "text": "Um, this is crazy.",
+          "startMs": 0,
+          "endMs": 1560
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-carla-eatsss",
+      "sourceSha256": "7f5e52359ec53b527d0b20bef8c4314105c452299c8d3cf770fb4ebe101a998b",
+      "durationMs": 43100,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:55.916Z",
+      "transcriptSha256": "feb5c7b699d60b87e5eb28edfe17acb1a6a2cd1d76cb01fc3c467f9c5b4e9636",
+      "fullText": "No way",
+      "hookText": "No way",
+      "hookStartMs": 0,
+      "hookEndMs": 2020,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 2,
+      "segments": [
+        {
+          "text": "No way",
+          "startMs": 0,
+          "endMs": 2020
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-taliameals",
+      "sourceSha256": "f5e854d171cda8062557dab189b242e0de2538b26b1227fb6f044031a7548579",
+      "durationMs": 34922,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:58.231Z",
+      "transcriptSha256": "d466723149891438c40ce094cf2335c8791ac66b0e46b9d9f15711123421b7d6",
+      "fullText": "No way!",
+      "hookText": "No way!",
+      "hookStartMs": 0,
+      "hookEndMs": 1040,
+      "review": "draft",
+      "corrections": [],
+      "wordTimingWarnings": 0,
+      "hookWordCount": 2,
+      "segments": [
+        {
+          "text": "No way!",
+          "startMs": 0,
+          "endMs": 1040
+        }
+      ]
+    }
+  ]
+}

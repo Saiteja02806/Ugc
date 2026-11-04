@@ -18,6 +18,7 @@ import {
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import { cn } from "@/lib/utils";
+import styles from "./analytics-contrast.module.css";
 
 const platformOptions: Array<{
   label: string;
@@ -154,7 +155,7 @@ function PlatformAccountMenu({
         title={`${label} accounts`}
         onClick={onPlatformChange}
       >
-        <SocialPlatformIcon className="size-5" platform={platform} />
+        <SocialPlatformIcon className={cn("size-5", platform === "tiktok" && styles.tiktok)} platform={platform} />
         {selected ? (
           <ChevronDown className="size-3.5" aria-hidden="true" />
         ) : null}
@@ -168,7 +169,7 @@ function PlatformAccountMenu({
       >
         <div className="flex items-center gap-3 px-1.5 pt-1">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card-muted">
-            <SocialPlatformIcon className="size-5" platform={platform} />
+            <SocialPlatformIcon className={cn("size-5", platform === "tiktok" && styles.tiktok)} platform={platform} />
           </span>
           <div className="min-w-0">
             <PopoverTitle className="text-sm font-bold text-foreground-strong">

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
 import { createStoredHookFrames, hookSourceFrameIndexKey, type HookFrameObjectStore } from "./hook-source-frame-store.ts";
-import { createHookSourceFrameService } from "./hook-source-frame.ts";
+import { createHookSourceFrameService, createHookOpeningSourceFrameService } from "./hook-source-frame.ts";
 const hash = (v: Buffer) => createHash("sha256").update(v).digest("hex");
 const sourceSha256 = hash(Buffer.from("source"));
 function frame() {
@@ -32,6 +32,21 @@ test("prepared frame survives a fresh service; warm and cold reads never downloa
     await store.prepare(sourceSha256, async () => assert.fail("already prepared"));
   }
   assert.equal(decodes,1);
+});
+
+test("production opening factory requires stored frame zero for every public workflow, independently of runtime flag", async () => {
+  const o = objects(), store = createStoredHookFrames(o.store);
+  await store.prepare(sourceSha256, async () => frame());
+  for (const workflow of ["hook", "wall_text", "talking_head"] as const) {
+    const options = { items: () => [{ id: "hook-01", workflow, videoSha256: sourceSha256, videoStorageKey: `explore/hooks/${sourceSha256}.mp4`, width: 96, height: 160 }],
+      readStoredFrame: store.read, download: async () => assert.fail("interactive opening must never download MP4"),
+      decode: async () => assert.fail("interactive opening must never extract"), wallFrameStore: { read: async () => assert.fail("stored-only reader must use one validated read"), prepare: async () => assert.fail("no writes from Recreate") } };
+    assert.equal((await createHookOpeningSourceFrameService(options)("hook-01")).frameSha256, frame().frameSha256);
+    const missing = createHookOpeningSourceFrameService({ ...options, readStoredFrame: async () => null });
+    await assert.rejects(missing("hook-01"), { status: 503 });
+    const corrupt = createHookOpeningSourceFrameService({ ...options, readStoredFrame: async () => ({ ...frame(), frameIndex: 1 }) });
+    await assert.rejects(corrupt("hook-01"), { status: 409 });
+  }
 });
 test("missing and corrupt stored data fail closed without decoding", async () => {
   const o=objects(), store=createStoredHookFrames(o.store);

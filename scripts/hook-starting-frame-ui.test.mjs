@@ -24,7 +24,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, frameOverride = {}, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
+function harness({ scriptSection, priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, frameOverride = {}, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto, submissionGate } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = uuidStart;
   const jobs = new Map();
@@ -95,6 +95,7 @@ function harness({ priceError = false, captureCreatorDirections, referenceOverri
     const saved = keyframeClient.readHookKeyframeCheckpoint(stored.get(keyframeClient.hookKeyframeCheckpointKey(scope)), scope);
     assert.ok(saved, "request is persisted before submission");
     submissions.push(JSON.parse(options.body));
+    if (submissionGate) await submissionGate;
     if (submitError && submissions.length === failureAt) throw new Error("Unconfirmed connection");
     if (submissions.length === rejectionAt) return Response.json({ ok: false, message: "Insufficient credits." }, { status: 402 });
     const frozenInput = JSON.parse(saved.inputKey);
@@ -108,12 +109,12 @@ function harness({ priceError = false, captureCreatorDirections, referenceOverri
     jobFor(id) { return jobs.get(id); },
     setStatusReadError(value) { statusReadError = value; },
     repairFrame() { frameData = { ...frameData, frame: { ...frameData.frame, index: 0, timeSeconds: 0 } }; },
-    render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime,
+    render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection,
       reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) });
       for (const image of nodes(tree).filter(node => node.type === "img")) if (image.props.ref) image.props.ref.current = { src: "", removeAttribute() {} };
       for (const effect of effects.splice(0)) effect();
       for (const image of nodes(tree).filter(node => node.type === "StartingFrameImage")) image.props.onStateChange(image.props.assetId, image.props.url, previewState);
-      cursor = 0; return exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) }); },
+      cursor = 0; return exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection, reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) }); },
     async settle() { await new Promise(resolve => setImmediate(resolve)); await new Promise(resolve => setImmediate(resolve)); },
   };
 }
@@ -136,6 +137,20 @@ test("incompatible extracted frame stays recoverable without crashing, overwriti
   assert.doesNotMatch(text(tree), /could not be verified/);
   assert.equal(button(tree, "Generate starting image").props.disabled, false);
   assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key), scope).imageAssetIds, [photoId]);
+});
+
+test("status queries wait for active admission POST, then recover the same accepted request", async () => {
+  let finish; const submissionGate = new Promise(resolve => { finish = resolve; });
+  const h = harness({ submissionGate });
+  h.render(); await h.settle();
+  find(h.render(), "FormatGenerationReferences").props.onImagesChange([photo(photoId)]);
+  button(h.render(), "Generate starting image").props.onClick(); await h.settle(); h.render();
+  assert.equal(h.submissions.length, 1);
+  const pending = h.queries.filter(query => query.queryKey[0] === "hook-starting-image-job").at(-1);
+  assert(pending); assert.equal(pending.enabled, false, "No misleading requestKey404 while POST is still creating the job");
+  finish(); await h.settle(); h.render();
+  const accepted = h.queries.filter(query => query.queryKey[0] === "hook-starting-image-job").at(-1);
+  assert.equal(accepted.enabled, true); assert(accepted.queryKey[4]); assert.equal(h.submissions.length, 1);
 });
 
 test("fresh recreation resolves remembered photos once without submitting generation", async () => {
@@ -991,4 +1006,75 @@ test("anonymous preview temporary photos show sign-in guidance without changing 
   assert.equal(h.stored.get(h.key), before);
   assert.equal(h.submissions.length, 0);
   assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections.length, 0);
+});
+
+
+test("only Talking Head preparation renders its script section; Hook and Text on screen stay unchanged", async () => {
+  for (const preparationFormat of ["hook", "talking_head", "wall_text"]) {
+    const scriptSection = { type: "script-section", props: { children: "My script" } };
+    const h = harness({ presentation: "recreation", preparationFormat, scriptSection });
+    h.render(); await h.settle();
+    assert.equal(nodes(h.render()).filter(node => node.type === "script-section").length, preparationFormat === "talking_head" ? 1 : 0);
+  }
+});
+
+function preparationTab(tree, section) {
+  return nodes(tree).find(node => node.props?.role === 'tab' && node.props.id.endsWith(`-${section}-tab`));
+}
+function preparationPanel(tree, section) {
+  return nodes(tree).find(node => node.props?.role === 'tabpanel' && node.props.id.endsWith(`-${section}-panel`));
+}
+test('Talking Head sections retain both panels, linked tab semantics and script instance', async () => {
+  const scriptSection = { type: 'script-section', props: { children: 'Draft words' } };
+  const h = harness({ presentation: 'recreation', preparationFormat: 'talking_head', scriptSection });
+  h.render(); await h.settle(); let tree = h.render();
+  assert.equal(preparationPanel(tree, 'frame').props.hidden, false);
+  assert.equal(preparationPanel(tree, 'script').props.hidden, true);
+  assert.equal(preparationTab(tree, 'frame').props['aria-selected'], true);
+  preparationTab(tree, 'script').props.onClick(); tree = h.render();
+  assert.equal(preparationPanel(tree, 'frame').props.hidden, true);
+  assert.equal(preparationPanel(tree, 'script').props.hidden, false);
+  assert.equal(preparationPanel(tree, 'script').props.children, scriptSection);
+  assert.equal(preparationPanel(tree, 'script').props['aria-labelledby'], preparationTab(tree, 'script').props.id);
+  assert.equal(preparationTab(tree, 'script').props.tabIndex, 0);
+  preparationTab(tree, 'frame').props.onClick(); tree = h.render();
+  assert.equal(preparationPanel(tree, 'script').props.children, scriptSection);
+  assert.equal(h.submissions.length, 0);
+  assert.equal(h.closed(), 0);
+});
+test('switching to Script during image admission keeps remaining variations and polling alive', async () => {
+  let finish; const submissionGate = new Promise(resolve => { finish = resolve; });
+  const h = harness({ presentation: 'recreation', preparationFormat: 'talking_head', scriptSection: { type: 'script-section' }, submissionGate });
+  h.render(); await h.settle();
+  find(h.render(), 'FormatGenerationReferences').props.onImagesChange([photo(photoId), photo(secondId)]);
+  nodes(h.render()).find(node => node.props?.name === 'starting-image-count').props.onChange({ target: { value: '2' } });
+  button(h.render(), 'Generate 2 starting images').props.onClick(); await h.settle();
+  assert.equal(h.submissions.length, 1);
+  preparationTab(h.render(), 'script').props.onClick(); let tree = h.render();
+  assert.equal(preparationPanel(tree, 'frame').props.hidden, true);
+  assert.equal(h.queries.filter(query => query.queryKey[0] === 'hook-starting-image-job').at(-1).enabled, false);
+  finish(); await h.settle(); tree = h.render();
+  assert.equal(h.submissions.length, 2, 'switching does not cancel never-yet-submitted batch entries');
+  assert.equal(h.queries.filter(query => query.queryKey[0] === 'hook-starting-image-job').at(-1).enabled, true);
+  const { job } = completeImage(h);
+  for (const query of h.queries.filter(query => query.queryKey[0] === 'hook-starting-image-job' && query.queryKey[4])) {
+    h.setJob({ ...job, id: query.queryKey[4] });
+  }
+  h.render(); await h.settle(); tree = h.render();
+  assert.equal(preparationPanel(tree, 'script').props.hidden, false);
+  assert.match(text(tree), /starting frame is ready to review/);
+  preparationTab(tree, 'frame').props.onClick(); tree = h.render();
+  assert.equal(button(tree, 'Use selected frame').props.disabled, false);
+  button(tree, 'Use selected frame').props.onClick();
+  assert.equal(h.selections[0].assetId, job.output.mediaAssetId);
+  assert.deepEqual(Array.from(h.selections[0].identityAssetIds), [photoId, secondId]);
+  assert.equal(h.submissions.length, 2, 'returning and approval do not spend again');
+});
+test('Hook and Text on screen never inherit Talking Head preparation tabs', async () => {
+  for (const preparationFormat of ['hook', 'wall_text']) {
+    const h = harness({ presentation: 'recreation', preparationFormat, scriptSection: { type: 'script-section' } });
+    h.render(); await h.settle();
+    assert.equal(nodes(h.render()).filter(node => node.props?.role === 'tab').length, 0);
+    assert.equal(nodes(h.render()).filter(node => node.props?.role === 'tabpanel').length, 0);
+  }
 });

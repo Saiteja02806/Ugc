@@ -1,1475 +1,460 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-04T08:56:20.117Z",
-  "description": "Authoritative view count registry for Slideshow workflow references",
-  "totalItems": 86,
-  "publishedCount": 63,
-  "withExternalUrl": 25,
+  "updatedAt": "2026-11-04T12:44:15.223Z",
+  "description": "Strict live-verified view counts for Slideshow references. References with no product link or unverified have no view badge.",
+  "totalCatalogItems": 76,
+  "verifiedCount": 28,
+  "noLinkCount": 38,
   "viewsByReferenceId": {
-    "explore-slideshow-fitness-2ac394bae86d6779": {
-      "viewCount": 2510000,
-      "formattedViews": "2.5M"
-    },
-    "explore-slideshow-fitness-3238abbfa35af3f1": {
-      "viewCount": 2830000,
-      "formattedViews": "2.8M"
-    },
-    "explore-slideshow-fitness-c3972098feb4819f": {
-      "viewCount": 3590000,
-      "formattedViews": "3.6M"
-    },
-    "explore-slideshow-fitness-8de74ea1ad916bfa": {
-      "viewCount": 2410000,
-      "formattedViews": "2.4M"
-    },
     "explore-slideshow-fitness-1e937e8be4486b45": {
-      "viewCount": 3110000,
-      "formattedViews": "3.1M"
+      "viewCount": 51603,
+      "formattedViews": "52K",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7607549106193468694"
     },
     "explore-slideshow-fitness-a71a84ea4c2dc19f": {
-      "viewCount": 390000,
-      "formattedViews": "390K"
+      "viewCount": 78561,
+      "formattedViews": "79K",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7587152411614088470"
     },
     "explore-slideshow-fitness-82f920de67e28907": {
-      "viewCount": 3630000,
-      "formattedViews": "3.6M"
+      "viewCount": 16839860,
+      "formattedViews": "17M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7561011445400456470"
     },
     "explore-slideshow-fitness-e23d791c3ae90993": {
-      "viewCount": 780000,
-      "formattedViews": "780K"
+      "viewCount": 8882155,
+      "formattedViews": "8.9M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7565994010406358294"
     },
     "explore-slideshow-fitness-c9bf6c26fc13768d": {
-      "viewCount": 890000,
-      "formattedViews": "890K"
-    },
-    "explore-slideshow-fitness-6762e151a53d2f5c": {
-      "viewCount": 650000,
-      "formattedViews": "650K"
-    },
-    "explore-slideshow-fitness-736b23f14ff4415c": {
-      "viewCount": 270000,
-      "formattedViews": "270K"
-    },
-    "explore-slideshow-fitness-1f85f9982ad686ca": {
-      "viewCount": 400000,
-      "formattedViews": "400K"
-    },
-    "explore-slideshow-fitness-8f2704f3c3fe5ed5": {
-      "viewCount": 1620000,
-      "formattedViews": "1.6M"
-    },
-    "explore-slideshow-fitness-30592f55bd7f9fbe": {
-      "viewCount": 1830000,
-      "formattedViews": "1.8M"
-    },
-    "explore-slideshow-goal-tracker-4af0575934f4a5de": {
-      "viewCount": 1310000,
-      "formattedViews": "1.3M"
-    },
-    "explore-slideshow-goal-tracker-e52ea646af672862": {
-      "viewCount": 1700000,
-      "formattedViews": "1.7M"
-    },
-    "explore-slideshow-goal-tracker-7080e2c50d9f5d39": {
-      "viewCount": 350000,
-      "formattedViews": "350K"
-    },
-    "explore-slideshow-interview-app-0d1992cc6d508147": {
-      "viewCount": 770000,
-      "formattedViews": "770K"
-    },
-    "explore-slideshow-interview-app-3590c68be7803dee": {
-      "viewCount": 4170000,
-      "formattedViews": "4.2M"
-    },
-    "explore-slideshow-interview-app-ea8e70469405406e": {
-      "viewCount": 3610000,
-      "formattedViews": "3.6M"
-    },
-    "explore-slideshow-marketing-4a4af0499a0ab6eb": {
-      "viewCount": 950000,
-      "formattedViews": "950K"
-    },
-    "explore-slideshow-note-taking-471a0aa1fc9e6a8f": {
-      "viewCount": 2790000,
-      "formattedViews": "2.8M"
-    },
-    "explore-slideshow-productivity-6e2dce900b5076fb": {
-      "viewCount": 3130000,
-      "formattedViews": "3.1M"
+      "viewCount": 15451498,
+      "formattedViews": "15M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7580689528781065475"
     },
     "explore-slideshow-relationship-239d2168fe476e8c": {
-      "viewCount": 2500000,
-      "formattedViews": "2.5M"
+      "viewCount": 3443927,
+      "formattedViews": "3.4M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@gabi.lists/photo/7532917783110208774"
     },
     "explore-slideshow-relationship-877d9686564508bd": {
-      "viewCount": 690000,
-      "formattedViews": "690K"
+      "viewCount": 3042816,
+      "formattedViews": "3M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@gabi.lists/photo/7530702094395821368"
     },
     "explore-slideshow-skincare-ab653a30ca2b132f": {
-      "viewCount": 810000,
-      "formattedViews": "810K"
-    },
-    "explore-slideshow-skincare-3d6ce505928758e7": {
-      "viewCount": 3800000,
-      "formattedViews": "3.8M"
+      "viewCount": 9187016,
+      "formattedViews": "9.2M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@careskinhailey/photo/7603416795583859998"
     },
     "explore-slideshow-skincare-ace5c7e676096bca": {
-      "viewCount": 1360000,
-      "formattedViews": "1.4M"
-    },
-    "explore-slideshow-skincare-fd09fe0ec7d6095f": {
-      "viewCount": 2380000,
-      "formattedViews": "2.4M"
-    },
-    "explore-slideshow-skincare-9a2f38f2095a56ee": {
-      "viewCount": 950000,
-      "formattedViews": "950K"
-    },
-    "explore-slideshow-skincare-86443df22a7c07cb": {
-      "viewCount": 490000,
-      "formattedViews": "490K"
-    },
-    "explore-slideshow-skincare-699bfb4db5b6d187": {
-      "viewCount": 690000,
-      "formattedViews": "690K"
-    },
-    "explore-slideshow-skincare-d4e0457ef3d63e61": {
-      "viewCount": 340000,
-      "formattedViews": "340K"
-    },
-    "explore-slideshow-study-4b4378520daac41e": {
-      "viewCount": 390000,
-      "formattedViews": "390K"
-    },
-    "explore-slideshow-study-4d7bd8101ccf9198": {
-      "viewCount": 1300000,
-      "formattedViews": "1.3M"
-    },
-    "explore-slideshow-study-a0ee8ec7f0c27c0a": {
-      "viewCount": 2780000,
-      "formattedViews": "2.8M"
-    },
-    "explore-slideshow-study-9a322b47da9c9eeb": {
-      "viewCount": 360000,
-      "formattedViews": "360K"
-    },
-    "explore-slideshow-study-acae634afe140527": {
-      "viewCount": 400000,
-      "formattedViews": "400K"
-    },
-    "explore-slideshow-habit-45600eb861936c7f": {
-      "viewCount": 1260000,
-      "formattedViews": "1.3M"
-    },
-    "explore-slideshow-habit-4743e57b794f08aa": {
-      "viewCount": 1110000,
-      "formattedViews": "1.1M"
+      "viewCount": 9669157,
+      "formattedViews": "9.7M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@careskinhailey/photo/7604900736954043678"
     },
     "explore-slideshow-interior-design-2ed2f0df9023ffe7": {
-      "viewCount": 4200000,
-      "formattedViews": "4.2M"
+      "viewCount": 1529980,
+      "formattedViews": "1.5M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7539689820394638614"
     },
     "explore-slideshow-interior-design-0ca0daeab951b554": {
-      "viewCount": 1060000,
-      "formattedViews": "1.1M"
+      "viewCount": 688765,
+      "formattedViews": "689K",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7531363311137443094"
     },
     "explore-slideshow-interior-design-133d4797a0a1424b": {
-      "viewCount": 1500000,
-      "formattedViews": "1.5M"
-    },
-    "explore-slideshow-relationship-4d59edfb6c0cd2f0": {
-      "viewCount": 2800000,
-      "formattedViews": "2.8M"
+      "viewCount": 1089372,
+      "formattedViews": "1.1M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7535059896425778454"
     },
     "explore-slideshow-relationship-b2f317c493deb9f5": {
-      "viewCount": 730000,
-      "formattedViews": "730K"
+      "viewCount": 1739669,
+      "formattedViews": "1.7M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@kaiya01__/photo/7573535606865759502"
     },
     "explore-slideshow-relationship-3bb7ddf23cd0ef2b": {
-      "viewCount": 2240000,
-      "formattedViews": "2.2M"
-    },
-    "explore-slideshow-screen-blocker-dfdbbe2022775a3f": {
-      "viewCount": 440000,
-      "formattedViews": "440K"
-    },
-    "explore-slideshow-screen-blocker-8a2461a71f53acf0": {
-      "viewCount": 660000,
-      "formattedViews": "660K"
-    },
-    "explore-slideshow-screen-blocker-fa316f12b6351596": {
-      "viewCount": 360000,
-      "formattedViews": "360K"
-    },
-    "explore-slideshow-calory-tracking-4b4e24290206c567": {
-      "viewCount": 1190000,
-      "formattedViews": "1.2M"
-    },
-    "explore-slideshow-calory-tracking-7c60bfaf6dbdf900": {
-      "viewCount": 330000,
-      "formattedViews": "330K"
-    },
-    "explore-slideshow-calory-tracking-f36925740259ef23": {
-      "viewCount": 4230000,
-      "formattedViews": "4.2M"
-    },
-    "explore-slideshow-calory-tracking-161a2ed4a2f1c64f": {
-      "viewCount": 2770000,
-      "formattedViews": "2.8M"
-    },
-    "explore-slideshow-calory-tracking-db582602ad18c075": {
-      "viewCount": 3790000,
-      "formattedViews": "3.8M"
-    },
-    "explore-slideshow-calory-tracking-341c772318097c7c": {
-      "viewCount": 240000,
-      "formattedViews": "240K"
-    },
-    "explore-slideshow-pet-tracking-113fdb3d0649be00": {
-      "viewCount": 410000,
-      "formattedViews": "410K"
-    },
-    "explore-slideshow-pet-tracking-891d144e7edbae48": {
-      "viewCount": 780000,
-      "formattedViews": "780K"
-    },
-    "explore-slideshow-pet-tracking-7923154b7da6f465": {
-      "viewCount": 930000,
-      "formattedViews": "930K"
+      "viewCount": 2137289,
+      "formattedViews": "2.1M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@kaiya01__/photo/7570537078715469111"
     },
     "explore-slideshow-nota-f79553cb5f15c74e": {
-      "viewCount": 1530000,
-      "formattedViews": "1.5M"
-    },
-    "explore-slideshow-general-649259ba9668dd18": {
-      "viewCount": 520000,
-      "formattedViews": "520K"
-    },
-    "explore-slideshow-general-82d6b7c19da0b3ef": {
-      "viewCount": 380000,
-      "formattedViews": "380K"
-    },
-    "explore-slideshow-general-2f9cd9c161e9df4e": {
-      "viewCount": 340000,
-      "formattedViews": "340K"
-    },
-    "explore-slideshow-general-aa89f92f73637d43": {
-      "viewCount": 800000,
-      "formattedViews": "800K"
-    },
-    "creator-slideshow-01": {
-      "viewCount": 370000,
-      "formattedViews": "370K"
-    },
-    "creator-slideshow-02": {
-      "viewCount": 470000,
-      "formattedViews": "470K"
-    },
-    "creator-slideshow-03": {
-      "viewCount": 220000,
-      "formattedViews": "220K"
-    },
-    "creator-slideshow-04": {
-      "viewCount": 280000,
-      "formattedViews": "280K"
-    },
-    "creator-slideshow-05": {
-      "viewCount": 500000,
-      "formattedViews": "500K"
-    },
-    "creator-slideshow-06": {
-      "viewCount": 310000,
-      "formattedViews": "310K"
-    },
-    "creator-slideshow-07": {
-      "viewCount": 380000,
-      "formattedViews": "380K"
-    },
-    "creator-slideshow-08": {
-      "viewCount": 430000,
-      "formattedViews": "430K"
-    },
-    "creator-slideshow-09": {
-      "viewCount": 940000,
-      "formattedViews": "940K"
-    },
-    "creator-slideshow-10": {
-      "viewCount": 2360000,
-      "formattedViews": "2.4M"
+      "viewCount": 43355715,
+      "formattedViews": "43M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@getinnergrowth/photo/7686157916675542294"
     },
     "explore-slideshow-calory-tracking-1b164a4a355f68f2": {
-      "viewCount": 1450000,
-      "formattedViews": "1.5M"
+      "viewCount": 666839,
+      "formattedViews": "667K",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@aaliyahwellness/photo/7658751509718437141"
     },
     "explore-slideshow-calory-tracking-ee89585cf07b2853": {
-      "viewCount": 920000,
-      "formattedViews": "920K"
+      "viewCount": 11596154,
+      "formattedViews": "12M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@maddieellisfitnes/photo/7617820692473531670"
     },
     "explore-slideshow-calory-tracking-32b74895d17284ed": {
-      "viewCount": 680000,
-      "formattedViews": "680K"
+      "viewCount": 1462974,
+      "formattedViews": "1.5M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@jess.healthyeating/photo/7541463742450535710"
     },
     "explore-slideshow-calory-tracking-f5a1ca2c1269a9e2": {
-      "viewCount": 1100000,
-      "formattedViews": "1.1M"
+      "viewCount": 12236882,
+      "formattedViews": "12M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@jess.healthyeating/photo/7543696288701893918"
     },
     "explore-slideshow-fitness-9897ed22cf738042": {
-      "viewCount": 2200000,
-      "formattedViews": "2.2M"
+      "viewCount": 11596154,
+      "formattedViews": "12M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@maddieellisfitnes/photo/7617820692473531670"
     },
     "explore-slideshow-fitness-eba5cfac425a6799": {
-      "viewCount": 840000,
-      "formattedViews": "840K"
+      "viewCount": 1165890,
+      "formattedViews": "1.2M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7312408643348057376"
     },
     "explore-slideshow-fitness-1ab7e03b18609533": {
-      "viewCount": 760000,
-      "formattedViews": "760K"
+      "viewCount": 1081304,
+      "formattedViews": "1.1M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7288258430551297313"
     },
     "explore-slideshow-fitness-29a05bed00dabbd4": {
-      "viewCount": 510000,
-      "formattedViews": "510K"
+      "viewCount": 1106250,
+      "formattedViews": "1.1M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7499087255420636438"
     },
     "explore-slideshow-fitness-fb12f86a11e5ec04": {
-      "viewCount": 630000,
-      "formattedViews": "630K"
+      "viewCount": 32086523,
+      "formattedViews": "32M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7589668827324058882"
     },
     "explore-slideshow-fitness-fa5bd79d1463f253": {
-      "viewCount": 480000,
-      "formattedViews": "480K"
+      "viewCount": 15559735,
+      "formattedViews": "16M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7595587070794501398"
     },
     "explore-slideshow-fitness-35aed740a089aa3b": {
-      "viewCount": 390000,
-      "formattedViews": "390K"
+      "viewCount": 26064832,
+      "formattedViews": "26M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7572147638309571862"
     },
     "explore-slideshow-fitness-6e508ea3e38302e6": {
-      "viewCount": 1750000,
-      "formattedViews": "1.8M"
+      "viewCount": 2012095,
+      "formattedViews": "2M",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7597575562697313538"
     },
     "explore-slideshow-skincare-9d2ac94d0f462f9f": {
-      "viewCount": 2950000,
-      "formattedViews": "3.0M"
+      "viewCount": 152521,
+      "formattedViews": "153K",
+      "verifiedLive": true,
+      "sourceUrl": "https://www.tiktok.com/@skincarebychannon/photo/7549901125022076182"
     }
   },
   "items": [
     {
-      "galleryIndex": 1,
-      "id": "explore-slideshow-fitness-2ac394bae86d6779",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "5 tips to get bigger in the\ngym",
-      "viewCount": 2510000,
-      "formattedViews": "2.5M"
-    },
-    {
-      "galleryIndex": 2,
-      "id": "explore-slideshow-fitness-3238abbfa35af3f1",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 11,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "10 things I wish I knew as a\nbeginner",
-      "viewCount": 2830000,
-      "formattedViews": "2.8M"
-    },
-    {
-      "galleryIndex": 3,
-      "id": "explore-slideshow-fitness-c3972098feb4819f",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 8,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How to get your dream\nphysique",
-      "viewCount": 3590000,
-      "formattedViews": "3.6M"
-    },
-    {
-      "galleryIndex": 4,
-      "id": "explore-slideshow-fitness-8de74ea1ad916bfa",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "elite ball knowledge for\nbecoming unrecognizable\nin 3 months",
-      "viewCount": 2410000,
-      "formattedViews": "2.4M"
-    },
-    {
-      "galleryIndex": 5,
       "id": "explore-slideshow-fitness-1e937e8be4486b45",
-      "title": "Fitness",
+      "title": "Fitness 05",
       "category": "fitness",
       "slidesCount": 6,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7607549106193468694",
-      "sourceKind": "post",
-      "coverText": "5 ways to make quick\nprogress in the gym",
-      "viewCount": 3110000,
-      "formattedViews": "3.1M"
+      "viewCount": 51603,
+      "formattedViews": "52K",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 6,
       "id": "explore-slideshow-fitness-a71a84ea4c2dc19f",
-      "title": "Fitness",
+      "title": "Fitness 06",
       "category": "fitness",
       "slidesCount": 7,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7587152411614088470",
-      "sourceKind": "post",
-      "coverText": "6 things you're doing WRONG\nthat are killing your gains",
-      "viewCount": 390000,
-      "formattedViews": "390K"
+      "viewCount": 78561,
+      "formattedViews": "79K",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 7,
       "id": "explore-slideshow-fitness-82f920de67e28907",
-      "title": "Fitness",
+      "title": "Fitness 07",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7561011445400456470",
-      "sourceKind": "post",
-      "coverText": "“I don’t feel like going to\nthe gym today”",
-      "viewCount": 3630000,
-      "formattedViews": "3.6M"
+      "viewCount": 16839860,
+      "formattedViews": "17M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 8,
       "id": "explore-slideshow-fitness-e23d791c3ae90993",
-      "title": "Fitness",
+      "title": "Fitness 08",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7565994010406358294",
-      "sourceKind": "post",
-      "coverText": "ofc he hates me...",
-      "viewCount": 780000,
-      "formattedViews": "780K"
+      "viewCount": 8882155,
+      "formattedViews": "8.9M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 9,
       "id": "explore-slideshow-fitness-c9bf6c26fc13768d",
-      "title": "Fitness",
+      "title": "Fitness 09",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7580689528781065475",
-      "sourceKind": "post",
-      "coverText": "ofc he hates me...",
-      "viewCount": 890000,
-      "formattedViews": "890K"
+      "viewCount": 15451498,
+      "formattedViews": "15M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 10,
-      "id": "explore-slideshow-fitness-6762e151a53d2f5c",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@never_giveup_109",
-      "sourceKind": "profile",
-      "coverText": "5 ways to make quick\nprogress in the gym",
-      "viewCount": 650000,
-      "formattedViews": "650K"
-    },
-    {
-      "galleryIndex": 11,
-      "id": "explore-slideshow-fitness-736b23f14ff4415c",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 7,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "6 habits that finally made\nme fall in love with my\nmind",
-      "viewCount": 270000,
-      "formattedViews": "270K"
-    },
-    {
-      "galleryIndex": 12,
-      "id": "explore-slideshow-fitness-1f85f9982ad686ca",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 8,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "The best mental health\nadvice I was ever given",
-      "viewCount": 400000,
-      "formattedViews": "400K"
-    },
-    {
-      "galleryIndex": 13,
-      "id": "explore-slideshow-fitness-8f2704f3c3fe5ed5",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How to build a Greek god\nphysique",
-      "viewCount": 1620000,
-      "formattedViews": "1.6M"
-    },
-    {
-      "galleryIndex": 14,
-      "id": "explore-slideshow-fitness-30592f55bd7f9fbe",
-      "title": "Fitness",
-      "category": "fitness",
-      "slidesCount": 8,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "If I had 3 months to get skinny\nagain for 2026, this is exactly\nwhat I'd do.",
-      "viewCount": 1830000,
-      "formattedViews": "1.8M"
-    },
-    {
-      "galleryIndex": 15,
-      "id": "explore-slideshow-goal-tracker-4af0575934f4a5de",
-      "title": "Goal Tracker",
-      "category": "goal-tracker",
-      "slidesCount": 4,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How to become unrecognizable\nthis year:",
-      "viewCount": 1310000,
-      "formattedViews": "1.3M"
-    },
-    {
-      "galleryIndex": 16,
-      "id": "explore-slideshow-goal-tracker-e52ea646af672862",
-      "title": "Goal Tracker",
-      "category": "goal-tracker",
-      "slidesCount": 5,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How to become unrecognizable\nthis year:",
-      "viewCount": 1700000,
-      "formattedViews": "1.7M"
-    },
-    {
-      "galleryIndex": 17,
-      "id": "explore-slideshow-goal-tracker-7080e2c50d9f5d39",
-      "title": "Goal Tracker",
-      "category": "goal-tracker",
-      "slidesCount": 11,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Secret codes that will make\nyou Dangerous",
-      "viewCount": 350000,
-      "formattedViews": "350K"
-    },
-    {
-      "galleryIndex": 18,
-      "id": "explore-slideshow-interview-app-0d1992cc6d508147",
-      "title": "Interview App",
-      "category": "interview-app",
-      "slidesCount": 5,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "4 things college students\nshould do during winter\nbreak",
-      "viewCount": 770000,
-      "formattedViews": "770K"
-    },
-    {
-      "galleryIndex": 19,
-      "id": "explore-slideshow-interview-app-3590c68be7803dee",
-      "title": "Interview App",
-      "category": "interview-app",
-      "slidesCount": 5,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "There is only one right\nanswer to these 3 job\ninterview questions\n\n(From an HR\nspecialist)",
-      "viewCount": 4170000,
-      "formattedViews": "4.2M"
-    },
-    {
-      "galleryIndex": 20,
-      "id": "explore-slideshow-interview-app-ea8e70469405406e",
-      "title": "Interview App",
-      "category": "interview-app",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Things to double check\nbefore every interview\n\nFrom my 5 year HR experience,\nthis is the checklist I see strong\ncandidates",
-      "viewCount": 3610000,
-      "formattedViews": "3.6M"
-    },
-    {
-      "galleryIndex": 21,
-      "id": "explore-slideshow-marketing-4a4af0499a0ab6eb",
-      "title": "Marketing",
-      "category": "marketing",
-      "slidesCount": 12,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@clothingbrandz.2",
-      "sourceKind": "profile",
-      "coverText": "Everything You Need To\nStart A Clothing Brand\n(Part 1) 👉🏽",
-      "viewCount": 950000,
-      "formattedViews": "950K"
-    },
-    {
-      "galleryIndex": 22,
-      "id": "explore-slideshow-note-taking-471a0aa1fc9e6a8f",
-      "title": "Note-Taking",
-      "category": "note-taking",
-      "slidesCount": 4,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "3 things I use to keep a 4.0 at\nHarvard (and work less🫣):",
-      "viewCount": 2790000,
-      "formattedViews": "2.8M"
-    },
-    {
-      "galleryIndex": 23,
-      "id": "explore-slideshow-productivity-6e2dce900b5076fb",
-      "title": "Productivity",
-      "category": "productivity",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Weird ADHD tricks my\ntherapist made me try\n(That actually work)",
-      "viewCount": 3130000,
-      "formattedViews": "3.1M"
-    },
-    {
-      "galleryIndex": 24,
       "id": "explore-slideshow-relationship-239d2168fe476e8c",
-      "title": "Relationship",
+      "title": "Relationship 01",
       "category": "relationship",
       "slidesCount": 4,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@gabi.lists/photo/7532917783110208774",
-      "sourceKind": "post",
-      "coverText": "3 questions we ask each\nother every month to keep\nour relationship healthy",
-      "viewCount": 2500000,
-      "formattedViews": "2.5M"
+      "viewCount": 3443927,
+      "formattedViews": "3.4M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 25,
       "id": "explore-slideshow-relationship-877d9686564508bd",
-      "title": "Relationship",
+      "title": "Relationship 02",
       "category": "relationship",
       "slidesCount": 4,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@gabi.lists/photo/7530702094395821368",
-      "sourceKind": "post",
-      "coverText": "stop letting toxic tiktok\nadvice ruin your\nrelationships",
-      "viewCount": 690000,
-      "formattedViews": "690K"
+      "viewCount": 3042816,
+      "formattedViews": "3M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 26,
       "id": "explore-slideshow-skincare-ab653a30ca2b132f",
-      "title": "Skincare",
+      "title": "Skincare 01",
       "category": "skincare",
       "slidesCount": 5,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@careskinhailey/photo/7603416795583859998",
-      "sourceKind": "post",
-      "coverText": "✨ my 3 step glow routine ✨\n(am version)",
-      "viewCount": 810000,
-      "formattedViews": "810K"
+      "viewCount": 9187016,
+      "formattedViews": "9.2M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 27,
-      "id": "explore-slideshow-skincare-3d6ce505928758e7",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 4,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@careskinhailey",
-      "sourceKind": "profile",
-      "coverText": "3 skincare hacks i wish i knew\nsooner",
-      "viewCount": 3800000,
-      "formattedViews": "3.8M"
-    },
-    {
-      "galleryIndex": 28,
       "id": "explore-slideshow-skincare-ace5c7e676096bca",
-      "title": "Skincare",
+      "title": "Skincare 03",
       "category": "skincare",
       "slidesCount": 3,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@careskinhailey/photo/7604900736954043678",
-      "sourceKind": "post",
-      "coverText": "my 4 step armpit brightening\nroutine >>",
-      "viewCount": 1360000,
-      "formattedViews": "1.4M"
+      "viewCount": 9669157,
+      "formattedViews": "9.7M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 29,
-      "id": "explore-slideshow-skincare-fd09fe0ec7d6095f",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "When’s the last time you\nchecked in on your skin?",
-      "viewCount": 2380000,
-      "formattedViews": "2.4M"
-    },
-    {
-      "galleryIndex": 30,
-      "id": "explore-slideshow-skincare-9a2f38f2095a56ee",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "This is the first time in YEARS\nI’ve actually felt confident\nwithout makeup on 🥹😭",
-      "viewCount": 950000,
-      "formattedViews": "950K"
-    },
-    {
-      "galleryIndex": 31,
-      "id": "explore-slideshow-skincare-86443df22a7c07cb",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 3,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How I cleared my\nacne 👀👌✅",
-      "viewCount": 490000,
-      "formattedViews": "490K"
-    },
-    {
-      "galleryIndex": 32,
-      "id": "explore-slideshow-skincare-699bfb4db5b6d187",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 4,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "let me show you how my under\neyes went from this",
-      "viewCount": 690000,
-      "formattedViews": "690K"
-    },
-    {
-      "galleryIndex": 33,
-      "id": "explore-slideshow-skincare-d4e0457ef3d63e61",
-      "title": "Skincare",
-      "category": "skincare",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Weird habits I stole from\nattractive people",
-      "viewCount": 340000,
-      "formattedViews": "340K"
-    },
-    {
-      "galleryIndex": 34,
-      "id": "explore-slideshow-study-4b4378520daac41e",
-      "title": "Study",
-      "category": "study",
-      "slidesCount": 4,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "When you realize it’s not about\nbeing smart",
-      "viewCount": 390000,
-      "formattedViews": "390K"
-    },
-    {
-      "galleryIndex": 35,
-      "id": "explore-slideshow-study-4d7bd8101ccf9198",
-      "title": "Study",
-      "category": "study",
-      "slidesCount": 4,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "I don’t need anything to\nmake me satisfied",
-      "viewCount": 1300000,
-      "formattedViews": "1.3M"
-    },
-    {
-      "galleryIndex": 36,
-      "id": "explore-slideshow-study-a0ee8ec7f0c27c0a",
-      "title": "Study",
-      "category": "study",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "How to study\nsmart...",
-      "viewCount": 2780000,
-      "formattedViews": "2.8M"
-    },
-    {
-      "galleryIndex": 37,
-      "id": "explore-slideshow-study-9a322b47da9c9eeb",
-      "title": "Study",
-      "category": "study",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "5 tips for a 4.0 GPA\nthis year",
-      "viewCount": 360000,
-      "formattedViews": "360K"
-    },
-    {
-      "galleryIndex": 38,
-      "id": "explore-slideshow-study-acae634afe140527",
-      "title": "Study",
-      "category": "study",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "what to do in the\nnext semester to be\ntop of the class\n\nhow i've been using reading\nweek to get all my scholarships",
-      "viewCount": 400000,
-      "formattedViews": "400K"
-    },
-    {
-      "galleryIndex": 39,
-      "id": "explore-slideshow-habit-45600eb861936c7f",
-      "title": "Habit",
-      "category": "habit",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "5 silent habits that make\nyou unstoppable quickly:",
-      "viewCount": 1260000,
-      "formattedViews": "1.3M"
-    },
-    {
-      "galleryIndex": 40,
-      "id": "explore-slideshow-habit-4743e57b794f08aa",
-      "title": "Habit",
-      "category": "habit",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "5 habits that rewire your\nbrain for self-discipline:",
-      "viewCount": 1110000,
-      "formattedViews": "1.1M"
-    },
-    {
-      "galleryIndex": 41,
       "id": "explore-slideshow-interior-design-2ed2f0df9023ffe7",
-      "title": "Interior Design",
+      "title": "Interior Design 01",
       "category": "interior-design",
       "slidesCount": 7,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7539689820394638614",
-      "sourceKind": "post",
-      "coverText": "if you like this",
-      "viewCount": 4200000,
-      "formattedViews": "4.2M"
+      "viewCount": 1529980,
+      "formattedViews": "1.5M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 42,
       "id": "explore-slideshow-interior-design-0ca0daeab951b554",
-      "title": "Interior Design",
+      "title": "Interior Design 02",
       "category": "interior-design",
       "slidesCount": 6,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7531363311137443094",
-      "sourceKind": "post",
-      "coverText": "if you like this",
-      "viewCount": 1060000,
-      "formattedViews": "1.1M"
+      "viewCount": 688765,
+      "formattedViews": "689K",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 43,
       "id": "explore-slideshow-interior-design-133d4797a0a1424b",
-      "title": "Interior Design",
+      "title": "Interior Design 03",
       "category": "interior-design",
       "slidesCount": 8,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@itstayloragainnn/photo/7535059896425778454",
-      "sourceKind": "post",
-      "coverText": "if you like this",
-      "viewCount": 1500000,
-      "formattedViews": "1.5M"
+      "viewCount": 1089372,
+      "formattedViews": "1.1M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 44,
-      "id": "explore-slideshow-relationship-4d59edfb6c0cd2f0",
-      "title": "Relationship",
-      "category": "relationship",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "5 signs your body is BEGGING\nyou to slow down\n\n(but you keep ignoring them)",
-      "viewCount": 2800000,
-      "formattedViews": "2.8M"
-    },
-    {
-      "galleryIndex": 45,
       "id": "explore-slideshow-relationship-b2f317c493deb9f5",
-      "title": "Relationship",
+      "title": "Relationship 04",
       "category": "relationship",
       "slidesCount": 6,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@kaiya01__/photo/7573535606865759502",
-      "sourceKind": "post",
-      "coverText": "how i turned my low effort\nboyfriend into a high effort\nboyfriend\n\n(i swear this isn't toxic)",
-      "viewCount": 730000,
-      "formattedViews": "730K"
+      "viewCount": 1739669,
+      "formattedViews": "1.7M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 46,
       "id": "explore-slideshow-relationship-3bb7ddf23cd0ef2b",
-      "title": "Relationship",
+      "title": "Relationship 05",
       "category": "relationship",
       "slidesCount": 6,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@kaiya01__/photo/7570537078715469111",
-      "sourceKind": "post",
-      "coverText": "🚩red flags i found in my man\nthat turned out to be green\nflags",
-      "viewCount": 2240000,
-      "formattedViews": "2.2M"
+      "viewCount": 2137289,
+      "formattedViews": "2.1M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 47,
-      "id": "explore-slideshow-screen-blocker-dfdbbe2022775a3f",
-      "title": "Screen Blocker",
-      "category": "screen-blocker",
-      "slidesCount": 7,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Your future family is depending on you.\nHere’s how to become the man you\nneeded growing up.",
-      "viewCount": 440000,
-      "formattedViews": "440K"
-    },
-    {
-      "galleryIndex": 48,
-      "id": "explore-slideshow-screen-blocker-8a2461a71f53acf0",
-      "title": "Screen Blocker",
-      "category": "screen-blocker",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Advice every man must hear\nbefore age 25.\n\n(from a 26 yr old internet\nmillionaire)",
-      "viewCount": 660000,
-      "formattedViews": "660K"
-    },
-    {
-      "galleryIndex": 49,
-      "id": "explore-slideshow-screen-blocker-fa316f12b6351596",
-      "title": "Screen Blocker",
-      "category": "screen-blocker",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "The skills you actually need to stop\nfalling into slumps and succeed\nthis winter arc.",
-      "viewCount": 360000,
-      "formattedViews": "360K"
-    },
-    {
-      "galleryIndex": 50,
-      "id": "explore-slideshow-calory-tracking-4b4e24290206c567",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@jessicas_tt",
-      "sourceKind": "profile",
-      "coverText": "pov: you taught yourself\nhealthy eating",
-      "viewCount": 1190000,
-      "formattedViews": "1.2M"
-    },
-    {
-      "galleryIndex": 51,
-      "id": "explore-slideshow-calory-tracking-7c60bfaf6dbdf900",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 5,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@jessicas_tt",
-      "sourceKind": "profile",
-      "coverText": "What I eat in a day\nwhen living alone",
-      "viewCount": 330000,
-      "formattedViews": "330K"
-    },
-    {
-      "galleryIndex": 52,
-      "id": "explore-slideshow-calory-tracking-f36925740259ef23",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@jessicas_tt",
-      "sourceKind": "profile",
-      "coverText": "what I eat in a day as someone\nthat craves comfort food",
-      "viewCount": 4230000,
-      "formattedViews": "4.2M"
-    },
-    {
-      "galleryIndex": 53,
-      "id": "explore-slideshow-calory-tracking-161a2ed4a2f1c64f",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@jessicas_tt",
-      "sourceKind": "profile",
-      "coverText": "here’s everything\nI ate today",
-      "viewCount": 2770000,
-      "formattedViews": "2.8M"
-    },
-    {
-      "galleryIndex": 54,
-      "id": "explore-slideshow-calory-tracking-db582602ad18c075",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "This is what an anti-\ninflammatory day\nlooks like",
-      "viewCount": 3790000,
-      "formattedViews": "3.8M"
-    },
-    {
-      "galleryIndex": 55,
-      "id": "explore-slideshow-calory-tracking-341c772318097c7c",
-      "title": "Calory Tracking",
-      "category": "calory-tracking",
-      "slidesCount": 7,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "\"Do you enjoy eating like that?\"\n\nWhat I eat in a day...",
-      "viewCount": 240000,
-      "formattedViews": "240K"
-    },
-    {
-      "galleryIndex": 56,
-      "id": "explore-slideshow-pet-tracking-113fdb3d0649be00",
-      "title": "Pet Tracking",
-      "category": "pet-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@andreaglp1",
-      "sourceKind": "profile",
-      "coverText": "what 6 months on\nGLP-1 actually DID\nto my body",
-      "viewCount": 410000,
-      "formattedViews": "410K"
-    },
-    {
-      "galleryIndex": 57,
-      "id": "explore-slideshow-pet-tracking-891d144e7edbae48",
-      "title": "Pet Tracking",
-      "category": "pet-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@andreaglp1",
-      "sourceKind": "profile",
-      "coverText": "things that i learned to eat on a\nGLP-1 that sped up\nmy progress...",
-      "viewCount": 780000,
-      "formattedViews": "780K"
-    },
-    {
-      "galleryIndex": 58,
-      "id": "explore-slideshow-pet-tracking-7923154b7da6f465",
-      "title": "Pet Tracking",
-      "category": "pet-tracking",
-      "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": "https://www.tiktok.com/@andreaglp1",
-      "sourceKind": "profile",
-      "coverText": "what 6 months on\nGLP-1 actually DID\nto my body",
-      "viewCount": 930000,
-      "formattedViews": "930K"
-    },
-    {
-      "galleryIndex": 59,
       "id": "explore-slideshow-nota-f79553cb5f15c74e",
-      "title": "Focus",
+      "title": "Focus 01",
       "category": "focus",
       "slidesCount": 6,
-      "platform": "tiktok",
       "sourceUrl": "https://www.tiktok.com/@getinnergrowth/photo/7686157916675542294",
-      "sourceKind": "post",
-      "coverText": "Imagine you’re driving a car...",
-      "viewCount": 1530000,
-      "formattedViews": "1.5M"
+      "viewCount": 43355715,
+      "formattedViews": "43M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 60,
-      "id": "explore-slideshow-general-649259ba9668dd18",
-      "title": "Slideshow 1",
-      "category": "general",
-      "slidesCount": 3,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "“I don’t feel like studying/working today”",
-      "viewCount": 520000,
-      "formattedViews": "520K"
-    },
-    {
-      "galleryIndex": 61,
-      "id": "explore-slideshow-general-82d6b7c19da0b3ef",
-      "title": "Slideshow 2",
-      "category": "general",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Your SaaS doesn’t need another feature.",
-      "viewCount": 380000,
-      "formattedViews": "380K"
-    },
-    {
-      "galleryIndex": 62,
-      "id": "explore-slideshow-general-2f9cd9c161e9df4e",
-      "title": "Slideshow 3",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "I’ve been posting consistently for 1 month and these’re the 5 major things I’ve learned",
-      "viewCount": 340000,
-      "formattedViews": "340K"
-    },
-    {
-      "galleryIndex": 63,
-      "id": "explore-slideshow-general-aa89f92f73637d43",
-      "title": "Slideshow 4",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "i’ve been posting consistently for 3 months and these’re the 4 major things i’ve learnt",
-      "viewCount": 800000,
-      "formattedViews": "800K"
-    },
-    {
-      "galleryIndex": 64,
-      "id": "creator-slideshow-01",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 370000,
-      "formattedViews": "370K"
-    },
-    {
-      "galleryIndex": 65,
-      "id": "creator-slideshow-02",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 470000,
-      "formattedViews": "470K"
-    },
-    {
-      "galleryIndex": 66,
-      "id": "creator-slideshow-03",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 220000,
-      "formattedViews": "220K"
-    },
-    {
-      "galleryIndex": 67,
-      "id": "creator-slideshow-04",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 280000,
-      "formattedViews": "280K"
-    },
-    {
-      "galleryIndex": 68,
-      "id": "creator-slideshow-05",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 500000,
-      "formattedViews": "500K"
-    },
-    {
-      "galleryIndex": 69,
-      "id": "creator-slideshow-06",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 310000,
-      "formattedViews": "310K"
-    },
-    {
-      "galleryIndex": 70,
-      "id": "creator-slideshow-07",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 380000,
-      "formattedViews": "380K"
-    },
-    {
-      "galleryIndex": 71,
-      "id": "creator-slideshow-08",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 6,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 430000,
-      "formattedViews": "430K"
-    },
-    {
-      "galleryIndex": 72,
-      "id": "creator-slideshow-09",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 2,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 940000,
-      "formattedViews": "940K"
-    },
-    {
-      "galleryIndex": 73,
-      "id": "creator-slideshow-10",
-      "title": "Marketing",
-      "category": "general",
-      "slidesCount": 5,
-      "platform": "internal",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "",
-      "viewCount": 2360000,
-      "formattedViews": "2.4M"
-    },
-    {
-      "galleryIndex": 74,
       "id": "explore-slideshow-calory-tracking-1b164a4a355f68f2",
       "title": "Calory Tracking 07",
       "category": "calory-tracking",
       "slidesCount": 7,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Low calorie meal plan for beginners",
-      "viewCount": 1450000,
-      "formattedViews": "1.5M"
+      "sourceUrl": "https://www.tiktok.com/@aaliyahwellness/photo/7658751509718437141",
+      "viewCount": 666839,
+      "formattedViews": "667K",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 75,
       "id": "explore-slideshow-calory-tracking-ee89585cf07b2853",
       "title": "Calory Tracking 08",
       "category": "calory-tracking",
       "slidesCount": 7,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "What I eat in a day 1500 kcal",
-      "viewCount": 920000,
-      "formattedViews": "920K"
+      "sourceUrl": "https://www.tiktok.com/@maddieellisfitnes/photo/7617820692473531670",
+      "viewCount": 11596154,
+      "formattedViews": "12M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 76,
       "id": "explore-slideshow-calory-tracking-32b74895d17284ed",
       "title": "Calory Tracking 09",
       "category": "calory-tracking",
       "slidesCount": 4,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Calorie deficit snack hacks",
-      "viewCount": 680000,
-      "formattedViews": "680K"
+      "sourceUrl": "https://www.tiktok.com/@jess.healthyeating/photo/7541463742450535710",
+      "viewCount": 1462974,
+      "formattedViews": "1.5M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 77,
       "id": "explore-slideshow-calory-tracking-f5a1ca2c1269a9e2",
       "title": "Calory Tracking 10",
       "category": "calory-tracking",
       "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "High protein grocery haul under ",
-      "viewCount": 1100000,
-      "formattedViews": "1.1M"
+      "sourceUrl": "https://www.tiktok.com/@jess.healthyeating/photo/7543696288701893918",
+      "viewCount": 12236882,
+      "formattedViews": "12M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 78,
       "id": "explore-slideshow-fitness-9897ed22cf738042",
       "title": "Fitness 15",
       "category": "fitness",
       "slidesCount": 7,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Full body fat burn circuit (no gym)",
-      "viewCount": 2200000,
-      "formattedViews": "2.2M"
+      "sourceUrl": "https://www.tiktok.com/@maddieellisfitnes/photo/7617820692473531670",
+      "viewCount": 11596154,
+      "formattedViews": "12M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 79,
       "id": "explore-slideshow-fitness-eba5cfac425a6799",
       "title": "Fitness 16",
       "category": "fitness",
       "slidesCount": 3,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Morning mobility routine",
-      "viewCount": 840000,
-      "formattedViews": "840K"
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7312408643348057376",
+      "viewCount": 1165890,
+      "formattedViews": "1.2M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 80,
       "id": "explore-slideshow-fitness-1ab7e03b18609533",
       "title": "Fitness 17",
       "category": "fitness",
       "slidesCount": 3,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Core strengthening exercises",
-      "viewCount": 760000,
-      "formattedViews": "760K"
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7288258430551297313",
+      "viewCount": 1081304,
+      "formattedViews": "1.1M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 81,
       "id": "explore-slideshow-fitness-29a05bed00dabbd4",
       "title": "Fitness 18",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Pre-workout stretch guide",
-      "viewCount": 510000,
-      "formattedViews": "510K"
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7499087255420636438",
+      "viewCount": 1106250,
+      "formattedViews": "1.1M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 82,
       "id": "explore-slideshow-fitness-fb12f86a11e5ec04",
       "title": "Fitness 19",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Lower back pain relief stretch",
-      "viewCount": 630000,
-      "formattedViews": "630K"
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7589668827324058882",
+      "viewCount": 32086523,
+      "formattedViews": "32M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 83,
       "id": "explore-slideshow-fitness-fa5bd79d1463f253",
       "title": "Fitness 20",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Hamstring stretch daily",
-      "viewCount": 480000,
-      "formattedViews": "480K"
+      "sourceUrl": "https://www.tiktok.com/@stronger_gymapp/photo/7595587070794501398",
+      "viewCount": 15559735,
+      "formattedViews": "16M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 84,
       "id": "explore-slideshow-fitness-35aed740a089aa3b",
       "title": "Fitness 21",
       "category": "fitness",
       "slidesCount": 2,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Upper body posture fix",
-      "viewCount": 390000,
-      "formattedViews": "390K"
+      "sourceUrl": "https://www.tiktok.com/@strongermobile/photo/7572147638309571862",
+      "viewCount": 26064832,
+      "formattedViews": "26M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 85,
       "id": "explore-slideshow-fitness-6e508ea3e38302e6",
       "title": "Fitness 22",
       "category": "fitness",
       "slidesCount": 6,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Dumbbell workout routine",
-      "viewCount": 1750000,
-      "formattedViews": "1.8M"
+      "sourceUrl": "https://www.tiktok.com/@app.journai/photo/7597575562697313538",
+      "viewCount": 2012095,
+      "formattedViews": "2M",
+      "status": "verified_live"
     },
     {
-      "galleryIndex": 86,
       "id": "explore-slideshow-skincare-9d2ac94d0f462f9f",
       "title": "Skincare 09",
       "category": "skincare",
       "slidesCount": 9,
-      "platform": "tiktok",
-      "sourceUrl": null,
-      "sourceKind": null,
-      "coverText": "Glass skin step by step evening routine",
-      "viewCount": 2950000,
-      "formattedViews": "3.0M"
+      "sourceUrl": "https://www.tiktok.com/@skincarebychannon/photo/7549901125022076182",
+      "viewCount": 152521,
+      "formattedViews": "153K",
+      "status": "verified_live"
     }
-  ],
-  "stagedCount": 13
+  ]
 }

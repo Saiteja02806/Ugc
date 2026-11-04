@@ -282,22 +282,22 @@
         {
           "startSeconds": 1.1,
           "endSeconds": 2,
-          "action": "Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly."
+          "action": "Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly. Progress from the open jaw to forward-rounded lips with a small circular opening; briefly narrow the opening while keeping the sunglass grip."
         },
         {
           "startSeconds": 2,
           "endSeconds": 2.3,
-          "action": "Lift sunglasses upward off eyes and away toward screen-left, revealing eyes."
+          "action": "Lift sunglasses upward off eyes and away toward screen-left, revealing eyes. Keep the lips rounded as the sunglasses pass away from the eyes."
         },
         {
           "startSeconds": 2.3,
           "endSeconds": 2.8,
-          "action": "Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise."
+          "action": "Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise. Release the purse and drop the jaw into a larger open shape, then begin narrowing the lips again."
         },
         {
           "startSeconds": 2.8,
           "endSeconds": 3.2666666666666666,
-          "action": "Lean toward camera, hold incredulous wide-eyed look while mouth shape softens."
+          "action": "Lean toward camera, hold incredulous wide-eyed look while mouth shape softens. Let the lips settle into a smaller partly open shape with the brows still questioning."
         }
       ],
       "endingState": "Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.",

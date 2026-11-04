@@ -6,6 +6,7 @@ import ts from "typescript";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
+import * as talkingScriptPolicy from "../lib/explore/talking-head-script-remix.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const element = (type, props) => typeof type === "function" ? type(props) : ({ type, props });
@@ -93,6 +94,8 @@ function layout(kind) {
       changeInstructions() {}, choose: async () => false, retry() {}, videoReference: attachments[mediaCursor++],
     }) },
     "./talking-head-references": { TalkingHeadReferences: "talking-head-references" },
+    "./talking-head-script-section": { TalkingHeadScriptSection: "talking-head-script" },
+    "@/lib/explore/talking-head-script-remix": talkingScriptPolicy,
     "./talking-head-references.module.css": css,
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
     react: {
@@ -175,6 +178,30 @@ function layout(kind) {
     setFinishedOutput(output) { finishedOutput = output; },
   };
 }
+
+test("Talking Head frame approval carries the edited script and raw identity IDs while preserving Demo and Sound", () => {
+  const actual = layout("hook"), draftId = "00000000-0000-4000-8000-000000000099";
+  const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: draftId } };
+  let current = actual.render(props);
+  nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
+  current = actual.render(props);
+  let preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
+  assert.equal(preparation.props.scriptSection.type, "talking-head-script");
+  preparation.props.scriptSection.props.onChange("These are the approved words for this business.");
+  current = actual.render(props); preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
+  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false, identityAssetIds: ["raw-first", "raw-second"] };
+  preparation.props.onUseStartingFrame(frame); current = actual.render(props);
+  assert.equal(current.generationDraft.talkingHeadScript, "These are the approved words for this business.");
+  assert.equal(current.composer.spokenScriptMode, true);
+  assert.deepEqual(Array.from(current.generationDraft.startingFrame.identityAssetIds), ["raw-first", "raw-second"]);
+  assert.equal(current.generationDraft.startingFrame.generateAudio, false, "Sound never changes silently");
+  assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);
+  current.composer.onInstructionsChange(""); current = actual.render(props);
+  nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id); current = actual.render(props);
+  preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
+  assert.equal(preparation.props.scriptSection.props.initialScript, "");
+  assert.equal(preparation.props.scriptSection.props.preferInitialScript, true);
+});
 
 test("Talking Head Recreate approves only the current draft, preserves Demo/script and stages replacement", () => {
   const actual = layout("hook");
@@ -454,7 +481,7 @@ test("Talking Head scopes restored identity photos to the selected frame and sup
   h.photoRestore().apply([{ kind: "image", asset: { id: "face-b", title: "Face B", url: "https://owned.test/b" } }]);
   state = h.render(props); assert.deepEqual(Array.from(state.generationDraft.startingFramePhotos, p => p.assetId), ["face-b"]);
   state.composer.onGenerationSettingsChange({ model: "wan_3_0" }); state = h.render(props);
-  assert.equal(state.generationDraft.startingFramePhotos.length, 0, "unsupported models receive no appearance photos");
+  assert.deepEqual(Array.from(state.generationDraft.startingFramePhotos, p => p.assetId), ["face-b"], "model changes retain the user's photos for validation rather than silently dropping them");
 });
 
 

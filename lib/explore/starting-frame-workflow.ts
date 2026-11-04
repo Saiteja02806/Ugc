@@ -1,5 +1,6 @@
 import { buildHookAnimationPrompt } from "./hook-keyframe-motion.ts";
 import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
+import { talkingHeadScriptInputError } from "./talking-head-script-input.ts";
 
 export type StartingFrameWorkflow = "hook" | "wall_text" | "talking_head";
 
@@ -13,8 +14,13 @@ export function startingFrameWorkflowDirections(format: StartingFrameWorkflow) {
 /** Script/overlay workflows do not use Hook's action-only grammar.
  * The server chooses the workflow from the owned image's canonical source. */
 export function buildStartingFrameAnimationPrompt(input: {
-  workflow: StartingFrameWorkflow; directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; voiceReference?: boolean; voiceIdentityPhotoCount?: number;
+  workflow: StartingFrameWorkflow; directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; voiceReference?: boolean; voiceIdentityPhotoCount?: number; spokenScript?: string;
 }) {
+  if (input.spokenScript !== undefined) {
+    if (input.workflow !== "talking_head") throw Error("Spoken script input is available in Talking Head only.");
+    const error = talkingHeadScriptInputError(input.spokenScript, input.durationSeconds, input.generateAudio);
+    if (error) throw Error(error);
+  }
   if (input.workflow === "hook") return buildHookAnimationPrompt(input);
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) throw new Error("Describe the video within 6,000 characters.");
@@ -25,6 +31,7 @@ export function buildStartingFrameAnimationPrompt(input: {
     ...(input.voiceReference && input.voiceIdentityPhotoCount ? [`Images 2 through ${input.voiceIdentityPhotoCount + 1} are supporting facial identity references for that same person only. Do not copy their clothing, lighting, background or pose; Image 1 controls the scene.`] : []),
     input.workflow === "talking_head" ? "Create a natural talking-head performance. Use only the user's own script below. Do not invent product claims or add a demo segment." : "Create clean moving background footage. Overlay text is added separately in the editor; do not render the requested overlay words into the video.",
     input.workflow === "wall_text" ? retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds) : input.directions.trim(),
+    ...(input.spokenScript !== undefined ? [`APPROVED SPOKEN SCRIPT (say these words exactly, in this order; never speak scene directions or source/demo narration; this script overrides any conflicting dialogue mentioned in other directions):\n${JSON.stringify(input.spokenScript.trim())}`] : []),
     input.removePhysicalText ? "Keep the scene free of captions, physical logos, readable text, labels, signage and watermarks. Preserve the underlying surfaces, clothing and props without recreating removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     input.generateAudio
       ? input.workflow === "talking_head" ? "SOUND SETTING: ON. Generate the user's requested speech with natural delivery and lip-sync. Do not invent extra spoken words." : "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add speech, narration, singing or music."

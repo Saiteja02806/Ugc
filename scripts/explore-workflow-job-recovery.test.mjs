@@ -48,6 +48,7 @@ function load(file, imports = {}, globals = {}) {
     if(name === "@/lib/ai-studio/video-generation-state") return load("lib/ai-studio/video-generation-state.ts");
     if(name === "@/lib/ai-studio/video-history") return load("lib/ai-studio/video-history.ts");
     if(name === "@/worker/src/lib/hook-starting-frame-video") return load("worker/src/lib/hook-starting-frame-video.ts");
+    if(name === "@/lib/explore/starting-frame-photo-selection") return load("lib/explore/starting-frame-photo-selection.ts");
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
@@ -114,7 +115,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(window.location.search) },
     "@/contexts/auth-context": auth,
     "@/components/explore/use-starting-frame-photos": { useStartingFramePhotos: () => ({ pending: false, error: null, remember() {} }) },
-    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
+    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4, getVideoModelCreditsPerSecond: () => 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts"),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {
       "./generation-settings": load("lib/ai-studio/generation-settings.ts"),

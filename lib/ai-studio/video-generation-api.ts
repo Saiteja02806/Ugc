@@ -56,6 +56,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  talkingHeadScript?: unknown;
   automaticHookText?: unknown;
   exploreFormat?: unknown;
   workflow?: unknown;
@@ -197,6 +198,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (isCreatorAccountReference(body?.referenceId) && !body?.startingFrameAssetId) return NextResponse.json({ ok: false, error: "Choose Recreate and approve a starting image for this private reference first." }, { status: 400 });
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const usesStartingFrame = body?.startingFrameAssetId !== undefined || body?.startingFrameJobId !== undefined;
+  if (body?.talkingHeadScript !== undefined && (!usesStartingFrame || body.workflow !== "talking_head" || typeof body.talkingHeadScript !== "string")) return NextResponse.json({ ok: false, error: "Use an approved Talking Head starting frame and spoken script." }, { status: 400 });
   const frameVoiceReference = body?.startingFrameMode === "image_voice_reference";
   if (body?.startingFrameMode !== undefined && (!frameVoiceReference || !usesStartingFrame ||
     (body.model !== "wan_3_0" && body.model !== "seedance_2_5") || body.generateAudio !== true ||
@@ -341,6 +343,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       });
       if (isCreatorAccountReference(startingFrame.referenceId) && !canAccessCreatorAccounts(user)) return NextResponse.json({ ok: false, error: "This reference is unavailable." }, { status: 404 });
       if (frameVoiceReference && startingFrame.workflow !== "talking_head") return NextResponse.json({ ok: false, error: "Image and voice references are available in Talking Head only." }, { status: 400 });
+      if (body?.talkingHeadScript !== undefined && startingFrame.workflow !== "talking_head") return NextResponse.json({ ok: false, error: "This starting frame does not belong to Talking Head." }, { status: 400 });
       if (frameVoiceReference) {
         const image = await getMediaAssetForOwner({ assetId: startingFrame.assetId, userId: user.uid });
         if (!image || image.user_id !== user.uid || image.deleted_at !== null || image.status !== "ready" || image.collection !== "image" ||
@@ -419,6 +422,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       if (prompt.includes("PHASE [")) hookSourceTimeline = verifiedSourceTimeline;
     }
     generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true,
+      ...(typeof body?.talkingHeadScript === "string" ? { spokenScript: body.talkingHeadScript } : {}),
       ...(frameVoiceReference ? { voiceReference: true, voiceIdentityPhotoCount: referenceImageUrls.length } : {}),
       ...(startingFrame.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
       : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
@@ -525,6 +529,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       { status: 400 },
     );
   }
+  if (body?.talkingHeadScript !== undefined && generationPrompt.length > 10_000) return NextResponse.json({ ok: false, error: "The script and scene directions exceed the video prompt limit. Shorten them before generating." }, { status: 400 });
   if (model === "google_omni" && generationPrompt.length > 2_000) {
     return NextResponse.json(
       { error: "Omni Flash prompts must be 2,000 characters or fewer.", ok: false },
@@ -693,6 +698,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       inputs: Array.from({ length: quantity }, (_, index) => ({
         ...(automaticHookText ? { automaticHookText: automaticHookText as unknown as Json } : {}),
         aspectRatio, avatarImageUrl, referenceImageUrls: providerReferenceImages, referenceAudioUrls,
+        ...(typeof body?.talkingHeadScript === "string" ? { talkingHeadScript: body.talkingHeadScript } : {}),
         ...(imageRoles ? { personReference: imageRoles } : {}),
         ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
         ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
@@ -743,6 +749,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           ...(typeof body?.workflow === "string" ? { workflow: body.workflow } : startingFrame?.workflow ? { workflow: startingFrame.workflow } : typeof body?.referenceId === "string" && (body.referenceId.startsWith("talking-") || body.referenceId.includes("talking")) ? { workflow: "talking_head" } : body?.exploreFormat === "wall_text" ? { workflow: "wall_text" } : body?.exploreFormat === "hook" ? { workflow: "hook" } : {}),
           avatarImageUrl,
+          ...(typeof body?.talkingHeadScript === "string" ? { talkingHeadScript: body.talkingHeadScript } : {}),
           referenceImageUrls: providerReferenceImages,
           ...(imageRoles ? { personReference: imageRoles } : {}),
           ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),

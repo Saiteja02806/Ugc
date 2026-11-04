@@ -3,17 +3,18 @@ import viewsRegistry from "./hook-reference-views.json" with { type: "json" };
 export type HookReferenceViewEntry = {
   viewCount: number;
   formattedViews: string;
+  verifiedLive?: boolean;
+  sourceUrl?: string;
 };
 
 export type HookReferenceFullEntry = {
-  galleryIndex: number;
   id: string;
   title: string;
-  platform: "instagram" | "tiktok" | "internal";
-  sourceUrl: string | null;
-  caption: string;
+  platform: "instagram" | "tiktok";
+  sourceUrl: string;
   viewCount: number;
   formattedViews: string;
+  status: string;
 };
 
 const viewsByReferenceId = viewsRegistry.viewsByReferenceId as Record<string, HookReferenceViewEntry>;

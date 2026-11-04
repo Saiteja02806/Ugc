@@ -95,6 +95,7 @@ try {
     if (existing?.status === "active") {
       assertExistingRowMatches(existing, item);
       await verifyStoredObjects(item);
+      await prepareStartingFrame(item);
       result.skippedExisting.push({
         catalogName: item.asset.catalogName,
         id: existing.id,
@@ -129,6 +130,7 @@ try {
       key: item.thumbnailKey,
     });
     await verifyStoredObjects(item);
+    await prepareStartingFrame(item);
 
     const now = new Date().toISOString();
     const { data, error } = await supabase
@@ -201,6 +203,13 @@ async function assertRemoteSchemaReady() {
       `Remote Wall-of-text schema is not ready: ${error.message}`,
     );
   }
+}
+
+async function prepareStartingFrame(item) {
+  await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames([{
+    id: item.asset.catalogName, videoSha256: item.asset.sha256, filePath: item.filePath,
+    width: item.metadata.width, height: item.metadata.height,
+  }]);
 }
 
 async function loadExistingRows(items) {

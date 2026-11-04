@@ -7,7 +7,7 @@ type FacePhoto = { asset: { id: string; url: string } };
 export function startingFrameFaceReferenceError(model: unknown, frame: StartingFrameIdentity, photos: readonly FacePhoto[]) {
   if (!photos.length) return null;
   const limit = hookStartingFrameFaceReferenceLimit(model);
-  if (!limit) return "Omni Flash animates the starting image alone. Remove the extra face photos. Your selections have been kept.";
+  if (!limit) return "This model's current starting-frame route cannot use extra person photos. Your selections are kept. Remove them to animate the starting image alone.";
   if (photos.length > limit) return `Use up to ${limit} face references with your starting frame. Remove an extra photo before generating.`;
   if (photos.some(photo => photo.asset.id === frame.assetId || photo.asset.url === frame.url)) return "Choose a separate clear face photo; the starting frame already supplies the opening scene.";
   if (new Set(photos.map(photo => photo.asset.id)).size !== photos.length || new Set(photos.map(photo => photo.asset.url)).size !== photos.length) return "Remove duplicate face references before generating.";

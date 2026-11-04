@@ -1,6 +1,8 @@
 /** Browser-only identities, never signed URLs or ownership proof. Empty is an
  * explicit removal; missing means reuse the image preparation's selection. */
 export type StartingFramePhotoScope = { ownerId: string; jobId: string; assetId: string };
+/** Selection survives model changes; submission capability is checked separately. */
+export const STARTING_FRAME_PHOTO_SELECTION_LIMIT = 5;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function startingFramePhotoKey(scope: StartingFramePhotoScope) {
   return `ugc-explore:animation-photos:v1:${encodeURIComponent(scope.ownerId)}:${scope.jobId}:${scope.assetId}`;
@@ -10,7 +12,7 @@ export function readStartingFramePhotos(raw: string | null, scope: StartingFrame
   if (raw.length > 2000) throw new Error("Your saved face photos could not be verified. Choose them again before generating.");
   const value = JSON.parse(raw);
   if (value?.version !== 1 || value.ownerId !== scope.ownerId || value.jobId !== scope.jobId || value.assetId !== scope.assetId ||
-    !Array.isArray(value.ids) || value.ids.length > 5 || value.ids.some((id: unknown) => typeof id !== "string" || !uuid.test(id) || id === scope.assetId) ||
+    !Array.isArray(value.ids) || value.ids.length > STARTING_FRAME_PHOTO_SELECTION_LIMIT || value.ids.some((id: unknown) => typeof id !== "string" || !uuid.test(id) || id === scope.assetId) ||
     new Set(value.ids.map((id: string) => id.toLowerCase())).size !== value.ids.length) {
     throw new Error("Your saved face photos could not be verified. Choose them again before generating.");
   }

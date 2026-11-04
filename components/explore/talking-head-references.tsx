@@ -9,6 +9,7 @@ import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 import styles from "./talking-head-references.module.css";
 import studio from "./workflow-studio.module.css";
 import { preloadHookStartingFrameWorkspace } from "./lazy-hook-starting-frame-workspace";
+import { useStartingFramePreload } from "./use-starting-frame-preload";
 
 export function TalkingHeadReferences({ items, loading, failed, disabled, selectedId, onChoose, onRetry, startingFrameEnabled = false }: {
   items: TalkingHeadReference[]; loading: boolean; failed: boolean; disabled: boolean;
@@ -17,6 +18,7 @@ export function TalkingHeadReferences({ items, loading, failed, disabled, select
   selectedId: string | null; onChoose: (id: string) => void; onRetry: () => void;
 }) {
   const access = useAIStudioAccess();
+  const preloadFrame = useStartingFramePreload();
   const [preview, setPreview] = useState<TalkingHeadReference | null>(null);
   const visibleItems = visibleTalkingHeadReferences(items);
   const warmPreparation = () => { if (startingFrameEnabled && !disabled) void preloadHookStartingFrameWorkspace().catch(() => undefined); };
@@ -27,7 +29,7 @@ export function TalkingHeadReferences({ items, loading, failed, disabled, select
       if (!startingFrameEnabled && item.durationSeconds > 30) unavailable = "Video references support up to 30 seconds. This original is available for preview.";
       return <article key={item.id} className={styles.card}>
       <ReferenceCard reference={item} compact hideCaption overlayActions canOpenSource={access === "pro"} isSelected={selectedId === item.id} onPreview={() => setPreview(item)} onRecreate={() => { if (!disabled && !unavailable) onChoose(item.id); }} hideRecreate />
-      <button type="button" className={studio.referenceRecreateButton} data-reference-recreate data-reference-recreate-overlay data-selected={selectedId === item.id || undefined} disabled={disabled} onPointerEnter={warmPreparation} onFocus={warmPreparation} title={unavailable ?? "Recreate this reference"} aria-describedby={unavailable ? `${item.id}-limit` : undefined} aria-label={unavailable ? `Preview ${item.title}` : `Recreate ${item.title}`} onClick={() => unavailable ? setPreview(item) : onChoose(item.id)}><RotateCcw aria-hidden="true" /><span>{unavailable ? "Preview only" : "Recreate"}</span></button>
+      <button type="button" className={studio.referenceRecreateButton} data-reference-recreate data-reference-recreate-overlay data-selected={selectedId === item.id || undefined} disabled={disabled} onPointerEnter={() => { warmPreparation(); if (startingFrameEnabled && !disabled && !unavailable) preloadFrame(item); }} onFocus={() => { warmPreparation(); if (startingFrameEnabled && !disabled && !unavailable) preloadFrame(item); }} onPointerDown={() => { if (startingFrameEnabled && !disabled && !unavailable) preloadFrame(item); }} title={unavailable ?? "Recreate this reference"} aria-describedby={unavailable ? `${item.id}-limit` : undefined} aria-label={unavailable ? `Preview ${item.title}` : `Recreate ${item.title}`} onClick={() => { if (startingFrameEnabled && !disabled && !unavailable) preloadFrame(item); if (unavailable) setPreview(item); else onChoose(item.id); }}><RotateCcw aria-hidden="true" /><span>{unavailable ? "Preview only" : "Recreate"}</span></button>
       {unavailable ? <span id={`${item.id}-limit`} className="sr-only">{unavailable}</span> : null}
     </article>; })}</div> : <p role="status">Talking-head references are being prepared. You can generate from your instructions or upload your own video.</p>}
     <ReferencePreviewDialog key={preview?.id} open={Boolean(preview)} reference={preview} onOpenChange={open => { if (!open) setPreview(null); }} />

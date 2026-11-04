@@ -15,6 +15,7 @@ function load(file, imports = {}, globals = {}) {
     if (name.endsWith(".module.css")) return { default: {} };
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
+    if (name === "@/lib/explore/starting-frame-photo-selection") return load("lib/explore/starting-frame-photo-selection.ts");
     if (name in imports) return imports[name];
     if (name === "@/components/generation/model-provider-logos") return load("components/generation/model-provider-logos.tsx", imports, globals);
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
@@ -52,7 +53,7 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, ref
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
     "@/components/explore/use-starting-frame-photos": { useStartingFramePhotos: () => ({ pending: false, error: null, remember() {} }) },
-    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
+    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4, getVideoModelCreditsPerSecond: () => 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {
       "./generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),

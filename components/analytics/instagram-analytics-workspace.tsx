@@ -99,6 +99,7 @@ import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { hasTikTokUiAccess, isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import { cn } from "@/lib/utils";
+import styles from "./analytics-contrast.module.css";
 
 type AnalyticsLoadState = "error" | "loading" | "ready";
 type DateRangeDays = 7 | 30 | 90;
@@ -152,9 +153,9 @@ const performanceMetricLabels: Record<PerformanceMetric, string> = {
 };
 
 const performanceMetricColors: Record<PerformanceMetric, string> = {
-  views: "#e16540",
-  reach: "#d62976",
-  interactions: "#7a35c9",
+  views: "var(--analytics-views)",
+  reach: "var(--analytics-reach)",
+  interactions: "var(--analytics-interactions)",
 };
 
 const contentFilterOptions: Array<{
@@ -369,7 +370,7 @@ export function InstagramAnalyticsWorkspace() {
   }, [isInstagramRefreshActive, retryAnalytics]);
 
   return (
-    <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
+    <section className={cn(styles.workspace, "min-h-dvh min-w-0 flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8")}>
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -1138,7 +1139,7 @@ function InstagramPerformanceTrendChart({
                 return (
                   <line
                     key={step}
-                    stroke="rgb(56 56 56)"
+                    stroke="var(--border)"
                     strokeDasharray={step === 1 ? "0" : "4 8"}
                     strokeWidth="1"
                     x1={paddingX}
@@ -1206,7 +1207,7 @@ function InstagramPerformanceTrendChart({
                 r={activePoint?.date === point.date ? 5 : 3}
                 role="img"
                 stroke={
-                  activePoint?.date === point.date ? "#f5f3f0" : "rgb(41 41 41)"
+                  activePoint?.date === point.date ? "var(--foreground-strong)" : "var(--card)"
                 }
                 strokeWidth={activePoint?.date === point.date ? 2.5 : 1.5}
                 tabIndex={0}
@@ -1222,7 +1223,7 @@ function InstagramPerformanceTrendChart({
           {hasData ? (
             <>
               <text
-                fill="#8d8984"
+                fill="var(--muted-subtle)"
                 fontSize="10"
                 fontWeight="600"
                 textAnchor="end"
@@ -1232,7 +1233,7 @@ function InstagramPerformanceTrendChart({
                 {formatNumber(maxValue)}
               </text>
               <text
-                fill="#8d8984"
+                fill="var(--muted-subtle)"
                 fontSize="10"
                 fontWeight="600"
                 textAnchor="end"
@@ -1470,7 +1471,7 @@ function PerformanceContentMarker({
         className="relative flex size-full items-center justify-center overflow-hidden rounded-full border-2 bg-card-muted text-muted"
         style={{
           borderColor: metricColor,
-          boxShadow: `0 0 0 3px ${metricColor}26, 0 7px 18px rgb(0 0 0 / 0.38)`,
+          boxShadow: `0 0 0 3px color-mix(in srgb, ${metricColor} 15%, transparent), 0 7px 18px rgb(0 0 0 / 0.38)`,
         }}
         aria-hidden="true"
       >

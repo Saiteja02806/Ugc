@@ -207,6 +207,24 @@
       "durationSeconds": 33.867,
       "generationPrompt": "A close seated talking-head shot against an upholstered chair, with direct eye contact and small pinching and pointing hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
       "sourceUrl": "https://www.tiktok.com/@mumtipswithginny/video/7589025547875880215"
+    },
+    {
+      "id": "talking-carla-eatsss",
+      "title": "Carla grocery discovery",
+      "videoUrl": "/explore/talking-head-references/v1/talking-carla-eatsss.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-carla-eatsss.jpg",
+      "durationSeconds": 43.1,
+      "generationPrompt": "Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@carla.eatsss/video/7662440104488684813"
+    },
+    {
+      "id": "talking-taliameals",
+      "title": "Talia grocery discovery",
+      "videoUrl": "/explore/talking-head-references/v1/talking-taliameals.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-taliameals.jpg",
+      "durationSeconds": 34.922,
+      "generationPrompt": "Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118"
     }
   ]
 }

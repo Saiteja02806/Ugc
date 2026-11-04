@@ -1,4 +1,5 @@
 "use client";
+import { useStartingFramePreload } from "./use-starting-frame-preload";
 
 /* Gallery covers fill their cards; opened previews preserve the full source dimensions. */
 /* eslint-disable @next/next/no-img-element */
@@ -26,14 +27,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useAuth } from "@/contexts/auth-context";
 import { filterReferences, orderReferenceGallery, isRemovedWallTextReference, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { withReadDeadline } from "@/lib/http/read-deadline";
+import { fetchRecreateReferences } from "@/lib/explore/reference-catalog-client";
+export { fetchRecreateReferences } from "@/lib/explore/reference-catalog-client";
 import { cn } from "@/lib/utils";
 import { getReferenceSource, referenceSourceLabel } from "@/lib/explore/reference-source-link";
-
-type RecreateReferencesResponse =
-  | { items: RecreateReference[]; archivedHookItems?: RecreateReference[]; ok: true }
-  | { message?: string; ok?: false };
 
 const GALLERY_GRID = layout.galleryGrid;
 const EMPTY_REFERENCES: RecreateReference[] = [];
@@ -45,7 +42,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
-    queryFn: ({ signal }) => fetchRecreateReferences(signal),
+    queryFn: ({ signal }) => fetchRecreateReferences(signal, user?.uid),
     queryKey: ["recreate-references", 4, user?.uid ?? "signed-out"],
     refetchOnWindowFocus: false,
     retry: 1,
@@ -191,6 +188,7 @@ export function FilterMenu({ activeCategories, categories, disabled, onClear, on
 }
 
 export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, overlayActions = false, canOpenSource = false, hideRecreate = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean; hideRecreate?: boolean }) {
+  const preloadFrame = useStartingFramePreload();
   const source = getReferenceSource(reference);
   const overlay = overlayActions && reference.format === "hook";
   const sourceLabel = source ? referenceSourceLabel(source) : "";
@@ -200,7 +198,7 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
       {reference.isNew ? <span data-reference-new className={studio.referenceNewBadge}><span aria-hidden="true" className={studio.referenceNewDot} />New</span> : null}
       {reference.formattedViews ? <span data-reference-views className={studio.referenceViewsBadge} title={`${reference.formattedViews} views`} aria-label={`${reference.formattedViews} views`}><EyeIcon className={studio.referenceViewsIcon} /><span>{reference.formattedViews}</span></span> : null}
       {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
-      {!hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate data-reference-recreate-overlay data-selected={isSelected || undefined} className={studio.referenceRecreateButton}>
+      {!hideRecreate ? <button type="button" onPointerEnter={() => preloadFrame(reference)} onFocus={() => preloadFrame(reference)} onPointerDown={() => preloadFrame(reference)} onClick={() => { preloadFrame(reference); onRecreate(); }} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate data-reference-recreate-overlay data-selected={isSelected || undefined} className={studio.referenceRecreateButton}>
         <RotateCcw className="size-4" aria-hidden="true" />
         <span>Recreate</span>
       </button> : null}
@@ -280,19 +278,4 @@ export function EmptyReferences({ format, hasFilters, onClear }: { format: Recre
 
 export function ProReferenceGate() {
   return <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-card p-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-foreground-strong"><LockKeyhole className="size-3.5" aria-hidden="true" /></span><div><p className="text-sm font-semibold text-foreground-strong">More references are ready to explore</p><p className="text-xs text-muted">Upgrade to open the full Recreate catalogue.</p></div></div><Button size="sm" nativeButton={false} render={<Link href="/pricing" />}>View plans</Button></div>;
-}
-
-export async function fetchRecreateReferences(signal?: AbortSignal): Promise<RecreateReference[]> {
-  return withReadDeadline(async bounded => {
-  const token = await getCurrentUserIdToken();
-  if (!token) throw new Error("Sign in before opening Recreate.");
-  const response = await fetch("/api/explore/recreate-references", {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-    signal: bounded,
-  });
-  const data = await response.json().catch(() => null) as RecreateReferencesResponse | null;
-  if (!response.ok || data?.ok !== true || !("items" in data) || !Array.isArray(data.items)) throw new Error(data && "message" in data && typeof data.message === "string" ? data.message : "Could not load references.");
-  return [...data.items, ...(data.archivedHookItems ?? [])];
-  }, signal);
 }

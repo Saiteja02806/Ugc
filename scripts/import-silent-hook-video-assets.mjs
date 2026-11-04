@@ -159,6 +159,7 @@ try {
     if (existing?.status === "ready") {
       assertExistingRowMatches(existing, item);
       await verifyStoredObjects(item);
+      await prepareStartingFrame(item);
       result.skippedExisting.push({
         catalogName: item.asset.catalogName,
         id: existing.id,
@@ -204,6 +205,7 @@ try {
       key: item.thumbnailKey,
     });
     await verifyStoredObjects(item);
+    await prepareStartingFrame(item);
 
     const { data, error } = await supabase
       .from("avatar_assets")
@@ -249,6 +251,12 @@ try {
     failure: error instanceof Error ? error.message : String(error),
   });
   throw error;
+}
+
+async function prepareStartingFrame(item) {
+  await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames([{
+    id: item.asset.catalogName, videoSha256: item.asset.sha256, filePath: item.filePath,
+  }]);
 }
 
 async function assertRemoteSchemaReady() {

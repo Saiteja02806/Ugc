@@ -231,6 +231,26 @@
       "height": 1280,
       "frameIndex": 0,
       "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-carla-eatsss",
+      "sourceSha256": "7f5e52359ec53b527d0b20bef8c4314105c452299c8d3cf770fb4ebe101a998b",
+      "frameSha256": "04046d2beeff3f13b1b002c824dfa4261a4b613670fb2fcb7306fe803d209260",
+      "path": "/explore/talking-head-frames/v1/talking-carla-eatsss.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-taliameals",
+      "sourceSha256": "f5e854d171cda8062557dab189b242e0de2538b26b1227fb6f044031a7548579",
+      "frameSha256": "23160b6c94c977ccec15044c52f843a338c3ba09f29c71e4fead381bb06f8ea4",
+      "path": "/explore/talking-head-frames/v1/talking-taliameals.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
     }
   ]
 }

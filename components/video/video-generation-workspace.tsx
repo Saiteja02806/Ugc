@@ -53,7 +53,8 @@ import { CreatorReferencePicker } from "@/components/video/creator-reference-pic
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import resultLayout from "@/components/video/video-results.module.css";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameDefaultDuration, hookStartingFrameSourceDuration, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameDefaultDuration, hookStartingFrameSourceDuration } from "@/worker/src/lib/hook-starting-frame-video";
+import { STARTING_FRAME_PHOTO_SELECTION_LIMIT } from "@/lib/explore/starting-frame-photo-selection";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -553,14 +554,14 @@ export function VideoGenerationStudioPanel({
       : hasWorkflowVideoReference && !sourceDuration ? "Credits are based on the source clip's duration, checked before generation."
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
-  const referenceImages = awaitingStartingFrame || startingFrame && !hookStartingFrameFaceReferenceLimit(model) ? [] : [
+  const referenceImages = awaitingStartingFrame ? [] : [
     ...(uploadedReference ? [uploadedReference] : []),
     ...additionalImageReferences,
   ];
   const hasVideoReference = Boolean(uploadedReferenceVideo || galleryVideoReference);
   const referencePolicyOptions = { allowOmniVideo: Boolean(workflow), hasTimedReferences: hasVideoReference || audioReferences.length > 0 };
   const referencePolicy = getVideoReferencePolicy(model, referencePolicyOptions);
-  const workflowImageLimit = startingFrame ? hookStartingFrameFaceReferenceLimit(model) || hookStartingFrameFaceReferenceLimit("google_omni") : referencePolicy.maxImages;
+  const workflowImageLimit = startingFrame ? STARTING_FRAME_PHOTO_SELECTION_LIMIT : referencePolicy.maxImages;
   const referenceLimitError = referenceImages.length > workflowImageLimit ? `Use up to ${workflowImageLimit} image references with these inputs. Remove an image before generating.` : null;
   const referenceTypeError = getVideoReferenceTypeError(model, hasVideoReference, audioReferences.length > 0, referencePolicyOptions);
   const timedReferenceError = referenceTypeError ?? (audioReferences.length > 1 ? "Use one audio reference. Remove an audio before generating." : null)

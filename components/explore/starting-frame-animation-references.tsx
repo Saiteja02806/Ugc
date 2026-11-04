@@ -11,7 +11,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import type { MediaAsset } from "@/lib/media/types";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
-import { hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
+import { STARTING_FRAME_PHOTO_SELECTION_LIMIT } from "@/lib/explore/starting-frame-photo-selection";
 import styles from "./starting-frame-animation-references.module.css";
 
 export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange, frameControl, compact = false, onPrepareFrame }: {
@@ -24,7 +24,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
   frameControl?: ReactNode;
   compact?: boolean; onPrepareFrame?: () => void;
 }) {
-  const limit = hookStartingFrameFaceReferenceLimit(model);
+  const limit = STARTING_FRAME_PHOTO_SELECTION_LIMIT;
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const pending = useRef(false), revision = useRef(0), selectionRequest = useRef<AbortController | null>(null);
   const pendingCallback = useRef(onPendingChange);
@@ -82,7 +82,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
         startingFramePreview={compact ? frame : undefined} onSelectStartingFrame={compact ? onSelectFrame : undefined}
         onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
         onPrepareStartingFrame={compact ? onPrepareFrame : undefined} imagePurpose="person" imagePickerDisabled={!limit}
-        selection={photos[0] ?? null} imageSelections={photos} onImagesChange={onPhotosChange} maxImages={limit || hookStartingFrameFaceReferenceLimit("google_omni")}
+        selection={photos[0] ?? null} imageSelections={photos} onImagesChange={onPhotosChange} maxImages={limit}
         active={active} ownerId={ownerId} preview={preview} disabled={disabled} videoInputEnabled={false} audioInputEnabled={false}
         influencerLibrary={{ images: historyImages, loading: !preview && history.isPending, error: history.error, selectionError, hasMore: history.hasNextPage,
           loadingMore: history.isFetchingNextPage, onRetry: () => void history.refetch(), onLoadMore: () => void history.fetchNextPage(), onSelect: selectInfluencer }}

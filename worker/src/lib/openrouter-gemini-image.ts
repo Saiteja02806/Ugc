@@ -1,4 +1,4 @@
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderRequestNotSubmittedError, ProviderImageResponseError } from "./generation-provider.js";
 import { startingFrameReferenceInstructions, withStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "./starting-frame-reference-options.js";
 import { AI_STUDIO_IMAGE_RATIOS, assertImageOutputAspectRatio, type AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
@@ -126,6 +126,7 @@ export async function generateOpenRouterGeminiImage(
     id?: string;
     model?: string;
     choices?: Array<{
+      finish_reason?: string;
       message?: {
         images?: Array<{
           image_url?: { url?: string };
@@ -137,7 +138,10 @@ export async function generateOpenRouterGeminiImage(
 
   const images = data.choices?.[0]?.message?.images;
   if (!images || images.length === 0) {
-    throw new Error("OpenRouter Gemini returned no images in response.");
+    const finish = data.choices?.[0]?.finish_reason;
+    const finishReason = typeof finish === "string" && /^[a-z_]{1,40}$/.test(finish) ? finish : null;
+    const requestId = typeof data.id === "string" && /^[A-Za-z0-9_-]{1,160}$/.test(data.id) ? data.id : null;
+    throw new ProviderImageResponseError(["stop", "content_filter", "length", "error"].includes(finishReason ?? ""), finishReason, requestId);
   }
 
   const rawUrl = images[0].image_url?.url || images[0].url;

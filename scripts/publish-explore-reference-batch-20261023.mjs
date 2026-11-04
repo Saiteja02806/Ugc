@@ -22,6 +22,8 @@ async function verify(o){const h=await headStorageObject({key:o.key});if(h.Conte
 let index=0,verified=0,uploaded=0;
 const results=await Promise.allSettled(Array.from({length:3},async()=>{while(index<objects.length){const o=objects[index++];try{await verify(o);}catch(e){if(![404,'NoSuchKey','NotFound'].includes(e.code)&&e.$metadata?.httpStatusCode!==404)throw e;await uploadBufferToStorage({key:o.key,buffer:o.bytes,contentType:o.contentType,cacheControl:'public, max-age=31536000, immutable'});uploaded++;await verify(o);}console.log(JSON.stringify({verified:++verified,total:objects.length,key:o.key}));}}));
 const failure=results.find(r=>r.status==='rejected');if(failure)throw failure.reason;
+const videoSources=manifest.files.flatMap(f=>JSON.parse(frozen.get(f)).items.filter(item=>["hook","wall_text"].includes(item.format)&&item.videoSha256).map(item=>({...item,filePath:path.join(dir,'media',`${item.videoSha256}.mp4`)})));
+await (await import('./prepare-published-source-frames.mjs')).preparePublishedSourceFrames(videoSources);
 for(const [f,before]of frozen)if(fs.readFileSync(f,'utf8')!==before)throw Error('Sources changed during publication; no activation performed');
 for(const f of manifest.files){const m=JSON.parse(frozen.get(f));atomicJsonSync(f,{...m,mediaStatus:'published',...(m.activation?{activation:'active'}:{})});}
 const batches=JSON.parse(frozen.get(batchPath));batches.batches=batches.batches.map(b=>b.id.startsWith('explore-20261023-')?{...b,status:'published'}:b);atomicJsonSync(batchPath,batches);

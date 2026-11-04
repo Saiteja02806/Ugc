@@ -64,7 +64,7 @@ test("all31 respective references compile full-source assignments and role-bound
 
 test("new assigned defaults preserve explicit edits and old selected-pose image continuations", () => {
   for (const frame of publicFrames.frames) {
-    const draft = updateHookKeyframeDraft({ ...createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: frame.referenceId, sourceSha256: frame.sourceSha256 }), version: 3 }, { sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height }, imageAssetIds: ["22222222-2222-4222-8222-222222222222"] });
+    const draft = updateHookKeyframeDraft({ ...createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: frame.referenceId, sourceSha256: frame.sourceSha256 }), version: 3, referenceOptions: undefined, customImagePrompt: undefined }, { sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height }, imageAssetIds: ["22222222-2222-4222-8222-222222222222"] });
     assert.equal(getHookKeyframePromptPreview(draft).animationError, null);
     const edited = { ...draft, motionInstructions: "Keep my deliberate slow glance and smile." };
     assert.equal(getHookKeyframePromptPreview(edited).directions, edited.motionInstructions);

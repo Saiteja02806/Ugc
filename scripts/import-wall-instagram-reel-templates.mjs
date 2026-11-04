@@ -188,6 +188,10 @@ try {
     ]);
     await verifyStoredObjects(item, prepared);
 
+    await (await import("./prepare-published-source-frames.mjs")).preparePublishedSourceFrames([{
+      id: item.template.templateKey, videoSha256: hashFile(prepared.video.path), filePath: prepared.video.path,
+    }]);
+
     const overlayId = await ensureOverlayAsset(item, prepared.video);
     await ensureLockedAudioAsset(item, prepared.audio);
     const templateId = await ensureTemplate(item, overlayId);

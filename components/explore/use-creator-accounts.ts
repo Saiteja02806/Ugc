@@ -60,6 +60,11 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
       await Promise.all(accounts.map(async account => {
         try {
           const items: RecreateReference[] = [];
+          function publish() {
+            if (!lifetime.active) return;
+            setLoaded(current => ({ owner, catalog: accounts,
+              accounts: [...(current?.lifetime === lifetime ? current.accounts.filter(item => item.id !== account.id) : []), { ...account, items: [...items] }], attempt, lifetime }));
+          }
           for (let offset = 0; offset < account.items.length; offset += 3) {
             items.push(...await Promise.all(account.items.slice(offset, offset + 3).map(async item => {
               if (item.format === "slideshow") {
@@ -69,11 +74,11 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
               }
               return { ...item, posterUrl: await media(item.posterUrl, "image/png") };
             })));
+            // Each published slideshow is complete and previewable. Unrelated
+            // later slideshows must not hold the first gallery batch hostage.
+            if (format === "slideshow") publish();
           }
-          if (lifetime.active) {
-            setLoaded(current => ({ owner, catalog: accounts,
-              accounts: [...(current?.lifetime === lifetime ? current.accounts : []), { ...account, items }], attempt, lifetime }));
-          }
+          publish();
         } catch (error) {
           if (lifetime.active) setFailure(current => ({ owner,
             messages: { ...(current?.owner === owner ? current.messages : {}),
@@ -85,14 +90,17 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
       if (lifetime.active) { controller.abort(); urls.forEach(URL.revokeObjectURL); setFailure({ owner, messages: Object.fromEntries(accounts.map(account => [account.id, error instanceof Error ? error.message : "Creator videos could not be loaded."])) }); }
     });
     return () => { lifetime.active = false; controller.abort(); urls.forEach(URL.revokeObjectURL); };
-  }, [allowed, ownerId, accounts, wanted, attempt]);
+  }, [allowed, ownerId, accounts, wanted, attempt, format]);
   const hydrated = allowed && loaded && loaded.lifetime.active && loaded.owner === ownerId && loaded.catalog === accounts && loaded.attempt === attempt && wanted ? loaded.accounts : EMPTY;
   const account = hydrated.find(item => item.id === selectedId);
   const error = failure && failure.owner === ownerId && selectedId ? failure.messages[selectedId] ?? null : null;
   return { accounts, selectedId, account, catalogueError: allowed && query.isError ? "Creator accounts could not be loaded." : null,
     // Recreate/restore only needs canonical identity and directions. Never make
     // opening its dialog wait for unrelated gallery stills or video transfers.
-    retryCatalogue: () => void query.refetch(), references: accounts.length ? accounts.flatMap(account => hydrated.find(item => item.id === account.id)?.items ?? account.items) : EMPTY_REFERENCES,
+    retryCatalogue: () => void query.refetch(), references: accounts.length ? accounts.flatMap(account => {
+      const ready = hydrated.find(item => item.id === account.id)?.items;
+      return account.items.map(item => ready?.find(candidate => candidate.id === item.id) ?? item);
+    }) : EMPTY_REFERENCES,
     loading: Boolean(selectedId && !account && !error), error: selectedId ? error : null,
     select: (id: string | null) => { if (user) setSelection({ owner: user.uid, id }); },
     retry: () => { setFailure(null); setAttempt(current => current + 1); },

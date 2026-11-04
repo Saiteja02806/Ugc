@@ -92,7 +92,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.equal(job.input.model, model);
         assert.equal(job.input.hookIdea, input.instructions);
         assert.deepEqual(job.input.referenceImageUrls, []);
-        assert.equal(job.input.provider, model === "kling_3_0" ? undefined : "reapi");
+        assert.equal(job.input.provider, "reapi");
       }
       assert.equal(reservations.size, quantity);
     }
@@ -234,9 +234,33 @@ test("Talking Head sends approved opening and optional face photos through real 
     const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
     await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /starting image alone|face photos/);
     const count = jobs.size;
-    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) })), /Omni/);
+    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) })), /starting image alone|face photos/);
     assert.equal(jobs.size,count);
   } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
+});
+
+test("reviewed Talking Head script crosses client, real API and durable worker input exactly once", async () => {
+  const previous = process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;
+  process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = "true";
+  const frame = { assetId: "00000000-0000-4000-8000-000000000001", jobId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-car-story", url: "https://storage.example.com/opening.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Keep the camera stable.", generateAudio: true };
+  approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, receipt: { version: 1 }, output: { width: 720, height: 1280, ratio: "9:16" } };
+  const words = "Ready to practice? Let me show you.";
+  try {
+    await client().generate(draft({ workflow: "talking_head", instructions: words, talkingHeadScript: words, referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: [], settings: normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }, true) }));
+    const job = [...jobs.values()][0];
+    assert.equal(job.input.talkingHeadScript, words);
+    assert.equal(job.input.hookIdea.split(JSON.stringify(words)).length - 1, 1);
+    assert.doesNotMatch(job.input.hookIdea, /Your instructions:/u);
+    assert.match(job.input.hookIdea, /Keep the camera stable/u);
+    assert.equal(job.input.provider, "reapi");
+    assert.equal(job.input.startingFrameAssetId, frame.assetId);
+    const count = jobs.size, reserved = reservations.size;
+    for (const [script, sound] of [["word ".repeat(80), true], [words, false]]) {
+      const response = await handleAIStudioVideoGeneration(new Request("https://example.test/api/ai-studio/videos/generate", { method: "POST", headers: { Authorization: "Bearer fake-owner-token", "Content-Type": "application/json" }, body: JSON.stringify({ workflow: "talking_head", prompt: "Keep the camera stable.", talkingHeadScript: script, startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId, exploreFormat: "hook", generateAudio: sound, model: "google_omni", durationSeconds: 4, resolution: "720p", aspectRatio: "9:16" }) }));
+      assert.equal(response.status, 400);
+    }
+    assert.equal(jobs.size, count); assert.equal(reservations.size, reserved);
+  } finally { approvedFrame = null; if (previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });
 
 test("Talking Head image plus owned voice reaches real admission in reference mode without frame-role mixing", async () => {

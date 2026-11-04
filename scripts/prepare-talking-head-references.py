@@ -4,8 +4,8 @@ Usage: python scripts/prepare-talking-head-references.py D:/hookswithlinks
        --openings .tmp/reviewed-openings.json
 The optional JSON maps reference IDs to explicitly reviewed start/end seconds.
 Without a range, preserve the supplied MP4 byte for byte, including long clips.
-Source files are never modified. Outputs stay local
-until the application release is deployed.
+Source files are never modified. Backend opening PNGs are prepared and verified
+before the local catalogue is updated. Application deployment stays separate.
 """
 import argparse
 import hashlib
@@ -33,6 +33,7 @@ def prepare(base, openings, selected=None):
     ffmpeg = ROOT / "node_modules/ffmpeg-static/ffmpeg.exe"
     ffprobe = ROOT / "node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"
     folder = ROOT / "public/explore/talking-head-references/v1"
+    previous_sources = json.loads((ROOT / "lib/explore/talking-head-source-manifest.json").read_text(encoding="utf-8"))["items"]
     plans = []
     for identity, relative, title, directions in SOURCES:
         if selected and identity not in selected:
@@ -45,6 +46,9 @@ def prepare(base, openings, selected=None):
         start, end = openings.get(identity, [0, duration])
         if not (0 <= start < end <= duration + .01):
             raise ValueError(f"{identity}: the reviewed range must stay inside the source ({duration:.3f}s)")
+        previous = next((row for row in previous_sources if row["id"] == identity), None)
+        if previous and (start != 0 or end != duration or hashlib.sha256(source.read_bytes()).hexdigest() != previous["sourceSha256"]):
+            raise ValueError(f"{identity}: changed video bytes require a new ID; existing media will not be overwritten")
         texts = [p.read_text(encoding="utf-8-sig") for p in source.parent.glob("*.txt")]
         links = [url.split("?")[0] for text in texts for url in re.findall(r"https://www\.tiktok\.com/@[^\s]+/video/\d+", text)]
         assert len(set(links)) == 1, f"{relative}: one matching source link is required"
@@ -68,7 +72,41 @@ def prepare(base, openings, selected=None):
         prompt = directions + " Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks."
         items.append(dict(id=identity, title=title, videoUrl=prefix+video.name, posterUrl=prefix+poster.name, durationSeconds=round(seconds, 3), generationPrompt=prompt, sourceUrl=link))
         evidence.append(dict(id=identity, source=str(source), sourceSha256=original_hash, sourceDuration=duration, openingStart=start, openingEnd=end, durationSeconds=seconds, outputSha256=hashlib.sha256(video.read_bytes()).hexdigest()))
-    (ROOT / "lib/explore/talking-head-reference-catalog.json").write_text(json.dumps(dict(version=1, items=items), indent=2)+"\n", encoding="utf-8")
+    # The importer may not expose videos without their durable original openings.
+    source_path = ROOT / "lib/explore/talking-head-source-manifest.json"
+    frame_path = ROOT / "lib/explore/talking-head-frames.json"
+    catalog_path = ROOT / "lib/explore/talking-head-reference-catalog.json"
+    frozen = {file: file.read_bytes() for file in [source_path, frame_path, catalog_path]}
+    source_manifest = json.loads(frozen[source_path])
+    frame_manifest = json.loads(frozen[frame_path])
+    catalogue = json.loads(frozen[catalog_path])
+    new_sources = []
+    for item, record in zip(items, evidence):
+        previous = next((row for row in source_manifest["items"] if row["id"] == item["id"]), None)
+        if previous and previous["sourceSha256"] != record["outputSha256"]:
+            raise ValueError("Use a new reference ID for changed video bytes; preserve historical sources")
+        new_sources.append(dict(id=item["id"], file=item["videoUrl"], sourceSha256=record["outputSha256"]))
+    output = subprocess.check_output(["node", "--import", "./scripts/next-server-only-test-loader.mjs", "--experimental-transform-types", "scripts/prepare-talking-head-published-frames.mjs"], input=json.dumps(new_sources).encode(), cwd=ROOT)
+    new_frames = json.loads(output)
+    def merge(previous, additions):
+        mapping = {row["id"]: row for row in previous}
+        for row in additions:
+            mapping[row["id"]] = {**mapping.get(row["id"], {}), **row}
+        return list(mapping.values())
+    if [row["id"] for row in new_sources] != [frame["id"] for frame in new_frames]:
+        raise ValueError("Prepared source identities changed; no catalogue activation")
+    for row, frame in zip(new_sources, new_frames):
+        row.update(width=frame["width"], height=frame["height"])
+    source_manifest["items"] = merge(source_manifest["items"], new_sources)
+    frame_manifest["items"] = merge(frame_manifest["items"], new_frames)
+    catalogue["items"] = merge(catalogue["items"], items)
+    if any(file.read_bytes() != before for file, before in frozen.items()):
+        raise ValueError("Catalogue changed during preparation; no activation")
+    # Publication last: a failed backend preparation never reaches these writes.
+    for file, value in [(source_path, source_manifest), (frame_path, frame_manifest), (catalog_path, catalogue)]:
+        pending = file.with_suffix(".pending.json")
+        pending.write_text(json.dumps(value, indent=2)+"\n", encoding="utf-8")
+        pending.replace(file)
     audit = ROOT / ".tmp/talking-reference-review"
     audit.mkdir(parents=True, exist_ok=True)
     (audit / "prepared-media.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")

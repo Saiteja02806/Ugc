@@ -46,10 +46,11 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   onStartingFrameSelect?: (frame: HookStartingFrameSelection) => boolean | void;
   startingFrameMode?: boolean;
   startingFrameSoundControl?: ReactNode;
+  spokenScriptMode?: boolean;
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -110,7 +111,8 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <textarea id={`${promptId}-reference`} rows={4} maxLength={8000} value={referenceInstructions.value} onChange={event => referenceInstructions.onChange(event.target.value)} className="w-full rounded-lg border border-border bg-background p-3 text-sm leading-5" />
     </section> : null}
     <div className={creation.instructionsField}>
-      <label htmlFor={promptId} className="block text-sm font-medium">Your instructions</label>
+      <label htmlFor={promptId} className="block text-sm font-medium">{spokenScriptMode ? "Talking Head script" : "Your instructions"}</label>
+      {spokenScriptMode ? <p className="text-xs leading-5 text-muted">Only these words will be spoken. Keep scene directions above; use Sound on and enough duration.</p> : null}
       {kind === "hook" ? <p id={helperId} className="sr-only">Describe the words, delivery and setting. Text-only prompts are supported; reference images are optional.</p> : null}
       <div data-prompt-editor className={cn("relative", startingFrameSoundControl && creation.promptWithAction)}>
       <textarea id={promptId} name={`${kind}Instructions`} autoComplete="off" rows={4} value={instructions}

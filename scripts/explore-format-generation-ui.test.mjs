@@ -22,6 +22,7 @@ function load(file, imports = {}, globals = {}) {
     if (name === "../../lib/explore/motion-phase-display.ts") return load("lib/explore/motion-phase-display.ts");
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name === "@/worker/src/lib/hook-starting-frame-video") return startingFrameVideo;
+    if (name === "@/lib/explore/starting-frame-photo-selection") return load("lib/explore/starting-frame-photo-selection.ts");
     if (name === "../../worker/src/lib/wall-initial-text-layout.ts") return wallInitialTextLayout;
     // Authenticated asynchronous photo restoration is exercised with the actual
     // hook in starting-frame-photo-carryover.test.mjs. These fixtures isolate
@@ -79,7 +80,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: fixtureUser }) },
-    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
+    "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4, getVideoModelCreditsPerSecond: () => 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": load("lib/ai-studio/generation-settings.ts") }),
     "@/lib/ai-studio/media-client": jobs.length ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
@@ -204,7 +205,7 @@ test("Hook and Wall default to Sound off and submit the explicitly toggled choic
   assert.equal(harness("studio").composer.props.promptAction, undefined);
 });
 
-test("approved Hook starting-frame handoff rejects unsupported face photos and submits only the owned first frame", async () => {
+test("approved starting-frame handoff retains photos, blocks unsupported input, and submits only after explicit removal", async () => {
   for (const sound of [false, true]) {
     const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
     const controls = h.render().composer.props.referenceControls.props;
@@ -228,7 +229,13 @@ test("approved Hook starting-frame handoff rejects unsupported face photos and s
     duration.props.onChange("30");
     assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "4");
     assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
-    assert.deepEqual(Array.from(composer.props.referenceControls.props.photos), [], "Unsupported face photos are not retained as generation input");
+    assert.deepEqual(Array.from(composer.props.referenceControls.props.photos, photo => photo.asset.id), ["old-photo"], "User selections cannot be silently removed to make a request valid");
+    assert.equal(composer.props.generateDisabled, true);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 0, "Unsupported frame-plus-photo combinations must block before submission");
+    composer.props.referenceControls.props.onPhotosChange([]);
+    composer = h.render().composer;
+    assert.equal(composer.props.referenceControls.props.frame.assetId, selection.assetId);
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 1);

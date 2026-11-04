@@ -1,5 +1,6 @@
 import { getCurrentUserIdToken } from "../firebase/auth";
 import { withReadDeadline } from "../http/read-deadline";
+import { createStartingFrameCache, type StartingFrameRequest } from "./starting-frame-cache";
 
 export type HookStartingFrame = {
   referenceId: string;
@@ -9,6 +10,8 @@ export type HookStartingFrame = {
 };
 
 const SHA256 = /^[a-f0-9]{64}$/;
+const frames = createStartingFrameCache();
+const prefetching = new Set<string>();
 
 /** A source URL is a scope hint only. The server resolves the catalogue again. */
 export function hookSourceSha256(videoUrl: string | undefined): string | null {
@@ -19,23 +22,31 @@ export function hookSourceSha256(videoUrl: string | undefined): string | null {
   } catch { return null; }
 }
 
-export async function fetchHookStartingFrame(input: {
-  ownerId: string; referenceId: string; sourceSha256: string; signal?: AbortSignal;
-  retainedFrame?: HookStartingFrame["frame"];
-}): Promise<HookStartingFrame> {
+export async function fetchHookStartingFrame(input: StartingFrameRequest): Promise<HookStartingFrame> {
   if (!SHA256.test(input.sourceSha256)) throw new Error("Choose an available Hook reference again.");
   return withReadDeadline(async signal => {
     const token = await getCurrentUserIdToken(input.ownerId);
     signal.throwIfAborted();
     if (!token) throw new Error("Sign in to prepare your starting image.");
-    // This endpoint only decodes existing footage. It never starts inference.
-    const response = await fetch("/api/explore/hook-starting-frame", {
-      method: "POST", cache: "no-store", signal,
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ referenceId: input.referenceId, ...(input.retainedFrame ? { sourceFrameSha256: input.retainedFrame.sha256 } : {}) }),
-    });
-    return readVerifiedHookStartingFrame(response, input);
+    return frames.read({ ...input, signal }, sharedSignal => withReadDeadline(async transportSignal => {
+      // Prepared image read only. Server authentication and provenance verification remain mandatory.
+      const response = await fetch("/api/explore/hook-starting-frame", {
+        method: "POST", cache: "no-store", signal: transportSignal,
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceId: input.referenceId, ...(input.retainedFrame ? { sourceFrameSha256: input.retainedFrame.sha256 } : {}) }),
+      });
+      return readVerifiedHookStartingFrame(response, input);
+    }, sharedSignal, 90_000));
   }, input.signal, 90_000);
+}
+
+/** Bounded speculative reads; click/retry still uses the same normal authenticated reader. */
+export async function prefetchHookStartingFrame(input: StartingFrameRequest) {
+  const key = JSON.stringify([input.ownerId, input.referenceId, input.sourceSha256]);
+  if (prefetching.has(key) || prefetching.size >= 2 || !frames.canPrefetch(input)) return;
+  prefetching.add(key);
+  try { await fetchHookStartingFrame(input); } catch { /* Normal click/retry reports failures. */ }
+  finally { prefetching.delete(key); }
 }
 
 /** Both live and development extraction must verify the exact same receipt. */

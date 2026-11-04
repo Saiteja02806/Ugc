@@ -37,7 +37,7 @@ test("the source registry covers packaged Talking Head references and keeps reti
   const sources = getAdditionalStartingFrameSources();
   assert.equal(new Set(sources.map(source => source.id)).size, sources.length);
   const talking = getTalkingHeadReferences();
-  assert.equal(talking.length, 23);
+  assert.equal(talking.length, 25);
   assert.equal(talking.find(item => item.id === "talking-websites-explainer")?.sourcePlatform, "instagram");
   assert.equal(talking.find(item => item.id === "talking-sophia-designsthings")?.sourcePlatform, "tiktok");
   for (const reference of talking) {

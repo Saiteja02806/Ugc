@@ -7,7 +7,7 @@ export type TalkingHeadReference = RecreateReference & { durationSeconds: number
 
 /** Discovery only: keep the packaged sources and saved-reference recovery intact. */
 export function visibleTalkingHeadReferences<T extends { id: string }>(items: T[]): T[] {
-  return items.filter(item => item.id !== "talking-outdoor-discovery" && item.id !== "talking-outdoor-reaction" && item.id !== "talking-car-story" && item.id !== "talking-room-explainer" && item.id !== "talking-discovery");
+  return items.filter(item => item.id !== "talking-outdoor-discovery" && item.id !== "talking-outdoor-reaction" && item.id !== "talking-car-story" && item.id !== "talking-room-explainer" && item.id !== "talking-discovery" && item.id !== "talking-surprised-story");
 }
 
 export function talkingHeadReferenceSettings(model: AIStudioVideoModel, duration: number, availableModels = getWorkflowVideoModels().map(item => item.value)) {

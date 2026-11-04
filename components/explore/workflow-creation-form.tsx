@@ -47,10 +47,11 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   startingFrameMode?: boolean;
   startingFrameSoundControl?: ReactNode;
   spokenScriptMode?: boolean;
+  spokenScriptReview?: { reviewed: boolean; onChange: (reviewed: boolean) => void };
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -122,6 +123,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       {startingFrameSoundControl ? <div className="absolute right-3 bottom-3">{startingFrameSoundControl}</div> : null}
       </div>
     </div>
+    {spokenScriptMode && spokenScriptReview ? <label className="flex items-start gap-2 text-xs leading-5"><input type="checkbox" checked={spokenScriptReview.reviewed} onChange={event => spokenScriptReview.onChange(event.target.checked)} className="mt-1" />I reviewed these spoken words; demo narration is excluded.</label> : null}
     {kind === "phone" ? <p id={helperId} className="sr-only">Nothing is prefilled or rewritten. Your instructions stay unchanged. Text-only prompts are supported; reference images are optional.</p> : null}
 
     <section aria-label="Video settings" className={kind === "hook" ? "space-y-3" : "mt-4 border-t border-border pt-4"}>

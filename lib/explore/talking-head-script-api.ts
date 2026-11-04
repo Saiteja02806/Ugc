@@ -66,7 +66,7 @@ export async function handleTalkingHeadScriptPost(request: Request) {
     if (previous.error) throw Error("Storage unavailable.");
     if (previous.data) return previous.data.payload_hash !== payloadHash ? reply({ ok: false, message: "This request belongs to different script inputs." }, 409) : receipt(previous.data.status, previous.data.output_json, previous.data.input_json?.source);
     const transcript = getTalkingHeadScript(body.referenceId);
-    if (transcript.sourceSha256 !== body.sourceSha256 || transcript.transcriptSha256 !== body.transcriptSha256) return reply({ ok: false, message: "The source transcript changed. Reload it before remixing." }, 409);
+    if (transcript.sourceSha256 !== body.sourceSha256 || transcript.transcriptSha256 !== body.transcriptSha256 || transcript.selectionSha256 !== body.selectionSha256) return reply({ ok: false, message: "The source transcript changed. Reload it before remixing." }, 409);
     const profile = await getBusinessProfileForUser(user.uid);
     if (!profile?.context.businessName || !profile.context.productSummary) return reply({ ok: false, message: "Add your business context in Settings before remixing." }, 409);
     if (profile.profileVersion !== body.businessProfileVersion) return reply({ ok: false, message: "Your business context changed. Reload the script section before remixing." }, 409);
@@ -75,7 +75,7 @@ export async function handleTalkingHeadScriptPost(request: Request) {
     if (!["gpt-6.1-terra", "gpt-6-luna"].includes(model)) throw Error("Unvalidated script model configuration.");
     const chunks = scriptReceiptBlocks(body.script);
     const source: ReferenceText = { referenceId: body.referenceId, slideId: null, sourceSha256: body.sourceSha256, format: "hook", status: "ready", blocks: chunks.map(text => ({ text, startMs: 0, endMs: transcript.hookEndMs })), extractedAt: transcript.extractedAt, model: "user-reviewed-spoken-script", notes: "Spoken-script receipt only; all blocks cover the selected introduction, not word timings or on-screen overlays." };
-    const input = { purpose: "talking_head_script", source, originalScript: body.script, transcriptSha256: body.transcriptSha256, hookRange: { startMs: 0, endMs: transcript.hookEndMs }, businessProfileId: profile.id, businessProfileVersion: profile.profileVersion, businessContext: profile.context, model, reasoningEffort: "medium", promptVersion: TALKING_HEAD_SCRIPT_PROMPT_VERSION };
+    const input = { purpose: "talking_head_script", source, originalScript: body.script, transcriptSha256: body.transcriptSha256, selectionSha256: body.selectionSha256, hookRange: { startMs: 0, endMs: transcript.hookEndMs }, businessProfileId: profile.id, businessProfileVersion: profile.profileVersion, businessContext: profile.context, model, reasoningEffort: "medium", promptVersion: TALKING_HEAD_SCRIPT_PROMPT_VERSION };
     const claim = await storage.rpc("explore_claim_text_remix", { p_user_id: user.uid, p_request_key: body.requestKey, p_payload_hash: payloadHash, p_input: input });
     if (claim.error) return reply({ ok: false, message: claim.error.message.includes("remix_daily_limit") ? "You've reached today's 20 text remixes. Try again tomorrow." : "Could not reserve this remix. No AI request was made." }, claim.error.message.includes("remix_daily_limit") ? 429 : 503);
     if (!claim.data?.claimed) return receipt(claim.data?.status, claim.data?.output, claim.data?.source);

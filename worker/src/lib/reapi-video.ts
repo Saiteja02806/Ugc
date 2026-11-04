@@ -2,6 +2,7 @@ import { silenceGeneratedVideo } from "./silent-video.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderOutputCollectionError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
+import { KLING_4_VIDEO_PROMPT_MAX_LENGTH } from "./video-prompt-policy.js";
 
 const API_ROOT = "https://reapi.ai/api/v1";
 // Exact hosts verified in authenticated completed tasks: public CDN, WAN
@@ -61,6 +62,7 @@ type ReapiVideoRequest = {
 /** New requests only. Legacy provider adapters and fingerprints stay frozen. */
 export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoRequest {
   if (input.model === "kling_4_0") {
+    if (input.prompt.trim().length > KLING_4_VIDEO_PROMPT_MAX_LENGTH) throw new ProviderRequestNotSubmittedError("This prompt is too long for the selected model. Shorten it and try again.");
     const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
     if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 30 || !["720p", "1080p"].includes(input.resolution) || !["9:16", "16:9"].includes(input.aspectRatio) || !input.prompt.trim() || images.length > 2 || images.some(url => !isHttpsUrl(url)) || input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode || (input.startingFrameImageUrl && (input.referenceImageUrl || input.referenceImageUrls?.length))) throw new ProviderRequestNotSubmittedError("Choose supported Kling 4.0 settings: 3-30 seconds, 720p/1080p, and up to two HTTPS frames.");
     return { model: "kling-4-0", prompt: input.prompt.trim(), duration: input.durationSeconds, resolution: input.resolution, aspect_ratio: input.aspectRatio, ...(images.length ? { image_urls: images } : {}) };

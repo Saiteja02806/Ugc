@@ -17,6 +17,7 @@ export type WorkflowSession = {
   instructions: string; generationSettings: WorkflowGenerationSettings; localReferences: boolean;
   talkingReferenceId?: string | null; referenceInstructions?: string;
   talkingHeadScriptMode?: boolean;
+  talkingHeadScriptReviewed?: boolean;
   options: WorkflowSessionOptions; scheduleDraft: WorkflowScheduleDraft;
 };
 export type WorkflowSessionMediaRole = "source" | "demo" | "demoAudio";
@@ -24,7 +25,7 @@ export type WorkflowSessionAssets = { source: MediaAsset | null; demo: MediaAsse
 export type WorkflowSessionProblems = Partial<Record<WorkflowSessionMediaRole, string>>;
 export const WORKFLOW_SESSION_STORAGE_VERSION = 1;
 const MAX_SESSION_BYTES = 512 * 1024;
-const keys = ["version", "ownerId", "kind", "section", "sourceMode", "sourceAssetId", "generatedAssetId", "generatedSelectionCleared", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "demoFraming", "pendingSource", "pendingDemo", "pendingDemoAudio", "instructions", "generationSettings", "localReferences", "options", "scheduleDraft", "talkingReferenceId", "referenceInstructions", "talkingHeadScriptMode"];
+const keys = ["version", "ownerId", "kind", "section", "sourceMode", "sourceAssetId", "generatedAssetId", "generatedSelectionCleared", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "demoFraming", "pendingSource", "pendingDemo", "pendingDemoAudio", "instructions", "generationSettings", "localReferences", "options", "scheduleDraft", "talkingReferenceId", "referenceInstructions", "talkingHeadScriptMode", "talkingHeadScriptReviewed"];
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const fields = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
 const invalid = () => new Error("This saved workflow could not be verified. Retry recovery or reset the saved workflow; its generation and scheduling requests are kept separately.");
@@ -57,6 +58,7 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
   if (value.referenceInstructions !== undefined && (typeof value.referenceInstructions !== "string" || value.referenceInstructions.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.referenceInstructions))) throw invalid();
   if (!scheduleDraft) throw invalid();
   if (value.talkingHeadScriptMode !== undefined && typeof value.talkingHeadScriptMode !== "boolean") throw invalid();
+  if (value.talkingHeadScriptReviewed !== undefined && typeof value.talkingHeadScriptReviewed !== "boolean") throw invalid();
   // Model availability may change between visits; retain supported settings atomically.
   const generationSettings = normalizeWorkflowGenerationSettings(value.generationSettings as Partial<WorkflowGenerationSettings>);
   const demoAssetId = assetId(value.demoAssetId), demoAudioAssetId = assetId(value.demoAudioAssetId);
@@ -78,7 +80,8 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
     instructions: value.instructions, generationSettings, localReferences: value.localReferences as boolean, options, scheduleDraft,
     ...(value.talkingReferenceId !== undefined ? { talkingReferenceId: value.talkingReferenceId as string | null } : {}),
     ...(value.referenceInstructions !== undefined ? { referenceInstructions: value.referenceInstructions as string } : {}),
-    ...(value.talkingHeadScriptMode !== undefined ? { talkingHeadScriptMode: value.talkingHeadScriptMode as boolean } : {}) };
+    ...(value.talkingHeadScriptMode !== undefined ? { talkingHeadScriptMode: value.talkingHeadScriptMode as boolean } : {}),
+    ...(value.talkingHeadScriptReviewed !== undefined ? { talkingHeadScriptReviewed: value.talkingHeadScriptReviewed as boolean } : {}) };
 }
 export function readWorkflowSession(raw: string | null, ownerId: string): WorkflowSession | null {
   if (raw === null) return null;

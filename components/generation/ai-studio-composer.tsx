@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import creation from "@/components/explore/workflow-creation.module.css";
 import focused from "@/components/explore/workflow-focused-composer.module.css";
+import { WorkflowFeedback } from "@/components/explore/workflow-feedback";
 
 export function AiStudioComposer({
   active,
@@ -126,6 +127,11 @@ export function AiStudioComposer({
   const [controlsOpen, setControlsOpen] = useState(false);
   const promptTooLong = maxLength !== undefined && prompt.length > maxLength;
   const excessCharacters = maxLength !== undefined ? Math.max(0, prompt.length - maxLength) : 0;
+  const workflowFeedbackId = `${formId}-feedback`;
+  const workflowFeedback = accessMessage || secondaryActions ? <WorkflowFeedback id={workflowFeedbackId} active={active}>
+    {accessMessage ? <p role="status" className="text-muted">{accessMessage}</p> : null}
+    {secondaryActions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{secondaryActions}</div> : null}
+  </WorkflowFeedback> : null;
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -151,11 +157,11 @@ export function AiStudioComposer({
     const actions = <div className={focused.actions}>
       <div className={focused.actionInfo}>
         {estimatedCredits !== undefined ? <p className={focused.estimate}>Estimated cost <strong>{estimatedCredits} credits</strong></p> : null}
-        <div className={focused.statusRow}><p role="status">{accessMessage}</p>{secondaryActions}</div>
       </div>
-      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="focused" noValidate onSubmit={onSubmit} className={focused.composer}>
+      {workflowFeedback}
       {contextBanner}
       {referenceControls}
       <div className={focused.brief}>
@@ -173,10 +179,10 @@ export function AiStudioComposer({
 
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
-      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
+      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
+      {workflowFeedback}
       {referenceControls}
       {process.env.NODE_ENV === "development" && isValidElement<{ "data-music-layout-review"?: boolean }>(contextBanner) && contextBanner.props["data-music-layout-review"] ? contextBanner : null}
       <div className={creation.instructionsField}>
@@ -210,12 +216,11 @@ export function AiStudioComposer({
           <div className="grid grid-cols-2 gap-3">{settings}</div>
         </PopoverContent>
       </Popover>
-      {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
-      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
-      <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
+      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      {workflowFeedback}
       {contextBanner}
       <div className="space-y-2">
         {promptSupplement}

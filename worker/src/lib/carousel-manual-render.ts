@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import type sharp from "sharp";
 import * as opentype from "opentype.js";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -37,11 +37,14 @@ export async function createCarouselManualSvg(slide: CarouselManualSlide, option
   });
   return { layout, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${layout.frameHeight}"><g transform="translate(${layout.position.x * 1080 - layout.width / 2},${layout.position.y * layout.frameHeight - layout.height / 2})">${markup}</g></svg>` };
 }
-export async function renderCarouselManualSlide(input: { assetUrl: string; slide: CarouselManualSlide }, options?: { fontDirectory: string }) {
+export async function renderCarouselManualSlide(input: { assetUrl: string; slide: CarouselManualSlide }, options?: { fontDirectory: string; imageProcessor?: typeof sharp }) {
+  // Server callers provide their application-native instance. Loading worker
+  // Sharp eagerly lets bundlers embed its build-machine ESM require location.
+  const imageProcessor = options?.imageProcessor ?? (await import("sharp")).default;
   const { layout, svg } = await createCarouselManualSvg(input.slide, options);
   const response = await fetch(input.assetUrl, { signal: AbortSignal.timeout(30000) });
   if (!response.ok) throw new Error(`Could not load slide background (${response.status}).`);
-  const buffer = await sharp(Buffer.from(await response.arrayBuffer())).rotate().resize(1080, layout.frameHeight, { fit: "cover", position: "centre" })
+  const buffer = await imageProcessor(Buffer.from(await response.arrayBuffer())).rotate().resize(1080, layout.frameHeight, { fit: "cover", position: "centre" })
     .composite([{ input: Buffer.from(svg) }]).webp({ effort: 5, quality: 92 }).toBuffer();
   return { buffer, diagnostics: { manualTextStyle: layout.style, position: layout.position, fontSize: layout.style.fontSize, headingSize: layout.style.headingSize } };
 }

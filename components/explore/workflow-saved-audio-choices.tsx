@@ -132,14 +132,16 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
         <VoiceOrb id={voice.id} /><span className={styles.playIcon}>{playing === voice.id ? <Pause size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}</span>
       </button>
       <div className={styles.details}>
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className={styles.voiceTitle}>
           <strong title={voice.name}>{voice.name}</strong>
-          {voice.labels.gender ? <span className={styles.tagPill}>{voice.labels.gender}</span> : null}
           <span className={styles.soundwaveBars} data-playing={playing === voice.id ? "true" : undefined} aria-hidden="true">
             <span /><span /><span /><span />
           </span>
         </div>
-        <span>{voice.labels.accent || voice.labels.use_case || "Voice sample"}{chosen ? " · Selected with Use It" : ""}</span>
+        <div className={styles.voiceMeta}>
+          {voice.labels.gender ? <span className={styles.tagPill}>{voice.labels.gender}</span> : null}
+          <span>{voice.labels.accent || voice.labels.use_case || "Voice sample"}{chosen ? " · Selected with Use It" : ""}</span>
+        </div>
       </div>
       <Button type="button" variant="outline" disabled={!voice.previewUrl || !library.data?.account?.paid || busy} title={library.data?.account?.paid ? "Attach this voice sample as a reference" : "This voice is currently available for preview only"} aria-label={`Use ${voice.name} sample as voice reference`} className={styles.useButton} onClick={() => void attach(`/api/audio/voices/${encodeURIComponent(voice.id)}/sample`, voice.id, `${voice.name} voice sample`, true)}>
         {attaching === voice.id ? <LoaderCircle size={14} className="animate-spin" /> : chosen ? <Check size={14} /> : null}Use sample
@@ -149,6 +151,12 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
   return <div className={styles.library} aria-label="Saved audio choices">
     {library.isPending ? <p role="status" className="text-xs text-muted">Loading your voices and audio…</p> : null}
     {loadError ? <p role="alert" className={styles.error}>{loadError}<button type="button" onClick={refresh}><RefreshCw size={13} />Retry saved choices</button></p> : null}
+    {library.isSuccess && !library.data?.account?.paid ? <div role="status" className={styles.availability}>
+      <p>{library.data?.account
+        ? "These samples are preview-only on the connected voice service. You can listen, upload your own audio, or choose a saved recording."
+        : "Voice sample selection is unavailable because the voice service is not connected or its account details could not be loaded. You can still listen, upload audio, or choose a saved recording."}</p>
+      <button type="button" disabled={library.isFetching} onClick={refresh}><RefreshCw size={13} />{library.isFetching ? "Checking voice service…" : "Retry voice service"}</button>
+    </div> : null}
     {selected ? <section aria-label="Selected voice"><h4 className={styles.heading}><AudioLines size={14} />Your selected voice</h4><ul className={styles.list}>{voiceRow(selected, true)}</ul></section> : null}
     <section aria-label="Bookmarked voices"><h4 className={styles.heading}><Bookmark size={14} />Bookmarked voices</h4>
       {saved.length ? (

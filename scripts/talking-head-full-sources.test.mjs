@@ -9,7 +9,7 @@ const frames = JSON.parse(readFileSync("lib/explore/talking-head-frames.json", "
 const full = [["talking-car-story",48.5],["talking-room-explainer",42.027],["talking-discovery",43.838]];
 test("full Talking Head sources preserve duration, source links and archival recovery", () => {
   const visible = visibleTalkingHeadReferences(catalogue.items);
-  assert.equal(visible.length,20);
+  assert.equal(visible.length,19);
   for (const [id,duration] of full) {
     const original = catalogue.items.find(item => item.id === id);
     const replacement = catalogue.items.find(item => item.id === id+"-full");
@@ -22,6 +22,23 @@ test("full Talking Head sources preserve duration, source links and archival rec
     assert.ok(visible.some(item => item.id === replacement.id));
     assert.ok(readFileSync("public"+original.videoUrl).length > 0);
   }
+});
+
+test("Talia's repeated opening keeps the full source visible and the short cut archived", () => {
+  const short = catalogue.items.find(item => item.id === "talking-surprised-story");
+  const long = catalogue.items.find(item => item.id === "talking-taliameals");
+  assert.ok(short.sourceUrl.endsWith("/video/7687894160086486286"));
+  assert.equal(short.durationSeconds, 1.567);
+  assert.equal(long.durationSeconds, 34.922);
+  assert.equal(long.sourceUrl, "https://www.tiktok.com/@taliameals/video/7680426189508431118", "retain original long-video attribution");
+  const shortFrame = frames.items.find(item => item.id === short.id);
+  const longFrame = frames.items.find(item => item.id === long.id);
+  assert.equal(shortFrame.frameSha256, longFrame.frameSha256, "the duplicate opening is byte-identical");
+  const visible = visibleTalkingHeadReferences(catalogue.items);
+  assert.ok(!visible.some(item => item.id === short.id));
+  assert.ok(visible.some(item => item.id === long.id));
+  assert.ok(visible.some(item => item.id === "talking-discovery-full"), "another Talia post is untouched");
+  assert.ok(readFileSync("public" + short.videoUrl).length > 0, "saved short references remain recoverable");
 });
 test("every reference has matching media and exact prepared opening-frame hashes", () => {
   const hash = bytes => createHash("sha256").update(bytes).digest("hex");

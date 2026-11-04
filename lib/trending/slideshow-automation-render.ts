@@ -23,8 +23,16 @@ const defaults: Dependencies = {
   productAssets: listCarouselProductAssets,
   savedEdit: loadSavedTrendingCreativeEditForDownstream,
   render: async (input) => {
-    const { renderCarouselManualSlide } = await import("@/worker/src/lib/carousel-manual-render");
-    return renderCarouselManualSlide(input, { fontDirectory: resolve(process.cwd(), "worker/src/assets/fonts") });
+    // Keep native loading inside preparation so a renderer failure remains a
+    // recoverable slot error rather than preventing status/pause routes loading.
+    const [{ default: sharp }, { renderCarouselManualSlide }] = await Promise.all([
+      import("sharp"),
+      import("@/worker/src/lib/carousel-manual-render"),
+    ]);
+    return renderCarouselManualSlide(input, {
+      fontDirectory: resolve(process.cwd(), "worker/src/assets/fonts"),
+      imageProcessor: sharp,
+    });
   },
   upload: uploadRenderedCarouselSlide,
 };

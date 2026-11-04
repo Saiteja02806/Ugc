@@ -69,7 +69,7 @@ test("source controls in both workflows expose the three choices and keep source
 });
 
 test("reuse footer continues only when ready and edit/schedule keep their existing actions", () => {
-  const mod = load("components/explore/workflow-creation-panel.tsx", { "react/jsx-runtime": jsx, "@/components/ui/button": { Button: "button" }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-section-layout.module.css": css, "@/lib/utils": { cn: (...values) => values.join(" ") } });
+  const mod = load("components/explore/workflow-creation-panel.tsx", { "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" }, "react/jsx-runtime": jsx, "@/components/ui/button": { Button: "button" }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-section-layout.module.css": css, "@/lib/utils": { cn: (...values) => values.join(" ") } });
   let continued = 0;
   for (const disabled of [true, false]) {
     const tree = mod.WorkflowCreationPanel({ kind: "hook", section: "create", create: { disabled, busy: false, message: "Choose a video", onAction: () => continued++ } });
@@ -139,6 +139,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/workflow-edit-workspace": { WorkflowEditWorkspace: "edit-workspace", WorkflowScheduleWorkspace: "schedule-workspace" },
       "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "scheduling-panel" },
       "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "preview-canvas" },
+      "@/components/explore/talking-head-result-review": { TalkingHeadResultReview: "preview-canvas" },
       "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => localMedia },
       "./use-talking-head-reference": { useTalkingHeadReference: () => ({ videoReference: localMedia, selectedId: null, instructions: "", query: { data: [], isPending: false, isError: false }, choose: async () => true }) },
       "./talking-head-references": { TalkingHeadReferences: "talking-references" },

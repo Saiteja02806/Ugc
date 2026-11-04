@@ -40,8 +40,8 @@ function harness({ saved = {}, loadFile = async reference => ({ name: reference.
 const tick = () => new Promise(setImmediate);
 
 test("retired Talking Head cards are hidden in both modes while archived saved references restore", async () => {
-  const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction"];
-  const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-surprised-story", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny", "talking-carla-eatsss", "talking-taliameals"];
+  const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction", "talking-surprised-story"];
+  const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny", "talking-carla-eatsss", "talking-taliameals"];
   const jsx = (type, props) => ({ type, props });
   let warmed = 0, chosen = 0;
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {

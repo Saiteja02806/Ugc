@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
+import * as talkingHeadScriptInput from "../lib/explore/talking-head-script-input.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, globals = {}) => {
@@ -18,6 +19,7 @@ const load = (file, imports = {}, globals = {}) => {
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: {} } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: {} } });
 const client = load("lib/explore/workflow-generation-client.ts", {
+  "./talking-head-script-input": talkingHeadScriptInput,
   "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }), "./workflow-generation-settings": settings,
 });

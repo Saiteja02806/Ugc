@@ -198,3 +198,45 @@ test("a rejected demo replacement retains prior accepted demo/audio while cancel
   h.uploads.find(upload => upload.kind === "audio").resolve({ asset: { ...media(9), collection: "audio", mimeType: "audio/mpeg" } }); assert.equal(await audioChoice, false);
   assert.equal(h.session.demoAssetId, id(1)); assert.equal(h.session.demoAudioAssetId, id(8)); assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.pendingDemoAudio, false); assert.equal(h.session.pendingDemo, false);
 });
+
+test('draft lock releases on cleanup while hydration is still pending, retaining true cross-tab exclusion', async () => {
+  let held = false, finish; const waiting = new Promise(resolve => { finish = resolve; });
+  const locks = { request: async (_name, _options, run) => { if (held) return run(null); held = true; try { return await run({}); } finally { held = false; } } };
+  const saved = { ...sessions.createWorkflowSession('owner-a'), generatedAssetId: id(2) };
+  const a = sessionHarness({ saved, draftEntry: { id: id(93), createNew: false }, locks, lookup: () => waiting });
+  a.render(); await tick(); assert.equal(held, true);
+  const blocked = sessionHarness({ store: a.store, draftEntry: { id: id(93), createNew: false }, locks });
+  blocked.render(); await tick(); assert.match(blocked.render().error, /another tab/); blocked.unmount();
+  a.unmount(); await tick(); assert.equal(held, false, 'release cannot wait for a network read');
+  const next = sessionHarness({ store: a.store, draftEntry: { id: id(93), createNew: false }, locks });
+  next.render(); await tick(); await tick(); assert.equal(next.render().error, null);
+  finish(media(2)); await tick(); assert.equal(a.writes.length, 0, 'late old hydration never writes');
+  next.unmount(); await tick(); assert.equal(held, false);
+});
+
+test('an effect cleaned up before lock acquisition cannot compete with its Strict Mode replacement', async () => {
+  let held = false, acquisitions = 0;
+  const locks = { request: async (_name, _options, run) => { acquisitions++; if (held) return run(null); held = true; try { return await run({}); } finally { held = false; } } };
+  const first = sessionHarness({ draftEntry: { id: id(94), createNew: true }, locks });
+  first.render(); first.unmount();
+  const replacement = sessionHarness({ draftEntry: { id: id(94), createNew: true }, locks });
+  replacement.render(); await tick(); await tick();
+  assert.equal(acquisitions, 1); assert.equal(replacement.render().error, null);
+  replacement.unmount(); await tick(); assert.equal(held, false);
+});
+
+test('same-editor recovery waits for asynchronous browser lock release before reacquiring', async () => {
+  let held = false, acquisitions = 0, releaseBrowser;
+  const browserRelease = new Promise(resolve => { releaseBrowser = resolve; });
+  const locks = { request: async (_name, _options, run) => {
+    acquisitions++; if (held) return run(null); held = true;
+    try { return await run({}); } finally { if (acquisitions === 1) await browserRelease; held = false; }
+  } };
+  const h = sessionHarness({ draftEntry: { id: id(95), createNew: true }, locks });
+  h.render(); await tick(); await tick(); assert.equal(held, true);
+  h.render().retry(); h.render(); await tick();
+  assert.equal(acquisitions, 1, 'the replacement must not race the browser release');
+  releaseBrowser(); await tick(); await tick();
+  assert.equal(acquisitions, 2); assert.equal(h.render().error, null); assert.equal(h.render().loaded, true);
+  h.unmount(); await tick(); assert.equal(held, false);
+});

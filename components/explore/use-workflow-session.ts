@@ -21,6 +21,7 @@ export function useWorkflowSession({ ownerId, enabled, defaults, draftEntry }: {
   const [loaded, setLoaded] = useState(!enabled), [error, setError] = useState<string | null>(null), [attempt, setAttempt] = useState(0);
   const [sessionRevision, setSessionRevision] = useState(0);
   const active = useRef(true), revision = useRef(0), loadedRef = useRef(!enabled);
+  const previousLockRequest = useRef<Promise<unknown>>(Promise.resolve());
   const key = ownerId ? workflowSessionStorageKey(ownerId) : null;
   const defaultsRef = useRef(defaults);
   const draftId = draftEntry?.id, createNew = draftEntry?.createNew;
@@ -56,12 +57,26 @@ export function useWorkflowSession({ ownerId, enabled, defaults, draftEntry }: {
     // its snapshot or clip settings while the first is still editing it.
     if (draftId) {
       if (!navigator.locks) void Promise.resolve().then(() => { if (isCurrent()) { setError("This browser cannot safely coordinate saved drafts across tabs. Use a browser with Web Locks support."); setLoaded(true); } });
-      else void navigator.locks.request(`${key}:${draftId}`, { ifAvailable: true }, async lock => {
-        if (!isCurrent()) return;
-        if (!lock) { setError("This draft is already open in another tab. Close that copy, then retry recovery, or start a new video."); setLoaded(true); return; }
-        await restore();
-        if (!controller.signal.aborted) await new Promise<void>(resolve => controller.signal.addEventListener("abort", () => resolve(), { once: true }));
-      }).catch(cause => { if (isCurrent()) { setError(cause instanceof Error ? cause.message : "Could not lock this draft safely."); setLoaded(true); } });
+      else {
+        const lockRequest = previousLockRequest.current.catch(() => {}).then(async () => {
+          // Skip an effect already cleaned up by Strict Mode before asking the
+          // browser for a lock; otherwise its stale queued request can win first.
+          if (!isCurrent()) return;
+          await navigator.locks.request(`${key}:${draftId}`, { ifAvailable: true }, async lock => {
+            if (!isCurrent()) return;
+            if (!lock) { setError("This draft is already open in another tab. Close that copy, then retry recovery, or start a new video."); setLoaded(true); return; }
+            // Register release before async hydration. Strict Mode/route cleanup
+            // must release this editor's lock even while media reads are pending.
+            const released = new Promise<void>(resolve => controller.signal.addEventListener("abort", () => resolve(), { once: true }));
+            void restore();
+            await released;
+          });
+        });
+        // Browser release is asynchronous even after the callback settles.
+        // Wait for our previous request to finish before reacquiring this draft.
+        previousLockRequest.current = lockRequest;
+        void lockRequest.catch(cause => { if (isCurrent()) { setError(cause instanceof Error ? cause.message : "Could not lock this draft safely."); setLoaded(true); } });
+      }
     } else void Promise.resolve().then(restore);
     return () => controller.abort();
   }, [enabled, ownerId, key, attempt, draftId, createNew, storage]);

@@ -18,6 +18,7 @@ function harness(code, exportName) {
   let cursor = 0;
   const slots = [];
   const imports = {
+    "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     "@/components/video/video-results.module.css": { default: {} },
     react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; }, useRef(initial) { return slots[cursor++] ??= {current:initial}; } },
     "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "Info", "Play", "Plus", "Video", "Volume2"].map((name) => [name, name])),
@@ -187,7 +188,7 @@ test("subtitle choices show real rendered posters with draft and timing scope ex
   assert.equal(nodes(tree).find((node) => node.props.id === "hook-finishing-unavailable").props.className, "sr-only");
   assert.match(styles, /\.subtitleChoices[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.equal(nodes(tree).filter(node => node.type === "subtitle-preview").length, 1);
-  assert.match(styles, /\.subtitleChoice\[aria-pressed="true"\][^}]*border-color: var\(--primary\)/);
+  assert.match(styles, /\.subtitleChoice\[aria-pressed="true"\][^}]*border-color: var\(--foreground\)/);
 });
 
 test("both workflows expose the English/60-second combined limit without adding subtitle subtext", () => {
@@ -219,7 +220,8 @@ test("approved workspace gives clear guidance without an empty player or dummy v
   assert.doesNotMatch(canvas, /\.mp4|previewFrame/);
   // Empty upload slots may be portrait; an actual preview must retain its source ratio.
   assert.doesNotMatch(styles.match(/\.demoPlayer\s*\{[^}]*\}/)?.[0] ?? "", /aspect-ratio: 9 \/ 16/);
-  for (const kind of ["hook", "phone"]) assert.match(read(`components/explore/${kind}-workflow-preview.tsx`), new RegExp(`<WorkflowPreviewCanvas kind="${kind}"`));
+  assert.match(read("components/explore/phone-workflow-preview.tsx"), /<WorkflowPreviewCanvas kind="phone"/);
+  assert.match(read("components/explore/hook-workflow-preview.tsx"), /<TalkingHeadResultReview generation=/);
 });
 
 test("connected workspaces preview only supplied saved outputs and preserve result selection", () => {
@@ -284,7 +286,7 @@ test("settings occupy two rows with Quality, Videos and Ratio alongside each oth
   assert.match(styles, /\.settingField:nth-child\(-n\+2\)[^}]*grid-column: span 3/);
   assert.match(styles, /\.referenceGrid[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.referenceButton\s*\{[^}]*width: 100%[^}]*aspect-ratio: 1/);
-  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 12px/);
+  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 10px/);
 });
 
 test("actual attachment pickers receive only their own media state", () => {
@@ -466,7 +468,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
     const { tree } = audioRender({ audioLabel, audio });
     const popup = nodes(tree).find(node => node.type === "PopoverContent");
     const paragraphs = nodes(popup).filter(node => node.type === "p");
-    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds.", "voice.mp3"]);
+    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds. Seedance voice references need at least 5 seconds.", "voice.mp3"]);
     const picker = nodes(tree).find(node => node.type === "picker");
     assert.equal(await picker.props.attachment.choose(file), true);
     assert.equal(chosen[0][0], file);
@@ -516,8 +518,18 @@ test("generation drafts use only their own voice reference and never the demo or
         assert.ok(attribute?.initializer && ts.isJsxExpression(attribute.initializer));
         const value = attribute.initializer.expression;
         assert.ok(value && ts.isObjectLiteralExpression(value));
-        assert.ok(value.properties.every((property) => ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)), "No spread may silently add demo inputs to a generation draft");
-        drafts.push(new Map(value.properties.map((property) => [property.name.getText(tree), ts.isPropertyAssignment(property) ? property.initializer.getText(tree) : property.name.getText(tree)])));
+        for (const property of value.properties) {
+          if (!ts.isSpreadAssignment(property)) continue;
+          let expression = property.expression;
+          while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
+          assert.ok(ts.isConditionalExpression(expression), "Only an explicit conditional script spread is permitted");
+          assert.equal(expression.condition.getText(tree), "startingFrame && scriptMode");
+          assert.ok(ts.isObjectLiteralExpression(expression.whenTrue) && ts.isObjectLiteralExpression(expression.whenFalse));
+          assert.equal(expression.whenFalse.properties.length, 0);
+          const fields = expression.whenTrue.properties.map(field => { assert.ok(ts.isPropertyAssignment(field)); assert.doesNotMatch(field.initializer.getText(tree), /\bdemo(?:Audio)?\b/); return field.name.getText(tree); });
+          assert.deepEqual(fields.sort(), ["talkingHeadScript", "talkingHeadScriptReviewed"]);
+        }
+        drafts.push(new Map(value.properties.filter(property => !ts.isSpreadAssignment(property)).map((property) => [property.name.getText(tree), ts.isPropertyAssignment(property) ? property.initializer.getText(tree) : property.name.getText(tree)])));
       }
       ts.forEachChild(node, visit);
     }

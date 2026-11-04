@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 import transcripts from "./talking-head-transcripts.json" with { type: "json" };
@@ -7,6 +8,7 @@ import { talkingHeadScriptInputError } from "./talking-head-script-input.ts";
 import { buildStartingFrameAnimationPrompt } from "./starting-frame-workflow.ts";
 import { createWorkflowSession, parseWorkflowSession } from "./workflow-session.ts";
 import { workflowGenerationPrompt } from "./workflow-generation-client.ts";
+import { getTalkingHeadScript } from "./talking-head-script-store.ts";
 
 test("all 25 transcripts bind to current full originals; hooks exclude reviewed demo openings", () => {
   assert.equal(transcripts.items.length, 25);
@@ -15,6 +17,8 @@ test("all 25 transcripts bind to current full originals; hooks exclude reviewed 
     assert.ok(row.fullText.trim()); assert.ok(row.hookText.trim());
     assert.equal(row.hookStartMs, 0); assert.ok(row.hookEndMs > 0 && row.hookEndMs <= row.durationMs);
     assert.match(row.transcriptSha256, /^[a-f0-9]{64}$/u);
+    assert.equal(row.selectionSha256, createHash("sha256").update(JSON.stringify({ version: 1, sourceSha256: row.sourceSha256, transcriptSha256: row.transcriptSha256, hookText: row.hookText, hookStartMs: 0, hookEndMs: row.hookEndMs })).digest("hex"));
+    assert.ok(row.reviewNotes.length > 20);
     assert.ok(row.segments.every(segment => segment.startMs >= 0 && segment.endMs >= segment.startMs && segment.endMs <= row.durationMs + 200));
   }
   const websites = transcripts.items.find(source => source.referenceId === "talking-websites-explainer")!;
@@ -51,9 +55,16 @@ test("spoken script requires Sound and sufficient duration; historical prompts r
 test("new script drafts survive session recovery; old drafts keep their original shape", () => {
   const old = parseWorkflowSession(createWorkflowSession("owner"), "owner"); assert.deepEqual(parseWorkflowSession(old, "owner"), old);
   assert.equal(old.talkingHeadScriptMode, undefined);
-  const next = { ...old, instructions: "My reviewed words", talkingHeadScriptMode: true };
+  const next = { ...old, instructions: "My reviewed words", talkingHeadScriptMode: true, talkingHeadScriptReviewed: true };
   assert.deepEqual(parseWorkflowSession(next, "owner"), next);
   assert.throws(() => parseWorkflowSession({ ...next, talkingHeadScriptMode: "true" }, "owner"));
+  assert.throws(() => parseWorkflowSession({ ...next, talkingHeadScriptReviewed: "true" }, "owner"));
   assert.equal(workflowGenerationPrompt({ instructions: "My reviewed words", talkingHeadScript: "My reviewed words", referenceInstructions: "Camera stays still." }), "Camera stays still.");
   assert.match(workflowGenerationPrompt({ instructions: "Old free-text direction", referenceInstructions: "Scene" }), /Your instructions:\nOld free-text direction/u);
+});
+
+
+test("fresh source reads block ambiguous retired transcripts and keep all visible hooks available", () => {
+  for (const id of ["talking-outdoor-discovery", "talking-outdoor-reaction"]) assert.throws(() => getTalkingHeadScript(id), /uncertain speech/u);
+  for (const row of transcripts.items.filter(row => row.review !== "needs_review")) assert.equal(getTalkingHeadScript(row.referenceId).selectionSha256, row.selectionSha256);
 });

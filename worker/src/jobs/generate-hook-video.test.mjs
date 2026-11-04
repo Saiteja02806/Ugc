@@ -460,6 +460,21 @@ test("other direct paths reject excess text before reserving a provider operatio
   assert.equal(received.length, before);
 });
 
+test("Kling 4 direct jobs keep the complete long prompt and reject excess before reserving an operation", async () => {
+  for (const length of [4001, 6000, 10_000]) {
+    const suffix = "Keep the complete final spoken line.";
+    const prompt = "x".repeat(length - suffix.length) + suffix;
+    const f = fixture({ model: "kling_4_0", provider: "reapi", hookIdea: prompt, generateAudio: true, durationSeconds: 3 });
+    await runGenerateHookVideoJob(f.job, f.context);
+    assert.equal(received.at(-1).prompt, prompt);
+    assert.equal(received.at(-1).provider, "reapi");
+  }
+  const before = received.length;
+  const f = fixture({ model: "kling_4_0", provider: "reapi", hookIdea: "x".repeat(10_001), durationSeconds: 3 });
+  await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /too long/);
+  assert.deepEqual(f.events, []); assert.equal(received.length, before);
+});
+
 test("valid video guidance keeps the complete prompt and routes to Runway", async () => {
   const prompt = "x".repeat(1000);
   const f = fixture({ hookIdea: prompt, referenceVideoUrl: "https://owned-media.example.test/video.mp4", referenceVideoDurationSeconds: 2.8 });

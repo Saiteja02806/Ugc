@@ -1,0 +1,850 @@
+[
+  {
+    "status": "A",
+    "path": "app/api/explore/talking-head-script/route.ts"
+  },
+  {
+    "status": "A",
+    "path": "app/e2e/workflow-feedback-preview/page.tsx"
+  },
+  {
+    "status": "A",
+    "path": "app/e2e/workflow-feedback-preview/preview.tsx"
+  },
+  {
+    "status": "M",
+    "path": "app/layout.tsx"
+  },
+  {
+    "status": "M",
+    "path": "CAROUSEL_CONTEXT.md"
+  },
+  {
+    "status": "A",
+    "path": "components/analytics/analytics-contrast.module.css"
+  },
+  {
+    "status": "M",
+    "path": "components/analytics/instagram-analytics-workspace.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/analytics/social-analytics-beta-controls.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/ai-character-card.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/explore-workflow-card.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/format-generation-references.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/format-workspace.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/hook-starting-frame-workspace.module.css"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/hook-starting-frame-workspace.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/hook-workflow-preview.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/recreate-workspace.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/slideshow-face-choice.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/slideshow-face-swap-control.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/starting-frame-animation-references.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/talking-head-references.tsx"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/talking-head-result-review.module.css"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/talking-head-result-review.tsx"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/talking-head-script-section.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/use-creator-accounts.ts"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/use-explore-workflow-preload.ts"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/use-starting-frame-photos.ts"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/use-starting-frame-preload.ts"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/use-workflow-session.ts"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/workflow-creation-form.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/workflow-creation-panel.tsx"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/workflow-feedback.module.css"
+  },
+  {
+    "status": "A",
+    "path": "components/explore/workflow-feedback.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/workflow-saved-audio-choices.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/explore/workflow-saved-audio.module.css"
+  },
+  {
+    "status": "M",
+    "path": "components/generation/ai-studio-composer.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/layout/workspace-route-boundary.tsx"
+  },
+  {
+    "status": "M",
+    "path": "components/video/video-generation-workspace.tsx"
+  },
+  {
+    "status": "M",
+    "path": "docs/ai-context/clear.md"
+  },
+  {
+    "status": "M",
+    "path": "docs/ai-context/nonnegotiables.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/analytics-contrast-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/audio-reference-picker-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/combined-release-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/combined-release-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/combined-release-inventory-2026-11-04.json"
+  },
+  {
+    "status": "A",
+    "path": "docs/combined-release-inventory-2026-11-05.json"
+  },
+  {
+    "status": "A",
+    "path": "docs/compact-workflow-footers-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/explore-compressed-cover-activation-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/explore-cover-compression-review-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/explore-deep-loading-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/five-hook-mouth-size-review-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/geist-italic-preload-fix-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/hook-mouth-prompt-corrections-2026-11-04.md"
+  },
+  {
+    "status": "M",
+    "path": "docs/hook-reference-video-views.json"
+  },
+  {
+    "status": "A",
+    "path": "docs/kling4-prompt-limit-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/payment-failure-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/slideshow-face-swap-steps-2026-11-04.md"
+  },
+  {
+    "status": "M",
+    "path": "docs/slideshow-reference-views.json"
+  },
+  {
+    "status": "A",
+    "path": "docs/starting-frame-automatic-storage-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/starting-frame-cache-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/starting-frame-loading-fix-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/starting-frame-noimage-investigation-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/starting-frame-person-photo-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-deployment-readiness-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-folder-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-issue-recheck-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-local-completion-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-one-action-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-predeploy-audit-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-preparation-sections-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-result-layout-study-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-result-review-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-script-implementation-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-script-model-comparison-2026-11-04.json"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-script-remix-plan-2026-11-04.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-talia-dedup-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/talking-head-ui-audit-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/trending-slideshow-automation-recovery-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/workflow-floating-feedback-2026-11-05.md"
+  },
+  {
+    "status": "A",
+    "path": "docs/workflow-loading-local-fix-2026-11-04.md"
+  },
+  {
+    "status": "M",
+    "path": "EXPLORE_CONTEXT.md"
+  },
+  {
+    "status": "M",
+    "path": "lib/ai-studio/prompt-policy.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/ai-studio/video-generation-api.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "lib/ai-studio/video-generation-api.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-keyframe-motion-plans-a.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-keyframe-motion-plans-b.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-keyframe-motion.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-keyframe-prompt-preview.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-middle-frame-motion.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-middle-frame-public.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-reference-views.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-reference-views.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-source-frame-store.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-source-frame.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/hook-starting-frame-client.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/public-starting-frame-sources.test.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/public-starting-frame-sources.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/reference-catalog-client.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/slideshow-reference-views.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/slideshow-reference-views.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/starting-frame-animation-input.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/starting-frame-cache.test.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/starting-frame-cache.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/starting-frame-photo-selection.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/starting-frame-reference-source.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/starting-frame-workflow.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/talking-head-frames.json"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-hook-reviews.json"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-prompt.test.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-prompt.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/talking-head-reference-catalog.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/talking-head-reference.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-api.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-api.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-draft.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-input.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-remix.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script-store.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-script.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/talking-head-source-manifest.json"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/talking-head-transcripts.json"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/workflow-generation-client.ts"
+  },
+  {
+    "status": "A",
+    "path": "lib/explore/workflow-preload.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/workflow-session.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/explore/workflows.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/trending/slideshow-automation-render.ts"
+  },
+  {
+    "status": "M",
+    "path": "lib/trending/slideshow-automation-service.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "lib/trending/slideshow-automation-service.ts"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/covers/ai-character-promo-08c4637b2b16.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/covers/hook-video-promo-31c869823edc.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/covers/slideshow-promo-f0669968ed21.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/covers/talking-head-demo-promo-a4aa6e943cf2.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/covers/wall-of-text-promo-e3d92b47d085.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-frames/v1/talking-carla-eatsss.png"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-frames/v1/talking-taliameals.png"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-references/v1/talking-carla-eatsss.jpg"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-references/v1/talking-carla-eatsss.mp4"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-references/v1/talking-taliameals.jpg"
+  },
+  {
+    "status": "A",
+    "path": "public/explore/talking-head-references/v1/talking-taliameals.mp4"
+  },
+  {
+    "status": "A",
+    "path": "remotion/vidmake-launch-index.tsx"
+  },
+  {
+    "status": "A",
+    "path": "remotion/VidmakeLaunchPromo.tsx"
+  },
+  {
+    "status": "M",
+    "path": "scripts/check-automation-sharp-traces.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/check-automation-sharp-traces.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/compare-talking-head-script-models.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/creator-preview-loading.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/explore-format-generation-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/explore-format-reference-upload.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/explore-navigation-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/explore-workflow-job-recovery.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/geist-preload.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/hook-reference-views.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/hook-starting-frame-client.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/hook-starting-frame-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-explore-paired-references.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-explore-recreate-assets.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-silent-hook-video-assets.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/import-talking-head-transcripts.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-wall-instagram-reel-templates.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-wall-money-references.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/import-wall-text-video-assets.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/prepare-hook-source-frames.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/prepare-published-hook-frames.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/prepare-published-source-frames.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/prepare-published-source-frames.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/prepare-talking-head-frames.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/prepare-talking-head-published-frames.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/prepare-talking-head-references.py"
+  },
+  {
+    "status": "A",
+    "path": "scripts/prepare-talking-head-references.test.py"
+  },
+  {
+    "status": "M",
+    "path": "scripts/publish-explore-reference-batch-20261023.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/recreate-composer-sizing.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/reference-view-registry-contract.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/render-vidmake-launch.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/slideshow-face-flow.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/slideshow-face-swap.browser.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/slideshow-reference-views.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/starting-frame-animation-references.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/starting-frame-compact.browser.cjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/starting-frame-import-gates.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/starting-frame-photo-carryover.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/starting-frame-preload.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/talking-head-full-sources.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/talking-head-references.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/talking-head-result-review.browser.cjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/talking-head-result-review.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/talking-head-script-section.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/talking-head-transcript-import.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/transcribe-talking-head-openai.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/transcribe-talking-head-references.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/workflow-action-feedback-fixture.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/workflow-action-feedback.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-bookmarked-audio.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-composition-panel.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-demo-audio-state.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/workflow-floating-feedback.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-generation-api-contract.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-generation-client.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-generation-recovery.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/workflow-preload.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-reference-inputs-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-sections.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-session-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "scripts/workflow-source-video-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/jobs/generate-hook-video.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "worker/src/lib/carousel-manual-render.native.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/carousel-manual-render.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/explore-hook-reference-addition-release.json"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/generation-provider.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/generation-provider.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/openrouter-gemini-image.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/openrouter-gemini-image.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/reapi-video.test.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/reapi-video.ts"
+  },
+  {
+    "status": "M",
+    "path": "worker/src/lib/video-prompt-policy.ts"
+  }
+]

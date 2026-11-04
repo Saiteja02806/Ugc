@@ -14,6 +14,7 @@ const workspace = read("workflow-edit-workspace.tsx");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : ({ type, props });
 function load(source) {
   const imports = {
+    "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
     react: { useId: () => "schedule-test" },
     "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } },
@@ -75,7 +76,7 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(source, /Your local changes are not saved/);
     if (kind === "hook") {
       assert.match(source, /const overviewActive = section === "edit" \|\| section === "create"/);
-      assert.match(source, /hidden=\{!overviewActive\}/);
+      assert.match(source, /hidden=\{!overviewActive \|\| section === "create" && showTalkingHeadReview\}/);
       assert.equal((source.match(/<WorkflowEditWorkspace /g) ?? []).length, 1, "Create and Demo keep one shared overview");
     } else assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
     assert.match(source, /<WorkflowScheduleWorkspace[^>]*draft=\{scheduleDraft\}/);
@@ -110,7 +111,7 @@ test("panel navigation remains outside scrolling settings and leaves retained co
   const tree = WorkflowCreationPanel({ kind: "hook", section: "create", navigation: stageNavigation, children: retainedContent,
     create: { disabled: false, busy: false, message: "Selected video is ready", onAction() { continued++; } } });
   const settings = nodes(tree).find(node => node.props?.["data-workflow-section-content"] !== undefined);
-  assert.equal(settings.props.children, retainedContent);
+  assert.ok(nodes(settings).includes(retainedContent));
   assert.equal(nodes(settings).includes(stageNavigation), false, "Stage navigation must stay reachable above the scrolling form");
   assert.equal(tree.props.children[0], stageNavigation);
   assert.deepEqual(nodes(stageNavigation).filter(node => node.type === "tab").map(node => node.props.value), ["create", "edit", "schedule"]);
@@ -127,7 +128,7 @@ test("focused clip actions stay above scrollable tools without a separate bottom
   const tree = WorkflowCreationPanel({ kind: "hook", section: "edit", children: content, actionContent: actions });
   const toolbar = nodes(tree).find(n => n.props?.["data-workflow-edit-actions"] !== undefined);
   const settings = nodes(tree).find(n => n.props?.["data-workflow-section-content"] !== undefined);
-  assert.equal(toolbar.props.children, actions); assert.equal(settings.props.children, content);
+  assert.equal(toolbar.props.children, actions); assert.ok(nodes(settings).includes(content));
   assert.equal(nodes(tree).some(n => n.type === "footer"), false);
   assert.equal(nodes(settings).includes(actions), false);
   toolbar.props.children.props.onClick(); assert.equal(saved, 1);
@@ -218,7 +219,8 @@ test("Schedule footer stays clean without implying publishing is connected", () 
     assert.equal(action.props.disabled, true);
     assert.equal(action.props["aria-describedby"], `${kind}-preview-limits`);
     assert.match(action.props.title, /Scheduling is not connected/);
-    assert.match(text(footer), /scheduling are not connected/);
+    assert.match(text(nodes(tree).find(node => node.props?.["data-workflow-section-content"] !== undefined)), /scheduling are not connected/);
+    assert.doesNotMatch(text(footer), /scheduling are not connected/);
   }
 });
 
@@ -276,7 +278,7 @@ test("shared polish retains app disabled and focus treatment with reduced-motion
   assert.doesNotMatch(styles, /\.primaryAction:disabled/);
   assert.match(sharedButton, /focus-visible:ring-3 focus-visible:ring-ring\/30/);
   assert.doesNotMatch(styles, /\.controls :global\(button:focus-visible\)/, "Workflow buttons retain the app's shared focus treatment");
-  assert.match(styles, /\.referenceButton\[data-state="selected"\][^}]*border-color: var\(--primary\)/);
+  assert.match(styles, /\.referenceButton\[data-state="selected"\][^}]*border-color: var\(--foreground\)/);
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*\.referenceButton[^}]*transition: none/);
   assert.match(styles, /max-width: 1023px[^}]*height: 44px/);
   assert.doesNotMatch(panel, /disabled:opacity-75|Video rendering is not connected yet/);

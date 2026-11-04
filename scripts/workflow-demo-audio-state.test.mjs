@@ -134,6 +134,7 @@ function layout(kind) {
     "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
+    "@/components/explore/talking-head-result-review": { TalkingHeadResultReview: "canvas" },
     "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => appScreen },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => sourceSelection },
     "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
@@ -179,6 +180,28 @@ function layout(kind) {
   };
 }
 
+test("Talking Head result review continues to Demo and returns with the same clip, script and attachments", () => {
+  const actual = layout("hook");
+  const chosen = { id: "chosen-result-two", title: "Saved talking head", url: "https://owned.test/result-two.mp4", width: 720, height: 1280, durationSeconds: 3 };
+  actual.selectVideo(chosen);
+  let view = actual.render();
+  view.composer.onInstructionsChange("Keep these exact words.");
+  nodes(view.tree).find(node => node.type === "button" && node.props.children === "Your videos").props.onClick();
+  view = actual.render();
+  const review = nodes(view.tree).find(node => node.type === "canvas");
+  assert.equal(review.props.generation.selected, chosen);
+  review.props.onContinue();
+  view = actual.render();
+  assert.equal(view.tabs.value, "edit");
+  assert.equal(view.finishing.source, chosen);
+  assert.equal(view.composer.instructions, "Keep these exact words.");
+  view.tabs.onValueChange("create");
+  view = actual.render();
+  assert.equal(nodes(view.tree).find(node => node.type === "canvas").props.generation.selected, chosen);
+  assert.equal(view.composer.instructions, "Keep these exact words.");
+  assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);
+});
+
 test("Talking Head frame approval carries the edited script and raw identity IDs while preserving Demo and Sound", () => {
   const actual = layout("hook"), draftId = "00000000-0000-4000-8000-000000000099";
   const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: draftId } };
@@ -187,12 +210,17 @@ test("Talking Head frame approval carries the edited script and raw identity IDs
   current = actual.render(props);
   let preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   assert.equal(preparation.props.scriptSection.type, "talking-head-script");
-  preparation.props.scriptSection.props.onChange("These are the approved words for this business.");
+  preparation.props.scriptSection.props.onChange("These are the approved words for this business.", true);
   current = actual.render(props); preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false, identityAssetIds: ["raw-first", "raw-second"] };
   preparation.props.onUseStartingFrame(frame); current = actual.render(props);
   assert.equal(current.generationDraft.talkingHeadScript, "These are the approved words for this business.");
   assert.equal(current.composer.spokenScriptMode, true);
+  assert.equal(current.generationDraft.talkingHeadScriptReviewed, true);
+  current.composer.onInstructionsChange("New words need review"); current = actual.render(props);
+  assert.equal(current.generationDraft.talkingHeadScriptReviewed, false);
+  current.composer.spokenScriptReview.onChange(true); current = actual.render(props);
+  assert.equal(current.generationDraft.talkingHeadScriptReviewed, true);
   assert.deepEqual(Array.from(current.generationDraft.startingFrame.identityAssetIds), ["raw-first", "raw-second"]);
   assert.equal(current.generationDraft.startingFrame.generateAudio, false, "Sound never changes silently");
   assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);

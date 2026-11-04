@@ -1,0 +1,30 @@
+.workspace { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding: 24px; container: talking-head-review / inline-size; }
+.heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.heading h2 { margin: 0; color: var(--foreground-strong); font-size: 20px; font-weight: 600; line-height: 28px; letter-spacing: -.02em; }
+.heading p, .help { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 21px; }
+.count { flex-shrink: 0; color: var(--muted); font-size: 12px; line-height: 24px; }
+.versions { display: flex; flex-wrap: wrap; gap: 8px; }
+.versions button { min-height: 40px; height: auto; white-space: normal; }
+.versions button[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--card)); }
+.review { display: grid; grid-template-columns: minmax(0, 245px) minmax(0, 1fr); align-items: start; gap: 28px; min-width: 0; }
+/* Override the workspace's generic video cap only inside this approved review. */
+.review video.player { display: block; width: auto; height: auto; max-width: 100%; max-height: 435px; border-radius: 10px; object-fit: contain; justify-self: start; align-self: start; }
+.review[data-ratio="16:9"] { grid-template-columns: minmax(0, 1fr); }
+.info { display: flex; flex-direction: column; align-items: start; gap: 16px; min-width: 0; padding-top: 8px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; line-height: 20px; }
+.continue { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: auto; max-width: 100%; min-height: 44px; height: auto; padding: 10px 18px; font-weight: 600; white-space: normal; }
+.help { margin: 0; }
+.prompt { align-self: stretch; min-width: 0; margin-top: 4px; border-top: 1px solid var(--border); padding-top: 12px; }
+.prompt summary { min-height: 44px; padding: 10px 0; color: var(--muted); font-size: 13px; line-height: 24px; cursor: pointer; }
+.prompt summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+.promptCopy { display: flex; justify-content: end; }
+.promptCopy button { min-width: 44px; min-height: 44px; }
+.promptText { max-height: 260px; margin: 8px 0 0; overflow-y: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; line-height: 21px; }
+.error { margin: 0; color: var(--destructive); font-size: 13px; line-height: 21px; overflow-wrap: anywhere; }
+.refresh { margin: 0 20px 20px; }
+@container talking-head-review (max-width: 540px) {
+  .review { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .review video.player { width: auto; max-width: 100%; max-height: 320px; justify-self: center; }
+  .info { padding-top: 0; align-items: stretch; gap: 14px; }
+  .continue { width: 100%; }
+}

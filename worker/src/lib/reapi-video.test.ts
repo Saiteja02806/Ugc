@@ -326,3 +326,17 @@ test("Kling 4 uses its own schema and rejects unsupported references before char
   assert.equal(buildReapiVideoRequest({ ...base, durationSeconds: 30, resolution: "1080p" }).duration, 30);
   for (const patch of [{ durationSeconds: 2 }, { durationSeconds: 31 }, { referenceVideoUrl: "https://storage.example.com/source.mp4" }, { resolution: "480p" as const }]) assert.throws(() => buildReapiVideoRequest({ ...base, ...patch }), ProviderRequestNotSubmittedError);
 });
+
+test("Kling 4 preserves long prompt content and enforces the shared application budget before provider access", async () => {
+  const base = { ...input, model: "kling_4_0", durationSeconds: 3 } as const;
+  for (const length of [4001, 6000, 10_000]) {
+    const suffix = "Preserve this final camera move.";
+    const prompt = "x".repeat(length - suffix.length) + suffix;
+    assert.equal(buildReapiVideoRequest({ ...base, prompt }).prompt, prompt);
+    assert.equal(buildReapiVideoRequest({ ...base, prompt, startingFrameImageUrl: "https://storage.example.com/first.png" }).prompt, prompt);
+  }
+  let calls = 0;
+  await assert.rejects(generateReapiVideoBuffer({ ...base, prompt: "x".repeat(10_001), ...callbacks }, { apiKey,
+    fetchImpl: (async () => { calls++; return json({ id: "must-not-submit" }); }) as typeof fetch }), ProviderRequestNotSubmittedError);
+  assert.equal(calls, 0);
+});

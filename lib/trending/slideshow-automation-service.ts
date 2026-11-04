@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 
 import {
+  getCarouselGenerationStatusesByIds,
   listCarouselGenerationStatusesForUser,
   type CarouselGenerationRecord,
 } from "@/lib/carousel/db";
@@ -1209,17 +1210,24 @@ function buildScheduleTargetInputs(
 
 async function loadReadyUnusedCarouselsForUser(params: {
   excludeCarouselIds: ReadonlySet<string>;
+  pinnedCarouselIds: string[];
   userId: string;
 }): Promise<CarouselGenerationRecord[]> {
   try {
-    const [statuses, profile] = await Promise.all([
+    const [recentStatuses, pinnedStatuses, profile] = await Promise.all([
       listCarouselGenerationStatusesForUser({ limit: 50, userId: params.userId }),
+      getCarouselGenerationStatusesByIds(params.pinnedCarouselIds),
       getBusinessProfileForUser(params.userId),
     ]);
     if (!profile) throw new Error("The active business profile is unavailable.");
 
-    return statuses
+    // A retry must recover its checkpointed source even after newer inventory
+    // pushes it out of the recent page. Revalidate direct-ID reads below too.
+    const statuses = new Map([...recentStatuses, ...pinnedStatuses]
+      .map((entry) => [entry.generation.id, entry]));
+    return [...statuses.values()]
       .filter((entry) => {
+        if (entry.generation.userId !== params.userId) return false;
         if (entry.generation.status !== "completed") return false;
         if (entry.generation.businessProfileId !== profile.id || entry.generation.businessProfileVersion !== profile.profileVersion) return false;
         if (params.excludeCarouselIds.has(entry.generation.id)) return false;
@@ -1299,6 +1307,9 @@ async function prepareClaimedAutomationSlots(params: {
 
   const availableCarousels = await loadReadyUnusedCarouselsForUser({
     excludeCarouselIds: usedCarouselIds,
+    pinnedCarouselIds: existingSlots.flatMap(slot =>
+      slot.status === "preparing" && !slot.scheduleId && slot.creativeId &&
+      Date.parse(slot.scheduledFor) > Date.now() ? [slot.creativeId] : []),
     userId: params.automation.userId,
   });
 

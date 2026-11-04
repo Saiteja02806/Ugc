@@ -116,6 +116,25 @@ test("creator and app screenshots reach the real API as uploaded multi-image gui
   }
 });
 
+test("Kling 4 long prompts survive both real workflow clients and API admission without truncation", async () => {
+  for (const kind of ["hook", "phone"]) for (const length of [4001, 6000, 10_000]) {
+    jobs.clear(); reservations.clear();
+    const suffix = "KEEP THIS FINAL ACTION";
+    const prompt = "x".repeat(length - suffix.length) + suffix;
+    const input = draft({ kind, instructions: prompt, settings: normalizeWorkflowGenerationSettings({ model: "kling_4_0", quantity: 1, duration: 3 }, true) });
+    await client().generate(input);
+    const job = [...jobs.values()][0];
+    assert.equal(job.input.hookIdea, prompt);
+    assert.equal(job.input.provider, "reapi");
+    assert.equal(job.input.model, "kling_4_0");
+    assert.equal(reservations.size, 1);
+  }
+  jobs.clear(); reservations.clear();
+  const input = draft({ instructions: "x".repeat(10_001), settings: normalizeWorkflowGenerationSettings({ model: "kling_4_0", quantity: 1 }, true) });
+  await assert.rejects(client().generate(input), /too long/);
+  assert.equal(jobs.size, 0); assert.equal(reservations.size, 0);
+});
+
 test("both Explore workflows send owned Create audio/video to ReAPI, independently of appended demos", async () => {
   for (const kind of ["hook", "phone"]) {
     jobs.clear(); reservations.clear(); uploads.length = 0;
@@ -246,17 +265,18 @@ test("reviewed Talking Head script crosses client, real API and durable worker i
   approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, receipt: { version: 1 }, output: { width: 720, height: 1280, ratio: "9:16" } };
   const words = "Ready to practice? Let me show you.";
   try {
-    await client().generate(draft({ workflow: "talking_head", instructions: words, talkingHeadScript: words, referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: [], settings: normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }, true) }));
+    await client().generate(draft({ workflow: "talking_head", instructions: words, talkingHeadScript: words, talkingHeadScriptReviewed: true, referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: [], settings: normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }, true) }));
     const job = [...jobs.values()][0];
     assert.equal(job.input.talkingHeadScript, words);
+    assert.equal(job.input.talkingHeadScriptReviewed, true);
     assert.equal(job.input.hookIdea.split(JSON.stringify(words)).length - 1, 1);
     assert.doesNotMatch(job.input.hookIdea, /Your instructions:/u);
     assert.match(job.input.hookIdea, /Keep the camera stable/u);
     assert.equal(job.input.provider, "reapi");
     assert.equal(job.input.startingFrameAssetId, frame.assetId);
     const count = jobs.size, reserved = reservations.size;
-    for (const [script, sound] of [["word ".repeat(80), true], [words, false]]) {
-      const response = await handleAIStudioVideoGeneration(new Request("https://example.test/api/ai-studio/videos/generate", { method: "POST", headers: { Authorization: "Bearer fake-owner-token", "Content-Type": "application/json" }, body: JSON.stringify({ workflow: "talking_head", prompt: "Keep the camera stable.", talkingHeadScript: script, startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId, exploreFormat: "hook", generateAudio: sound, model: "google_omni", durationSeconds: 4, resolution: "720p", aspectRatio: "9:16" }) }));
+    for (const [script, sound, reviewed] of [["word ".repeat(80), true, true], [words, false, true], [words, true, false], [words, true, undefined], [words, true, "true"]]) {
+      const response = await handleAIStudioVideoGeneration(new Request("https://example.test/api/ai-studio/videos/generate", { method: "POST", headers: { Authorization: "Bearer fake-owner-token", "Content-Type": "application/json" }, body: JSON.stringify({ workflow: "talking_head", prompt: "Keep the camera stable.", talkingHeadScript: script, talkingHeadScriptReviewed: reviewed, startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId, exploreFormat: "hook", generateAudio: sound, model: "google_omni", durationSeconds: 4, resolution: "720p", aspectRatio: "9:16" }) }));
       assert.equal(response.status, 400);
     }
     assert.equal(jobs.size, count); assert.equal(reservations.size, reserved);

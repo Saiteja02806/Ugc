@@ -17,6 +17,7 @@ export type WorkflowGenerationDraft = {
   workflow?: "talking_head" | "hook" | "phone" | "wall_text";
   instructions: string;
   talkingHeadScript?: string;
+  talkingHeadScriptReviewed?: boolean;
   /** Editable reference directions shown beside the user's own instructions. */
   referenceInstructions?: string;
   settings: WorkflowGenerationSettings;
@@ -58,6 +59,7 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   if (draft.referencesError) return draft.referencesError;
   if (!normalizeAIStudioPrompt(draft.instructions)) return "Write your instructions before generating a video.";
   if (draft.talkingHeadScript !== undefined) {
+    if (draft.talkingHeadScriptReviewed !== true) return "Review the spoken words and confirm demo narration is excluded before generating.";
     if (draft.workflow !== "talking_head" || !draft.startingFrame) return "Choose an approved Talking Head starting frame for this script.";
     const scriptError = talkingHeadScriptInputError(draft.talkingHeadScript, draft.settings.duration, draft.startingFrame.generateAudio);
     if (scriptError) return scriptError;
@@ -195,6 +197,7 @@ export function createWorkflowGenerationClient(dependencies: {
       const settings = { ...draft.settings };
       const prompt = workflowGenerationPrompt(draft);
       const talkingHeadScript = draft.talkingHeadScript;
+      const talkingHeadScriptReviewed = draft.talkingHeadScriptReviewed;
       const images = (draft.startingFrame ? draft.startingFramePhotos ?? [] : selectedWorkflowImages(draft)).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
@@ -228,7 +231,7 @@ export function createWorkflowGenerationClient(dependencies: {
           const videoReference = await prepareMedia(video, "video"), audioReference = await prepareMedia(audio, "audio");
           submission.body = JSON.stringify({
             prompt,
-            ...(talkingHeadScript !== undefined ? { talkingHeadScript } : {}),
+            ...(talkingHeadScript !== undefined ? { talkingHeadScript, talkingHeadScriptReviewed } : {}),
             model: settings.model,
             durationSeconds: settings.duration,
             quantity: settings.quantity,

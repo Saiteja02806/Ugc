@@ -28,7 +28,7 @@ test("five-second voice context keeps longer recordings whole and rejects shorte
   }
 });
 
-function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 30, minDuration = 0, assets = [], metadataDuration = 5, mediaKind = "audio", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
+function harness({ paid = true, accountAvailable = true, fetching = false, owner = "owner", user = "owner", maxDuration = 30, minDuration = 0, assets = [], metadataDuration = 5, mediaKind = "audio", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
   let cursor = 0, referenced = 0;
   const slots = [], calls = [], choices = [];
   let mediaCursor = 0, nextUrl = 0;
@@ -58,7 +58,7 @@ function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 3
       useMemo: create => create(), useEffect() {},
     },
     "react/jsx-runtime": { jsx: element, jsxs: element },
-    "@tanstack/react-query": { useQuery: () => ({ data: { voices: [voice], assets, account: { paid } }, isSuccess: true }) },
+    "@tanstack/react-query": { useQuery: () => ({ data: { voices: [voice], assets, account: accountAvailable ? { paid } : null }, isSuccess: true, isFetching: fetching, refetch: () => calls.push({refresh:"library"}) }) },
     "lucide-react": Object.fromEntries(["AudioLines", "Bookmark", "Check", "LoaderCircle", "Pause", "Play", "RefreshCw"].map(name => [name,name])),
     "next/link": { default: "a" },
     "@/contexts/auth-context": { useAuth: () => ({ user: user ? {uid:user} : null, loading:false }) },
@@ -67,8 +67,8 @@ function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 3
       createAudioFetch: uid => async (path, init) => { calls.push({uid, path, init}); return response(); },
     },
     "@/lib/audio/library-query": { audioLibraryQueryOptions: options => options },
-    "@/components/audio/use-audio-bookmarks": { useAudioBookmarks: () => ({ ids: new Set([voice.id]), loading:false }) },
-    "@/components/audio/use-audio-voice-selection": { useAudioVoiceSelection: () => ({voiceId:null}) },
+    "@/components/audio/use-audio-bookmarks": { useAudioBookmarks: () => ({ ids: new Set([voice.id]), loading:false, refresh: () => calls.push({refresh:"bookmarks"}) }) },
+    "@/components/audio/use-audio-voice-selection": { useAudioVoiceSelection: () => ({voiceId:null, refresh: () => calls.push({refresh:"selection"}) }) },
     "@/components/audio/voice-orb": { VoiceOrb: "orb" },
     "@/components/ui/button": { Button:"button" },
     "./workflow-saved-audio.module.css": { default: new Proxy({}, {get: (_,key) => key}) },
@@ -256,4 +256,25 @@ test("remote soundtrack selection stays pending through download and hands off t
   assert.deepEqual(acceptedFiles, ["saved.mp3"]);
   assert.equal(actual.audio.asset.url, "blob:previous", "The acceptance callback controls persistence; the download must not replace it with a preview-only source");
   assert.equal(actual.audio.loading, false);
+});
+
+test("sample selection explains provider eligibility separately from account lookup failure and can retry", () => {
+  for (const accountAvailable of [true, false]) {
+    const h = harness({paid:false, accountAvailable});
+    const tree = h.render();
+    const status = nodes(tree).find(node => node.props.role === 'status');
+    assert.match(text(status), accountAvailable ? /preview-only on the connected voice service/ : /account details could not be loaded/);
+    const retry = nodes(status).find(node => node.type === 'button');
+    assert.equal(retry.props.disabled, false);
+    retry.props.onClick();
+    assert.deepEqual(h.calls.map(call => call.refresh), ['bookmarks','selection','library']);
+    assert.equal(h.choices.length, 0);
+    assert.equal(h.audio.asset.url, 'blob:previous');
+  }
+  const eligible = harness();
+  assert.equal(nodes(eligible.render()).some(node => node.props.className === 'availability'), false);
+  assert.equal(nodes(eligible.render()).find(node => node.props['aria-label'] === `Use ${voice.name} sample as voice reference`).props.disabled, false);
+  const refreshing = harness({accountAvailable:false, fetching:true});
+  const retry = nodes(refreshing.render()).find(node => node.type === 'button' && text(node).includes('Checking voice service'));
+  assert.equal(retry.props.disabled, true);
 });

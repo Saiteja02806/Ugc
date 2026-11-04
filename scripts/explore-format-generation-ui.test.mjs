@@ -855,6 +855,30 @@ for (const format of ["hook", "wall_text"]) {
   });
 }
 
+test("Studio Kling 4 keeps heavy authored prompts while the old Kling 3 limit remains enforced", async () => {
+  const h = harness("studio", { seedanceEnabled: true, wanEnabled: true, reference: false, captureRequests: true });
+  const model = () => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+  model().props.onChange("kling_4_0");
+  const prompt = "A detailed scene. ".repeat(300) + "Keep this final action.";
+  h.render().composer.props.onPromptChange(prompt);
+  let composer = h.render().composer;
+  assert.ok(prompt.length > 4000);
+  assert.equal(composer.props.prompt, prompt);
+  assert.equal(composer.props.maxLength, 10_000);
+  assert.equal(composer.props.generateDisabled, false);
+  model().props.onChange("kling_3_0");
+  composer = h.render().composer;
+  assert.equal(composer.props.prompt, prompt);
+  assert.equal(composer.props.generateDisabled, true);
+  model().props.onChange("kling_4_0");
+  composer = h.render().composer;
+  assert.equal(composer.props.generateDisabled, false);
+  await composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].body.prompt, prompt);
+  assert.equal(h.requests[0].body.model, "kling_4_0");
+});
+
 test("Studio retains the complete mixed reference set across model changes and gates failed uploads", async () => {
   const h = harness("studio", { seedanceEnabled: true, wanEnabled: true, captureRequests: true });
   const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);

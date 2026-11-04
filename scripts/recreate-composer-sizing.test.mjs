@@ -10,6 +10,7 @@ const nodes = node => node == null ? [] : Array.isArray(node) ? node.flatMap(nod
 function renderComposer(overrides = {}, scrollHeight = 20) {
   const effects = [], exported = {}, changes = [], submissions = [];
   const imports = {
+    "@/components/explore/workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     react: { useEffect: effect => effects.push(effect), useId: () => "test-prompt", useRef: () => ({ current: null }), useState: initial => [initial, () => {}] },
     "react/jsx-runtime": { jsx: element, jsxs: element },
     "react-dom": { createPortal: children => children },

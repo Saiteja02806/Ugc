@@ -46,6 +46,13 @@
 .details { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 3px; }
 .details strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--foreground-strong); }
 .details span { font-size: 11px; color: var(--muted); line-height: 15px; overflow-wrap: anywhere; }
+.voiceTitle { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.voiceTitle strong { flex: 1; min-width: 0; }
+.voiceMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+.availability { font-size: 12px; line-height: 18px; color: var(--muted); }
+.availability p { margin: 0 0 6px; }
+.availability button { display: inline-flex; align-items: center; gap: 5px; color: var(--foreground-strong); padding-block: 5px; }
+.availability button:disabled { opacity: .5; }
 .useButton {
   height: 34px;
   padding-inline: 12px;
@@ -107,6 +114,7 @@
 }
 .soundwaveBars {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 2px;
   height: 14px;
@@ -138,6 +146,9 @@
 }
 .tagPill {
   display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
   align-items: center;
   padding: 1px 6px;
   border-radius: 9999px;

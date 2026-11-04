@@ -5,47 +5,28 @@ import { atomicJsonSync } from "./reference-text-atomic-write.mjs";
 const read = file => JSON.parse(fs.readFileSync(file, "utf8"));
 const manifest = read(".tmp/talking-head-openai-2026-11-04/manifest.json");
 const sources = read("lib/explore/talking-head-source-manifest.json").items;
-const ends = {
-  "talking-warm-story": "travel wherever.",
-  "talking-car-explainer": "until i quit",
-  "talking-sophia-designsthings": "ridiculously easy.",
-  "talking-emmgr4c3": "I'll show you.",
-  "talking-tessam-bible": "Listen to this.",
-  "talking-websites-explainer": "knowing about.",
-  "talking-katiemeidt8": "So let me show you.",
-  "talking-studyfetchlauren": "Let me show you.",
-  "talking-studywithsab": "so here's how I study in the most efficient way.",
-  "talking-studywithsawyer": "in college",
-  "talking-mumtipswithginny": "just guessing,",
-  "talking-car-story-full": "but that part is optional.",
-  "talking-room-explainer-full": "Trust me.",
-};
-const crossChecked = new Set(["talking-websites-explainer", "talking-studyfetchlauren", "talking-studywithsab"]);
+const reviews = read("lib/explore/talking-head-hook-reviews.json");
+const sourceIds = new Set(sources.map(source => source.id));
+const completeIds = rows => rows.length === sourceIds.size && new Set(rows.map(row => row.referenceId)).size === sourceIds.size && rows.every(row => sourceIds.has(row.referenceId));
+if (!Number.isInteger(reviews.version) || !completeIds(manifest.items) || !completeIds(reviews.items)) throw Error("The source, transcription and explicit hook-review catalogs must match completely.");
 const items = manifest.items.map(row => {
   if (row.state !== "completed") throw Error("Every source must have a completed real transcription.");
   const canonical = sources.find(source => source.id === row.referenceId);
   if (!canonical || canonical.sourceSha256 !== row.sourceSha256) throw Error("Current catalog source changed.");
   const bytes = fs.readFileSync(row.responsePath);
   if (createHash("sha256").update(bytes).digest("hex") !== row.responseSha256) throw Error("Cached transcription changed.");
-  const raw = JSON.parse(bytes), ending = ends[row.referenceId];
-  const index = ending ? raw.text.toLowerCase().indexOf(ending.toLowerCase()) : -1;
-  if (ending && index < 0) throw Error(`Hook selection needs review: ${row.referenceId}`);
-  let hookText = ending ? raw.text.slice(0, index + ending.length).trim() : raw.text.trim();
+  const raw = JSON.parse(bytes);
+  const review = reviews.items.find(item => item.referenceId === row.referenceId);
+  if (!review || review.sourceSha256 !== row.sourceSha256 || review.transcriptSha256 !== row.responseSha256 || review.hookStartMs !== 0 || typeof review.hookText !== "string" || !review.hookText.trim() || !Number.isInteger(review.hookEndMs) || !(review.hookEndMs > 0 && review.hookEndMs <= row.durationMs) || !["cross_checked_draft", "needs_review"].includes(review.status) || typeof review.notes !== "string" || !review.notes.trim()) throw Error(`Missing or stale explicit hook review: ${row.referenceId}`);
+  const hookText = review.hookText, endMs = review.hookEndMs;
   const hookWordCount = hookText.split(/\s+/u).length;
-  // ASR words may split hyphens/names; match the selected token prefix, not an
-  // assumed uniform words-per-second timeline. Explicit pilot ends are checked.
-  const pilotEnds = { "talking-websites-explainer": 2740, "talking-studyfetchlauren": 10860, "talking-studywithsab": 44380 };
-  const normalized = text => text.toLowerCase().replace(/[^a-z0-9]/gu, "");
-  const target = normalized(hookText); let prefix = "", endMs = 0;
-  for (const word of raw.words) { prefix += normalized(word.word); endMs = Math.round(word.end * 1000); if (prefix.length >= target.length) break; }
-  endMs = pilotEnds[row.referenceId] ?? Math.min(row.durationMs, endMs);
-  if (!(endMs > 0 && endMs <= row.durationMs)) throw Error("Invalid hook boundary.");
   const corrections = [];
-  if (row.referenceId === "talking-katiemeidt8") { hookText = hookText.replaceAll("ChatGBT", "ChatGPT"); corrections.push("ChatGPT spelling corroborated by visible source captions; raw transcript preserved."); }
-  if (row.referenceId === "talking-studywithsawyer") { hookText = hookText.replaceAll("chatubt", "ChatGPT"); corrections.push("ChatGPT spelling corroborated by the source caption at 4s; raw transcript preserved."); }
-  if (row.referenceId === "talking-tessam-bible") { hookText = hookText.replace(/^God blessed/u, "God bless"); corrections.push("Opening 'God bless' corroborated by visible source captions; raw transcript preserved."); }
+  if (row.referenceId === "talking-katiemeidt8") { corrections.push("ChatGPT spelling corroborated by visible source captions; raw transcript preserved."); }
+  if (row.referenceId === "talking-studywithsawyer") { corrections.push("ChatGPT spelling corroborated by the source caption at 4s; raw transcript preserved."); }
+  if (row.referenceId === "talking-tessam-bible") { corrections.push("Opening 'God bless' corroborated by visible source captions; raw transcript preserved."); }
+  const selectionSha256 = createHash("sha256").update(JSON.stringify({ version: reviews.version, sourceSha256: row.sourceSha256, transcriptSha256: row.responseSha256, hookText, hookStartMs: 0, hookEndMs: endMs })).digest("hex");
   return { referenceId: row.referenceId, sourceSha256: row.sourceSha256, durationMs: row.durationMs, provider: "openai", model: manifest.model, extractedAt: row.completedAt, transcriptSha256: row.responseSha256,
-    fullText: raw.text, hookText, hookStartMs: 0, hookEndMs: endMs, review: crossChecked.has(row.referenceId) ? "cross_checked_draft" : "draft", corrections,
+    fullText: raw.text, hookText, hookStartMs: 0, hookEndMs: endMs, review: review.status, corrections, selectionSha256, reviewNotes: review.notes,
     wordTimingWarnings: raw.words.filter(word => word.start === word.end).length, hookWordCount,
     segments: raw.segments.map(segment => ({ text: segment.text.trim(), startMs: Math.round(segment.start * 1000), endMs: Math.round(segment.end * 1000) })) };
 });

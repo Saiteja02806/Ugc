@@ -3,6 +3,11 @@
 // Keep the existing character safeguards for the other generation paths until
 // their provider-specific limits are verified. Legacy video guidance routes to Runway.
 export const LEGACY_VIDEO_PROMPT_MAX_LENGTH = 1_000;
+// Explicit application safeguard, not a documented ReAPI character ceiling.
+// Kling 4's native guide describes 8,000 tokens; ReAPI publishes no character
+// maximum. Keep the existing 10,000-character app budget instead of inheriting
+// the legacy Runway fallback. Never truncate text to satisfy this guard.
+export const KLING_4_VIDEO_PROMPT_MAX_LENGTH = 10_000;
 
 export function getVideoPromptCharacterLimit({
   model,
@@ -23,6 +28,7 @@ export function getVideoPromptCharacterLimit({
     return undefined;
   }
 
+  if (model === "kling_4_0") return KLING_4_VIDEO_PROMPT_MAX_LENGTH;
   if (model === "kling_3_0") return 2_500;
   if (model === "seedance_2_5" || model === "wan_3_0") return 10_000;
   return LEGACY_VIDEO_PROMPT_MAX_LENGTH;

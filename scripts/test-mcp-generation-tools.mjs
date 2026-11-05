@@ -233,7 +233,7 @@ plan = "growth";
 rpcMode = "existing";
 const video = await call("generate_video", videoInput);
 assert.equal(video.structuredContent.jobs.length, 1);
-assert.equal(lastRpcArgs.p_amount, 12);
+assert.equal(lastRpcArgs.p_amount, 6, "Omni reserves 2 credits/second; the legacy 4-credit environment override must not change the advertised model rate");
 assert.equal(lastRpcArgs.p_input_json.durationSeconds, 3);
 assert.equal(lastRpcArgs.p_input_json.hookIdea, videoInput.prompt);
 assert.equal(lastRpcArgs.p_input_json.model, "google_omni");

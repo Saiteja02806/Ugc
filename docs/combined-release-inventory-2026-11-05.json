@@ -333,6 +333,10 @@
   },
   {
     "status": "M",
+    "path": "lib/audio/api.test.mjs"
+  },
+  {
+    "status": "M",
     "path": "lib/explore/hook-keyframe-motion-plans-a.json"
   },
   {
@@ -508,6 +512,10 @@
     "path": "lib/trending/slideshow-automation-service.ts"
   },
   {
+    "status": "M",
+    "path": "package-lock.json"
+  },
+  {
     "status": "A",
     "path": "public/explore/covers/ai-character-promo-08c4637b2b16.mp4"
   },
@@ -590,6 +598,10 @@
   {
     "status": "M",
     "path": "scripts/explore-workflow-job-recovery.test.mjs"
+  },
+  {
+    "status": "A",
+    "path": "scripts/follow-redirects-security.test.mjs"
   },
   {
     "status": "A",
@@ -740,6 +752,10 @@
     "path": "scripts/talking-head-transcript-import.test.mjs"
   },
   {
+    "status": "M",
+    "path": "scripts/test-mcp-generation-tools.mjs"
+  },
+  {
     "status": "A",
     "path": "scripts/transcribe-talking-head-openai.mjs"
   },
@@ -802,6 +818,10 @@
   {
     "status": "M",
     "path": "scripts/workflow-source-video-ui.test.mjs"
+  },
+  {
+    "status": "M",
+    "path": "worker/package-lock.json"
   },
   {
     "status": "M",

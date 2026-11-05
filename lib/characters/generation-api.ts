@@ -20,6 +20,7 @@ import {
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMediaAssetForOwner, type MediaAssetRow } from "@/lib/media/media-storage";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
+import { checkLocalAppWorker } from "@/lib/jobs/local-starting-frame";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { getCharacterForUser } from "./identity";
 import {
@@ -101,6 +102,7 @@ export function createCharacterGenerationHandlers(dependencies: CharacterApiDepe
     async generate(request: Request) {
       try {
         const user = await dependencies.authenticate(request);
+        await checkLocalAppWorker(user);
         const rawBody = await request.text();
         // Bound the transport payload without imposing a character limit on the prompt.
         if (new TextEncoder().encode(rawBody).byteLength > 1_048_576) {

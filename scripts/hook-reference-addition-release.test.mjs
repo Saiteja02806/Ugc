@@ -14,10 +14,13 @@ test("the optional-source Hook addition has complete reviewed media and preserve
   assert.equal(ready.eligible.length, 31);
   assert.equal(ready.assets.length, 124);
   assert.deepEqual(ready.excluded, []);
-  assert.equal(linked.length, 17);
-  assert.equal(linked.filter(item => item.sourcePlatform === "instagram").length, 1);
+  assert.equal(linked.length, 20);
+  assert.equal(linked.filter(item => item.sourcePlatform === "instagram").length, 4);
   assert.equal(linked.filter(item => item.sourcePlatform === "tiktok").length, 16);
-  assert.equal(unlinked.length, 14);
+  assert.equal(unlinked.length, 11);
+  for (const [title, code] of [["Hook 47", "DeCNJW4PRQH"], ["Hook 48", "DccQ1ygztSS"], ["Hook 52", "Dc1Wnx2Pbz9"]]) {
+    assert.equal(additions.items.find(item => item.title === title)?.sourceUrl, `https://www.instagram.com/reel/${code}/`);
+  }
 
   for (const item of additions.items) {
     assert.ok(item.durationSeconds > 0 && item.durationSeconds <= 15);

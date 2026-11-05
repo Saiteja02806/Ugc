@@ -16,7 +16,7 @@ const frame = { index: 0 as const, timeSeconds: 0 as const, width: 720, height: 
 function prepared() { return updateHookKeyframeDraft(createHookKeyframeDraft(scope), { sourceFrame: frame, imageAssetIds: [main, support], instructions: "Keep the source hairstyle." }); }
 function generated() { const draft = prepared(); return recordHookKeyframeImage(draft, { assetId: imageId, inputKey: hookKeyframeInputKey(draft), promptVersion: 1 }); }
 test("recreation prompt results can be approved and restored alongside earlier results", () => {
-  for (const promptVersion of [1, 2, 3, 4] as const) {
+  for (const promptVersion of [1, 2, 3, 4, 7, 8, 9] as const) {
     const draft = prepared();
     const approved = approveHookKeyframeImage(recordHookKeyframeImage(draft, { assetId: imageId, inputKey: hookKeyframeInputKey(draft), promptVersion }));
     const restored = readHookKeyframeDraft(serializeHookKeyframeDraft(approved), scope);

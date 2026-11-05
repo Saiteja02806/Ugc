@@ -2,6 +2,8 @@ import { HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS, HOOK_KEYFRAME_MAX_PERSON_IMAGES }
 import { getHookKeyframeMotionReviewDraft } from "./hook-keyframe-motion.ts";
 import { getPublicMiddleFrameMotionEntry, type MiddleFrameMotionEntry } from "./hook-middle-frame-motion.ts";
 import { getHookFullRecreationPilot } from "./hook-full-recreation-pilot.ts";
+import { reviewedStartingFrameScene } from "../../worker/src/lib/starting-frame-reviewed-scene.ts";
+import type { StartingFrameReferenceOptions } from "../../worker/src/lib/starting-frame-reference-options.ts";
 
 export const HOOK_KEYFRAME_IMAGE_PROMPT_VERSION = 4;
 // Explicit test candidate; application requests keep the user-selected v4 baseline.
@@ -60,10 +62,26 @@ export function buildHookFullRecreationOpeningImagePrompt(input: {
 }
 
 /** New requests use original source frame0 only; old builders remain frozen for receipts. */
-export function buildOriginalOpeningImagePrompt(input: { personImageCount: number; instructions?: string; referenceId?: string; sourceSha256?: string }) {
+export function buildOriginalOpeningImagePrompt(input: { personImageCount: number; instructions?: string; referenceId?: string; sourceSha256?: string; version?: 7 | 8 | 9 }) {
   if (!Number.isInteger(input.personImageCount) || input.personImageCount < 1 || input.personImageCount > HOOK_KEYFRAME_MAX_PERSON_IMAGES) throw new Error("Choose supported photos of the same person.");
   const instructions = input.instructions ?? "";
   if (typeof instructions !== "string" || instructions.length > HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(instructions)) throw new Error("Shorten the starting-image instructions.");
+  if (input.version !== undefined && input.version !== 7 && input.version !== 8 && input.version !== 9) throw new Error("Choose a supported original-opening prompt version.");
+  if (input.version !== 7) {
+    const prompt = [
+      "Recreate Image1's original video opening at t=0 as one photorealistic still, replacing only the person's identity with the influencer in Image2 and supporting photos. This is the same shot, not a newly staged portrait.",
+      "SCENE AND POSE — Image1 controls camera angle/tilt, crop, perspective, subject size and screen position, head tilt, gaze direction, mouth opening, eyelid/brow expression, hand side and finger positions, props, contact and occlusion. Keep their visible positions relative to the frame. Do not mirror, recenter, straighten, zoom, frontalize or substitute a different gesture. A raised hand must remain on its original screen side. Do not move a hand onto the mouth if Image1 does not show that contact.",
+      "APPEARANCE ROLES — Keep Image1's room geometry, visible objects, clothing and hairstyle unless the user's explicit role selections request a change to that named appearance. Identity photos supply facial features only, not their room, outfit, neutral pose, expression or lighting.",
+      "LIGHT AND SKIN — Preserve Image1's light direction, softness, exposure, color cast and shadow variation. Relight the influencer naturally into that environment. Keep natural skin detail and expression-related creases. Face, neck and hands belong to one person under the same physical light; different orientations may have different brightness and shadows. Do not flatten illumination, beautify skin or soften the source expression.",
+      "IDENTITY — Image2 is the primary influencer face. Later images are supporting views of the SAME person. Adapt those facial proportions to Image1's head angle and expression without blending the source performer's identity or copying the portraits' pose.",
+      reviewedStartingFrameScene(input.referenceId, input.sourceSha256),
+      "CLEANUP — Remove creator captions, subtitles, hook words, emojis, watermarks and graphic overlays, plus physical logos, branding and readable lettering. Reconstruct the actual surface beneath them with matching light and texture. Preserve the objects, clothing and scene geometry; do not erase an object or replace the room to remove its text. Add no replacement lettering.",
+      "OUTPUT — Keep Image1's complete aspect ratio and composition. No extra person, extra hand, new prop or scene redesign. Check screen-side placement, gaze, mouth opening, head tilt, room and camera against Image1 before returning the photograph.",
+      instructions.trim() ? `USER IMAGE INSTRUCTIONS:\n${instructions.trim()}` : "",
+    ].filter(Boolean).join("\n\n");
+    if (prompt.length > HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH) throw new Error("Shorten the starting-image instructions.");
+    return { version: (input.version ?? 9) as 8 | 9, prompt, imageCount: input.personImageCount + 1 };
+  }
   const prompt = [
     "Create one photorealistic original-opening photograph for review before video generation. Image1 is the source video's first decoded frame at elapsed t=0, not a later clarity frame. Recreate this exact opening with the influencer from Image2 and supporting identity photos.",
     "SOURCE SHOT — Image1 alone controls camera height and tilt, framing/crop, subject size and placement, background geometry, clothing, body pose, head angle, gaze, expression, hands, held props and their contact/occlusion. Preserve the opening moment, including face obstruction. Do not clear the face, lower an object, change the outfit or jump to a later action.",
@@ -125,9 +143,34 @@ export function buildHookKeyframeImagePrompt(input: { personImageCount: number; 
 }
 
 /** Stage 2 identity lock. The worker copy in openrouter-gemini-image.ts is what Gemini receives. */
-export function buildHookKeyframeStage2Prompt(input: { instructions?: string; supportingImageCount?: number } = {}) {
+export function buildHookKeyframeStage2Prompt(input: {
+  instructions?: string;
+  supportingImageCount?: number;
+  referenceOptions?: StartingFrameReferenceOptions;
+  stage2Version?: 2;
+  referenceId?: string;
+  sourceSha256?: string;
+} = {}) {
   const instructions = input.instructions?.trim() ?? "";
   const supporting = Math.max(0, Math.floor(input.supportingImageCount ?? 0));
+  if (input.stage2Version === 2) {
+    const supportingCropLine = supporting === 0
+      ? "Image 2 is the only close-up identity face photo."
+      : supporting === 1
+        ? "Image 3 is another close-up face photo of the same person as Image 2. Use it only to confirm that person's facial features from another angle."
+        : `Images 3 through ${2 + supporting} are other close-up face photos of the same person as Image 2. Use them only to confirm that person's facial features from other angles.`;
+    return [
+      "STAGE 2 IDENTITY LOCK (FACE SWAP & CAPTION CLEANUP ONLY):",
+      "Image 1 is the scene photograph. Keep 100% of its composition, camera angle and tilt, crop, subject size and screen position, background room, visible furniture and objects, lighting, shadows, jewelry, wardrobe, and hairstyle.",
+      "POSE, HAND & EXPRESSION LOCK — Keep Image 1's exact body pose, head tilt, eye gaze direction, and mouth opening/expression. Keep any raised hand on its original screen side with the same finger positions and separation from the mouth. Do not mirror, recenter, straighten, zoom, frontalize, move the hand to the other side, or place fingers on the lips or chin if Image 1 does not show that contact. Do not copy the closed mouth or neutral expression from Image 2.",
+      reviewedStartingFrameScene(input.referenceId, input.sourceSha256, input.referenceOptions),
+      "Image 2 is the close-up influencer face reference. It decides the face.",
+      supportingCropLine,
+      "IDENTITY REPLACEMENT — Replace only the visible face in Image 1 with the person shown in Image 2. Copy the facial features that photo actually shows: facial bone structure, eye shape, eye spacing, iris color, brows, nose, natural freckles/skin detail, lip shape (adapted to Image 1's exact mouth opening), and jawline. Do not import any background, clothing, or hairstyle from the face crops.",
+      "LIGHTING HARMONY — Relight that swapped face to Image 1 so the face, neck, and hands share the same physical scene light.",
+      instructions ? `USER IMAGE INSTRUCTIONS:\n${instructions}` : "",
+    ].filter(Boolean).join("\n\n");
+  }
   const supportingLine = supporting === 0
     ? "Image 2 is the only identity photo."
     : supporting === 1

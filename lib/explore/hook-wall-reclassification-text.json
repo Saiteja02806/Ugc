@@ -51,6 +51,23 @@
       "extractedAt": "2026-10-28T00:00:00Z",
       "model": "source-review-opening-v1",
       "notes": "Opening caption verified across all 90 decoded frames in ordered contact sheets, with targeted native-resolution checks. Reaction-only clip trimmed before product demo. Source claims are not verified business facts."
+    },
+    {
+      "referenceId": "explore-paired-hook-573ce74ab0b1421f00e93add",
+      "slideId": null,
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "been shopping at Trader Joe’s for 5 years\nand I'm JUST FINDING OUT ABOUT THIS??!!",
+          "startMs": 0,
+          "endMs": 1566
+        }
+      ],
+      "extractedAt": "2026-11-06T00:00:00Z",
+      "model": "manual-source-review-v1",
+      "notes": "Caption read from native opening PNG and checked across all 47 decoded frames. User approved the exact derivative for Hook references. Remix adapts this on-screen text with saved business context. Source personal claims are unverified."
     }
   ]
 }

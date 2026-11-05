@@ -17,7 +17,7 @@ async function workspace(t) {
   const dir = await mkdtemp(join(parent, "explore-finishing-test-"));
   t.after(async () => {
     assert.equal(dirname(resolve(dir)), parent); assert.ok(basename(dir).startsWith("explore-finishing-test-"));
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
   return dir;
 }

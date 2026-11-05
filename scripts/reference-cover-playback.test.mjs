@@ -14,7 +14,7 @@ test("reference videos stay still until hover, stop on leave and respect visibil
   const document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener() {} };
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/use-cover-playback.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
-  vm.runInNewContext(code, { exports: exported, document, window: { matchMedia: () => preference }, setTimeout: fn => { timer = fn; return 1; }, clearTimeout: () => { timer = undefined; },
+  vm.runInNewContext(code, { exports: exported, document, window: { matchMedia: () => preference, addEventListener() {}, removeEventListener() {} }, setTimeout: fn => { timer = fn; return 1; }, clearTimeout: () => { timer = undefined; },
     IntersectionObserver: class { constructor(fn) { intersect = fn; } observe() {} disconnect() {} },
     require: () => ({ useRef: () => ({ current: video }), useEffect: fn => { cleanup = fn(); } }) });
   exported.useCoverPlayback("https://media.test/clip.mp4", "button");
@@ -43,7 +43,7 @@ test("a private blob resolving under an already hovered card starts without requ
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/use-cover-playback.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   vm.runInNewContext(code, { exports: exported,
     document: { visibilityState: "visible", activeElement: null, addEventListener() {}, removeEventListener() {} },
-    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) },
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} },
     setTimeout: fn => { timer = fn; return 1; }, clearTimeout() {},
     IntersectionObserver: class { constructor(fn) { intersect = fn; } observe() {} disconnect() {} },
     require: () => ({ useRef: () => ({ current: video }), useEffect: fn => fn() }),
@@ -62,7 +62,7 @@ for (const saveData of [false, true]) test(`visible landing cover keeps its buff
   const document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener() {} };
   const exported = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/use-cover-playback.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
-    exports: exported, document, navigator: { connection: { saveData } }, window: { matchMedia: () => preference }, setTimeout: () => assert.fail("Landing hover must not wait on a timer"), clearTimeout() {},
+    exports: exported, document, navigator: { connection: { saveData } }, window: { matchMedia: () => preference, addEventListener() {}, removeEventListener() {} }, setTimeout: () => assert.fail("Landing hover must not wait on a timer"), clearTimeout() {},
     IntersectionObserver: class { constructor(fn) { intersect = fn; } observe() {} disconnect() {} },
     require: () => ({ useRef: () => ({ current: video }), useEffect: fn => { cleanup = fn(); } }),
   });

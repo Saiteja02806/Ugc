@@ -27,6 +27,7 @@ test("the shared workflow time field preserves 24-hour values and the rest of th
     "@/components/scheduling/use-device-time-format": { useDeviceTimeFormat: () => false },
     "@/lib/scheduling/time-display": timeDisplay,
     react: { useId: () => "schedule-test" }, "react/jsx-runtime": jsx,
+    "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "lucide-react": { Check: "Check" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "SocialPlatformIcon" },
     "@/components/ui/button": { Button: "Button" }, "@/components/ui/input": { Input: "Input" },
@@ -40,11 +41,13 @@ test("the shared workflow time field preserves 24-hour values and the rest of th
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/workflow-scheduling-panel.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, name); return imports[name]; } });
-  for (const actionsPosition of [undefined, "top"]) {
+  for (const footerTarget of [null, { id: "bottom-action-slot" }]) {
     const footer = jsx.jsx("schedule-actions", {});
-    const tree = nodes(exported.WorkflowSchedulingPanel({ draft, onChange() {}, footer, actionsPosition }));
+    const tree = nodes(exported.WorkflowSchedulingPanel({ draft, onChange() {}, footer, footerTarget }));
     assert.equal(tree.filter(node => node === footer).length, 1);
-    assert.equal(tree.indexOf(footer) < tree.findIndex(node => node.type === "PostCaptionField"), actionsPosition === "top", "Only opted-in slideshow actions move above the settings");
+    assert.ok(tree.indexOf(footer) > tree.findIndex(node => node.type === "time-picker"), "Actions never precede settings");
+    const portal = tree.find(node => node.type === "portal");
+    assert.equal(portal?.props.target, footerTarget ?? undefined, "Existing action content uses the bottom slot when mounted");
   }
   for (const time of ["00:00", "05:30", "12:00", "17:30", "23:59"]) {
     const current = { ...draft, time, timezone: "Asia/Calcutta" };
@@ -209,6 +212,40 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
 
 const clickSchedule = h => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
 const settle = () => new Promise(setImmediate);
+
+test("all format schedule actions use the mounted bottom slot only while active", () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) {
+    const h = harness(), target = { id: `${format}-footer` };
+    h.props.format = format; h.props.imageOnly = format === "slideshow"; h.props.actionsTarget = target;
+    h.render(); h.hydrate();
+    assert.equal(h.form().footerTarget, target);
+    assert.equal(h.form().actionsPosition, undefined);
+    assert.equal(nodes(h.form().footer).filter(node => node.type === "Button" && node.props.size === "lg").length, 1);
+    assert.equal(h.externalCalls, 0, "mounting or moving actions cannot submit/authenticate");
+    h.props.active = false; h.render();
+    assert.equal(h.form().footerTarget, null, "inactive settings cannot leak a portal action into another tab");
+    h.props.active = true; h.render();
+    assert.equal(h.form().footerTarget, target);
+    assert.equal(h.externalCalls, 0);
+  }
+});
+
+test("bottom action slots cover direct and pending workflows without altering schedule execution", () => {
+  const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  const workspace = read("components/explore/format-workspace.tsx");
+  assert.match(workspace, /<FormatSchedulePanel actionsTarget=\{scheduleActionsTarget\}/);
+  assert.match(workspace, /ref=\{setScheduleActionsTarget\} hidden=\{step !== "schedule"\} data-schedule-action-slot/);
+  const pending = read("components/explore/pending-schedule-panel.tsx");
+  assert.match(pending, /footerTarget=\{active \? actionsTarget : null\}/);
+  const talking = read("components/explore/hook-workflow-preview.tsx");
+  assert.match(talking, /actionContent=\{section === "schedule" \? <div ref=\{setScheduleActionsTarget\} data-schedule-action-slot/);
+  assert.match(talking, /footerTarget=\{section === "schedule" && !\(finish.pendingComposition && !finish.output\) \? scheduleActionsTarget : null\}/);
+  assert.match(talking, /<PendingExploreSchedulePanel owner=\{ownerId\} actionsTarget=\{scheduleActionsTarget\}/);
+  const shared = read("components/explore/workflow-scheduling-panel.tsx");
+  assert.doesNotMatch(shared, /actionsPosition|topActions/);
+  assert.match(shared, /footerTarget \? createPortal\(footer, footerTarget\) : footer/);
+  assert.match(read("components/explore/phone-workflow-preview.tsx"), /<WorkflowSchedulingPanel/);
+});
 
 test("definite selection rejection releases the format request and corrected choices get a fresh identity", async () => {
   const account = randomUUID(); let rejected = false;

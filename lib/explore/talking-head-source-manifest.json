@@ -175,6 +175,34 @@
       "file": "/explore/talking-head-references/v1/talking-taliameals.mp4",
       "width": 720,
       "height": 1280
+    },
+    {
+      "id": "talking-discovery-hook-v2",
+      "sourceSha256": "dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4",
+      "file": "/explore/talking-head-references/v1/talking-discovery-hook-v2.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-bittenbyaturtle-hook-v2",
+      "sourceSha256": "4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc",
+      "file": "/explore/talking-head-references/v1/talking-bittenbyaturtle-hook-v2.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-carla-eatsss-hook-v2",
+      "sourceSha256": "e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e",
+      "file": "/explore/talking-head-references/v1/talking-carla-eatsss-hook-v2.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-taliameals-hook-v2",
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "file": "/explore/talking-head-references/v1/talking-taliameals-hook-v2.mp4",
+      "width": 720,
+      "height": 1280
     }
   ]
 }

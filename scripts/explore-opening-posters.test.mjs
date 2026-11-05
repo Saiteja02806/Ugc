@@ -20,7 +20,7 @@ test('all five Explore waiting posters match their actual video opening pixels',
       const png=execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-i','public'+videos[i],'-frames:v','1','-f','image2pipe','-c:v','png','pipe:1'],{maxBuffer:12e6});
       const opening=await sharp(png).removeAlpha().raw().toBuffer({resolveWithObject:true});
       const poster=await sharp(data).removeAlpha().raw().toBuffer({resolveWithObject:true});
-      assert.equal(poster.info.width,960);assert.equal(poster.info.height,540);
+      assert.equal(poster.info.width,768);assert.equal(poster.info.height,432);
       assert.deepEqual(poster.data,opening.data,posters[i]);
       count++;
     }

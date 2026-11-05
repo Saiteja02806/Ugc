@@ -1,18 +1,18 @@
 /** Browser-safe image-role instructions shared by preview and providers. */
 import type { StartingFrameReferenceOptions } from "./starting-frame-reference-options.ts";
-export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 = 2, options?: StartingFrameReferenceOptions): string[] {
+export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 | 5 | 7 | 8 | 9 = 2, options?: StartingFrameReferenceOptions): string[] {
   if (!Number.isInteger(personImageCount) || personImageCount < 1 || personImageCount > 5) throw new Error("Choose one main face photo and up to four supporting views.");
-  if (promptVersion === 7 && options?.hairstyle !== undefined) return [
+  if ((promptVersion === 7 || promptVersion === 8 || promptVersion === 9) && options?.hairstyle !== undefined) return [
     `IMAGE 1 — SOURCE t=0. Camera, pose, expression, hands, props, occlusion and lighting. Background=${options.background === "source" ? "this image" : "Image 2"}; outfit=${options.outfit === "source" ? "this image" : "Image 2"}; hairstyle=${options.hairstyle === "source" ? "this image" : "Image 2"}. Remove all text/logos.`,
     "IMAGE 2 — MAIN_INFLUENCER. Facial identity and explicitly selected photo roles only; never source pose/camera/light.",
     ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — IDENTITY_SUPPORT. Same face only; no background, outfit, hairstyle, pose/light.`),
   ];
-  if (promptVersion === 7 && options) return [
+  if ((promptVersion === 7 || promptVersion === 8 || promptVersion === 9) && options) return [
     `IMAGE 1 — ORIGINAL_OPENING_SCENE. Source t=0 supplies camera, pose, expression, hands, props, occlusion and lighting.${options.background === "source" ? " Keep this background." : " Background comes from Image 2 instead."}${options.outfit === "source" ? " Keep this outfit." : " Outfit comes from Image 2 instead."} Remove all captions, logos and readable text.`,
     `IMAGE 2 — MAIN_INFLUENCER. Sole facial identity authority.${options.background === "photo" ? " Also use this photo's background." : " Do not copy this photo's background."}${options.outfit === "photo" ? " Also use this photo's clothing." : " Do not copy this photo's clothing."} Keep source pose, camera and illumination.`,
     ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_IDENTITY. Same person's facial identity only; no background, outfit, pose or lighting.`),
   ];
-  if (promptVersion === 7) return [
+  if (promptVersion === 7 || promptVersion === 8 || promptVersion === 9) return [
     "IMAGE 1 — ORIGINAL_OPENING_SCENE. Source frame0 is the sole authority for lighting direction and color, exposure, shadows, outfit, camera, pose, hands, props and occlusion. Remove all captions, physical logos and readable text while restoring those surfaces; do not use the source person's identity.",
     "IMAGE 2 — INFLUENCER_IDENTITY. Depict this person's facial proportions and natural identity in Image1's scene, outfit and lighting. Do not import this photo's room, clothing, light, pose or expression.",
     ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image2; facial identity only, never background, clothing, lighting or pose.`),

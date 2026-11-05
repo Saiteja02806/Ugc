@@ -107,7 +107,7 @@ test("approved-frame mode preserves all three cards and normal ratio selector wh
   const model = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.ok(model.props.options.every(option => startingFrameVideo.isHookStartingFrameVideoModel(option.value)));
   const duration = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook duration");
-  assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [4, 6, 8, 10]);
 });
 
 test("Talking Head sound stays inside instructions with no duplicate in model settings", () => {
@@ -218,8 +218,8 @@ test("disabled Seedance is neither offered nor used as the default", () => {
   const all = nodes(harness().render());
   const model = all.find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.equal(model.props.value, "kling_3_0");
-  assert.deepEqual(Array.from(model.props.options, (option) => option.value), ["kling_3_0", "google_omni"]);
-  assert.equal(model.props.options[1].label, "Omni Flash 1.1");
+  assert.deepEqual(Array.from(model.props.options, (option) => option.value), ["kling_3_0", "kling_4_0", "google_omni"]);
+  assert.equal(model.props.options.find(option => option.value === "google_omni").label, "Omni Flash 1.1");
   const enabled = nodes(harness({ seedanceEnabled: true }).render()).find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.equal(enabled.props.value, "seedance_2_5");
   assert.ok(enabled.props.options.some((option) => option.value === "seedance_2_5"));
@@ -244,7 +244,7 @@ test("model changes atomically reset incompatible settings but retain valid outp
   const { workflow } = generationModules(true);
   const seedance = workflow.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 30, resolution: "480p", quantity: 4, aspectRatio: "16:9" });
   const omni = workflow.normalizeWorkflowGenerationSettings({ ...seedance, model: "google_omni" });
-  assert.equal(omni.duration, 5);
+  assert.equal(omni.duration, 4);
   assert.equal(omni.resolution, "720p");
   assert.equal(omni.quantity, 4);
   assert.equal(omni.aspectRatio, "16:9");

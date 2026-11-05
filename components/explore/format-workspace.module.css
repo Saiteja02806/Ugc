@@ -270,3 +270,14 @@
 .clipStage[data-editing="true"] .clipStageHeader { flex-wrap: wrap; }
 .clipStage[data-editing="true"] .clipActions { flex: 1 0 100%; width: 100%; max-width: none; margin-left: 0; }
 .clipStage[data-editing="true"] .clipActions > div { justify-content: flex-start; }
+
+/* Keep the scheduled workspace inside the desktop viewport. Long settings and
+   slide collections scroll inside their existing panes, not the document. */
+@media (min-height: 521px) {
+  .workspace.classicWorkspace[data-stage="schedule"] { height: 100dvh; max-height: 100dvh; min-height: 0; overflow: hidden; }
+  .workspace.classicWorkspace[data-stage="schedule"] > .workflowLayout { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+  .workspace.classicWorkspace[data-stage="schedule"] .workflowControls { height: 100%; min-height: 0; align-self: stretch; }
+  .workspace.classicWorkspace[data-stage="schedule"] .workflowContent { flex: 1; min-height: 0; overflow-y: auto; }
+  .workspace.classicWorkspace[data-stage="schedule"] .classicMain { height: 100%; min-height: 0; overflow: hidden; }
+  .workspace.classicWorkspace[data-stage="schedule"] .savedPreview { flex: 1; min-height: 0; overflow-y: auto; }
+}

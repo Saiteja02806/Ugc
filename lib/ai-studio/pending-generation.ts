@@ -3,7 +3,7 @@ export class GenerationClarificationError extends Error {
   constructor(message: string, public clarifications: string[]) { super(message); }
 }
 export type SlideshowGenerationIdentity = { version: 1; batchKey: string; slideIndex: number; slideCount: number; versionIndex: number; versionCount: number };
-export type RecoveredGeneration = { ok: true; jobId: string; jobs: { jobId: string; generationId?: string; videoId?: string; slideshowGeneration?: SlideshowGenerationIdentity }[]; partial: boolean; message: string };
+export type RecoveredGeneration = { ok: true; jobId: string; jobs: { jobId: string; generationId?: string; videoId?: string; slideshowGeneration?: SlideshowGenerationIdentity; slideshowFaceSwapManaged?: true }[]; partial: boolean; message: string };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const pendingGenerationKey = (owner: string, kind: PendingGeneration["kind"], scope: string) => `ugc-ai-studio:pending:v1:${encodeURIComponent(owner)}:${kind}:${scope}`;
 export const generationDiscoveryKey = (owner: string, kind: PendingGeneration["kind"], scope: string) => `${pendingGenerationKey(owner, kind, scope)}:discovery`;

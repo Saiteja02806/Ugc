@@ -11,13 +11,14 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import type { MediaAsset } from "@/lib/media/types";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
 import { STARTING_FRAME_PHOTO_SELECTION_LIMIT } from "@/lib/explore/starting-frame-photo-selection";
 import styles from "./starting-frame-animation-references.module.css";
 
 export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange, frameControl, compact = false, onPrepareFrame }: {
-  frame: HookStartingFrameSelection; model: string; photos: AIStudioReferenceMedia[];
+  frame: StartingFrameSelection; model: string; photos: AIStudioReferenceMedia[];
   onPhotosChange: (photos: AIStudioReferenceMedia[]) => void;
-  onSelectFrame?: (frame: HookStartingFrameSelection) => void; onClearFrame?: () => void;
+  onSelectFrame?: (frame: StartingFrameSelection) => boolean | void; onClearFrame?: () => void;
   previewFrames?: HookStartingFrameSelection[]; previewInfluencers?: MediaAsset[];
   ownerId?: string; preview: boolean; active?: boolean; disabled: boolean;
   onPendingChange: (pending: boolean) => void; onErrorChange: (error: string | null) => void;

@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readSlideshowClarification, slideshowClarificationKey, slideshowClarificationMessages, slideshowClarificationMatches, SLIDESHOW_CLARIFICATION_FALLBACK } from "./slideshow-generation-recovery.ts";
+import { readSlideshowClarification, slideshowClarificationKey, slideshowClarificationMessages, slideshowClarificationMatches, slideshowClarificationScope, SLIDESHOW_CLARIFICATION_FALLBACK } from "./slideshow-generation-recovery.ts";
+
+test("face photo identity, ordering and exact slide changes invalidate old missing-input feedback without changing no-face scopes", () => {
+  const references = ["https://owned.test/source1", "https://owned.test/source4"];
+  const old = slideshowClarificationScope(references, null);
+  assert.equal(old, JSON.stringify({ references, regeneration: null }));
+  const face = { influencer: { id: "face-a", referencePhotos: [{ id: "face-b" }] }, slideIds: ["slide-1"] };
+  const scope = slideshowClarificationScope(references, null, face);
+  for (const changed of [undefined, { ...face, slideIds: ["slide-4"] }, { ...face, influencer: { id: "face-b", referencePhotos: [{ id: "face-a" }] } }]) {
+    assert.notEqual(slideshowClarificationScope(references, null, changed), scope);
+  }
+  assert.notEqual(old, scope);
+});
 
 test("planning explanations survive serialization and reject foreign, corrupt and oversized records", () => {
   const feedback = { version: 1, owner: "owner", scope: "source-five", prompt: "Use my screen on the laptop", items: ["Which screen?"] };

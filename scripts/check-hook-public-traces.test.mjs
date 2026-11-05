@@ -40,5 +40,5 @@ test("source-frame filesystem reads use narrow roots and retain catalogue path c
   assert.ok(source.includes('selected.publicPath !== `/explore/curated-hook-frames/v1/${selected.sha256}.png`'));
   assert.ok(source.includes('source.localFile !== `/explore/talking-head-references/v1/${source.id}.mp4`'));
   const config=await readFile("next.config.ts","utf8");
-  for (const route of ["/api/explore/hook-keyframe","/api/explore/hook-starting-frame","/e2e/hook-keyframe-preview/source"]) assert.ok(config.includes(`"${route}": ["./remotion/**/*"]`));
+  for (const route of ["/api/explore/hook-keyframe","/api/explore/hook-starting-frame","/e2e/hook-keyframe-preview/source"]) assert.ok(config.includes(`"${route}": ["./remotion/**/*", "./public/explore/covers/**/*"]`));
 });

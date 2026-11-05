@@ -47,7 +47,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, slideshowSources, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null, startingFrameRequired = false } = {}) {
+function harness(format, { reference = true, referenceUrls, slideshowSources, slideshowSlideCount, slideshowFaceSwap, generationResponse, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null, startingFrameRequired = false, sourceInstructions = "The source creator looks toward the camera and smiles.", allowInstructionsAlone = true } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   let responseQuestions = null;
@@ -101,6 +101,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || jobs.length ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
     "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => completedJobs ? jobs.map(job => job.id) : [], useRecoverableWorkflowJobs: () => ({ queries: jobs.map(data => ({ data })), recovering: false, recoveryError: null }), useBackgroundJobs: () => jobs.map(data => ({ data })), usePersistedJobIdFromUrl: () => persistedJobId,
+      persistJobIdInUrl: () => events.push("persist-job-url"),
       useCancelBackgroundJob: () => ({}), useRetryBackgroundJob: () => ({}) },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
@@ -114,6 +115,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
       return { ok: true, json: async () => ({ ok: true, requestKey: new URLSearchParams(url.split("?")[1]).get("requestKey"), jobs: [], outcome: "unconfirmed" }) };
     }
     requests.push({ url, ...options, body: JSON.parse(options.body) });
+    if (generationResponse) return { ok: true, status: 202, json: async () => generationResponse };
     return responseQuestions ? { ok: false, status: 422, json: async () => ({ ok: false, message: responseQuestions.join(" "), clarifications: responseQuestions }) }
       : { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
   } });
@@ -122,8 +124,10 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
     referenceImageUrls: referenceUrls,
     slideshowSources,
     slideshowSlideCount,
+    slideshowFaceSwap,
     referenceImageAssetId: regenerationTarget,
-    startingFramePreparation: startingFrameRequired ? { referenceId: "hook-fixture", onOpen: () => events.push("open-starting-frame") } : undefined,
+    startingFramePreparation: startingFrameRequired ? { referenceId: "hook-fixture", instructions: sourceInstructions, onOpen: () => events.push("open-starting-frame"),
+      onUseInstructionsAlone: () => { if (!allowInstructionsAlone) return false; props.recreateView.onClearReference(); return true; } } : undefined,
     preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && format !== "studio" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
     workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video), onSelectSlideshow: images => { selectedVersions.push(images); return true; }, onGeneratedSlideshow: images => { autoVersions.push(images); return true; } },
   } };
@@ -135,7 +139,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
     return null;
   }
   const render = () => { let tree; do { stateChanged = false; rendering = true; cursor = 0; refCursor = 0; effectCursor = 0; tree = Panel(props); rendering = false; } while (stateChanged); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { setQuestions(items) { responseQuestions = items; }, events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectStartingFrame(selection) { props.recreateView.startingFrame = selection; return render(); }, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  return { setQuestions(items) { responseQuestions = items; }, changePreparationInstructions(text) { props.recreateView.startingFramePreparation.instructions = text; }, events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectStartingFrame(selection) { props.recreateView.startingFrame = selection; return render(); }, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
 
 function resultNodes(tree) {
@@ -307,19 +311,60 @@ test("approved starting frames retain model choices and submit each model with t
 test("unapproved Hook Recreate stays blocked after leaving preparation and never falls back to source-video editing", async () => {
   const h = harness("hook", { startingFrameRequired: true, captureRequests: true });
   let composer = h.render().composer;
-  assert.equal(composer.props.referenceControls.props["aria-label"], "Starting frame required");
+  assert.equal(composer.props.referenceControls.props["aria-label"], "Reference instructions");
   assert.equal(resultNodes(composer.props.contextBanner).filter(node => node.type !== "Fragment").length, 0, "legacy URL reference metadata must not be presented as attached context");
   assert.equal(composer.props.estimatedCredits, undefined);
   assert.equal(composer.props.generateDisabled, true);
   assert.match(composer.props.accessMessage, /approve a starting frame/);
   assert.equal(resultNodes(composer.props.promptSupplement).some(node => node.props?.["aria-label"] === "Source video task"), false);
-  const open = resultNodes(composer.props.referenceControls).find(node => node.type === "Button" && node.props.children === "Create starting frame");
-  open.props.onClick(); assert.ok(h.events.includes("open-starting-frame"));
+  assert.equal(resultNodes(composer.props.referenceControls).some(node => node.type === "Button" && node.props.children === "Use instructions alone"), true);
   composer = h.render().composer;
   assert.equal(composer.props.generateDisabled, true, "closing/reopening does not approve an image");
   await composer.props.onSubmit({ preventDefault() {} });
   assert.equal(h.requests.length, 0);
   assert.equal(h.events.includes("show-results"), false);
+});
+
+for (const format of ["hook", "wall_text"]) test(`${format}: Use instructions alone copies the current source prompt and submits no source media`, async () => {
+  const h = harness(format, { startingFrameRequired: true, captureRequests: true });
+  const updated = "Source B: raise the cup, turn left, then smile.";
+  h.changePreparationInstructions(updated);
+  const action = resultNodes(h.render().composer.props.referenceControls).find(node => node.type === "Button" && node.props.children === "Use instructions alone");
+  assert.equal(action.props.disabled, false);
+  action.props.onClick();
+  let composer = h.render().composer;
+  assert.equal(composer.props.prompt, updated);
+  assert.equal(composer.props.generateDisabled, false);
+  assert.equal(composer.props.referenceControls.type, "FormatGenerationReferences");
+  assert.equal(composer.props.referenceControls.props.styleVideo, undefined);
+  composer.props.onPromptChange(updated + " Keep the framing steady.");
+  composer = h.render().composer;
+  await composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests.length, 1);
+  const body = h.requests[0].body;
+  assert.equal(body.prompt, updated + " Keep the framing steady.");
+  assert.deepEqual(Array.from(body.referenceImageUrls), []);
+  assert.deepEqual(Array.from(body.referenceAudioUrls), []);
+  assert.equal(body.avatarImageUrl, null);
+  assert.equal(body.referenceVideoUrl, null);
+  assert.equal(body.referenceId, null);
+  assert.equal(body.referenceType, null);
+  assert.equal(body.referenceUrl, null);
+  assert.equal("startingFrameAssetId" in body, false);
+  assert.equal("useGalleryVideoReference" in body, false);
+});
+
+test("missing source instructions and a rejected source clear cannot overwrite current prompt or admit generation", () => {
+  const missing = harness("hook", { startingFrameRequired: true, sourceInstructions: "" });
+  const unavailable = resultNodes(missing.render().composer.props.referenceControls).find(node => node.type === "Button" && node.props.children === "Use instructions alone");
+  assert.equal(unavailable.props.disabled, true);
+  unavailable.props.onClick();
+  assert.equal(missing.render().composer.props.prompt, "My requested changes");
+  const blocked = harness("hook", { startingFrameRequired: true, allowInstructionsAlone: false });
+  const action = resultNodes(blocked.render().composer.props.referenceControls).find(node => node.type === "Button" && node.props.children === "Use instructions alone");
+  action.props.onClick();
+  assert.equal(blocked.render().composer.props.prompt, "My requested changes");
+  assert.equal(blocked.render().composer.props.generateDisabled, true);
 });
 
 test("clearing the selected Hook reference restores prompt-only and image-prompt generation", async () => {
@@ -362,6 +407,9 @@ test("preparation preserves recovery of an already saved request with its frozen
   const composer = h.render().composer;
   assert.equal(composer.props.generateLabel, "Recover saved request");
   assert.equal(composer.props.generateDisabled, false);
+  const instructionsAction = resultNodes(composer.props.referenceControls).find(node => node.type === "Button" && node.props.children === "Use instructions alone");
+  assert.equal(instructionsAction.props.disabled, true);
+  instructionsAction.props.onClick();
   await composer.props.onSubmit({ preventDefault() {} });
   assert.equal(h.requests.length, 1); assert.equal(h.requests[0].body.prompt, saved.input.prompt);
   assert.ok(h.events.includes("recover-request-check"));
@@ -481,7 +529,7 @@ test("read-only earlier image recovery merges scoped job hints and retains newer
   const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
   const storageKey = "ugc-ai-studio.latest-image-job.v2.test-owner.slideshow", newMetadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${newJob}`;
   const h = harness("slideshow", { initialStorage: [[storageKey, JSON.stringify([newJob])], [newMetadataKey, JSON.stringify({ prompt: "Newer instructions", aspectRatio: "9:16" })]], recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier slide instructions", aspectRatio: "4:5" } } });
-  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  const button = resultNodes(h.render().output.props.toolbar).find(node => node?.props?.children === "Check earlier requests");
   await button.props.onClick();
   assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
   assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.image-job.v2.test-owner.slideshow.${oldJob}`)).prompt, "Earlier slide instructions");
@@ -492,7 +540,7 @@ test("earlier video discovery preserves newer hints and cannot select an old com
   const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
   const storageKey = "ugc-ai-studio.latest-video-job.v2.test-owner.hook";
   const h = harness("hook", { initialStorage: [[storageKey, JSON.stringify([newJob])]], completedJob: { id: oldJob, jobType: "video_generation", exploreFormat: "hook", status: "completed", output: { mediaAssetId: "old-video", url: "/old.mp4", ratio: "9:16" }, updatedAt: "2026-10-13T00:00:00Z" }, recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier instructions", aspectRatio: "9:16", model: "google_omni", resolution: "720p" } } });
-  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  const button = resultNodes(h.render().output.props.toolbar).find(node => node?.props?.children === "Check earlier requests");
   await button.props.onClick(); await h.flushEffects();
   assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
   assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.video-job.v2.test-owner.hook.${oldJob}`)).prompt, "Earlier instructions");
@@ -1045,4 +1093,62 @@ test("4s and 5s Hook sources initialize the shortest supported duration covering
  assert.ok(expected>=seconds);
  assert.ok(!duration.props.options.some(option=>Number(option.value)>=seconds && Number(option.value)<expected));
  }
+});
+
+test("workflow progress keeps Cancel beside results rather than inside a floating notification", () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) {
+    const job = { id: "running-job", jobType: format === "slideshow" ? "image_generation" : "video_generation", exploreFormat: format, status: "processing", output: null, updatedAt: new Date().toISOString() };
+    const h = harness(format, { completedJobs: [job], persistedJobId: job.id, reference: false });
+    const { composer, output } = h.render();
+    assert.equal(composer.props.isGenerating, true);
+    assert.equal(composer.props.secondaryActions, undefined);
+    assert.equal(composer.props.feedbackError, null);
+    assert.ok(resultNodes(output.props.toolbar).some(node => node.type === "Button" && node.props.children === "Cancel"));
+  }
+});
+
+test("dedicated face selection remains frozen in the submitted slideshow request when no generic uploads exist", async () => {
+  const face = { open: false, influencer: { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/primary.png", referencePhotos: [{ id: "22222222-2222-4222-8222-222222222222", url: "https://owned.test/second.png" }] }, slideIds: ["slide-1"], onOpenChange() {} };
+  const sources = [1, 4].map(number => ({ referenceId: "named-source", slideId: `slide-${number}`, slideNumber: number }));
+  const h = harness("slideshow", { captureRequests: true, referenceUrls: ["https://example.test/one.png", "https://example.test/four.png"], slideshowSources: sources, slideshowSlideCount: 2, slideshowFaceSwap: face });
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.requests.length, 1, JSON.stringify({ events: h.events, error: h.render().composer.props.feedbackError, errors: h.errors }));
+  const request = h.requests[0].body;
+  assert.deepEqual(Array.from(request.slideshowFaceSelection.slideIds), ["slide-1"]);
+  assert.equal(request.slideshowFaceSelection.influencer.referencePhotos[0].id, face.influencer.referencePhotos[0].id);
+  assert.equal(request.slideshowContext.uploads.length, 0);
+  assert.equal(request.referenceImageAssetIds, undefined);
+});
+
+test("the actual client acknowledgement cannot schedule a duplicate browser swap for a worker-managed face job", async () => {
+  const face = { open: false, influencer: { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/face.png" }, slideIds: ["slide-1"], onOpenChange() {} };
+  const generationId = "00000000-0000-4000-8000-000000000002", jobId = "00000000-0000-4000-8000-000000000003";
+  const slot = { version: 1, batchKey: "00000000-0000-4000-8000-000000000001", slideIndex: 1, slideCount: 1, versionIndex: 1, versionCount: 1 };
+  const h = harness("slideshow", { captureRequests: true, referenceUrls: ["https://example.test/reference.png"], slideshowSources: [{ referenceId: "source", slideId: "slide-1", slideNumber: 1 }], slideshowSlideCount: 1, slideshowFaceSwap: face,
+    generationResponse: { ok: true, jobId, generationId, jobs: [{ jobId, generationId, slideshowGeneration: slot, slideshowFaceSwapManaged: true }], partial: false, message: "Started" } });
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.requests.length, 1, JSON.stringify({ errors: h.errors, feedback: h.render().composer.props.feedbackError, events: h.events }));
+  assert.deepEqual(JSON.parse(h.stored.get("slideshow-face-jobs:test-owner.slideshow") ?? "[]"), [], "Only historical unmanaged jobs may need browser follow-up");
+  assert.ok([...h.stored.values()].some(value => value.includes(jobId)), "The real job recovery record still persists");
+  assert.deepEqual(h.errors, [], "Acknowledgement must finish without falling into error recovery");
+  assert.ok(h.events.includes("persist-job-url"));
+});
+
+test("old missing-face clarification disappears when the dedicated selection or prompt changes", async () => {
+  const face = { open: false, influencer: null, slideIds: [], onOpenChange() {} };
+  const h = harness("slideshow", { captureRequests: true, slideshowFaceSwap: face });
+  h.setQuestions(["No uploaded face-reference image is listed."]);
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  const notice = () => resultNodes(h.render().composer.props.promptFeedback).find(node => typeof node.type === "function" && node.type.name === "SlideshowClarificationNotice");
+  let node = notice(); assert.ok(node);
+  assert.notEqual(node.type(node.props), null);
+  face.influencer = { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/face.png" }; face.slideIds = ["slide-1"];
+  node = notice(); assert.equal(node.type(node.props), null, "a separately selected face makes the old missing-upload question obsolete");
+  face.influencer = null; face.slideIds = [];
+  h.render().composer.props.onPromptChange("Use the source face unchanged and adapt the copy.");
+  node = notice(); assert.equal(node.type(node.props), null, "changed instructions do not retain an old question");
+  assert.equal(h.requests.length, 1, "editing never automatically retries planning");
 });

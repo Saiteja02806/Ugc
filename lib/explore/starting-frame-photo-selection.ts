@@ -1,11 +1,11 @@
 /** Browser-only identities, never signed URLs or ownership proof. Empty is an
  * explicit removal; missing means reuse the image preparation's selection. */
-export type StartingFramePhotoScope = { ownerId: string; jobId: string; assetId: string };
+export type StartingFramePhotoScope = { ownerId: string; jobId?: string; assetId: string };
 /** Selection survives model changes; submission capability is checked separately. */
 export const STARTING_FRAME_PHOTO_SELECTION_LIMIT = 5;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function startingFramePhotoKey(scope: StartingFramePhotoScope) {
-  return `ugc-explore:animation-photos:v1:${encodeURIComponent(scope.ownerId)}:${scope.jobId}:${scope.assetId}`;
+  return `ugc-explore:animation-photos:v1:${encodeURIComponent(scope.ownerId)}:${scope.jobId ?? "upload"}:${scope.assetId}`;
 }
 export function readStartingFramePhotos(raw: string | null, scope: StartingFramePhotoScope): string[] | null {
   if (raw === null) return null;

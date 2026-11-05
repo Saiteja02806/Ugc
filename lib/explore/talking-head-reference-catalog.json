@@ -225,6 +225,42 @@
       "durationSeconds": 34.922,
       "generationPrompt": "Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
       "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118"
+    },
+    {
+      "id": "talking-discovery-hook-v2",
+      "title": "Expressive discovery",
+      "videoUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4.mp4",
+      "posterUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4.jpg",
+      "durationSeconds": 2.233333,
+      "generationPrompt": "Opening at t=0: a close handheld indoor selfie, hair tied back, striped knit top, an index finger held upright near the upper chest and a questioning, slightly open mouth. 0.00-0.60s: speak directly to the lens with small mouth and brow changes while keeping the finger near the chest. 0.60-1.40s: lift the index finger beside the face, widen the eyes and emphasize the reaction. 1.40-2.233s: lower the hand out of view and lean slightly closer as the mouth opens into an animated, incredulous smile. End on the face in the same room. Keep the source lighting, room, clothing, framing and visible props, with natural handheld drift. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. If generation lasts longer than this source hook, finish the described action by the source endpoint and hold its final composition. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7681203672956603662"
+    },
+    {
+      "id": "talking-bittenbyaturtle-hook-v2",
+      "title": "Close glasses selfie",
+      "videoUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc.mp4",
+      "posterUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc.jpg",
+      "durationSeconds": 2.933333,
+      "generationPrompt": "Opening at t=0: a very close, low-held indoor selfie, large dark glasses with blue reflections, hair pulled back, a light wall above the head and lips gently closed. 0.00-0.70s: begin the user's spoken reaction with small mouth movements and a faint smile. 0.70-1.60s: continue speaking, raise the brows and tilt the head slightly while the phone drifts naturally. 1.60-2.30s: lean nearer to the lens with an animated, disbelieving expression. 2.30-2.933s: bring a hand briefly near the screen-left edge of the glasses, dip the gaze and settle the mouth at the end. Keep the glasses on and end on the face. Keep the source lighting, room, clothing, framing and visible props, with natural handheld drift. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. If generation lasts longer than this source hook, finish the described action by the source endpoint and hold its final composition. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@bittenbyaturtle/video/7686629549106547971"
+    },
+    {
+      "id": "talking-carla-eatsss-hook-v2",
+      "title": "Carla grocery discovery",
+      "videoUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e.mp4",
+      "posterUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e.jpg",
+      "durationSeconds": 3.0,
+      "generationPrompt": "Opening at t=0: a close indoor selfie, curly hair, dark T-shirt and one hand resting across the forehead from screen-left. 0.00-0.90s: speak with raised inner brows and an open, incredulous mouth, keeping the palm on the forehead. 0.90-1.65s: narrow the eyes and purse the lips briefly between syllables while the head stays nearly still. 1.65-2.30s: open the mouth wider and squeeze the eyes into a distressed, exaggerated reaction. 2.30-2.667s: close the mouth into a downturned pout with eyes squeezed and the hand still touching the forehead. 2.667-3.000s: retain that final pose. End on the face. Keep the source lighting, room, clothing, framing and visible props, with natural handheld drift. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. If generation lasts longer than this source hook, finish the described action by the source endpoint and hold its final composition. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@carla.eatsss/video/7662440104488684813"
+    },
+    {
+      "id": "talking-taliameals-hook-v2",
+      "title": "Talia grocery discovery",
+      "videoUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1.mp4",
+      "posterUrl": "https://storage.googleapis.com/ugcsaas-media/explore/talking-head-hook-trims/v1/573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1.jpg",
+      "durationSeconds": 1.566016,
+      "generationPrompt": "Opening at t=0: a handheld indoor selfie, long straight dark hair, light camisole, pendant necklace and wall art behind the head. 0.00-0.27s: speak with lifted inner brows and an open mouth while raising an open palm toward the lens from screen-left. 0.27-0.83s: hold the spread fingers near the camera, close the eyes briefly and make a small side-to-side hand movement during the emphatic reaction. 0.83-1.17s: lower the hand and lean toward the camera. 1.17-1.567s: the phone tilts back slightly so more ceiling appears and the face moves lower and closer, continuing the final mouth movement. End on the face. Keep the source lighting, room, clothing, framing and visible props, with natural handheld drift. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. If generation lasts longer than this source hook, finish the described action by the source endpoint and hold its final composition. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118"
     }
   ]
 }

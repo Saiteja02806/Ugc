@@ -42,6 +42,8 @@ const tick = () => new Promise(setImmediate);
 test("retired Talking Head cards are hidden in both modes while archived saved references restore", async () => {
   const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction", "talking-surprised-story"];
   const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny", "talking-carla-eatsss", "talking-taliameals"];
+  const replaced = new Set(["talking-discovery-full", "talking-bittenbyaturtle", "talking-carla-eatsss", "talking-taliameals"]);
+  const currentExpected = expected.filter(id => !replaced.has(id)).concat(["talking-discovery-hook-v2", "talking-bittenbyaturtle-hook-v2", "talking-carla-eatsss-hook-v2", "talking-taliameals-hook-v2"]);
   const jsx = (type, props) => ({ type, props });
   let warmed = 0, chosen = 0;
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
@@ -63,7 +65,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
   }
   for (const startingFrameEnabled of [false, true]) {
     const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() { chosen++; }, onRetry() {} });
-    assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), expected);
+    assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), currentExpected);
     const action = nodes(tree).find(node => node.type === "button" && node.props.onPointerEnter);
     assert.match(action.props["aria-label"], /^(Recreate|Preview) /);
     assert.equal(action.props.children[0]?.type, "rotate");
@@ -85,14 +87,16 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
 });
 
 test("catalogue preserves nine archival clips and all eleven supplied additions, including full-length previews", () => {
-  assert.equal(catalogue.items.length, 25);
+  assert.equal(catalogue.items.length, 29);
   assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 14);
   assert.equal(new Set(catalogue.items.map(item => item.id)).size, catalogue.items.length);
   for (const item of catalogue.items) {
     assert.match(item.id, /^talking-[a-z0-9-]+$/);
     assert.ok(item.durationSeconds > 0 && item.durationSeconds < 120);
     assert.match(item.sourceUrl, /^https:\/\/www\.(?:tiktok\.com\/@[^/]+\/video\/\d+|instagram\.com\/reel\/[A-Za-z0-9_-]+\/)$/);
-    assert.ok(existsSync("public"+item.videoUrl)); assert.ok(existsSync("public"+item.posterUrl));
+    const localBase = "public/explore/talking-head-references/v1/" + item.id;
+    assert.ok(existsSync(item.videoUrl.startsWith("/") ? "public"+item.videoUrl : localBase+".mp4"));
+    assert.ok(existsSync(item.posterUrl.startsWith("/") ? "public"+item.posterUrl : localBase+".jpg"));
     assert.match(item.generationPrompt, /user's own spoken message/);
     assert.doesNotMatch(JSON.stringify(item), /fullvideo_ignore|[A-Z]:\\/);
   }

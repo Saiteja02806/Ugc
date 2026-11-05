@@ -26,6 +26,10 @@ import {
 } from "./processor.js";
 import { parseWorkerDeliveryMessage } from "./lib/queue-message.js";
 import { isExploreUuid } from "./lib/explore-finishing-contract.js";
+import { localStartingFrameConfig, localStartingFramePath, localStartingFramePort } from "./lib/local-starting-frame.js";
+import { createLocalStartingFrameReceiver } from "./lib/local-starting-frame-receiver.js";
+import { localAppJobTypes } from "./lib/local-starting-frame.js";
+import { runLocalSocialScheduler } from "./lib/local-social-scheduler.js";
 
 let shouldStop = false;
 
@@ -41,11 +45,18 @@ void main().catch((error) => {
 
 async function main() {
   const config = loadWorkerConfig();
+  const local = localStartingFrameConfig(process.env);
+  if (local) config.allowedJobTypes = local.ownerId
+    ? localAppJobTypes.filter(type => local.publish || type !== "publish_social_post")
+    : ["generate_image"];
   const store = createSupabaseJobStore({
     supabaseServiceRoleKey: config.supabaseServiceRoleKey,
     supabaseUrl: config.supabaseUrl,
   });
   const oneShotJobId = process.env.BACKGROUND_JOB_ID?.trim();
+  if (local && (oneShotJobId || config.workerRunOnce)) {
+    throw new Error("Local starting-frame mode requires a persistent image worker.");
+  }
 
   if (oneShotJobId) {
     await runOneShotBackgroundJob({ config, jobId: oneShotJobId, store });
@@ -57,11 +68,14 @@ async function main() {
   }
 
   const healthServer = await startWorkerHttpServer({ config, store });
+  const scheduler = local?.publish && local.ownerId
+    ? runLocalSocialScheduler({ config, store, ownerId: local.ownerId, isStopping: () => shouldStop })
+    : null;
 
   logger.info("UGC worker started", {
     allowedJobTypes: config.allowedJobTypes,
     queueName: config.queueName,
-    queueProvider: "cloud-tasks",
+    queueProvider: local ? "local" : "cloud-tasks",
     runOnce: config.workerRunOnce,
     socialReconciliationBatchSize: config.socialReconciliationBatchSize,
     socialReconciliationEnabled: config.socialReconciliationEnabled,
@@ -94,6 +108,7 @@ async function main() {
       workerId: config.workerId,
     });
   } finally {
+    await scheduler;
     await stopWorkerHealthServer(healthServer);
   }
 }
@@ -159,7 +174,9 @@ async function startWorkerHttpServer(params: {
   config: ReturnType<typeof loadWorkerConfig>;
   store: ReturnType<typeof createSupabaseJobStore>;
 }) {
-  const rawPort =
+  const local = localStartingFrameConfig(process.env);
+  const receiver = local && createLocalStartingFrameReceiver({ ...params, ...local });
+  const rawPort = local ? String(localStartingFramePort) :
     process.env.WORKER_HTTP_PORT?.trim() || process.env.PORT?.trim();
 
   if (!rawPort) {
@@ -173,6 +190,16 @@ async function startWorkerHttpServer(params: {
   }
 
   const server = createServer((request, response) => {
+    if (receiver) {
+      if (request.url !== localStartingFramePath) {
+        response.writeHead(404).end();
+        return;
+      }
+      void receiver(request, response).catch(() => {
+        if (!response.headersSent) response.writeHead(503).end();
+      });
+      return;
+    }
     if (request.url === "/" || request.url === "/healthz") {
       response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       response.end("ok\n");
@@ -227,7 +254,7 @@ async function startWorkerHttpServer(params: {
 
     server.once("error", onError);
     server.once("listening", onListening);
-    server.listen(port, "0.0.0.0");
+    server.listen(port, local ? "127.0.0.1" : "0.0.0.0");
   });
 
   logger.info("Worker HTTP server started", {

@@ -25,6 +25,8 @@ test("slideshow references display topics while preserving identity, media and v
   const exports = {};
   const dependencies = {
     "server-only": {},
+    "./hook-reference-views": { getHookReferenceViews: () => undefined },
+    "./slideshow-reference-views": { getSlideshowReferenceViews: () => undefined },
     "./imported-catalog.json": { default: catalog },
     "./slideshow-reference-sources.json": { default: JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8")) },
     "./slideshow-reference-additions.json": { default: { mediaStatus: "staged", items: [] } },
@@ -60,6 +62,8 @@ test("Hook labels omit catalogue numbers without changing active, archived or st
   const exports = {};
   const dependencies = {
     "server-only": {},
+    "./hook-reference-views": { getHookReferenceViews: () => undefined },
+    "./slideshow-reference-views": { getSlideshowReferenceViews: () => undefined },
     "./imported-catalog.json": { default: catalog },
     "./hook-video-library": { getExploreHookVideos: all => all ? [active, archived] : [active] },
     "./slideshow-reference-sources.json": { default: { items: [] } },
@@ -243,8 +247,9 @@ test("all three approved workflows stay visible with their supplied covers", () 
   for (const id of ["hook-video", "wall-of-text", "slideshows"]) {
     assert.match(liveCatalogue, new RegExp(`id: "${id}"`));
     assert.match(liveCatalogue, new RegExp(`destination: "/explore/${id}"`));
-    assert.match(liveCatalogue, new RegExp(`coverVideo: "/explore/covers/${id}-v[0-9]+\\.mp4"`));
-    assert.match(liveCatalogue, new RegExp(`coverPoster: "/explore/covers/${id}-v[0-9]+\\.webp"`));
+    const slug = id === "slideshows" ? "slideshow" : id;
+    assert.match(liveCatalogue, new RegExp(`coverVideo: "/explore/covers/${slug}-promo-[a-f0-9]{12}\\.mp4"`));
+    assert.match(liveCatalogue, new RegExp(`coverPoster: "/explore/covers/${slug}-promo-opening-[a-f0-9]{12}\\.webp"`));
   }
   assert.doesNotMatch(liveCatalogue, /coming_soon|coverVideo: null/);
 });
@@ -263,7 +268,7 @@ test("gallery cards are visual-only with one slideshow count on the media", () =
   const workspace = readFileSync(new URL("../components/explore/recreate-workspace.tsx", import.meta.url), "utf8");
   const card = workspace.slice(workspace.indexOf("function ReferenceCard("), workspace.indexOf("function ReferenceMedia("));
   assert.doesNotMatch(card, /categoryLabel|slides\.length|Use reference/);
-  assert.match(card, /compact \?/);
+  assert.match(card, /compact && !hideCaption/);
   assert.match(card, /aria-label=\{`Recreate \$\{reference\.title\}`\}/);
   const media = workspace.slice(workspace.indexOf("function ReferenceMedia("), workspace.indexOf("export function ReferencePreviewDialog("));
   assert.equal((media.match(/reference\.slides\.length/g) ?? []).length, 1);

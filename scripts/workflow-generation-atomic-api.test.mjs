@@ -110,6 +110,10 @@ test("atomic creator calls only the reviewed RPC with owner, cost and every vali
   assert.equal(h.calls[0].args.p_inputs_json[0].workflowKind, "hook");
   assert.equal(h.api.fingerprintWorkflowGenerationBatch(batch, "hook"), h.api.fingerprintWorkflowGenerationBatch({ ...batch, inputs: [{ ...batch.inputs[0], videoId: key }] }, "hook"));
   assert.notEqual(h.api.fingerprintWorkflowGenerationBatch(batch, "hook"), h.api.fingerprintWorkflowGenerationBatch({ ...batch, amountPerVideo: 5 }, "hook"));
+  const withOwnership = { ...batch, inputs: [{ ...batch.inputs[0], referenceImageUrls: ["https://owned.test/photo.png"], ownedImageReferences: { version: 1, images: [{ assetId: key, url: "https://owned.test/photo.png" }] } }] };
+  const legacy = { ...batch, inputs: [{ ...batch.inputs[0], referenceImageUrls: withOwnership.inputs[0].referenceImageUrls }] };
+  assert.equal(h.api.fingerprintWorkflowGenerationBatch(withOwnership, "hook"), h.api.fingerprintWorkflowGenerationBatch(legacy, "hook"), "New server-derived evidence cannot invalidate an accepted legacy batch's identity");
+  assert.notEqual(h.api.fingerprintWorkflowGenerationBatch(withOwnership, "hook"), h.api.fingerprintWorkflowGenerationBatch({ ...withOwnership, inputs: [{ ...withOwnership.inputs[0], referenceImageUrls: ["https://owned.test/different.png"] }] }, "hook"), "Changed user-selected references still conflict");
 });
 
 test("creator rejects inconsistent RPC rows and post-commit reads instead of dispatching unverified jobs", async () => {

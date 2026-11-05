@@ -7,7 +7,7 @@ import { assertImageOutputAspectRatio } from "../../dist/lib/image-output.js";
 const local = file => new URL(file, import.meta.url);
 const calls = [], storedImage = Buffer.from("generated fixture pixels"); let existingOutput;
 mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, database or storage network calls"));
-mock.module(local("../../dist/lib/private-media.js"), { namedExports: { resolveOwnedPrivateMediaUrl: async (url, owner) => { calls.push({ resolved: url, owner }); return url; } } });
+mock.module(local("../../dist/lib/private-media.js"), { namedExports: { resolveOwnedPrivateMediaUrl: async (url, owner) => { calls.push({ resolved: url, owner }); return url; }, workerMediaReadUrl: async () => assert.fail("Unexpected slideshow face swap media read") } });
 mock.module(local("../../dist/lib/openai-image.js"), { namedExports: { SLIDESHOW_IMAGE_MODEL: "gpt-fixture", SLIDESHOW_FLARE_IMAGE_MODEL: "flare-fixture", generateOpenAiImageBuffer: async () => assert.fail("Wrong provider") } });
 mock.module(local("../../dist/lib/gemini-image.js"), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image", generateGemini3ProImageBuffer: async input => {

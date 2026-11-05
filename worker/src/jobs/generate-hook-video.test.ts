@@ -27,7 +27,9 @@ test("new explicitly frozen Seedance and WAN requests use ReAPI while older rout
     assert.equal(resolveHookVideoProvider({ model, provider: "openrouter" }, null), "openrouter");
   }
   assert.equal(resolveHookVideoProvider({ model: "google_omni", provider: "reapi" }, null), "reapi");
-  assert.throws(() => resolveHookVideoProvider({ model: "kling_3_0", provider: "reapi" }, null), ProviderRequestNotSubmittedError);
+  for (const model of ["kling_3_0", "kling_4_0"] as const) {
+    assert.equal(resolveHookVideoProvider({ model, provider: "reapi" }, null), "reapi");
+  }
   assert.throws(() => resolveHookVideoProvider({ model: "seedance_2_5", provider: "reapi" }, { status: "submission_uncertain", provider_operation_id: null }), ProviderSubmissionUncertainError);
 });
 test("does not replace a paid legacy Higgsfield request with a new Runway task", () => {

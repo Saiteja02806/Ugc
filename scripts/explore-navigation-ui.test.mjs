@@ -130,7 +130,7 @@ test("quick starts preserve destinations, duration and preview query parameters 
     assert.equal(mcp.props.tabIndex, undefined);
     assert.equal(mcp.props.href, undefined);
     assert.equal(mcp.props.onClick, undefined);
-    const actions = nodes(tree).filter(node => node.type === "next-link");
+    const actions = nodes(tree).filter(node => node.type === "link" && ["/pricing", "/sign-in"].includes(node.props.href));
     assert.deepEqual(actions.map(node => [text(node), node.props.href]), [["Upgrade", "/pricing"], ["Sign up", "/sign-in"]]);
     assert.equal(nodes(tree).some(node => node.type === "nav" && node.props["aria-label"] === "Explore shortcuts"), false);
     assert.equal(nodes(tree).filter(node => node.type === "workflow-card").length, workflows.EXPLORE_WORKFLOWS.length);
@@ -152,7 +152,7 @@ test("quick starts preserve destinations, duration and preview query parameters 
     });
   }
   currentUser = { uid: "signed-in" };
-  const signedInActions = nodes(ExploreWorkspace({})).filter(node => node.type === "next-link");
+  const signedInActions = nodes(ExploreWorkspace({})).filter(node => node.type === "link" && ["/pricing", "/sign-in"].includes(node.props.href));
   assert.deepEqual(signedInActions.map(node => text(node)), ["Upgrade"]);
 });
 
@@ -294,7 +294,7 @@ test("cover motion does not download on visibility, cancels fast clicks and resp
   const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
     react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
   }, "production", {}, {
-    window: { matchMedia: () => preference },
+    window: { matchMedia: () => preference, addEventListener() {}, removeEventListener() {} },
     document: { visibilityState: "visible", activeElement: null, addEventListener() {}, removeEventListener() {} },
     IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
     setTimeout(fn, delay) { assert.equal(delay, 250); const id = Symbol(); timers.set(id, fn); return id; },
@@ -328,7 +328,7 @@ test("Explore covers warm metadata and start immediately on hover without changi
   const page = { visibilityState: "visible", activeElement: null, addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
   const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
     react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
-  }, "production", {}, { window: { matchMedia: () => preference }, document: page, navigator: { connection: { saveData: true } },
+  }, "production", {}, { window: { matchMedia: () => preference, addEventListener() {}, removeEventListener() {} }, document: page, navigator: { connection: { saveData: true } },
     IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
     setTimeout() { throw Error("Explore covers must not delay playback"); }, clearTimeout() {} });
   useCoverPlayback("/cover.mp4", "a", true); const cleanup = effect();
@@ -352,11 +352,11 @@ test("Explore catalog covers play while visible and keep playing after the point
   const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
     react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
   }, "production", {}, {
-    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) },
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} },
     navigator: {},
     document: { visibilityState: "visible", activeElement: null, addEventListener() {}, removeEventListener() {} },
     IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
-    setTimeout() { throw Error("Catalog covers must not wait for hover"); }, clearTimeout() {},
+    setTimeout() { throw Error("Catalog covers must not wait for hover"); }, clearTimeout() {}, setInterval: () => 1, clearInterval() {},
   });
   useCoverPlayback("/cover.mp4", "a", true, true); const cleanup = effect();
   observe([{ isIntersecting: true }]);
@@ -379,7 +379,7 @@ test("gallery button hover releases video on hidden tab, offscreen scroll, dialo
   const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
     react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
   }, "production", {}, {
-    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }, document: page,
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} }, document: page,
     IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() { disconnected = true; } },
     setTimeout(fn) { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
   });
@@ -396,4 +396,81 @@ test("gallery button hover releases video on hidden tab, offscreen scroll, dialo
   assert.equal(video.src, null); assert.equal(timers.size, 0); assert.equal(handlers.size, 0);
   assert.equal(pageHandlers.size, 0); assert.equal(videoHandlers.size, 0); assert.equal(disconnected, true);
   assert.ok(paused > 0 && released >= 3);
+});
+
+test("idle catalog covers recover in place from errors, frozen time, browser pauses and stalled loads without refreshing", () => {
+  const handlers = new Map(), videoHandlers = new Map(), pageHandlers = new Map(), windowHandlers = new Map();
+  let effect, observe, watchdog = null, plays = 0, loads = 0, assignments = 0, now = 0;
+  const link = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  let source = null;
+  const video = { preload: "none", paused: false, error: null, currentTime: 0, readyState: 4, closest: () => link,
+    get src() { return source; }, set src(value) { source = value; assignments++; },
+    hasAttribute: () => source !== null, removeAttribute() { source = null; }, load() { loads++; }, pause() {},
+    play: async () => { plays++; video.paused = false; },
+    addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
+  const page = { visibilityState: "visible", activeElement: null, addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
+  const { useCoverPlayback, COVER_WATCHDOG_MS, COVER_MAX_RELOADS, COVER_STALL_GRACE_MS } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener: (name, fn) => windowHandlers.set(name, fn), removeEventListener: name => windowHandlers.delete(name) },
+    navigator: {}, document: page, Date: { now: () => now },
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout() { throw Error("Catalog covers must not wait"); }, clearTimeout() {},
+    setInterval(fn, delay) { assert.equal(delay, COVER_WATCHDOG_MS); watchdog = fn; return 1; }, clearInterval() { watchdog = null; },
+  });
+  useCoverPlayback("/cover.mp4", "a", true, true); const cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  assert.equal(source, "/cover.mp4"); assert.equal(plays, 1); assert.equal(typeof watchdog, "function");
+  // Healthy playback: time advances, nothing is reloaded.
+  for (let i = 1; i <= 3; i++) { video.currentTime = i; watchdog(); }
+  assert.equal(loads, 0); assert.equal(assignments, 1);
+  // Browser silently paused the cover: resume play, do not reload.
+  video.paused = true; watchdog(); assert.equal(plays, 2); assert.equal(loads, 0);
+  // Frozen: time stops moving for two checks, then the same source reloads once.
+  watchdog(); watchdog(); assert.equal(loads, 0); watchdog();
+  assert.equal(loads, 1); assert.equal(assignments, 2); assert.equal(source, "/cover.mp4");
+  // Media error event reloads, bounded so an offline page cannot loop forever.
+  for (let i = 0; i < COVER_MAX_RELOADS + 3; i++) videoHandlers.get("error")();
+  assert.equal(loads, COVER_MAX_RELOADS, "reload budget is bounded");
+  // Return to the page restores the budget; a stalled source reloads immediately.
+  video.readyState = 1; now = COVER_STALL_GRACE_MS + 10_000;
+  windowHandlers.get("focus")(); assert.equal(loads, COVER_MAX_RELOADS + 1);
+  // A fresh source still loading inside its grace period is not thrashed by hover.
+  handlers.get("pointerenter")({ pointerType: "mouse" }); assert.equal(loads, COVER_MAX_RELOADS + 1);
+  // Successful playback resets the budget; later hover on a long-stalled cover recovers it.
+  videoHandlers.get("playing")(); now += COVER_STALL_GRACE_MS + 1;
+  handlers.get("pointerenter")({ pointerType: "mouse" }); assert.equal(loads, COVER_MAX_RELOADS + 2);
+  for (const name of ["pageshow", "online"]) assert.equal(typeof windowHandlers.get(name), "function");
+  assert.equal(typeof pageHandlers.get("resume"), "function");
+  // Hidden tab still releases the decoder and stops the watchdog.
+  page.visibilityState = "hidden"; pageHandlers.get("visibilitychange")();
+  assert.equal(source, null); assert.equal(watchdog, null);
+  page.visibilityState = "visible"; pageHandlers.get("visibilitychange")();
+  assert.equal(source, "/cover.mp4"); assert.equal(typeof watchdog, "function");
+  cleanup();
+  assert.equal(handlers.size, 0); assert.equal(videoHandlers.size, 0); assert.equal(pageHandlers.size, 0); assert.equal(windowHandlers.size, 0);
+  assert.equal(watchdog, null);
+});
+
+test("hover-only gallery previews never start a watchdog or play without interest", () => {
+  const videoHandlers = new Map(), windowHandlers = new Map(), timers = new Map();
+  let effect, observe, plays = 0, intervals = 0, source = null;
+  const link = { matches: () => false, addEventListener() {}, removeEventListener() {} };
+  const video = { paused: true, error: null, readyState: 0, closest: () => link, set src(value) { source = value; }, get src() { return source; },
+    hasAttribute: () => source !== null, removeAttribute() { source = null; }, load() {}, pause() {}, play: async () => { plays++; },
+    addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener: (name, fn) => windowHandlers.set(name, fn), removeEventListener: name => windowHandlers.delete(name) },
+    document: { visibilityState: "visible", activeElement: null, addEventListener() {}, removeEventListener() {} },
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout(fn) { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
+    setInterval() { intervals++; return 1; }, clearInterval() {},
+  });
+  useCoverPlayback("/reference-preview.mp4", "button"); const cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  windowHandlers.get("focus")(); windowHandlers.get("online")(); videoHandlers.get("error")();
+  assert.equal(source, null); assert.equal(plays, 0); assert.equal(timers.size, 0); assert.equal(intervals, 0);
+  cleanup();
 });

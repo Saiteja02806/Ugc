@@ -41,7 +41,7 @@
       "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
       "notes": "Retired fact-check screen recording, not an ordinary talking-head source. Speech is clipped/ambiguous; keep unavailable for fresh script Remix.",
       "independentModel": "gpt-transcribe",
-      "independentText": "Is this for real? Look at this. The reason you can see weird things on his legs and a boxy look around his butt is because he's wearing a bionic exoskeleton. This is what that looks like. This is what he's wearing. End of it. Like this is because he had—"
+      "independentText": "Is this for real? Look at this. The reason you can see weird things on his legs and a boxy look around his butt is because he's wearing a bionic exoskeleton. This is what that looks like. This is what he's wearing. End of it. Like this is because he hadâ€”"
     },
     {
       "referenceId": "talking-outdoor-reaction",
@@ -54,7 +54,7 @@
       "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
       "notes": "Retired fact-check recording with clipped/ambiguous source speech. Keep unavailable for fresh script Remix.",
       "independentModel": "gpt-transcribe",
-      "independentText": "What? Yo. So apparently Gmail is being sued and they owe us $425 million. So if your account ends in that, they were doing anyway. It's in their privacy policy, but the jury—"
+      "independentText": "What? Yo. So apparently Gmail is being sued and they owe us $425 million. So if your account ends in that, they were doing anyway. It's in their privacy policy, but the juryâ€”"
     },
     {
       "referenceId": "talking-room-explainer",
@@ -80,7 +80,7 @@
       "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
       "notes": "Intro ends until I quit; numbered symptom/body narration follows. No app-demo cut at this boundary, semantic introduction boundary.",
       "independentModel": "gpt-transcribe",
-      "independentText": "Negative side effects of vaping that I didn't realize were because of vaping until I quit. Number one is brain fog and trouble concentrating. I literally cannot hold a single thought to save my life. I had trouble concentrating on literally anything, and now that I've stopped vaping, the mental clarity is insane. Okay, the next one is crazy because I literally went to the doctor for this. Digestive issues, stomach pain constantly. Nicotine is affecting your stomach. Since I've stopped vaping, my stomach—I haven't had any stomach pain this week. I'm still tracking my journey on Vape Quitter, which is helping me a lot as well. But one last thing I noticed was also anger, constant anger, which was tied in with anxiety. So just being angry all the time and having to find my vape to calm my stress, calm my anger, which just made it worse. If you're looking to quit, here is your sign."
+      "independentText": "Negative side effects of vaping that I didn't realize were because of vaping until I quit. Number one is brain fog and trouble concentrating. I literally cannot hold a single thought to save my life. I had trouble concentrating on literally anything, and now that I've stopped vaping, the mental clarity is insane. Okay, the next one is crazy because I literally went to the doctor for this. Digestive issues, stomach pain constantly. Nicotine is affecting your stomach. Since I've stopped vaping, my stomachâ€”I haven't had any stomach pain this week. I'm still tracking my journey on Vape Quitter, which is helping me a lot as well. But one last thing I noticed was also anger, constant anger, which was tied in with anxiety. So just being angry all the time and having to find my vape to calm my stress, calm my anger, which just made it worse. If you're looking to quit, here is your sign."
     },
     {
       "referenceId": "talking-discovery",
@@ -158,7 +158,7 @@
       "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
       "notes": "Listen to this ends presenter hook; Holy trust fall is audio played by the app. Independent ASR recovers demo narration missed by original ASR; never append it to hook.",
       "independentModel": "gpt-transcribe",
-      "independentText": "God bless the girl who read through the entire Bible but made it sound like tea. Listen to this. Holy trust fall. And Jesus says, Come. So Peter steps out of the boat and starts walking on water with his eyes locked in on Jesus. But then he notices—"
+      "independentText": "God bless the girl who read through the entire Bible but made it sound like tea. Listen to this. Holy trust fall. And Jesus says, Come. So Peter steps out of the boat and starts walking on water with his eyes locked in on Jesus. But then he noticesâ€”"
     },
     {
       "referenceId": "talking-websites-explainer",
@@ -326,6 +326,58 @@
       "status": "cross_checked_draft",
       "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
       "notes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay.",
+      "independentModel": "gpt-transcribe",
+      "independentText": "No way."
+    },
+    {
+      "referenceId": "talking-discovery-hook-v2",
+      "sourceSha256": "dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4",
+      "transcriptSha256": "c9e99941da40efa885941d6a962c1b57b2c6f15baff9eb856f165067d619811e",
+      "hookStartMs": 0,
+      "hookEndMs": 1560,
+      "hookText": "Um, this is crazy.",
+      "status": "cross_checked_draft",
+      "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
+      "notes": "This is crazy reaction followed by visual app demo. Um filler only in first ASR; retained warning, no demo text invented. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed.",
+      "independentModel": "gpt-transcribe",
+      "independentText": "This is crazy."
+    },
+    {
+      "referenceId": "talking-bittenbyaturtle-hook-v2",
+      "sourceSha256": "4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc",
+      "transcriptSha256": "e8b5d0d0c679e5ac7233a54f354a9bb7d843530f6953e6755d70fcb761dc3ed7",
+      "hookStartMs": 0,
+      "hookEndMs": 2933,
+      "hookText": "Okay, I actually cannot believe this right now",
+      "status": "cross_checked_draft",
+      "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
+      "notes": "Only Okay I actually cannot believe this right now is speech; remaining app demo is visual/music. Do not transcribe overlay as spoken words. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed. REVIEW REQUIRED: cached final-word timing extends into the removed demo. Confirm the audible final word in this derivative before admitting a new script remix. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance.",
+      "independentModel": "gpt-transcribe",
+      "independentText": "Okay, I actually cannot believe this right now."
+    },
+    {
+      "referenceId": "talking-carla-eatsss-hook-v2",
+      "sourceSha256": "e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e",
+      "transcriptSha256": "feb5c7b699d60b87e5eb28edfe17acb1a6a2cd1d76cb01fc3c467f9c5b4e9636",
+      "hookStartMs": 0,
+      "hookEndMs": 2020,
+      "hookText": "No way",
+      "status": "cross_checked_draft",
+      "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
+      "notes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed.",
+      "independentModel": "gpt-transcribe",
+      "independentText": "No way."
+    },
+    {
+      "referenceId": "talking-taliameals-hook-v2",
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "transcriptSha256": "d466723149891438c40ce094cf2335c8791ac66b0e46b9d9f15711123421b7d6",
+      "hookStartMs": 0,
+      "hookEndMs": 1040,
+      "hookText": "No way!",
+      "status": "cross_checked_draft",
+      "method": "Independent full-source ASR compared with cached ASR; local 2s full-source overview plus boundary frames inspected",
+      "notes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance.",
       "independentModel": "gpt-transcribe",
       "independentText": "No way."
     }

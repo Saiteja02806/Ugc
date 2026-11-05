@@ -39,6 +39,23 @@ test('all three models restore the ordered raw photos even when their frame rout
  }
 });
 
+test('an uploaded frame with no image job finishes restoration and retains explicit photo choices after reload', async () => {
+ const uploaded = { ownerId: frame.ownerId, assetId: frame.assetId };
+ const first = harness();
+ assert.equal(first.render({ frame: uploaded }).pending, true);
+ await settle();
+ assert.equal(first.render().pending, false);
+ assert.deepEqual(first.applied.at(-1), []);
+ assert.equal(first.reads.length, 0);
+ first.render().remember([{ asset: { id: photo } }]);
+ const restored = harness(undefined, first.values);
+ restored.render({ frame: uploaded });
+ await settle();
+ assert.equal(restored.render().pending, false);
+ assert.deepEqual(restored.reads.map(read => read.id), [photo]);
+ assert.deepEqual(startingFrameAnimationInput(uploaded, []), { startingFrameAssetId: frame.assetId });
+});
+
 test('disabled preview does not fetch photos, while enabled selection restores them',async()=>{
  const h=harness();h.render({enabled:false});await settle();assert.equal(h.reads.length,0);
  h.render({enabled:true});await settle();assert.equal(h.reads.length,2);

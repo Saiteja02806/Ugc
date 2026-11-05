@@ -24,7 +24,7 @@ export async function planSlideshowRequest(owner: string, requestKey: string, in
   const model = process.env.OPENAI_SLIDESHOW_PLAN_MODEL?.trim() || process.env.OPENAI_SLIDESHOW_PROMPT_MODEL?.trim() || process.env.OPENAI_TEXT_REMIX_MODEL?.trim() || "gpt-5.6-luna";
   if (!parseSlideshowBusinessContext(businessContext)) throw new SlideshowPlanError("Could not confirm your saved business context. Review it in Settings before generating slides.", 503);
   // Fence both the model instructions and the server-owned facts, not browser-supplied context.
-  const planningInput = { ...input, businessContext, plannerVersion: 4, model };
+  const planningInput = { ...input, businessContext, plannerVersion: input.faceSwap ? 5 : 4, model };
   const hash = createHash("sha256").update(JSON.stringify(planningInput)).digest("hex");
   const { data: claim, error } = await db.rpc("explore_claim_slideshow_plan", { p_user_id: owner, p_request_key: requestKey, p_payload_hash: hash, p_input: planningInput });
   if (error) throw new SlideshowPlanError(error.message.includes("slideshow_plan_conflict") ? "The selected images or instructions changed. Start a new generation."
@@ -44,6 +44,7 @@ export async function planSlideshowRequest(owner: string, requestKey: string, in
     if (Date.now() > deadline) throw new Error("Planning input deadline exceeded");
     const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [{ type: "text", text: JSON.stringify({
       originalRequest: input.prompt, targetIds: input.targetIds, businessContext,
+      ...(input.faceSwap ? { faceSwap: { targetIds: input.faceSwap.targetIds, selectedPhotoCount: input.faceSwap.identityAssetIds.length } } : {}),
       images: input.images.map(({ id, label, kind, sourceSlideNumber }) => ({ id, label, kind, sourceSlideNumber })),
     }) }];
     for (const image of input.images) {

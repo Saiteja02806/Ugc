@@ -1,7 +1,7 @@
 import { AI_STUDIO_KLING_PROMPT_MAX_LENGTH, AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH, getAIStudioPromptLengthError, normalizeAIStudioPrompt } from "../ai-studio/prompt-policy";
 import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } from "./workflow-generation-settings";
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
-import type { HookStartingFrameSelection } from "./hook-keyframe-client";
+import { uploadedStartingFrameRatio, type StartingFrameSelection } from "./uploaded-starting-frame";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
 import { startingFrameFaceReferenceError } from "./starting-frame-animation-input";
 import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline";
@@ -28,7 +28,7 @@ export type WorkflowGenerationDraft = {
   audioReference: WorkflowTimedSource | null;
   referencesPending?: boolean;
   referencesError?: string | null;
-  startingFrame?: HookStartingFrameSelection | null;
+  startingFrame?: StartingFrameSelection | null;
   startingFramePhotos?: WorkflowImageSource[];
 };
 export type WorkflowGenerationBatch = {
@@ -76,10 +76,12 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     if (draft.kind !== "hook") return "Starting-frame Recreate is unavailable in this workflow.";
     if (!isHookStartingFrameVideoModel(draft.settings.model) || !hookStartingFrameVideoDurations(draft.settings.model).includes(draft.settings.duration)) return "Choose a supported starting-frame model and duration.";
     const { width, height } = draft.startingFrame;
-    const frameRatio = Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0
+    const frameRatio = !draft.startingFrame.jobId ? uploadedStartingFrameRatio(width, height)
+      : Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0
       ? width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : null : null;
     if (!frameRatio || draft.settings.aspectRatio !== frameRatio) return "Starting-frame animation keeps your approved image's shape. Choose a matching frame.";
     if (draft.audioReference) {
+      if (!draft.startingFrame.jobId) return "Remove the voice reference to use this uploaded starting frame.";
       const typeError = getVideoReferenceTypeError(draft.settings.model, false, true);
       if (typeError) return typeError;
       if (!draft.startingFrame.generateAudio) return "Turn Sound on to use your voice reference.";
@@ -237,7 +239,11 @@ export function createWorkflowGenerationClient(dependencies: {
             quantity: settings.quantity,
             resolution: settings.resolution,
             aspectRatio: settings.aspectRatio,
-            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, ...(audioReference ? { startingFrameMode: "image_voice_reference" } : {}), referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio, ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
+            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId,
+              ...(startingFrame.jobId ? { startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId } : {}),
+              ...(audioReference ? { startingFrameMode: "image_voice_reference" } : {}), exploreFormat: "hook", generateAudio: startingFrame.generateAudio,
+              ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) }
+              : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
             ...(videoReference ? { referenceVideoUrl: videoReference.url, referenceVideoAssetId: videoReference.assetId, referenceVideoDurationSeconds: videoReference.duration } : {}),
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),
             idempotencyKey: submission.key,

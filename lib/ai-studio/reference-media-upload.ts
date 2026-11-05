@@ -20,7 +20,7 @@ export async function uploadAIStudioReferenceMedia(
   kind: AIStudioReferenceKind,
   maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
   expectedUserId?: string,
-  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" | "image-library" | "music-library"; onProgress?: (stage: ReferenceUploadStage) => void; onUploadProgress?: (loaded: number, total: number) => void },
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-starting-frame" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" | "image-library" | "music-library"; onProgress?: (stage: ReferenceUploadStage) => void; onUploadProgress?: (loaded: number, total: number) => void },
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;

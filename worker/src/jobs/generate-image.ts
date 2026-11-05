@@ -38,6 +38,8 @@ import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type Slides
 import { hookKeyframeAnchorBytesMatch, hookKeyframeReferenceImageCount, isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { downloadReferenceImageContext } from "../lib/reference-image-download.js";
 import { resolveCreatorSceneDelivery } from "../lib/creator-scene-delivery.js";
+import { parseSlideshowFaceSwap, type SlideshowFaceSwap } from "../lib/slideshow-face-swap-contract.js";
+import { resolveSlideshowFacePhotos } from "../lib/slideshow-face-swap.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -50,6 +52,7 @@ type GenerateImageInput = {
   provider?: "runway" | "openrouter";
   slideshowGeneration?: SlideshowGenerationSlot;
   slideshowBusinessContext?: SlideshowBusinessContext;
+  slideshowFaceSwap?: SlideshowFaceSwap;
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
@@ -118,10 +121,16 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     : parseSlideshowReferenceContract(job.input_json.slideshowReferenceContract, referenceImageUrls?.length ?? (referenceImageUrl ? 1 : 0));
   const slideshowGeneration = readSlideshowGenerationSlot(job.input_json.slideshowGeneration);
   const slideshowBusinessContext = parseSlideshowBusinessContext(job.input_json.slideshowBusinessContext);
-  if (job.input_json.slideshowBusinessContext !== undefined && (!slideshowBusinessContext || job.input_json.exploreFormat !== "slideshow") || slideshowGeneration && !slideshowBusinessContext) throw new ProviderRequestNotSubmittedError("This slideshow job requires its saved business context.");
+  // Legacy standalone swaps preserve a finished slide; they do not rewrite its business copy.
+  if (job.input_json.slideshowBusinessContext !== undefined && (!slideshowBusinessContext || job.input_json.exploreFormat !== "slideshow") || slideshowGeneration && !slideshowBusinessContext && mode !== "face_swap") throw new ProviderRequestNotSubmittedError("This slideshow job requires its saved business context.");
   if (job.input_json.slideshowGeneration !== undefined && (!slideshowGeneration || job.input_json.exploreFormat !== "slideshow")) throw new ProviderRequestNotSubmittedError("Invalid slideshow output position.");
   if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
   if (slideshowReferenceContract?.version === 4 && slideshowGeneration && slideshowReferenceContract.plan!.outputSlideIndex !== slideshowGeneration.slideIndex) throw new ProviderRequestNotSubmittedError("The saved slide plan does not match this output position.");
+  const slideshowFaceSwap = job.input_json.slideshowFaceSwap === undefined ? undefined : parseSlideshowFaceSwap(job.input_json.slideshowFaceSwap);
+  if (slideshowFaceSwap && (mode || hookKeyframe || !slideshowBusinessContext || slideshowGeneration?.versionIndex !== 1 ||
+      slideshowReferenceContract?.version !== 4 || slideshowReferenceContract.plan?.targetId !== slideshowFaceSwap.targetId)) {
+    throw new ProviderRequestNotSubmittedError("The face-swap target does not match this saved slideshow slide and version.");
+  }
   if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
   if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && mode !== "face_swap" && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
@@ -175,6 +184,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
     ...(slideshowGeneration ? { slideshowGeneration } : {}),
     ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),
+    ...(slideshowFaceSwap ? { slideshowFaceSwap } : {}),
   };
 }
 
@@ -234,6 +244,7 @@ export async function runGenerateImageJob(
     ...(input.slideshowReferenceContract ? { slideshowReferenceContract: input.slideshowReferenceContract } : {}),
     ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
     ...(input.slideshowBusinessContext ? { slideshowBusinessContext: input.slideshowBusinessContext } : {}),
+    ...(input.slideshowFaceSwap ? { slideshowFaceSwap: input.slideshowFaceSwap } : {}),
     ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
     ...(input.startingFrameTextCleanup ? { startingFrameTextCleanup: true } : {}),
     ...(input.startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: input.startingFrameOutfitPrompt } : {}),
@@ -279,6 +290,7 @@ export async function runGenerateImageJob(
       startingFrameOutfitPrompt: input.startingFrameOutfitPrompt,
       referenceOptions: hook.referenceOptions,
       ...(input.startingFramePipelineVersion === 2 ? { imageSize: "2K" as const } : {}),
+      ...(hook.promptVersion === 9 ? { stage2Version: 2 as const, referenceId: hook.referenceId, sourceSha256: hook.sourceSha256 } : {}),
     }) : await performOpenRouterFaceSwap({ baseImage: refImages[0], influencerImage: refImages[1], supportingIdentityImages: refImages.slice(2),
       aspectRatio: input.aspectRatio, instructions: input.prompt, runStage });
     try {
@@ -342,6 +354,7 @@ export async function runGenerateImageJob(
                   startingFrameTextCleanup: input.startingFrameTextCleanup,
                   startingFrameOutfitPrompt: input.startingFrameOutfitPrompt,
                   referenceOptions: hook.referenceOptions,
+                  ...(hook.promptVersion === 9 ? { stage2Version: 2 as const, referenceId: hook.referenceId, sourceSha256: hook.sourceSha256 } : {}),
                 });
               }
               if (input.mode === "face_swap" && refImages.length >= 2) {
@@ -426,6 +439,24 @@ export async function runGenerateImageJob(
     }
 
     generatedImageBuffer = await downloadStoredObjectBuffer(savedStagingKey);
+  }
+
+  if (input.slideshowFaceSwap) {
+    // A slide completes only after its durable identity stages, even with the browser closed.
+    const urls = await resolveSlideshowFacePhotos(input.slideshowFaceSwap, job.user_id ?? "");
+    const photos = await downloadReferenceImageContext(urls);
+    if (photos.length !== input.slideshowFaceSwap.identityAssetIds.length) throw new ProviderRequestNotSubmittedError("The selected face photos could not all be read.");
+    const generated = await performOpenRouterFaceSwap({
+      identityPromptVersion: 2,
+      baseImage: { data: generatedImageBuffer.toString("base64"), mimeType: "image/png" },
+      influencerImage: { data: photos[0].buffer.toString("base64"), mimeType: photos[0].contentType },
+      supportingIdentityImages: photos.slice(1).map(photo => ({ data: photo.buffer.toString("base64"), mimeType: photo.contentType })),
+      aspectRatio: input.aspectRatio,
+      instructions: "Replace only the visible facial identity. Preserve the finished slide's exact words, typography, layout, background, clothing, pose, hands, objects and scene lighting. Supporting photos supply the same person's identity only; do not copy their scene or outfit.",
+      runStage: createDurableImageStageRunner({ jobId: job.id, store: context.store,
+        checkpoint: stage => context.checkpoint({ stage: `slideshow_${stage}`, status: "processing" }) }),
+    });
+    generatedImageBuffer = generated.buffer;
   }
 
   await context.checkpoint({
@@ -557,6 +588,8 @@ function buildOutput(
     model: input.model,
     prompt: input.prompt,
     effectivePrompt,
+    ...(input.slideshowFaceSwap ? { slideshowFaceSwap: { version: 1, targetId: input.slideshowFaceSwap.targetId,
+      identityAssetIds: input.slideshowFaceSwap.identityAssetIds, provider: "openrouter" } } : {}),
     provider,
     ratio: input.aspectRatio,
     url: uploaded.url,

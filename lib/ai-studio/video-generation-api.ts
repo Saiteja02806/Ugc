@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
+import { checkLocalAppWorker } from "@/lib/jobs/local-starting-frame";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import {
   getAIStudioPromptLengthError,
@@ -31,6 +32,7 @@ import { personReferenceRoles } from "@/lib/explore/person-reference";
 import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
 import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
 import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
+import { UPLOADED_STARTING_FRAME_PROJECT, uploadedStartingFrameRatio } from "@/lib/explore/uploaded-starting-frame";
 import { createHookSourceTimeline } from "@/worker/src/lib/hook-source-timeline";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 
@@ -45,6 +47,8 @@ import {
   type Json,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import { validateVideoImage } from "./video-image-validation";
+import { parseOwnedVideoImages, type OwnedVideoImages } from "@/worker/src/lib/video-image-reference-contract";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { getMediaAssetForOwner, getMediaAssetsForOwnerByUrls } from "@/lib/media/media-storage";
 import { getVideoReferencePolicy, getVideoTimedReferenceError } from "@/lib/ai-studio/video-reference-policy";
@@ -177,6 +181,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   try {
     user = await requireAIStudioProUser(request);
+    await checkLocalAppWorker(user);
   } catch (error) {
     const status =
       error instanceof FirebaseAuthRequestError ? error.status : 500;
@@ -200,10 +205,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (isCreatorAccountReference(body?.referenceId) && !body?.startingFrameAssetId) return NextResponse.json({ ok: false, error: "Choose Recreate and approve a starting image for this private reference first." }, { status: 400 });
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const usesStartingFrame = body?.startingFrameAssetId !== undefined || body?.startingFrameJobId !== undefined;
+  const usesUploadedFrame = usesStartingFrame && body?.startingFrameJobId === undefined;
+  const uploadedFrameWorkflow = body?.exploreFormat === "wall_text" ? "wall_text" : body?.workflow === "talking_head" ? "talking_head" : "hook";
   if (body?.talkingHeadScript !== undefined && (!usesStartingFrame || body.workflow !== "talking_head" || typeof body.talkingHeadScript !== "string")) return NextResponse.json({ ok: false, error: "Use an approved Talking Head starting frame and spoken script." }, { status: 400 });
   if (body?.talkingHeadScript !== undefined && body.talkingHeadScriptReviewed !== true) return NextResponse.json({ ok: false, error: "Review the spoken words and confirm demo narration is excluded before generating." }, { status: 400 });
   const frameVoiceReference = body?.startingFrameMode === "image_voice_reference";
-  if (body?.startingFrameMode !== undefined && (!frameVoiceReference || !usesStartingFrame ||
+  if (body?.startingFrameMode !== undefined && (!frameVoiceReference || !usesStartingFrame || usesUploadedFrame ||
     (body.model !== "wan_3_0" && body.model !== "seedance_2_5") || body.generateAudio !== true ||
     !Array.isArray(body.referenceAudioUrls) || body.referenceAudioUrls.length !== 1)) {
     return NextResponse.json({ ok: false, error: "Use WAN 3.0 or Seedance 2.5 with Sound on and one voice reference." }, { status: 400 });
@@ -214,8 +221,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     }
     if ((body?.exploreFormat !== "hook" && body?.exploreFormat !== "wall_text") || !isHookStartingFrameVideoModel(body.model) ||
       typeof body.startingFrameAssetId !== "string" || !UUID_PATTERN.test(body.startingFrameAssetId) ||
-      typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)) {
+      (!usesUploadedFrame && (typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)))) {
       return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and a supported animation model." }, { status: 400 });
+    }
+    if (usesUploadedFrame && (body.referenceId !== undefined || body.referenceType !== undefined ||
+      body.workflow !== undefined && body.workflow !== uploadedFrameWorkflow)) {
+      return NextResponse.json({ ok: false, error: "Use the uploaded image as a standalone starting frame." }, { status: 400 });
     }
     const faceCount = Array.isArray(body.referenceImageUrls) ? body.referenceImageUrls.length : 0;
     if (faceCount && (!frameVoiceReference && (!hookStartingFrameFaceReferenceLimit(body.model) || faceCount > hookStartingFrameFaceReferenceLimit(body.model)) ||
@@ -337,7 +348,21 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`, ok: false }, { status: 503 });
   }
   let startingFrame: Awaited<ReturnType<typeof resolveApprovedHookStartingFrame>> | undefined;
-  if (usesStartingFrame) {
+  let uploadedFrame: { assetId: string; imageUrl: string } | undefined;
+  if (usesUploadedFrame) {
+    try {
+      const asset = await getMediaAssetForOwner({ assetId: body!.startingFrameAssetId as string, userId: user.uid });
+      if (!asset || asset.id !== body!.startingFrameAssetId || asset.collection !== "image" || asset.source_type !== "upload" ||
+          asset.project_id !== UPLOADED_STARTING_FRAME_PROJECT || !isTrustedStorageUrl(asset.url) ||
+          uploadedStartingFrameRatio(asset.width, asset.height) !== aspectRatio ||
+          !await validateVideoImage(asset, user.uid, asset.url, referencePolicy.maxImageBytes)) {
+        return NextResponse.json({ ok: false, error: "Choose your own ready starting-frame upload and its matching video orientation." }, { status: 400 });
+      }
+      uploadedFrame = { assetId: asset.id, imageUrl: asset.url };
+    } catch {
+      return NextResponse.json({ ok: false, error: "Could not verify the uploaded starting frame. Try again." }, { status: 503 });
+    }
+  } else if (usesStartingFrame) {
     try {
       startingFrame = await resolveApprovedHookStartingFrame({
         assetId: body!.startingFrameAssetId as string,
@@ -349,9 +374,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       if (body?.talkingHeadScript !== undefined && startingFrame.workflow !== "talking_head") return NextResponse.json({ ok: false, error: "This starting frame does not belong to Talking Head." }, { status: 400 });
       if (frameVoiceReference) {
         const image = await getMediaAssetForOwner({ assetId: startingFrame.assetId, userId: user.uid });
-        if (!image || image.user_id !== user.uid || image.deleted_at !== null || image.status !== "ready" || image.collection !== "image" ||
-          image.mime_type !== "image/png" || typeof image.file_size_bytes !== "number" || !Number.isFinite(image.file_size_bytes) ||
-          image.file_size_bytes <= 0 || image.file_size_bytes > referencePolicy.maxImageBytes) return NextResponse.json({ ok: false, error: `Choose a ready starting image up to ${referencePolicy.maxImageBytes / 1024 ** 2} MB for this voice-reference request.` }, { status: 400 });
+        if (!image || image.collection !== "image" || image.mime_type !== "image/png" ||
+          !await validateVideoImage(image, user.uid, startingFrame.imageUrl, referencePolicy.maxImageBytes)) return NextResponse.json({ ok: false, error: `Choose a ready starting image up to ${referencePolicy.maxImageBytes / 1024 ** 2} MB for this voice-reference request.` }, { status: 400 });
       }
       if ((body?.referenceId !== undefined && body.referenceId !== startingFrame.referenceId) ||
         body?.exploreFormat !== startingFrame.exploreFormat ||
@@ -414,7 +438,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Choose Sound on or Sound off before generating.", ok: false }, { status: 400 });
   }
   const generateAudio = soundWorkflow ? body?.generateAudio === true : undefined;
-  const inputInstructions = startingFrame ? { intent: frameVoiceReference ? "image_voice_reference" : "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
+  const firstFrame = startingFrame ?? uploadedFrame;
+  const inputInstructions = firstFrame ? { intent: frameVoiceReference ? "image_voice_reference" : "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
     imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
   let generationPrompt: string;
   let hookSourceTimeline;
@@ -424,10 +449,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds, { preserveFullSource: true });
       if (prompt.includes("PHASE [")) hookSourceTimeline = verifiedSourceTimeline;
     }
-    generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true,
+    generationPrompt = firstFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame?.workflow ?? uploadedFrameWorkflow, directions: prompt, durationSeconds, generateAudio: generateAudio === true,
       ...(typeof body?.talkingHeadScript === "string" ? { spokenScript: body.talkingHeadScript } : {}),
       ...(frameVoiceReference ? { voiceReference: true, voiceIdentityPhotoCount: referenceImageUrls.length } : {}),
-      ...(startingFrame.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
+      ...(startingFrame?.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
       : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
@@ -592,7 +617,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    startingFrame ? 6_000 : getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined, personPhotos, imageCount: referenceImageUrls.length, generateAudio }),
+    firstFrame ? 6_000 : getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined, personPhotos, imageCount: referenceImageUrls.length, generateAudio }),
   );
 
   if (promptLengthError) {
@@ -608,20 +633,21 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   // A trusted storage host does not prove ownership. Resolve timed references
   // before billing or freezing an Explore receipt; never silently discard them.
+  let ownedImageReferences: OwnedVideoImages | undefined;
   try {
-    if ((usesStartingFrame || model === "wan_3_0" && (referenceAudioUrls.length || referenceVideoUrl)) && referenceImageUrls.length) {
+    const ownedImages: OwnedVideoImages["images"] = [];
+    if (firstFrame) ownedImages.push({ assetId: firstFrame.assetId, url: firstFrame.imageUrl });
+    if (referenceImageUrls.length) {
       const images = await getMediaAssetsForOwnerByUrls({ urls: referenceImageUrls as string[], userId: user.uid });
       for (const url of referenceImageUrls) {
         const asset = images.find(image => image.url === url);
-        if (!asset || asset.user_id !== user.uid || asset.deleted_at !== null || asset.status !== "ready" ||
-          (asset.collection !== "image" && !(usesStartingFrame && asset.collection === "influencer")) ||
-          !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(asset.mime_type) ||
-          typeof asset.file_size_bytes !== "number" || !Number.isFinite(asset.file_size_bytes) ||
-          asset.file_size_bytes <= 0 || asset.file_size_bytes > referencePolicy.maxImageBytes) {
-          return NextResponse.json({ error: usesStartingFrame ? "Choose your own ready PNG, JPEG or WebP face photos up to 20 MB." : "Choose your own ready PNG, JPEG or WebP reference images up to 16 MB when using audio or video with WAN 3.0.", ok: false }, { status: 400 });
+        if (!await validateVideoImage(asset, user.uid, url!, referencePolicy.maxImageBytes)) {
+          return NextResponse.json({ error: `Choose your own ready PNG, JPEG or WebP ${usesStartingFrame ? "face photos" : "reference images"} up to ${referencePolicy.maxImageBytes / 1024 ** 2} MB.`, ok: false }, { status: 400 });
         }
+        ownedImages.push({ assetId: asset!.id, url: url! });
       }
     }
+    if (ownedImages.length) ownedImageReferences = parseOwnedVideoImages({ version: 1, maxImageBytes: referencePolicy.maxImageBytes, images: ownedImages }, ownedImages.map(image => image.url));
     const references = [
       ...referenceAudioUrls.map((url, index) => ({ kind: "audio" as const, url, id: referenceAudioAssetIds[index] as string })),
       ...(referenceVideoUrl && referenceVideoAssetId ? [{ kind: "video" as const, url: referenceVideoUrl, id: referenceVideoAssetId }] : []),
@@ -684,6 +710,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     startingFrameJobId: startingFrame.imageJobId,
     startingFrameImageUrl: startingFrame.imageUrl,
     startingFrameReceipt: startingFrame.receipt as unknown as Json,
+  } : uploadedFrame ? {
+    startingFrameSource: "upload",
+    startingFrameAssetId: uploadedFrame.assetId,
+    startingFrameImageUrl: uploadedFrame.imageUrl,
   } : {};
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
@@ -705,6 +735,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       inputs: Array.from({ length: quantity }, (_, index) => ({
         ...(automaticHookText ? { automaticHookText: automaticHookText as unknown as Json } : {}),
         aspectRatio, avatarImageUrl, referenceImageUrls: providerReferenceImages, referenceAudioUrls,
+        ...(ownedImageReferences ? { ownedImageReferences: ownedImageReferences as unknown as Json } : {}),
         ...(typeof body?.talkingHeadScript === "string" ? { talkingHeadScript: body.talkingHeadScript, talkingHeadScriptReviewed: true } : {}),
         ...(imageRoles ? { personReference: imageRoles } : {}),
         ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
@@ -756,6 +787,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           ...(typeof body?.workflow === "string" ? { workflow: body.workflow } : startingFrame?.workflow ? { workflow: startingFrame.workflow } : typeof body?.referenceId === "string" && (body.referenceId.startsWith("talking-") || body.referenceId.includes("talking")) ? { workflow: "talking_head" } : body?.exploreFormat === "wall_text" ? { workflow: "wall_text" } : body?.exploreFormat === "hook" ? { workflow: "hook" } : {}),
           avatarImageUrl,
+          ...(ownedImageReferences ? { ownedImageReferences: ownedImageReferences as unknown as Json } : {}),
           ...(typeof body?.talkingHeadScript === "string" ? { talkingHeadScript: body.talkingHeadScript, talkingHeadScriptReviewed: true } : {}),
           referenceImageUrls: providerReferenceImages,
           ...(imageRoles ? { personReference: imageRoles } : {}),

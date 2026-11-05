@@ -36,7 +36,8 @@ export async function handleGenerationRequestRecovery(request: Request) {
       } else if (input.slideshowGeneration !== undefined) {
         throw new Error("Saved slideshow request requires its original slide count");
       }
-      return [{ jobId: job.id, ...(kind === "image" ? { generationId: String(resultId) } : { videoId: String(resultId) }), ...(slideshowGeneration ? { slideshowGeneration } : {}) }];
+      return [{ jobId: job.id, ...(kind === "image" ? { generationId: String(resultId) } : { videoId: String(resultId) }), ...(slideshowGeneration ? { slideshowGeneration } : {}),
+        ...(kind === "image" && input.slideshowFaceSwap !== undefined ? { slideshowFaceSwapManaged: true } : {}) }];
     });
     return Response.json({ ok: true, requestKey: key, jobs, jobId: jobs[0]?.jobId ?? null, outcome: jobs.length ? "confirmed" : "unconfirmed", partial: jobs.length < total,
       message: jobs.length < total && jobs.length ? `Recovered ${jobs.length} of ${total} saved outputs. No replacement batch was submitted.` : "Your saved generation was recovered." }, { headers: { "Cache-Control": "no-store" } });

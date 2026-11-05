@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { STARTING_FRAME_PHOTO_SELECTION_LIMIT, startingFramePhotoKey, readStartingFramePhotos, serializeStartingFramePhotos } from "@/lib/explore/starting-frame-photo-selection";
 
@@ -10,7 +10,7 @@ const photoStore = (tabScoped: boolean) => tabScoped ? sessionStorage : localSto
 
 /** Restore once per frame/model, cancel stale reads, and never reinsert photos
  * after an explicit edit. Every URL is refreshed through the owned media GET. */
-export function useStartingFramePhotos(frame: HookStartingFrameSelection | undefined, model: string, enabled: boolean,
+export function useStartingFramePhotos(frame: StartingFrameSelection | undefined, model: string, enabled: boolean,
   apply: (photos: AIStudioReferenceMedia[]) => void, tabScoped = false) {
   const key = frame ? startingFramePhotoKey(frame) : null;
   const limit = STARTING_FRAME_PHOTO_SELECTION_LIMIT;
@@ -22,7 +22,7 @@ export function useStartingFramePhotos(frame: HookStartingFrameSelection | undef
   const idsJson = JSON.stringify(frame?.identityAssetIds ?? []);
   useEffect(() => {
     const controller = new AbortController(), current = ++revision.current;
-    if (!loadKey || !ownerId || !jobId || !assetId) return () => controller.abort();
+    if (!loadKey || !ownerId || !assetId) return () => controller.abort();
     const scope = { ownerId, jobId, assetId };
     void (async () => {
       await Promise.resolve();

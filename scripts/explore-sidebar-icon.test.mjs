@@ -59,10 +59,10 @@ test("production navigation shows Explore and Audio in active and collapsed stat
   const originalEnvironment = process.env.NODE_ENV;
   try {
     process.env.NODE_ENV = "production";
-    const Navigation = new Function("require", "exports", "SidebarLink", "cn", "scrollbars", `${compiled}\nreturn SidebarNavigation;`)(
+    const Navigation = new Function("require", "exports", "SidebarLink", "cn", "scrollbars", "useAuth", "canViewTrendingScreen", `${compiled}\nreturn SidebarNavigation;`)(
       (id) => { assert.equal(id, "react/jsx-runtime"); return jsxRuntime; },
       {},
-      SidebarLink, (...values) => values.filter(Boolean).join(" "), { quiet: "quiet-scrollbar" },
+      SidebarLink, (...values) => values.filter(Boolean).join(" "), { quiet: "quiet-scrollbar" }, () => ({ user: null }), () => false,
     );
     for (const collapsed of [false, true]) {
       for (const activeKey of ["explore", "audio-generation"]) {

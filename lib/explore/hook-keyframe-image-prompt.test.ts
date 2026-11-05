@@ -105,7 +105,7 @@ test("v6 remains opt-in with the same input order, source provenance and instruc
 });
 
 test("new frame-zero cleanup freezes no later inputs and preserves source lighting and outfit explicitly", () => {
-  const prompt = buildOriginalOpeningImagePrompt({personImageCount:2,instructions:"Keep hands natural."});
+  const prompt = buildOriginalOpeningImagePrompt({personImageCount:2,instructions:"Keep hands natural.",version:7});
   assert.equal(prompt.version,7);assert.equal(prompt.imageCount,3);
   assert.doesNotMatch(prompt.prompt, /\uFFFD/);
   for(const phrase of [/first decoded frame at elapsed t=0/,/light direction, softness, exposure, contrast, color cast/,/do not copy lighting/i,/physical logos/,/readable text on clothing/,/Keep the objects and clothing themselves/,/face obstruction/])assert.match(prompt.prompt,phrase);

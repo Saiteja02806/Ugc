@@ -17,6 +17,7 @@ function load(source) {
     "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
     react: { useId: () => "schedule-test" },
+    "react-dom": { createPortal: children => children },
     "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } },
     "lucide-react": { Sparkles: "sparkles", Check: "check", Eye: "eye", EyeOff: "eye-off" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
@@ -144,7 +145,7 @@ test("connected Prepare final video and Schedule post forward real actions and r
     const buttons = nodes(tree).filter(n => n.type === "button");
     const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Schedule post"));
     assert.equal(primary.props.disabled, false); primary.props.onClick(); assert.equal(calls, 1);
-    assert.match(visibleText(tree), /Ready to confirm/); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
+    assert.doesNotMatch(visibleText(tree), /Ready to confirm/); assert.match(text(tree), /Ready to confirm/, "routine readiness remains accessible without a visible card"); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
     buttons.find(n => text(n) === "Refresh status").props.onClick(); assert.equal(refreshes, 1);
     const busy = WorkflowCreationPanel({ kind, section, [section]: { ...action, busy: true, disabled: true }, children: "settings" });
     assert.equal(nodes(busy).filter(n => n.type === "button").every(n => n.props.disabled), true);

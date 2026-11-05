@@ -13,14 +13,18 @@ import { fetchRecentStartingFrame, fetchRecentStartingFrames } from "@/lib/explo
 import { imagePickerThumbnailUrl, REFERENCE_IMAGE_PAGE_SIZE, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
 import type { MediaAsset } from "@/lib/media/types";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
+import { useStartingFrameUploads } from "./use-starting-frame-uploads";
 import picker from "./format-person-image-picker.module.css";
 
 /** Hook's owned sources, with Talking Head's existing reference callbacks. */
-export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, disabled, selectedIds, limitReached, onSelectUpload, onSelectInfluencer, onDeselect, onSelectStartingFrame, uploadControl, children }: {
+export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, disabled, selectedIds, limitReached, onSelectUpload, onSelectInfluencer, onDeselect, onSelectStartingFrame, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMaxBytes = 20 * 1024 ** 2, uploadControl, children }: {
   ownerId?: string | null; section: "person" | "influencers"; onSectionChange: (section: "person" | "influencers") => void;
   disabled: boolean; selectedIds: (string | undefined)[]; limitReached: boolean;
   onSelectUpload: (asset: MediaAsset) => Promise<boolean>; onSelectInfluencer: (id: string) => Promise<boolean>;
-  onDeselect: (id: string) => void; onSelectStartingFrame?: (frame: HookStartingFrameSelection) => boolean | void;
+  onDeselect: (id: string) => void; onSelectStartingFrame?: (frame: StartingFrameSelection) => boolean | void;
+  onStartingFramePendingChange?: (pending: boolean) => void; startingFrameMaxBytes?: number;
+  onStartingFrameErrorChange?: (error: string | null) => void;
   uploadControl: ReactNode; children: ReactNode;
 }) {
   const [source, setSource] = useState<"user" | "starting" | "catalog">("user");
@@ -37,8 +41,11 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
     enabled: Boolean(ownerId) && current === "influencers", staleTime: 60_000, retry: false });
   const frames = useQuery({ queryKey: ["hook-starting-frames", ownerId ?? "signed-out"],
     queryFn: ({ signal }) => fetchRecentStartingFrames(ownerId!, signal), enabled: Boolean(ownerId && onSelectStartingFrame) && current === "starting", staleTime: 0 });
+  const frameUploads = useStartingFrameUploads({ active: current === "starting" && Boolean(onSelectStartingFrame),
+    ownerId, disabled: disabled || pending, maxBytes: startingFrameMaxBytes, onPendingChange: onStartingFramePendingChange, onErrorChange: onStartingFrameErrorChange,
+    onSelect: frame => onSelectStartingFrame?.(frame) });
   async function choose(id: string, action: () => Promise<boolean | void | HookStartingFrameSelection>, frame = false) {
-    if (disabled || working.current) return;
+    if (disabled || working.current || frameUploads.pending) return;
     if (!frame && selectedIds.includes(id)) { onDeselect(id); return; }
     if (!frame && limitReached) return;
     working.current = true; setPending(true); setError(null);
@@ -63,9 +70,9 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
   const activeQuery = current === "influencers" ? influencers : current === "starting" ? frames : uploads;
   return <>
     <div className={picker.libraryHeading}><h3>Image library</h3>
-      <Button type="button" variant="ghost" size="sm" className={picker.catalogControl} aria-pressed={current === "catalog"} disabled={pending} onClick={() => setSource(current === "catalog" ? "user" : "catalog")}>{current === "catalog" ? "Back to your library" : "Vidmake images"}</Button>
-      {current !== "starting" ? uploadControl : null}
-      <Button type="button" variant="ghost" size="icon-sm" aria-label={current === "influencers" ? "Refresh my influencers" : current === "starting" ? "Refresh starting frames" : "Refresh your images"} disabled={!ownerId || pending || activeQuery.isFetching} onClick={() => void activeQuery.refetch()}><RefreshCw className="size-3.5" /></Button>
+      <Button type="button" variant="ghost" size="sm" className={picker.catalogControl} aria-pressed={current === "catalog"} disabled={pending || frameUploads.pending} onClick={() => setSource(current === "catalog" ? "user" : "catalog")}>{current === "catalog" ? "Back to your library" : "Vidmake images"}</Button>
+      {current === "starting" ? frameUploads.upload : uploadControl}
+      <Button type="button" variant="ghost" size="icon-sm" aria-label={current === "influencers" ? "Refresh my influencers" : current === "starting" ? "Refresh starting frames" : "Refresh your images"} disabled={!ownerId || pending || frameUploads.pending || frameUploads.refreshing || activeQuery.isFetching} onClick={() => { if (current === "starting") frameUploads.refresh(); void activeQuery.refetch(); }}><RefreshCw className="size-3.5" /></Button>
     </div>
     <Tabs.Root value={current} onValueChange={change} className={picker.tabs}>
       {current !== "influencers" ? <Tabs.List aria-label="Image sources" className={picker.sourceTabs}>
@@ -84,7 +91,9 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
         {influencers.isSuccess && !mergeCharacterHistoryPages(influencers.data?.pages ?? []).length ? <p>No saved influencers yet.</p> : null}
       </Tabs.Panel>
       <Tabs.Panel value="starting" className={picker.libraryPanel} aria-label="Starting frames">
-        {!ownerId ? <p>Sign in to see your starting frames.</p> : frames.isPending ? <p role="status">Loading starting frames…</p> : frames.isError ? <p role="alert">Could not load your starting frames. Use Refresh to try again.</p> : frames.data?.length ? <div className={picker.libraryGrid}>{frames.data.map((frame, index) => photo(frame.assetId, frame.url, `Use starting frame ${index + 1}`, () => fetchRecentStartingFrame(frame, ownerId!), true))}</div> : <p>No starting frames yet.</p>}
+        <p className={picker.libraryHint}>Upload an image or select a saved starting frame.</p>
+        {frameUploads.library}
+        {!ownerId ? <p>Sign in to see your starting frames.</p> : frames.isPending ? <p role="status">Loading starting frames…</p> : frames.isError ? <p role="alert">Could not load your starting frames. Use Refresh to try again.</p> : frames.data?.length ? <div className={picker.libraryGrid}>{frames.data.map((frame, index) => photo(frame.assetId, frame.url, `Use starting frame ${index + 1}`, () => fetchRecentStartingFrame(frame, ownerId!), true))}</div> : !frameUploads.hasUploads ? <p>No starting frames yet.</p> : null}
       </Tabs.Panel>
       <Tabs.Panel value="catalog" className={picker.libraryPanel} aria-label="Vidmake images">{children}</Tabs.Panel>
     </Tabs.Root>

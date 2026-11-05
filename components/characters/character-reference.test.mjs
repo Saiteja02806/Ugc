@@ -52,6 +52,7 @@ function characterHarness(owner = "owner") {
     access: { data: { access: { affordableImageCount: 3 } } },
     characters: { data: { characters: [] } }, generate: { isPending: false, reset() {}, mutateAsync: async request => submitted.push(request) },
     select: { isPending: false, mutate: id => saves.push(id) }, sessionResetVersion: 0,
+    session: { pendingRequest: null },
     visibleJobs: [], visibleStatuses: [], history: { data: { pages: [] }, refetch() {}, fetchNextPage() {} },
     touchSession() {}, openHistoryImage: image => opened.push(image), returnToSession() {},
   };
@@ -98,6 +99,28 @@ test("batch choice reaches admission while affordability controls the existing b
   assert.equal(h.submitted[0].imageCount, 3);
   h.builder.access.data.access.affordableImageCount = 1;
   assert.equal(h.dock().generateDisabled, true);
+});
+test("the studio retries the saved batch after reload even with changed traits and no available credits", async () => {
+  const h = characterHarness();
+  const previous = {
+    mode: "custom", model: "gemini_3_pro", prompt: "Previous full-body batch", imageCount: 3,
+    selection: { ...registry.DEFAULT_INFLUENCER_SELECTION, framing: "full" },
+    referenceImageAssetIds: ["earlier-face", "earlier-outfit"],
+    idempotencyKey: "previous-character-batch",
+  };
+  h.builder.session.pendingRequest = previous;
+  h.builder.access.data.access.affordableImageCount = 0;
+  h.dock().onSelectionChange({ framing: "half" });
+  h.fail(true);
+
+  const dock = h.dock();
+  assert.equal(dock.selection.framing, "half");
+  assert.equal(dock.generateDisabled, false);
+  assert.equal(dock.generateLabel, "Retry previous request");
+  dock.onGenerate();
+  await flush();
+  assert.deepEqual(h.submitted, [previous]);
+  assert.deepEqual(h.prepared, []);
 });
 test("pending, restoring and uncertain generation keep trait controls disabled", () => {
   const h = characterHarness();

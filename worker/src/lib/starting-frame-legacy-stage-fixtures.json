@@ -1,0 +1,157 @@
+{
+  "sourceCommit": "79ce78697ac216c4cd080d1fea8ab8c8faf142cb",
+  "fixtures": [
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These explicit choices override conflicting background or wardrobe defaults and custom prompt text.\n\nBACKGROUND: Keep the source starting frame's environment; never copy the background from influencer photos.\n\nOUTFIT: Keep the source starting frame's clothing; do not import clothing from the influencer photos.\n\nKeep original source t=0 pose, head angle, expression, camera, framing, hands, props and occlusion. Image 2 remains the facial identity authority; other photos only support that identity. Relight the selected background and outfit consistently with the source light. Remove all captions, watermarks, logos and readable lettering, restoring underlying surfaces. Do not add props or another person.",
+      "stages": {
+        "scene": "8ca5b435573f33a83041811ab6f5d2e7aab480d996d6abe88edae5ba811755d3",
+        "identity": "9a5845beb9c2efe95e4230bf303ad06424f555a7220e0f5bd88202c93c1e7236",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "source",
+        "hairstyle": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Keep Image1's environment; do not copy photo backgrounds.\n\nOUTFIT: Keep Image1's clothing; do not copy photo outfits.\n\nHAIRSTYLE: Keep Image1's hairstyle, hair color, length, texture, parting and volume; do not restyle it from photos.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "47ea2ded0fc8299fa07c4d168b4767916e56659b146a30218bd1b54d487bf239",
+        "identity": "9f20666ca99dacd96808f43b6d2305b80628c02383c428b7cdaaae5bf79ddb39",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "source",
+        "hairstyle": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Keep Image1's environment; do not copy photo backgrounds.\n\nOUTFIT: Keep Image1's clothing; do not copy photo outfits.\n\nHAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume, adapted to source head angle, light and occlusions.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "aabad6ff07b310aaf26f187938491e06843eb0baa36e5b6e563779da6b4ddccc",
+        "identity": "8110223a235a6e000d9564bc8b5bf5b06e7d38987f67901cb44c283742b13fc2",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These explicit choices override conflicting background or wardrobe defaults and custom prompt text.\n\nBACKGROUND: Keep the source starting frame's environment; never copy the background from influencer photos.\n\nOUTFIT: Use the clothing visibly worn in the main influencer photo, Image 2, adapted to the source pose and illumination. Do not use the source performer's outfit or infer clothing from supporting photos.\n\nKeep original source t=0 pose, head angle, expression, camera, framing, hands, props and occlusion. Image 2 remains the facial identity authority; other photos only support that identity. Relight the selected background and outfit consistently with the source light. Remove all captions, watermarks, logos and readable lettering, restoring underlying surfaces. Do not add props or another person.",
+      "stages": {
+        "scene": "c58e817128588ae5f0d4f6c9cf56fab4364a6982369ab04342b73f599e3696b7",
+        "identity": "80c369647f82d954ea01087fb91a4665997ea31fe639cb81c182be5098fdd398",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "photo",
+        "hairstyle": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Keep Image1's environment; do not copy photo backgrounds.\n\nOUTFIT: Use Image2's clothing adapted to source pose/light; do not borrow supporting-photo outfits.\n\nHAIRSTYLE: Keep Image1's hairstyle, hair color, length, texture, parting and volume; do not restyle it from photos.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "7662c31947015455777194bec93dca594ae0c86bad5b4c25061dcf984136382a",
+        "identity": "913249ba58f59bd92f1f55c5def5f5c37838ed4b16859e27c4075fbf1348fff7",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "source",
+        "outfit": "photo",
+        "hairstyle": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Keep Image1's environment; do not copy photo backgrounds.\n\nOUTFIT: Use Image2's clothing adapted to source pose/light; do not borrow supporting-photo outfits.\n\nHAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume, adapted to source head angle, light and occlusions.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "ae07a46cd461dc492d143a3ab5b264243d90dcc8313b61c81d1d8ea576f93c33",
+        "identity": "ef4bb9c5bb0576e15c49ddb865f79ddd27dbb1f42522ae8730f2519668d5e23c",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These explicit choices override conflicting background or wardrobe defaults and custom prompt text.\n\nBACKGROUND: Use the environment visible in the main influencer photo, Image 2. Reconstruct that environment behind the person from the source camera viewpoint. Do not retain the source video's room.\n\nOUTFIT: Keep the source starting frame's clothing; do not import clothing from the influencer photos.\n\nKeep original source t=0 pose, head angle, expression, camera, framing, hands, props and occlusion. Image 2 remains the facial identity authority; other photos only support that identity. Relight the selected background and outfit consistently with the source light. Remove all captions, watermarks, logos and readable lettering, restoring underlying surfaces. Do not add props or another person.",
+      "stages": {
+        "scene": "ec98360fed468b8140c06e981c08a8f2c6eca64c91058afe072b722d434b3bee",
+        "identity": "59a7600b2f0253344af8ed3e10f92c6b3053dd7472ab326d11f0a4069485f31f",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "source",
+        "hairstyle": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Use Image2's environment from Image1's camera viewpoint; replace the source room.\n\nOUTFIT: Keep Image1's clothing; do not copy photo outfits.\n\nHAIRSTYLE: Keep Image1's hairstyle, hair color, length, texture, parting and volume; do not restyle it from photos.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "78f08dbf8d154bef73bc674941835c31cb8f88fc5e171a4e0e8c2e9dae77c24b",
+        "identity": "54e85d665a824c671a169a3c0e2159235d2237c659be1222691601e8692b1d79",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "source",
+        "hairstyle": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Use Image2's environment from Image1's camera viewpoint; replace the source room.\n\nOUTFIT: Keep Image1's clothing; do not copy photo outfits.\n\nHAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume, adapted to source head angle, light and occlusions.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "5d6b612f2e522705dc008a8d1aa372ec6630fb78f27a7755aa5bdf7be5c08290",
+        "identity": "ee548a541f5e5f91dcf6aad440d39887f6f3a6898e9c1141570e46abe26d1474",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These explicit choices override conflicting background or wardrobe defaults and custom prompt text.\n\nBACKGROUND: Use the environment visible in the main influencer photo, Image 2. Reconstruct that environment behind the person from the source camera viewpoint. Do not retain the source video's room.\n\nOUTFIT: Use the clothing visibly worn in the main influencer photo, Image 2, adapted to the source pose and illumination. Do not use the source performer's outfit or infer clothing from supporting photos.\n\nKeep original source t=0 pose, head angle, expression, camera, framing, hands, props and occlusion. Image 2 remains the facial identity authority; other photos only support that identity. Relight the selected background and outfit consistently with the source light. Remove all captions, watermarks, logos and readable lettering, restoring underlying surfaces. Do not add props or another person.",
+      "stages": {
+        "scene": "bc1b7966ed6d096493bce1aa4a7936729e67c633b68d590e9e61d56bca3b53b9",
+        "identity": "3162162da027de3d81a7aff41f1ed20333be3fefa3f382a1b0ed9b115add44dc",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "photo",
+        "hairstyle": "source"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Use Image2's environment from Image1's camera viewpoint; replace the source room.\n\nOUTFIT: Use Image2's clothing adapted to source pose/light; do not borrow supporting-photo outfits.\n\nHAIRSTYLE: Keep Image1's hairstyle, hair color, length, texture, parting and volume; do not restyle it from photos.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "421e5bdf29e10f71f7926f94c381f6f5ce3b64b1eb7d84087683d4eb5dc6bd96",
+        "identity": "d9a3b5832ff15159889d28a354a437635da0b5c5f614b2ae63d1c6dfbffce0ac",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    },
+    {
+      "referenceOptions": {
+        "background": "photo",
+        "outfit": "photo",
+        "hairstyle": "photo"
+      },
+      "prompt": "Frozen historical original-opening photograph.\n\nUSER-SELECTED IMAGE ROLES — These choices independently override conflicting defaults/custom text.\n\nBACKGROUND: Use Image2's environment from Image1's camera viewpoint; replace the source room.\n\nOUTFIT: Use Image2's clothing adapted to source pose/light; do not borrow supporting-photo outfits.\n\nHAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume, adapted to source head angle, light and occlusions.\n\nKeep original source t=0 pose, camera, expression, hands, props and occlusion. Image2 defines facial identity; other photos support identity only. Match source light. Remove captions, watermarks, logos and readable text; restore surfaces. No new props/people.",
+      "stages": {
+        "scene": "cf01885e64d152a2a291e2f756eb67bf0deb5f6bf9b599d77d74a402f8251b74",
+        "identity": "e142d2ca5447478966ffd470887ac08aae8378b8fa5b23c918cd7b39ae11fc11",
+        "harmonize": "3f44e2a0628fe2be9ec678218674651fd881c04ae7f2b826f6c85c33be814fb7"
+      }
+    }
+  ]
+}

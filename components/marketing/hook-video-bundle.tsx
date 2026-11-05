@@ -61,6 +61,14 @@ export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
     return () => { controller.abort(); clearTimeout(timer); };
   }, [pending, refresh]);
 
+  useEffect(() => {
+    if (!compact && preview.current) {
+      preview.current.defaultMuted = true;
+      preview.current.muted = true;
+      void preview.current.play().catch(() => {});
+    }
+  }, [compact]);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     if (busy.current || !status || status.exhausted || started || !input.current) { event.preventDefault(); return; }
     requestId.current ??= crypto.randomUUID();
@@ -81,46 +89,126 @@ export function HookVideoBundle({ compact = false }: { compact?: boolean }) {
     } catch { /* An attachment response has no readable iframe document. */ }
   }
 
-  const Container = compact ? "article" : "main";
-  const Heading = compact ? "h2" : "h1";
-  return <Container className={compact ? "flex min-w-0 flex-col rounded-[28px] border border-border bg-card p-6 sm:p-8" : "min-h-dvh bg-background text-foreground"}>
-    {!compact ? <header className="mx-auto flex max-w-[1200px] items-center justify-between border-b border-border px-6 py-6">
-      <Link href="/" className="text-xl font-semibold text-foreground-strong">Vidmake</Link>
-      <Link href="/free-tools" className="inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4">Free tools</Link>
-    </header> : <div className="mb-7 flex items-center justify-between gap-3 text-xs font-medium text-muted"><span>VIDEO LIBRARY · ZIP</span><span className="rounded-full border border-border px-3 py-1.5">Batch 1 · 100 downloads</span></div>}
-    <section className={compact ? "flex flex-1 flex-col" : "mx-auto grid max-w-[1200px] gap-y-8 px-6 py-12 sm:py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-x-14 lg:gap-y-6 lg:py-20"} aria-labelledby="bundle-title">
-      <div className={compact ? "contents" : "min-w-0 lg:col-start-1"}>
-      {compact ? <div className="mb-8 flex h-52 shrink-0 flex-col items-center justify-center rounded-[20px] bg-background sm:h-60"><Film className="size-12 text-primary" aria-hidden="true" /><p className="mt-4 text-4xl font-semibold tracking-normal text-foreground-strong">104 clips</p><p className="mt-2 text-sm text-muted">One ZIP. Your next opening.</p></div> : <><Film className="mb-6 size-10 text-primary" aria-hidden="true" /><p className="mb-4 text-sm font-medium uppercase tracking-widest text-primary">Batch 1 · Free video library</p></>}
-      <Heading id="bundle-title" className={compact ? "lg:min-h-[2.5em] text-3xl font-semibold leading-tight tracking-tight text-foreground-strong" : "text-4xl font-semibold leading-tight tracking-tight text-foreground-strong sm:text-5xl"}>Hook Video Library{!compact ? <><br />104 clips. One download.</> : null}</Heading>
-      <p className={compact ? "mt-4 leading-7 text-muted lg:min-h-[84px]" : "mt-6 text-lg leading-8 text-muted"}>104 public Hook reference clips in one ZIP. Browse the reactions and use them to plan your next opening.</p>
-      <p className="mt-3 text-sm leading-6 text-muted">MP4 videos · No signup · First 100 downloads</p>
-      </div>
-      {!compact ? <figure className="min-w-0 self-start lg:col-start-2 lg:row-start-1 lg:row-span-2">
-        <div className="overflow-hidden rounded-[20px] border border-border bg-card">
-          <video ref={preview} src={previewUrl} poster={previewPoster} width={512} height={550} controls playsInline preload="none" aria-label="Preview the Hook Video Library" aria-describedby="bundle-preview-caption" className="aspect-[512/550] w-full object-contain" onError={() => setPreviewUnavailable(true)}>
-            Your browser cannot play this preview. <a href={previewUrl}>Open the preview video</a>.
-          </video>
+  if (compact) {
+    return (
+      <article className="flex min-w-0 flex-col rounded-[28px] border border-border bg-card p-6 sm:p-8">
+        <div className="mb-7 flex items-center justify-between gap-3 text-xs font-medium text-muted">
+          <span>VIDEO LIBRARY · ZIP</span>
+          <span className="rounded-full border border-border px-3 py-1.5">Batch 1 · 100 downloads</span>
         </div>
-        <figcaption id="bundle-preview-caption" className="mt-4 text-sm leading-6 text-muted">A look inside the library. Preview the reactions before you download.</figcaption>
-        {previewUnavailable ? <div className="mt-3 space-y-2"><p role="alert" className="text-sm text-muted">The preview could not load. You can still download the library.</p><Button type="button" variant="outline" onClick={() => { setPreviewUnavailable(false); preview.current?.load(); }}>Retry preview</Button></div> : null}
-      </figure> : null}
-      <div className={compact ? "contents" : "min-w-0 lg:col-start-1 lg:row-start-2"}>
-      <div className={compact ? "pt-7" : "rounded-xl border border-border bg-card p-5 sm:p-6"}>
-        <p role="status" aria-live="polite" className={compact ? "min-h-12 text-sm leading-6 text-muted" : "min-h-6 text-sm text-muted"}>{status?.exhausted ? BATCH_ONE_COMPLETE : status ? `${status.count} of 100 downloads started · ${100 - status.count} remaining` : "Checking download availability…"}</p>
-        <form action={endpoint} method="post" target="hook-bundle-download" onSubmit={submit} className="mt-4">
-          <input ref={input} type="hidden" name="requestId" />
-          <Button type="submit" size="lg" className={`min-h-12 w-full ${compact ? "min-h-[52px] rounded-full px-5 text-sm font-semibold" : "sm:w-auto"}`} disabled={!status || status.exhausted || pending || started}>
-            <Download className="size-4" aria-hidden="true" />{status?.exhausted ? "Batch 1 completed" : started ? "Download started" : pending ? "Preparing your download…" : "Download Batch 1 · 104 videos"}
-          </Button>
-        </form>
-        {started ? <p className="mt-3 text-sm text-muted">Your ZIP download has started. Check your browser downloads.</p> : null}
-        {error ? <div className="mt-4 space-y-2"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" onClick={() => { setError(null); void refresh(requestId.current).catch(() => setError("Could not check download availability. Please try again.")); }}>Check availability again</Button></div> : null}
-        <p className="mt-4 text-xs leading-5 text-muted">The counter records downloads when they start. An interrupted transfer may still count toward the limit.</p>
+        <div className="mb-8 flex h-52 shrink-0 flex-col items-center justify-center rounded-[20px] bg-background sm:h-60">
+          <Film className="size-12 text-primary" aria-hidden="true" />
+          <p className="mt-4 text-4xl font-semibold tracking-normal text-foreground-strong">104 clips</p>
+          <p className="mt-2 text-sm text-muted">One ZIP. Your next opening.</p>
+        </div>
+        <h2 id="bundle-title" className="lg:min-h-[2.5em] text-3xl font-semibold leading-tight tracking-tight text-foreground-strong">
+          Hook Video Library
+        </h2>
+        <p className="mt-4 leading-7 text-muted lg:min-h-[84px]">
+          104 public Hook reference clips in one ZIP. Browse the reactions and use them to plan your next opening.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          MP4 videos · No signup · First 100 downloads
+        </p>
+        <div className="pt-7">
+          <p role="status" aria-live="polite" className="min-h-12 text-sm leading-6 text-muted">
+            {status?.exhausted ? BATCH_ONE_COMPLETE : status ? `${status.count} of 100 downloads started · ${100 - status.count} remaining` : "Checking download availability…"}
+          </p>
+          <form action={endpoint} method="post" target="hook-bundle-download" onSubmit={submit} className="mt-4">
+            <input ref={input} type="hidden" name="requestId" />
+            <Button type="submit" size="lg" className="min-h-12 w-full min-h-[52px] rounded-full px-5 text-sm font-semibold" disabled={!status || status.exhausted || pending || started}>
+              <Download className="size-4" aria-hidden="true" />
+              {status?.exhausted ? "Batch 1 completed" : started ? "Download started" : pending ? "Preparing your download…" : "Download Batch 1 · 104 videos"}
+            </Button>
+          </form>
+          {started ? <p className="mt-3 text-sm text-muted">Your ZIP download has started. Check your browser downloads.</p> : null}
+          {error ? (
+            <div className="mt-4 space-y-2">
+              <p role="alert" className="text-sm text-destructive">{error}</p>
+              <Button type="button" variant="outline" onClick={() => { setError(null); void refresh(requestId.current).catch(() => setError("Could not check download availability. Please try again.")); }}>Check availability again</Button>
+            </div>
+          ) : null}
+          <p className="mt-4 text-xs leading-5 text-muted">
+            The counter records downloads when they start. An interrupted transfer may still count toward the limit.
+          </p>
+        </div>
+        {status?.exhausted ? <BatchNotificationForm /> : null}
+        <iframe ref={frame} name="hook-bundle-download" title="Hook bundle download" hidden onLoad={readDownloadError} />
+      </article>
+    );
+  }
+
+  return (
+    <main className="min-h-dvh bg-background text-foreground flex flex-col lg:flex-row">
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="flex items-center justify-between border-b border-border px-6 py-5 sm:px-8 lg:px-12 shrink-0">
+          <Link href="/" className="text-xl font-semibold text-foreground-strong">Vidmake</Link>
+          <Link href="/free-tools" className="inline-flex min-h-11 items-center text-sm text-muted underline underline-offset-4">Free tools</Link>
+        </header>
+
+        <section className="flex flex-1 flex-col justify-center px-6 py-8 sm:px-8 lg:px-12 max-w-xl mx-auto w-full" aria-labelledby="bundle-title">
+          <Film className="mb-4 size-8 text-primary" aria-hidden="true" />
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">Batch 1 · Free video library</p>
+          <h1 id="bundle-title" className="text-3xl font-semibold leading-tight tracking-tight text-foreground-strong sm:text-4xl lg:text-[40px]">
+            Hook Video Library<br />104 clips. One download.
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-muted sm:text-lg">
+            104 public Hook reference clips in one ZIP. Browse the reactions and use them to plan your next opening.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            MP4 videos · No signup · First 100 downloads
+          </p>
+
+          <p role="status" aria-live="polite" className="mt-6 text-sm text-muted">
+            {status ? `Available downloads: ${status.limit - status.count}` : error ? null : "Checking download availability…"}
+          </p>
+          <form action={endpoint} method="post" target="hook-bundle-download" onSubmit={submit} className="mt-3">
+            <input ref={input} type="hidden" name="requestId" />
+            <Button type="submit" size="lg" className="min-h-12 w-full sm:w-auto" disabled={!status || status.exhausted || pending || started}>
+              <Download className="size-4" aria-hidden="true" />
+              {status?.exhausted ? "Batch 1 completed" : started ? "Download started" : pending ? "Preparing your download…" : "Download Batch 1 · 104 videos"}
+            </Button>
+          </form>
+          {started ? <p className="mt-3 text-sm text-muted">Your ZIP download has started. Check your browser downloads.</p> : null}
+          {error ? (
+            <div className="mt-4 space-y-2">
+              <p role="alert" className="text-sm text-destructive">{error}</p>
+              <Button type="button" variant="outline" onClick={() => { setError(null); void refresh(requestId.current).catch(() => setError("Could not check download availability. Please try again.")); }}>Check availability again</Button>
+            </div>
+          ) : null}
+
+          {status?.exhausted ? <BatchNotificationForm /> : null}
+          <Link href="/free-hook-lines" className="mt-6 inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">
+            Need the words too? Browse The Reaction Hook Library
+          </Link>
+        </section>
       </div>
-      {status?.exhausted ? <BatchNotificationForm /> : null}
-      {!compact ? <Link href="/free-hook-lines" className="mt-8 inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">Need the words too? Browse The Reaction Hook Library</Link> : null}
+
+      <div className="relative w-full lg:w-1/2 min-h-[50vh] lg:sticky lg:top-0 lg:h-dvh lg:self-start bg-black overflow-hidden flex items-center justify-center shrink-0">
+        <video
+          ref={preview}
+          src={previewUrl}
+          poster={previewPoster}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-label="Preview the Hook Video Library"
+          className="h-full w-full object-cover"
+          onError={() => setPreviewUnavailable(true)}
+        >
+          Your browser cannot play this preview. <a href={previewUrl}>Open the preview video</a>.
+        </video>
+        {previewUnavailable ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-card/85 backdrop-blur-sm">
+            <p role="alert" className="text-sm text-muted">The preview could not load. You can still download the library.</p>
+            <Button type="button" variant="outline" className="mt-3" onClick={() => { setPreviewUnavailable(false); preview.current?.load(); }}>Retry preview</Button>
+          </div>
+        ) : null}
       </div>
-    </section>
-    <iframe ref={frame} name="hook-bundle-download" title="Hook bundle download" hidden onLoad={readDownloadError} />
-  </Container>;
+
+      <iframe ref={frame} name="hook-bundle-download" title="Hook bundle download" hidden onLoad={readDownloadError} />
+    </main>
+  );
 }

@@ -24,13 +24,14 @@ import reviewStyles from "@/components/explore/workflow-schedule-review.module.c
 import { PendingExploreSchedulePanel } from "@/components/explore/pending-schedule-panel";
 import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
 
-export function FormatSchedulePanel({ output, localPreview, imageOnly, active, format, pendingSource = false, preparing = false, draftScopeId, onBackToEdit, pendingComposition }: {
+export function FormatSchedulePanel({ output, localPreview, imageOnly, active, format, pendingSource = false, preparing = false, draftScopeId, onBackToEdit, pendingComposition, actionsTarget }: {
   output: { id: string; kind: "media_asset" | "library_item"; url: string; title: string } | null; localPreview: boolean; imageOnly: boolean; active: boolean;
   format: "hook" | "wall_text" | "slideshow";
   pendingSource?: boolean;
   preparing?: boolean; draftScopeId?: string;
   onBackToEdit?: () => void;
   pendingComposition?: ExploreScheduleComposition | null;
+  actionsTarget?: HTMLElement | null;
 }) {
   const deviceHour12 = useDeviceTimeFormat();
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const hydratedDraftKey = useRef<string | null>(null);
   const draft = storedDraft.key === draftKey ? storedDraft.draft : EMPTY_SCHEDULE_DRAFT;
   const draftRef = useRef(draft);
-  draftRef.current = draft;
+  useLayoutEffect(() => { draftRef.current = draft; }, [draft]);
   const timezone = draft.timezone ?? accountTimezone;
   useEffect(() => {
     if (!draftKey) return;
@@ -185,8 +186,8 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       </div>
     </div>
   </div>;
-  if (pendingComposition && user && !localPreview && !imageOnly) return <PendingExploreSchedulePanel key={`${format}:${draftScopeId}`} owner={user.uid} scope={`${format}:${draftScopeId ?? "workflow"}`} composition={pendingComposition} draft={draft} onChange={setDraft} timezone={timezone} active={active} onBackToEdit={onBackToEdit} />;
-  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} actionsPosition={format === "slideshow" ? "top" : undefined} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform, id) => setDraft(current => selectWorkflowAccount(current, platform, id))} />} /></div>
+  if (pendingComposition && user && !localPreview && !imageOnly) return <PendingExploreSchedulePanel key={`${format}:${draftScopeId}`} owner={user.uid} scope={`${format}:${draftScopeId ?? "workflow"}`} composition={pendingComposition} draft={draft} onChange={setDraft} timezone={timezone} active={active} onBackToEdit={onBackToEdit} actionsTarget={actionsTarget} />;
+  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} footerTarget={active ? actionsTarget : null} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform, id) => setDraft(current => selectWorkflowAccount(current, platform, id))} />} /></div>
     <section aria-label="Schedule summary" className={reviewStyles.summary}>
       <h3 className="sr-only">Schedule summary</h3>
       <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>

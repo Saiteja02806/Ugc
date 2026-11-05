@@ -11,7 +11,7 @@ const available = { count: 2, limit: 100, exhausted: false, started: false, vide
 function harness(status = available) {
   const states = [status, null, false, false, false];
   let stateIndex, refIndex, loads = 0, fetches = 0;
-  const refs = [{ current: { load() { loads++; } } }, { current: { value: "" } }, { current: null }, { current: false }, { current: null }];
+  const refs = [{ current: { load() { loads++; }, play() { return Promise.resolve(); } } }, { current: { value: "" } }, { current: null }, { current: false }, { current: null }];
   const exports = {};
   const element = (type, props) => ({ type, props });
   vm.runInNewContext(compiled, { exports, AbortSignal, crypto: { randomUUID: () => "preview-test-request" }, fetch() { fetches++; throw new Error("Preview must not call the download API"); }, require(name) {
@@ -33,17 +33,18 @@ function all(node, type) {
 }
 function download(tree) { return all(tree, "button").find(node => node.props.type === "submit"); }
 
-test("only the standalone page loads a controlled, uncropped backend preview", () => {
+test("only the standalone page loads a full-bleed, autoplaying video preview without controls", () => {
   const h = harness(), standalone = h.render(), compact = h.render(true);
   const videos = all(standalone, "video");
   assert.equal(videos.length, 1);
   assert.match(videos[0].props.src, /^https:\/\/storage\.googleapis\.com\/ugcsaas-media\/marketing\/hook-video-library\/v1\/.+\.mp4$/);
-  assert.equal(videos[0].props.controls, true);
+  assert.equal(videos[0].props.controls, undefined);
   assert.equal(videos[0].props.playsInline, true);
-  assert.equal(videos[0].props.preload, "none");
-  assert.equal(videos[0].props.autoPlay, undefined);
-  assert.equal(videos[0].props.width / videos[0].props.height, 512 / 550);
-  assert.match(videos[0].props.className, /object-contain/);
+  assert.equal(videos[0].props.preload, "auto");
+  assert.equal(videos[0].props.autoPlay, true);
+  assert.equal(videos[0].props.loop, true);
+  assert.equal(videos[0].props.muted, true);
+  assert.match(videos[0].props.className, /object-cover/);
   assert.equal(all(compact, "video").length, 0);
   assert.match(download(compact).props.className, /min-h-\[52px\] rounded-full/);
   assert.equal(all(standalone, "form")[0].props.action, "/api/resources/hook-video-bundle");

@@ -1,7 +1,6 @@
 "use client";
 
 import { Headphones, ImageIcon, Sparkles, Video } from "lucide-react";
-import NextLink from "next/link";
 
 import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-feedback";
 import { useAuth } from "@/contexts/auth-context";
@@ -29,19 +28,19 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
               <span>MCP</span>
               <span className={styles.comingSoonLabel}>Coming soon</span>
             </span>
-            <NextLink
+            <Link
               href="/pricing"
               className="inline-flex h-9 items-center rounded-[10px] bg-foreground-strong px-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Upgrade
-            </NextLink>
+            </Link>
             {user ? null : (
-              <NextLink
+              <Link
                 href="/sign-in"
                 className="inline-flex h-9 items-center rounded-[10px] bg-foreground-strong px-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 Sign up
-              </NextLink>
+              </Link>
             )}
           </div>
           <p className={`${styles.description} text-sm text-muted`}>Find your next format. Start with a workflow or a creation tool.</p>

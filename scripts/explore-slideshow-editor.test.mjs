@@ -147,7 +147,7 @@ test("access and release gates stop a save before database mutations", async () 
 });
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
-function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
+function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
 async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult, fitUpload = async file => file, libraryItem, libraryItemId, locationHref, waitForRestore = true } = {}) {
   let cursor = 0, nextRequest = 100;
   const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], libraryReads = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
@@ -257,8 +257,8 @@ test("Save and review waits for successful recovery and never submits a schedule
 
 test("finished-slide upload stays inside Add slides without a permanent duplicate button", async () => {
   const h = await editor(); let opened = 0;
-  h.control("input", "Use my finished slides").props.ref.current = { click: () => opened++ };
-  assert.equal(h.control("Button", "Use my finished slides"), undefined);
+  h.control("input", "Upload slides").props.ref.current = { click: () => opened++ };
+  assert.equal(h.control("Button", "Upload slides"), undefined);
   assert.equal(nodes(h.render()).some(node => node.type === "SlideshowAddSlides"), false);
   h.control("Button", "Add slides").props.onClick();
   nodes(h.render()).find(node => node.type === "SlideshowAddSlides").props.onUpload();
@@ -288,7 +288,7 @@ test("Create preview shares the edited sequence, text and upload actions without
   assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
   assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
   assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
-  assert.equal(h.control("input", "Use my finished slides").props.multiple, true);
+  assert.equal(h.control("input", "Upload slides").props.multiple, true);
   assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], false);
   h.control("button", "Preview slide 2").props.onClick();
   h.control("Button", "Edit slides").props.onClick(); assert.equal(opened, 1);
@@ -456,7 +456,7 @@ test("slide uploads send fitted files before adding owned images and retain succ
   const prepared = [];
   const h = await editor({ fitUpload: async file => { prepared.push(file.name); if (file.name === "bad.png") throw new Error("Could not read this image"); return { ...file, name: "portrait-4x5.png" }; },
     uploadResult: file => ({ asset: { id: id(350), collection: "image", status: "ready", url: "https://storage.test/portrait-4x5.png", title: file.name, createdAt: "", ratio: "4:5" } }) });
-  h.control("input", "Use my finished slides").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  h.control("input", "Upload slides").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
   await new Promise(setImmediate);
   assert.deepEqual(prepared, ["portrait.png", "bad.png"]);
@@ -465,6 +465,31 @@ test("slide uploads send fitted files before adding owned images and retain succ
   assert.match(text(h.render()), /1 image added.*Some images could not be uploaded/s);
   await h.clickSave("Save slideshow");
   assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(350)]);
+});
+
+test("Upload slides reports active progress beside the preview and saves exactly the completed owned assets", async () => {
+  const finishes = [];
+  const h = await editor({ uploadResult: () => new Promise(resolve => finishes.push(resolve)) });
+  h.control("input", "Upload slides").props.onChange({ currentTarget: { files: ["a", "b"].map(name => ({ name, type: "image/png", size: 100 })), value: "selected" } });
+  assert.match(text(h.render()), /Uploading slides… 0 of 2 processed/);
+  assert.equal(h.control("Button", "Uploading…").props.disabled, true);
+  assert.equal(h.control("Button", "Uploading…").props["aria-busy"], true);
+  await new Promise(setImmediate);
+  const ready = n => ({ asset: { id: id(n), collection: "image", status: "ready", url: `https://storage.test/${n}.png`, title: "Uploaded", createdAt: "", ratio: "4:5" } });
+  finishes[1](ready(352)); await new Promise(setImmediate);
+  assert.match(text(h.render()), /Uploading slides… 1 of 2 processed/);
+  finishes[0](ready(351)); await new Promise(setImmediate);
+  assert.ok(h.control("Button", "Add slides"));
+  assert.doesNotMatch(text(h.render()), /Uploading slides/);
+  const rail = nodes(h.render()).find(node => node.props?.["aria-label"] === "Choose a slide");
+  let scrolled;
+  rail.props.ref.current = { scrollBy(value) { scrolled = value; } };
+  h.control("Button", "Scroll slides down").props.onClick(); assert.equal(scrolled.top, 180);
+  h.control("Button", "Scroll slides up").props.onClick(); assert.equal(scrolled.top, -180);
+  h.control("button", "Preview slide 4").props.onClick();
+  assert.equal(h.control("button", "Preview slide 4").props["aria-pressed"], true);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(351), id(352)]);
 });
 
 test("a failed valid image replacement keeps the old sequence unscheduled until explicit re-save", async () => {

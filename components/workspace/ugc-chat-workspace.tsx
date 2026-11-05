@@ -31,7 +31,7 @@ import { useSlideshowPromptImprover } from "@/components/explore/slideshow-promp
 import { useSlideshowComposerDraft } from "@/components/explore/use-slideshow-composer-draft";
 import { SlideshowClarificationNotice } from "@/components/explore/slideshow-clarification-notice";
 import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
-import { readSlideshowClarification, slideshowClarificationKey, type SlideshowClarification } from "@/lib/explore/slideshow-generation-recovery";
+import { readSlideshowClarification, slideshowClarificationKey, slideshowClarificationScope, type SlideshowClarification } from "@/lib/explore/slideshow-generation-recovery";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
@@ -916,7 +916,7 @@ export function ImageGenerationStudioPanel({
       if (error instanceof GenerationClarificationError && user && activeUserIdRef.current === user.uid) {
         const checked = checkedInput as PendingGeneration["input"] | null;
         const feedback: SlideshowClarification = { version: 1, owner: user.uid,
-          scope: checked ? JSON.stringify({ references: checked.referenceImageUrls ?? [checked.referenceImageUrl ?? null], regeneration: checked.regenerationImageAssetId ?? null }) : legacyComposerScope,
+          scope: checked ? slideshowClarificationScope((checked.referenceImageUrls ?? [checked.referenceImageUrl ?? null]) as (string | null)[], checked.regenerationImageAssetId as string ?? null, checked.slideshowFaceSelection as Parameters<typeof slideshowClarificationScope>[2]) : slideshowClarificationScope(composerReferenceUrls, recreateView?.referenceImageAssetId ?? null, faceSwap?.influencer ? { influencer: faceSwap.influencer, slideIds: faceSwap.slideIds } : null),
           prompt: checked ? String(checked.prompt) : trimmedPrompt, items: error.clarifications,
           imageIds: checked && Array.isArray(checked.referenceImageAssetIds) ? checked.referenceImageAssetIds as string[] : [],
         };
@@ -1054,6 +1054,10 @@ export function ImageGenerationStudioPanel({
     () => getVisibleAIStudioImages(generatedAssets, currentResultIds, selectedHistoryImageId),
     [generatedAssets, currentResultIds, selectedHistoryImageId],
   );
+  const onIdleEmpty = workflow?.onIdleEmpty;
+  useEffect(() => {
+    if (workflowFormat === "slideshow" && active && !resultsLoading && !recoveringJobs && !isGenerating && !isSubmitting && !pendingSubmission && !resultsErrorMessage && visibleImages.length === 0 && resolvingImageJobIds.length === 0) onIdleEmpty?.();
+  }, [workflowFormat, active, resultsLoading, recoveringJobs, isGenerating, isSubmitting, pendingSubmission, resultsErrorMessage, planningQuestions, visibleImages.length, resolvingImageJobIds.length, onIdleEmpty]);
   type ImageDisplayRow = {
     slideshowGeneration?: SlideshowGenerationSlot;
     key: string;
@@ -1228,6 +1232,35 @@ export function ImageGenerationStudioPanel({
     })();
   }, [isGenerating, onGeneratedSlideshow, slideshowResults.versions, submittedJobIds, user, workflowFormat]);
 
+  const generationActions = (
+    <>
+      {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requests…" : "Check earlier requests"}</Button> : null}
+      {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
+      {isGenerating ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={cancelJob.isPending}
+          onClick={() => void handleCancelGeneration()}
+        >
+          Cancel
+        </Button>
+      ) : null}
+      {canRetry ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={retryJob.isPending}
+          onClick={() => void handleRetryGeneration()}
+        >
+          Retry
+        </Button>
+      ) : null}
+    </>
+  );
+
   return (
     <div
       id="ai-studio-images-panel"
@@ -1255,6 +1288,7 @@ export function ImageGenerationStudioPanel({
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
         toolbar={recreateView?.preview ? undefined :
           <div className="flex items-center gap-2">
+            {workflow ? generationActions : null}
             {selectedHistoryImageId ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
             ) : null}
@@ -1415,6 +1449,7 @@ export function ImageGenerationStudioPanel({
         accessMessage={tooManySlides ? "Select up to 10 slides per version." : tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Remove an attached image or select fewer slideshow references.` : composerMessage}
         active={workflow?.controlsActive ?? active}
         ariaLabel="Image prompt"
+        feedbackError={resultsErrorMessage ?? referenceUploadError ?? earlierRequests.error ?? (tooManySlides ? "Select up to 10 slides per version." : tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total.` : accessState === "error" || hasInsufficientCredits ? composerMessage : null)}
         generateDisabled={
           recreateView?.preview || (!pendingSubmission && (generationLocked ||
           hasInsufficientCredits ||
@@ -1464,7 +1499,7 @@ export function ImageGenerationStudioPanel({
         generateTone={workflowFormat === "slideshow" || workflowFormat === "hook" || workflowFormat === "wall_text" ? "blue" : undefined}
         promptCornerControl={faceSwap ? <SlideshowFaceSwapControl value={faceSwap} ownerId={user?.uid} disabled={isGenerating || selectingImage} /> : undefined}
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={legacyComposerScope} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{faceSwapCreditWarning ? <p role="alert" className="text-xs text-destructive">{faceSwapCreditWarning}</p> : null}{promptImprover.feedback}{!isGenerating && planningQuestions && planningQuestions.owner === user?.uid ? <SlideshowClarificationNotice feedback={planningQuestions} scope={slideshowClarificationScope(composerReferenceUrls, recreateView?.referenceImageAssetId ?? null, faceSwap?.influencer ? { influencer: faceSwap.influencer, slideIds: faceSwap.slideIds } : null)} prompt={prompt} imageIds={instructionReferences.map(image => image.asset.id)} /> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
@@ -1474,34 +1509,8 @@ export function ImageGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
-        secondaryActions={
-          <>
-            {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requests…" : "Check earlier requests"}</Button> : null}
-            {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
-            {isGenerating ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={cancelJob.isPending}
-                onClick={() => void handleCancelGeneration()}
-              >
-                Cancel
-              </Button>
-            ) : null}
-            {canRetry ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={retryJob.isPending}
-                onClick={() => void handleRetryGeneration()}
-              >
-                Retry
-              </Button>
-            ) : null}
-          </>
-        }
+        secondaryActions={workflow ? undefined : generationActions}
+
         settings={<>
             <AiStudioSettingSelect
               ariaLabel="Image model"

@@ -12,7 +12,7 @@ export type HookStartingFrameSelection = {
 };
 export type HookKeyframeJob = {
   id: string; status: string; isTerminal: boolean; error: string | null;
-  receipt: { version: 1 | 2 | 3 | 4 | 5; imageModel?: HookKeyframeImageModel; promptVersion?: 1 | 2 | 3 | 4 | 5 | 7; purpose: "hook_starting_frame"; ownerId: string; draftId: string; referenceId: string; sourceSha256: string; inputKey: string; preparationInputKey?: string };
+  receipt: { version: 1 | 2 | 3 | 4 | 5; imageModel?: HookKeyframeImageModel; promptVersion?: 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9; purpose: "hook_starting_frame"; ownerId: string; draftId: string; referenceId: string; sourceSha256: string; inputKey: string; preparationInputKey?: string };
   output: null | { mediaAssetId: string; url: string; width: number; height: number };
 };
 export function hookKeyframeCheckpointKey(scope: HookKeyframeScope) {
@@ -41,8 +41,8 @@ export function verifiedHookKeyframeJob(value: unknown, checkpoint: HookKeyframe
   }
   if (!job || !UUID.test(job.id) || checkpoint.jobId && job.id !== checkpoint.jobId || typeof job.status !== "string" || typeof job.isTerminal !== "boolean" ||
     job.error !== null && typeof job.error !== "string" ||
-    !receipt || receipt.version !== 1 && receipt.version !== 2 && receipt.version !== 3 && receipt.version !== 4 && receipt.version !== 5 || receipt.version !== 1 && (!isHookKeyframeImageModel(receipt.imageModel) || ![2, 3, 4, 5, 7].includes(receipt.promptVersion as number)) ||
-    receipt.version === 5 && receipt.promptVersion !== 7 || !modelMatchesKey || receipt.purpose !== "hook_starting_frame" || (receipt.version === 4 || receipt.version === 5 ? receipt.preparationInputKey : receipt.inputKey) !== checkpoint.inputKey ||
+    !receipt || receipt.version !== 1 && receipt.version !== 2 && receipt.version !== 3 && receipt.version !== 4 && receipt.version !== 5 || receipt.version !== 1 && (!isHookKeyframeImageModel(receipt.imageModel) || ![2, 3, 4, 5, 7, 8, 9].includes(receipt.promptVersion as number)) ||
+    receipt.version === 5 && ![7, 8, 9].includes(receipt.promptVersion as number) || receipt.version !== 5 && [8, 9].includes(receipt.promptVersion as number) || !modelMatchesKey || receipt.purpose !== "hook_starting_frame" || (receipt.version === 4 || receipt.version === 5 ? receipt.preparationInputKey : receipt.inputKey) !== checkpoint.inputKey ||
     Object.keys(checkpoint.scope).some(key => receipt[key as keyof HookKeyframeScope] !== checkpoint.scope[key as keyof HookKeyframeScope])) {
     throw new Error("This starting image does not match the saved account, reference and photo selection.");
   }

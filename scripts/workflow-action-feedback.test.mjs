@@ -17,7 +17,7 @@ for (const kind of ["hook", "phone"]) for (const error of errors) test(`${kind}:
   assert.equal(text(footer).trim(), "Generate video");
   assert.equal(nodes(footer).filter(n => n.type === "button").length, 1);
   assert.ok(!nodes(footer).some(n => n.props?.role === "alert" || n.props?.role === "status"));
-  assert.ok(text(settings).includes(error)); assert.ok(text(settings).includes(generation.message)); assert.ok(text(settings).includes(generation.notice));
+  assert.ok(text(settings).includes(error)); assert.ok(text(settings).includes(generation.message)); assert.ok(!text(settings).includes(generation.notice), "routine notice is omitted");
   assert.ok(nodes(settings).includes(child), "same editable child stays mounted");
   assert.equal(inlineNodes(settings).some(n => n.props?.["data-workflow-feedback"] !== undefined), false, "no message stack occupies the form flow");
   assert.ok(nodes(settings).some(n => n.type === "portal" && n.props.target === feedbackHost));
@@ -101,4 +101,21 @@ test("standard and unified AI Studio layouts retain their existing feedback beha
 test("inactive workflow composers never portal feedback over the active section", () => {
   const tree = AiStudioComposer(composerProps({ active: false, accessMessage: "Hidden section failure", secondaryActions: element("button", { children: "Refresh" }) }));
   assert.equal(nodes(tree).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
+});
+
+test("all workflow composer variants suppress routine cards while retaining the primary action and explicit error visibility", () => {
+  for (const design of ["classic", "focused", undefined]) for (const message of ["This generation uses 6 AI credits.", "Generating…", "Your slides are ready.", "Write your instructions."]) {
+    const tree = AiStudioComposer(composerProps({ workflowDesign: design, accessMessage: message, generateDisabled: true }));
+    assert.equal(nodes(tree).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
+    assert.equal(nodes(tree).find(n => n.type === "button" && n.props.type === "submit").props.disabled, true);
+    const errorTree = AiStudioComposer(composerProps({ workflowDesign: design, accessMessage: message, feedbackError: "Could not confirm the saved request.", generateDisabled: true }));
+    assert.ok(nodes(errorTree).some(n => n.props?.["data-workflow-feedback"] !== undefined));
+    assert.ok(nodes(errorTree).some(n => n.props?.role === "alert" && text(n).includes("Could not confirm")));
+  }
+  for (const kind of ["hook", "phone"]) for (const section of ["create", "edit", "schedule"]) {
+    const action = { disabled: true, busy: true, processing: true, message: "Preparing…", error: null, recoveryAvailable: false };
+    const tree = WorkflowCreationPanel({ kind, section, children: "Existing form", generation: { ...action, notice: "This generation uses 6 AI credits." }, edit: action, schedule: action });
+    assert.equal(nodes(tree).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
+    assert.equal(nodes(getFooter(tree)).find(n => n.type === "button").props.disabled, true);
+  }
 });

@@ -38,7 +38,8 @@ async function analyze(d) {
 async function finalize(d) { return change(d.user_id,'finalize',payload(d,{jobId:d.finalization_job_id,analysis})); }
 
 test('Startup billing migration leaves executable grants and credit reservations after the full migration chain', async () => {
-  for (const [plan, credits] of [['starter',360],['growth',720],['startup',1800]]) {
+  // The complete chain includes the merchant-confirmed allowance correction.
+  for (const [plan, credits] of [['starter',200],['growth',600],['startup',1200]]) {
     const user = `billing-migration-${plan}-${randomUUID()}`;
     const grant = await one('select public.grant_complimentary_plan($1,$2,$3,$4) result', [user,plan,'Local migration regression','local-test-admin']);
     assert.equal(grant.result.creditLimit, credits);

@@ -56,7 +56,7 @@ function client(overrides = {}) {
     assertActive() {}, getOwnerToken: async () => "fake-owner-token", createIdempotencyKey: () => "submission",
     uploadImage: async (image) => {
       uploads.push(image);
-      const url = `https://storage.example.com/${uploads.length}.png`, id = `image-${uploads.length}`;
+      const url = `https://storage.example.com/${uploads.length}.png`, id = crypto.randomUUID();
       ownedAssets.set(id, { id, url, user_id: "owner-a", collection: "image", status: "ready", deleted_at: null,
         mime_type: "image/png", file_size_bytes: 1024 });
       return { url };

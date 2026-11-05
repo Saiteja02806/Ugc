@@ -1542,6 +1542,110 @@
           "endMs": 1040
         }
       ]
+    },
+    {
+      "referenceId": "talking-discovery-hook-v2",
+      "sourceSha256": "dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4",
+      "durationMs": 2233,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:53.564Z",
+      "transcriptSha256": "c9e99941da40efa885941d6a962c1b57b2c6f15baff9eb856f165067d619811e",
+      "fullText": "Um, this is crazy.",
+      "hookText": "Um, this is crazy.",
+      "hookStartMs": 0,
+      "hookEndMs": 1560,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "e6a604b56d0949fded2375cb37aad3da86adadb1124c0d4c0e7d817521bdd58d",
+      "reviewNotes": "This is crazy reaction followed by visual app demo. Um filler only in first ASR; retained warning, no demo text invented. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 4,
+      "segments": [
+        {
+          "text": "Um, this is crazy.",
+          "startMs": 0,
+          "endMs": 1560
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-bittenbyaturtle-hook-v2",
+      "sourceSha256": "4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc",
+      "durationMs": 2933,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:31.777Z",
+      "transcriptSha256": "e8b5d0d0c679e5ac7233a54f354a9bb7d843530f6953e6755d70fcb761dc3ed7",
+      "fullText": "Okay, I actually cannot believe this right now",
+      "hookText": "Okay, I actually cannot believe this right now",
+      "hookStartMs": 0,
+      "hookEndMs": 2933,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "7e75b37a0f40872028305fa4302d379fa8e17f70749d5cd09d8d4d503698d5c9",
+      "reviewNotes": "Only Okay I actually cannot believe this right now is speech; remaining app demo is visual/music. Do not transcribe overlay as spoken words. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed. REVIEW REQUIRED: cached final-word timing extends into the removed demo. Confirm the audible final word in this derivative before admitting a new script remix. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 8,
+      "segments": [
+        {
+          "text": "Okay, I actually cannot believe this right now",
+          "startMs": 0,
+          "endMs": 2933
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-carla-eatsss-hook-v2",
+      "sourceSha256": "e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e",
+      "durationMs": 3000,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:55.916Z",
+      "transcriptSha256": "feb5c7b699d60b87e5eb28edfe17acb1a6a2cd1d76cb01fc3c467f9c5b4e9636",
+      "fullText": "No way",
+      "hookText": "No way",
+      "hookStartMs": 0,
+      "hookEndMs": 2020,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "371c540932febc853a16807ba1e153aa30ff7df1e178874c5420b56724ae61b4",
+      "reviewNotes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 2,
+      "segments": [
+        {
+          "text": "No way",
+          "startMs": 0,
+          "endMs": 2020
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-taliameals-hook-v2",
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "durationMs": 1566,
+      "provider": "openai",
+      "model": "whisper-1",
+      "extractedAt": "2026-11-04T13:52:58.231Z",
+      "transcriptSha256": "d466723149891438c40ce094cf2335c8791ac66b0e46b9d9f15711123421b7d6",
+      "fullText": "No way!",
+      "hookText": "No way!",
+      "hookStartMs": 0,
+      "hookEndMs": 1040,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "ab52f0db8b13f1d0c963e839b8e82fd261a6bbf499b119257ec4c1a552da12af",
+      "reviewNotes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 2,
+      "segments": [
+        {
+          "text": "No way!",
+          "startMs": 0,
+          "endMs": 1040
+        }
+      ]
     }
   ]
 }

@@ -65,6 +65,7 @@ interface InfluencerCustomizerDockProps {
   maxBatchSize?: number;
   availabilityMessage?: string | null;
   generateDisabled?: boolean;
+  generateLabel?: string;
   disabled?: boolean;
   customCharacters?: InfluencerTrait[];
   onUploadCharacter?: (trait: InfluencerTrait, file: File) => void;
@@ -83,6 +84,7 @@ export function InfluencerCustomizerDock({
   maxBatchSize = 3,
   availabilityMessage = null,
   generateDisabled = false,
+  generateLabel = "Generate",
   disabled = false,
   customCharacters = [],
   onUploadCharacter,
@@ -541,7 +543,7 @@ export function InfluencerCustomizerDock({
             onClick={onGenerate}
             disabled={disabled || isGenerating || generateDisabled}
           >
-            {isGenerating ? "Synthesizing..." : "Generate"}
+            {isGenerating ? "Synthesizing..." : generateLabel}
           </button>
         </div>
       </div>

@@ -16,6 +16,7 @@ const resolvedReferences = [], fingerprints = [], outputOptions = [];
 mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
 mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
   resolveOwnedPrivateMediaUrl: async (url, owner) => { resolvedReferences.push({ url, owner }); return url; },
+  workerMediaReadUrl: async () => assert.fail("These historical worker tests must not start a new slideshow face stage"),
 } });
 const seedreamCalls = [];
 const openrouterCalls = [];
@@ -669,6 +670,18 @@ test("Gemini 3 Pro hook starting frame with openrouter provider routes to openro
     assert.equal(openrouterCalls.at(-1).startingFrameOutfitPrompt, custom);
     assert.equal(openrouterCalls.at(-1).imageSize, "2K");
     assert.equal(outputOptions.at(-1).requireMatchingAspectRatio, true);
+    assert.equal(openrouterCalls.at(-1).stage2Version, undefined);
+    const v8Job = seedreamFixture();
+    const v8Receipt = { ...customReceipt, promptVersion: 8 };
+    v8Job.imageJob.input_json = { ...next.imageJob.input_json, hookKeyframe: v8Receipt };
+    await runGenerateImageJob(v8Job.imageJob, v8Job.context);
+    assert.equal(openrouterCalls.at(-1).stage2Version, undefined);
+    const v9Job = seedreamFixture();
+    v9Job.imageJob.input_json = { ...next.imageJob.input_json, hookKeyframe: { ...customReceipt, promptVersion: 9 } };
+    await runGenerateImageJob(v9Job.imageJob, v9Job.context);
+    assert.equal(openrouterCalls.at(-1).stage2Version, 2);
+    assert.equal(openrouterCalls.at(-1).referenceId, v8Receipt.referenceId);
+    assert.equal(openrouterCalls.at(-1).sourceSha256, v8Receipt.sourceSha256);
     const lostAggregate = seedreamFixture();
     lostAggregate.imageJob.input_json = { ...next.imageJob.input_json };
     lostAggregate.context.store.markGenerationProviderSucceeded = async () => { throw Error("Database unavailable"); };
@@ -710,6 +723,24 @@ test("face_swap mode routes base and influencer images to performOpenRouterFaceS
   assert.equal(openrouterCalls.at(-1).aspectRatio, "4:5");
   assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
   assert.equal(openrouterCalls.at(-1).startingFrameTextCleanup, undefined);
+});
+
+test("historical slideshow face-swap child jobs keep their slot without requiring a new business-copy snapshot", async () => {
+  const f = seedreamFixture();
+  const slot = { version: 1, batchKey: "legacy-swap", slideIndex: 1, slideCount: 2, versionIndex: 1, versionCount: 1 };
+  const refs = ["https://media.example.test/finished-slide.png", "https://media.example.test/face.png"];
+  f.imageJob.input_json = { generationId: "legacy-slide-face", model: "gemini_3_pro", provider: "openrouter", mode: "face_swap",
+    prompt: "Replace facial identity only.", aspectRatio: "4:5", referenceImageUrl: refs[0], referenceImageUrls: refs,
+    exploreFormat: "slideshow", slideshowGeneration: slot };
+  const before = openrouterCalls.length;
+  const result = await runGenerateImageJob(f.imageJob, f.context);
+  assert.deepEqual(result.slideshowGeneration, slot);
+  assert.equal(openrouterCalls.length, before + 1);
+  assert.equal(openrouterCalls.at(-1).identityPromptVersion, undefined, "Historical prompt fingerprints stay unchanged");
+  const invalidBase = structuredClone(f.imageJob);
+  Object.assign(invalidBase.input_json, { model: "gpt_image_2_5_flare" });
+  delete invalidBase.input_json.mode; delete invalidBase.input_json.provider;
+  await assert.rejects(runGenerateImageJob(invalidBase, f.context), /saved business context/);
 });
 
 test("new character OpenRouter jobs preserve full prompts and all references without using direct Google", async () => {

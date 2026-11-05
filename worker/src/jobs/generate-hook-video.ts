@@ -21,6 +21,8 @@ import { generateRunwayWanVideoBuffer } from "../lib/runway-wan-video.js";
 import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
 import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js";
 import { generateReapiVideoBuffer } from "../lib/reapi-video.js";
+import { parseOwnedVideoImages, type OwnedVideoImages } from "../lib/video-image-reference-contract.js";
+import { resolveOwnedVideoImages } from "../lib/owned-video-images.js";
 import { parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "../lib/hook-starting-frame-video.js";
@@ -51,6 +53,7 @@ type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
   referenceImageUrls: string[];
+  ownedImageReferences?: OwnedVideoImages;
   referenceAudioUrls: string[];
   referenceAudioDurationSeconds: number[];
   resolution: HookVideoResolution;
@@ -67,6 +70,7 @@ type GenerateHookVideoBaseInput = {
   startingFrameAssetId?: string;
   startingFrameJobId?: string;
   startingFrameReceipt?: HookKeyframeGenerationReceipt;
+  startingFrameSource?: "upload";
   hookSourceTimeline?: HookSourceTimeline;
   userId: string;
   videoId: string;
@@ -385,6 +389,7 @@ async function generateWithProvider(
     resolution: input.resolution,
     referenceImageUrl: input.avatarImageUrl,
     referenceImageUrls: input.referenceImageUrls,
+    ...(input.ownedImageReferences ? { ownedImageReferences: input.ownedImageReferences } : {}),
     // Keep fingerprints of existing requests unchanged when no audio was attached.
     ...(input.referenceAudioUrls.length ? { referenceAudioUrls: input.referenceAudioUrls } : {}),
     ...(input.referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds: input.referenceAudioDurationSeconds } : {}),
@@ -399,6 +404,7 @@ async function generateWithProvider(
       startingFrameAssetId: input.startingFrameAssetId,
       startingFrameJobId: input.startingFrameJobId,
       startingFrameReceipt: input.startingFrameReceipt,
+      ...(input.startingFrameSource ? { startingFrameSource: input.startingFrameSource } : {}),
     } : {}),
     ...(input.hookSourceTimeline ? { hookSourceTimeline: input.hookSourceTimeline } : {}),
     videoId: input.videoId,
@@ -446,6 +452,9 @@ async function generateWithProvider(
   };
 
   try {
+    const submittingImages = !providerOperationId && !providerOutputUrl;
+    const ownedUrls = submittingImages && input.ownedImageReferences ? await resolveOwnedVideoImages(input.ownedImageReferences, job.user_id ?? "") : undefined;
+    const referenceOffset = input.startingFrameImageUrl ? 1 : 0;
     const params = {
       aspectRatio: input.aspectRatio,
       durationSeconds: input.durationSeconds,
@@ -455,9 +464,9 @@ async function generateWithProvider(
       providerOperationId,
       providerOutputUrl,
       referenceImageUrl: !providerOperationId && !providerOutputUrl && input.avatarImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.avatarImageUrl, job.user_id ?? "") : input.avatarImageUrl,
+        ? ownedUrls?.[referenceOffset] ?? await resolveOwnedPrivateMediaUrl(input.avatarImageUrl, job.user_id ?? "") : input.avatarImageUrl,
       referenceImageUrls: !providerOperationId && !providerOutputUrl
-        ? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls,
+        ? ownedUrls?.slice(referenceOffset) ?? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls,
       referenceAudioUrls: !providerOperationId && !providerOutputUrl
         ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls,
       referenceAudioDurationSeconds: input.referenceAudioDurationSeconds,
@@ -465,7 +474,7 @@ async function generateWithProvider(
       referenceVideoMode: input.referenceVideoMode,
       generateAudio: input.generateAudio,
       startingFrameImageUrl: !providerOperationId && !providerOutputUrl && input.startingFrameImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.startingFrameImageUrl, job.user_id ?? input.userId) : input.startingFrameImageUrl,
+        ? ownedUrls?.[0] ?? await resolveOwnedPrivateMediaUrl(input.startingFrameImageUrl, job.user_id ?? input.userId) : input.startingFrameImageUrl,
       referenceVideoUrl: !providerOperationId && !providerOutputUrl && input.referenceVideoUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceVideoUrl, job.user_id ?? "") : input.referenceVideoUrl,
       resolution: input.resolution,
@@ -649,7 +658,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   };
 
   const savedInput = job.input_json;
-  const hasStartingFrame = ["startingFrameImageUrl", "startingFrameAssetId", "startingFrameJobId", "startingFrameReceipt"]
+  const hasStartingFrame = ["startingFrameImageUrl", "startingFrameAssetId", "startingFrameJobId", "startingFrameReceipt", "startingFrameSource"]
     .some(field => savedInput[field] !== undefined);
   if (hasStartingFrame) {
     const receipt = parseHookKeyframeGenerationReceipt(job.input_json.startingFrameReceipt);
@@ -657,6 +666,12 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const assetId = job.input_json.startingFrameAssetId;
     const imageJobId = job.input_json.startingFrameJobId;
+    const uploaded = savedInput.startingFrameSource === "upload";
+    const validFrameSource = uploaded
+      ? imageJobId === undefined && savedInput.startingFrameReceipt === undefined && savedInput.hookSourceTimeline === undefined &&
+        savedInput.referenceId == null && provider === "reapi" && job.user_id === sharedInput.userId && savedInput.ownedImageReferences !== undefined
+      : savedInput.startingFrameSource === undefined && typeof imageJobId === "string" && uuid.test(imageJobId) &&
+        receipt?.ownerId === sharedInput.userId && receipt.referenceId === savedInput.referenceId;
     const photos = sharedInput.referenceImageUrls;
     const roles = job.input_json.personReference;
     const faceRolesValid = photos.length ? isJsonObject(roles) && roles.version === 1 && roles.mainImageUrl === photos[0] &&
@@ -669,9 +684,8 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       : hookStartingFrameVideoDurations(model).includes(sharedInput.durationSeconds);
     if (promptMode !== "direct" || !isHookStartingFrameVideoModel(model) || (!legacyGoogleOmni && provider !== hookStartingFrameVideoProvider(model)) ||
       (job.input_json.exploreFormat !== "hook" && job.input_json.exploreFormat !== "wall_text") || job.input_json.generationIntent !== "animate_starting_frame" ||
-      !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || typeof imageJobId !== "string" || !uuid.test(imageJobId) ||
-      !receipt || receipt.ownerId !== sharedInput.userId || (job.user_id && job.user_id !== sharedInput.userId) ||
-      receipt.referenceId !== job.input_json.referenceId || sharedInput.avatarImageUrl || !faceRolesValid ||
+      !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || !validFrameSource ||
+      (job.user_id && job.user_id !== sharedInput.userId) || sharedInput.avatarImageUrl || !faceRolesValid ||
       (photos.length > 0 && job.user_id !== sharedInput.userId) ||
       photos.length > (legacyGoogleOmni ? 5 : hookStartingFrameFaceReferenceLimit(model)) || photos.includes(imageUrl ?? "") ||
       sharedInput.referenceAudioUrls.length || sharedInput.referenceAudioDurationSeconds.length || sharedInput.referenceVideoUrl ||
@@ -680,16 +694,25 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       throw new ProviderRequestNotSubmittedError("Starting-frame animation requires its owned image receipt and a supported model/duration. New Omni jobs use the starting image alone; source video and audio references cannot be mixed into this request.");
     }
     Object.assign(sharedInput, {
-      startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId, startingFrameJobId: imageJobId,
-      startingFrameReceipt: receipt, generateAudio: sharedInput.generateAudio ?? false,
+      startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId,
+      ...(uploaded ? { startingFrameSource: "upload" } : { startingFrameJobId: imageJobId, startingFrameReceipt: receipt }),
+      generateAudio: sharedInput.generateAudio ?? false,
     });
     if (job.input_json.hookSourceTimeline !== undefined) {
-      if (job.input_json.exploreFormat !== "hook") throw new ProviderRequestNotSubmittedError("Original-opening trim is only valid for Hook videos.");
+      if (job.input_json.exploreFormat !== "hook" || !receipt) throw new ProviderRequestNotSubmittedError("Original-opening trim is only valid for Hook videos.");
       try { Object.assign(sharedInput, { hookSourceTimeline: parseHookSourceTimeline(job.input_json.hookSourceTimeline, receipt, sharedInput.durationSeconds) }); }
       catch { throw new ProviderRequestNotSubmittedError("This original-opening action timeline could not be verified. No new video was submitted."); }
     }
   }
   if (!hasStartingFrame && job.input_json.hookSourceTimeline !== undefined) throw new ProviderRequestNotSubmittedError("Original-opening trim requires its approved starting image.");
+  if (job.input_json.ownedImageReferences !== undefined) {
+    try {
+      const ownedImages = parseOwnedVideoImages(job.input_json.ownedImageReferences,
+        [...(sharedInput.startingFrameImageUrl ? [sharedInput.startingFrameImageUrl] : []), ...sharedInput.referenceImageUrls]);
+      if (sharedInput.startingFrameSource === "upload" && ownedImages.images[0]?.assetId !== sharedInput.startingFrameAssetId) throw new Error("Wrong starting frame");
+      Object.assign(sharedInput, { ownedImageReferences: ownedImages });
+    } catch { throw new ProviderRequestNotSubmittedError("The saved owned image selection no longer matches this video request."); }
+  }
 
   if (promptMode === "direct") {
     return { ...sharedInput, promptMode: "direct" };

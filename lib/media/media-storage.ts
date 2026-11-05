@@ -348,7 +348,8 @@ export async function getMediaAssetsForOwnerByIds(params: {
 /** Look up durable reference URLs without trusting client-supplied sizes. */
 export async function getMediaAssetsForOwnerByUrls(params: { urls: string[]; userId: string }) {
   const urls = [...new Set(params.urls)];
-  if (urls.length > 6) throw new Error("Choose at most six reference files.");
+  // The video caller applies its model-specific cap before this lookup.
+  if (urls.length > 30) throw new Error("Choose at most 30 reference images.");
   if (!urls.length) return [];
   const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
     .select("*").eq("user_id", params.userId).in("url", urls).is("deleted_at", null);

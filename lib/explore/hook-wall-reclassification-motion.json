@@ -101,6 +101,42 @@
       "reviewedFrameCount": 90,
       "reviewMethod": "all_decoded_frames",
       "reviewNotes": "All 90 decoded frames inspected in ordered contact sheets; motion transitions checked in targeted native-resolution stills. Reaction-only retained clip ends before the demo. Generated image and video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-573ce74ab0b1421f00e93add",
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "sourceDurationSeconds": 1.566016,
+      "displayTitle": "Talia grocery discovery",
+      "plan": {
+        "openingState": "Close handheld indoor selfie with long straight dark hair, a light camisole and pendant necklace. Look into the lens with lifted inner brows and an open mouth; an open palm is rising from screen-left.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.17]: Raise the open palm toward the lens while the mouth forms the first part of the short surprised reaction."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.17–0.53]: Hold the spread fingers near the camera, briefly close the eyes and move the hand slightly side to side as the mouth continues the emphatic reaction."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.53–0.75]: Lower the hand out of view and lean closer, reopening the eyes toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.75–1]: Tilt the handheld viewpoint slightly back so more ceiling appears and the face sits lower and closer. Continue the last small mouth movement and end in that close composition."
+          }
+        ],
+        "camera": "Preserve natural handheld movement, wall art and room geometry; retain the late upward tilt.",
+        "endingState": "The face is closer and lower in the picture, eyes toward the lens, mouth slightly open and hand lowered.",
+        "constraints": [
+          "Keep the same hand through the full gesture.",
+          "Retain the complete reaction and end in the same room."
+        ]
+      },
+      "reviewedFrameCount": 47,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 47 retained decoded thumbnails and native opening/ending inspected. User approved this exact existing 1.567-second trim for Hook references. The MP4 bytes and stored frame zero are unchanged. Generated output not tested."
     }
   ]
 }

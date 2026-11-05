@@ -9,7 +9,7 @@ import styles from "@/components/explore/explore-workspace.module.css";
 import { cn } from "@/lib/utils";
 
 const CHARACTER_COVER = "/explore/covers/ai-character-promo-08c4637b2b16.mp4";
-const CHARACTER_POSTER = "/explore/covers/ai-character-promo-opening-5d3b46093a26.webp";
+const CHARACTER_POSTER = "/explore/covers/ai-character-promo-opening-cb9f38bc1eb1.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {
   const videoRef = useCoverPlayback(CHARACTER_COVER, "a", true, true);

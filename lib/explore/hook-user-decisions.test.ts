@@ -19,7 +19,7 @@ const approved = [
 process.env.GCP_STORAGE_BUCKET ??= "hook-decisions-fixture";
 process.env.GCP_STORAGE_PUBLIC_BASE_URL ??= "https://hook-decisions.example.test";
 
-test("only airplane retires from browsing while its historical identity remains recoverable", () => {
+test("airplane retires from browsing while its historical identity remains recoverable", () => {
   const gallery = getHookReferenceGalleryItems();
   assert.equal(gallery.length, 106);
   assert.equal(gallery.some(item => item.id === airplane), false);
@@ -42,8 +42,8 @@ test("all remaining selectable Hooks resolve canonical sources and valid origina
     assert.equal(preview.sourceMatched, true, hook.id);
     assert.equal(preview.animationError, null, hook.id);
     assert.ok(preview.directions.trim(), hook.id);
-    assert.match(preview.imagePrompt!, /first decoded frame at elapsed t=0/, hook.id);
-    assert.match(preview.imagePrompt!, /Image2 and later images/, hook.id);
+    assert.match(preview.imagePrompt!, /original video opening at t=0/, hook.id);
+    assert.match(preview.imagePrompt!, /Image2 is the primary influencer face/, hook.id);
     assert.match(preview.imagePrompt!, /logos/, hook.id);
     assert.match(preview.animationPrompt!, /SOUND SETTING: OFF/, hook.id);
     assert.match(preview.animationPrompt!, /do not regenerate removed lettering/, hook.id);
@@ -63,8 +63,8 @@ test("six explicit decisions unblock original-opening preparation and keep clean
     assert.equal(rewrite.review.status, "static_reviewed");
     assert.equal(rewrite.review.startingFrameIndex, 0);
     assert.equal(rewrite.review.visualQualification, "not_tested");
-    assert.match(preview.imagePrompt!, /original-opening/);
-    assert.match(preview.imagePrompt!, /Image2 and later images/);
+    assert.match(preview.imagePrompt!, /original video opening at t=0/);
+    assert.match(preview.imagePrompt!, /Image2 is the primary influencer face/);
     assert.match(preview.imagePrompt!, /logos/);
     assert.match(preview.animationPrompt!, /SOUND SETTING: OFF/);
     assert.match(preview.animationPrompt!, /do not regenerate removed lettering/);

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PostCaptionField } from "@/components/scheduling/post-caption-field";
 import { WorkflowTimePicker } from "@/components/scheduling/workflow-time-picker";
+import { createPortal } from "react-dom";
 import creation from "@/components/explore/workflow-creation.module.css";
 import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
@@ -23,7 +24,7 @@ export const SCHEDULE_PLATFORMS = ([
 ] as const).filter(({ value }) => isSocialPlatformVisible(value));
 
 /** Controlled draft form; connected workflows opt into the account's saved captions. */
-export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imageOnly = false, timezone, presentation, footer, actionsPosition, ownerId = null, captionEnabled = false, captionScope = "workflow" }: {
+export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imageOnly = false, timezone, presentation, footer, footerTarget, ownerId = null, captionEnabled = false, captionScope = "workflow" }: {
   draft: WorkflowScheduleDraft;
   onChange: (update: WorkflowScheduleDraftUpdate) => void;
   accountsControl?: ReactNode;
@@ -31,7 +32,7 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
   timezone?: string;
   presentation?: "review";
   footer?: ReactNode;
-  actionsPosition?: "top";
+  footerTarget?: HTMLElement | null;
   ownerId?: string | null;
   captionEnabled?: boolean;
   captionScope?: string;
@@ -42,7 +43,6 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
   return <section aria-label="Post scheduling settings" className={presentation === "review" ? `${creation.scheduling} ${reviewStyles.form}` : creation.scheduling}>
     <h2 className="text-lg font-semibold tracking-tight">Schedule your {imageOnly ? "slideshow" : "video"}</h2>
     <p className={creation.sectionHelp}>Choose where and when to share your {imageOnly ? "slideshow" : "finished video"}.</p>
-    {actionsPosition === "top" ? <div className={reviewStyles.topActions}>{footer}</div> : null}
     <div className={`${creation.scheduleField} ${presentation === "review" ? reviewStyles.contentField : ""}`}>
       <span className="text-sm font-medium">{presentation === "review" ? "Publish to" : "Platforms"}</span>
       <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 80px), 1fr))", maxWidth: platforms.length === 1 ? 128 : undefined }}>
@@ -71,6 +71,6 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
     </div>
     <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>
     {selected.includes("tiktok") ? <p className="text-xs leading-5 text-muted">By scheduling, you agree to TikTok’s Music Usage Confirmation.</p> : null}
-    {actionsPosition !== "top" ? footer : null}
+    {footerTarget ? createPortal(footer, footerTarget) : footer}
   </section>;
 }

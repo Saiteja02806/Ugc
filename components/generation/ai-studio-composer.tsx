@@ -33,6 +33,7 @@ export function AiStudioComposer({
   active,
   compact = false,
   accessMessage,
+  feedbackError,
   ariaLabel,
   contextBanner,
   generateDisabled,
@@ -77,6 +78,7 @@ export function AiStudioComposer({
   active: boolean;
   compact?: boolean;
   accessMessage?: string | null;
+  feedbackError?: string | null;
   ariaLabel: string;
   contextBanner?: ReactNode;
   generateDisabled: boolean;
@@ -128,8 +130,9 @@ export function AiStudioComposer({
   const promptTooLong = maxLength !== undefined && prompt.length > maxLength;
   const excessCharacters = maxLength !== undefined ? Math.max(0, prompt.length - maxLength) : 0;
   const workflowFeedbackId = `${formId}-feedback`;
-  const workflowFeedback = accessMessage || secondaryActions ? <WorkflowFeedback id={workflowFeedbackId} active={active}>
-    {accessMessage ? <p role="status" className="text-muted">{accessMessage}</p> : null}
+  const workflowFeedback = accessMessage || feedbackError || secondaryActions ? <WorkflowFeedback id={workflowFeedbackId} active={active}>
+    {accessMessage ? <p className="sr-only">{accessMessage}</p> : null}
+    {feedbackError ? <p role="alert" className="text-xs text-destructive">{feedbackError}</p> : null}
     {secondaryActions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{secondaryActions}</div> : null}
   </WorkflowFeedback> : null;
 

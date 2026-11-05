@@ -63,3 +63,11 @@ test("server, inactive and empty feedback never create floating notices", () => 
     assert.equal(nodes(tree).some(n => n.type === "portal"), false);
   }
 });
+
+test("idle, costs, ordinary progress, success and Cancel alone never create an issue card", () => {
+  for (const message of ["Write your instructions before generating.", "This generation uses 6 AI credits.", "Generating slides…", "Your video is ready."]) {
+    const tree = fixture().render({ children: [element("p", { role: "status", children: message }), element("button", { children: "Cancel" })] });
+    assert.equal(nodes(tree).some(n => n.type === "portal"), false);
+    assert.ok(text(tree).includes(message), "accessible explanation survives without a visible card");
+  }
+});

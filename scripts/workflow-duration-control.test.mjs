@@ -29,7 +29,7 @@ function control(model = "seedance_2_5", initial = 5, props = {}) {
 }
 
 test("duration presets include 3 before 5 seconds only for models that support it", () => {
-  for (const [model, expected] of [["wan_3_0", ["3", "5", "10", "15", "20", "30", "custom"]], ["seedance_2_5", ["5", "10", "15", "20", "30", "custom"]], ["kling_3_0", ["3", "5", "10", "15", "custom"]], ["google_omni", ["3", "5", "10", "custom"]]]) {
+  for (const [model, expected] of [["wan_3_0", ["3", "5", "10", "15", "20", "30", "custom"]], ["seedance_2_5", ["5", "10", "15", "20", "30", "custom"]], ["kling_3_0", ["3", "5", "10", "15", "custom"]], ["google_omni", ["4", "6", "8", "10", "custom"]]]) {
     assert.deepEqual(Array.from(control(model).find("select").props.options, option => option.value), expected);
   }
 });

@@ -1,7 +1,7 @@
 import type { SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
 import type { SlideshowSourceIdentity } from "@/lib/explore/slideshow-image-names";
 
-export type SlideshowFaceSwapJob = { jobId: string; slideshowGeneration?: SlideshowGenerationSlot | null };
+export type SlideshowFaceSwapJob = { jobId: string; slideshowGeneration?: SlideshowGenerationSlot | null; slideshowFaceSwapManaged?: true };
 
 /** One paid swap per marked slide, independent of the number of generated versions. */
 export function getSlideshowFaceSwapCredits(slideIds: readonly string[], influencerAssetId: string | null, creditCost: number) {
@@ -20,6 +20,7 @@ export function planSlideshowFaceSwaps({ jobs, sources, slideIds, influencerAsse
   const wanted = new Set(slideIds);
   const planned = new Set<string>();
   return jobs.flatMap(job => {
+    if (job.slideshowFaceSwapManaged) return []; // Worker owns new jobs; never submit a second paid browser swap.
     if (job.slideshowGeneration?.versionIndex !== 1) return [];
     const source = job.slideshowGeneration ? sources[job.slideshowGeneration.slideIndex - 1] : undefined;
     if (!source || !wanted.has(source.slideId) || planned.has(source.slideId)) return [];

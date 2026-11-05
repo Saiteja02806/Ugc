@@ -87,6 +87,39 @@ test("one real encode handles silent source clips and validates trims before ren
   assert.equal(videoEncodes, 0); await assert.rejects(stat(join(dir, "invalid")), error => error.code === "ENOENT");
 });
 
+test("Text on screen exports the latest full-duration text and chosen soundtrack, and honors explicit clearing", async t => {
+  const dir = await workspace(t), sourcePath = join(dir, "source.mp4"), backgroundMusicPath = join(dir, "wall.wav");
+  source(sourcePath);
+  command(["-n", "-f", "lavfi", "-i", "sine=frequency=880:duration=1", backgroundMusicPath]);
+  const originalHash = hash(await readFile(sourcePath));
+  const common = { sourcePath, tools };
+  const draft = edit({ format: "wall_text", trimStartMs: 0, trimEndMs: 3000, originalVolume: 0 });
+  const fullDuration = { width: .8, y: .1, fontSize: 60, startMs: 0, endMs: 3000 };
+  const earlier = await finishExploreVideo({
+    ...common, workDir: join(dir, "earlier"),
+    editing: { ...draft, text: { ...fullDuration, value: "EARLIER", color: "#ff0000" } },
+  });
+  const latest = await finishExploreVideo({
+    ...common, workDir: join(dir, "latest"), backgroundMusicPath, backgroundMusicPlayback: "repeat",
+    editing: { ...draft, text: { ...fullDuration, value: "LATEST", color: "#ffffff" } },
+  });
+  const cleared = await finishExploreVideo({ ...common, workDir: join(dir, "clear"), editing: draft });
+
+  for (const result of [earlier, latest, cleared]) assert.equal(result.durationMs, 3000);
+  for (const time of [.05, 1.4, 2.7]) {
+    assert.ok(colors(frame(earlier.outputPath, time)).red > 30);
+    const updated = colors(frame(latest.outputPath, time));
+    assert.equal(updated.red, 0);
+    assert.ok(updated.white > 30);
+    assert.deepEqual(colors(frame(cleared.outputPath, time)), { red: 0, white: 0 });
+    const withMusic = samples(latest.outputPath, time);
+    assert.ok(power(withMusic, 880) > power(withMusic, 440) * 100);
+    assert.ok(power(withMusic, 880) > 1);
+    assert.ok(power(samples(cleared.outputPath, time), 880) < .001);
+  }
+  assert.equal(hash(await readFile(sourcePath)), originalHash);
+});
+
 test("paired reference audio still starts at the trimmed clip beginning and preserves the unmixed base", async t => {
   const dir = await workspace(t), sourcePath = join(dir, "source.mp4"), referenceAudioPath = join(dir, "reference.wav"); source(sourcePath);
   command(["-n", "-f", "lavfi", "-i", "sine=frequency=880:duration=1", "-f", "lavfi", "-i", "sine=frequency=1100:duration=2", "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[a]", "-map", "[a]", referenceAudioPath]);

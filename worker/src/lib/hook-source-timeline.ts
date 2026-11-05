@@ -9,7 +9,7 @@ type OpeningReceipt = { version: number; promptVersion: number; referenceId: str
   sourceFrame: { index: number; timeSeconds: number } };
 
 export function createHookSourceTimeline(receipt: OpeningReceipt, sourceDurationSeconds: number, generatedDurationSeconds: number, options: { preserveFullSource?: boolean } = {}): HookSourceTimeline {
-  if (receipt.version !== 5 || receipt.promptVersion !== 7 || receipt.sourceFrame.index !== 0 || receipt.sourceFrame.timeSeconds !== 0 ||
+  if (receipt.version !== 5 || ![7, 8, 9].includes(receipt.promptVersion) || receipt.sourceFrame.index !== 0 || receipt.sourceFrame.timeSeconds !== 0 ||
     !receipt.referenceId || !/^[a-f0-9]{64}$/.test(receipt.sourceSha256) ||
     !Number.isFinite(sourceDurationSeconds) || sourceDurationSeconds < .001 || sourceDurationSeconds > 120 ||
     !Number.isInteger(generatedDurationSeconds) || generatedDurationSeconds < 3 || generatedDurationSeconds > 15)

@@ -21,6 +21,7 @@ export async function createAndDispatchBackgroundJob(
   input: Omit<CreateBackgroundJobInput, "queueName">,
   options?: {
     beforeDispatch?: (job: BackgroundJobRecord) => Promise<void>;
+    dispatchLocal?: (job: BackgroundJobRecord) => Promise<void>;
   },
 ) {
   const result = await createBackgroundJobWithCreationResult({
@@ -46,6 +47,10 @@ export async function createAndDispatchBackgroundJob(
     return result.job;
   }
 
+  if (options?.dispatchLocal) {
+    await options.dispatchLocal(result.job);
+    return result.job;
+  }
   return dispatchBackgroundJob(result.job);
 }
 

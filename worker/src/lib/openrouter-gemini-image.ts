@@ -1,5 +1,7 @@
+import sharp from "sharp";
 import { ProviderRequestNotSubmittedError, ProviderImageResponseError } from "./generation-provider.js";
 import { startingFrameReferenceInstructions, withStartingFrameReferenceOptions, type StartingFrameReferenceOptions } from "./starting-frame-reference-options.js";
+import { reviewedStartingFrameScene } from "./starting-frame-reviewed-scene.js";
 import { AI_STUDIO_IMAGE_RATIOS, assertImageOutputAspectRatio, type AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { harmonizeStartingFrameImage, STARTING_FRAME_HARMONIZER_GRAIN } from "./image-harmonizer.js";
@@ -11,6 +13,51 @@ const MAX_RESPONSE_BYTES = 48 * 1024 * 1024;
 export type ImageStageResult = { buffer: Buffer; model: string; requestId?: string };
 export type ImageStageRunner = (stage: "scene" | "identity" | "harmonize", input: unknown, action: () => Promise<ImageStageResult>) => Promise<ImageStageResult>;
 const directStage: ImageStageRunner = (_stage, _input, action) => action();
+
+export const STAGE2_IDENTITY_FACE_CROP = {
+  leftRatio: 0.22,
+  topRatio: 0.14,
+  widthRatio: 0.56,
+  heightRatio: 0.41,
+} as const;
+
+export async function cropIdentityFaceReference(
+  image: { data: string; mimeType: string },
+): Promise<{ data: string; mimeType: string }> {
+  try {
+    const rawBase64 = image.data.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, "");
+    const inputBuffer = Buffer.from(rawBase64, "base64");
+    const meta = await sharp(inputBuffer).metadata();
+    const width = meta.width ?? 0;
+    const height = meta.height ?? 0;
+    if (width < 4 || height < 4) return image;
+    const left = Math.min(width - 1, Math.max(0, Math.round(width * STAGE2_IDENTITY_FACE_CROP.leftRatio)));
+    const top = Math.min(height - 1, Math.max(0, Math.round(height * STAGE2_IDENTITY_FACE_CROP.topRatio)));
+    const cropWidth = Math.max(1, Math.min(width - left, Math.round(width * STAGE2_IDENTITY_FACE_CROP.widthRatio)));
+    const cropHeight = Math.max(1, Math.min(height - top, Math.round(height * STAGE2_IDENTITY_FACE_CROP.heightRatio)));
+    const cropped = await sharp(inputBuffer)
+      .extract({ left, top, width: cropWidth, height: cropHeight })
+      .png()
+      .toBuffer();
+    return { data: cropped.toString("base64"), mimeType: "image/png" };
+  } catch {
+    return image;
+  }
+}
+
+export function shouldRunHookKeyframeSceneStage(input: {
+  identityReferenceStartIndex?: number;
+  startingFrameOutfitPrompt?: string;
+  referenceOptions?: StartingFrameReferenceOptions;
+}): boolean {
+  if ((input.identityReferenceStartIndex ?? 1) > 1) return true;
+  if (Boolean(input.startingFrameOutfitPrompt?.trim())) return true;
+  return (
+    input.referenceOptions?.background === "photo" ||
+    input.referenceOptions?.outfit === "photo" ||
+    input.referenceOptions?.hairstyle === "photo"
+  );
+}
 
 const STARTING_FRAME_TEXT_CLEANUP = "STARTING-FRAME TEXT CLEANUP: Return a caption-free photograph. Remove every creator caption, subtitle, hook word, emoji, watermark and graphic overlay, including letter outlines, shadows and fragments. Also remove physical logos, branding and readable text on clothing, props, screens and background surfaces. Reconstruct the actual fabric, skin or scene material beneath the lettering with matching texture and light. Keep the source room, objects, clothing, camera, crop, pose, hands and influencer identity; do not blur, crop, cover text with a box, replace the background, or add replacement lettering. If the input is already clean, keep it clean. This cleanup requirement applies to the final image as well as the scene stage.";
 
@@ -37,9 +84,38 @@ export type OpenRouterGeminiImageInput = {
   imageSize?: "2K";
 };
 
-export function buildHookKeyframeStage2Prompt(input: { instructions?: string; supportingImageCount?: number; startingFrameTextCleanup?: boolean; startingFrameOutfitPrompt?: string; referenceOptions?: StartingFrameReferenceOptions } = {}) {
+export function buildHookKeyframeStage2Prompt(input: {
+  instructions?: string;
+  supportingImageCount?: number;
+  startingFrameTextCleanup?: boolean;
+  startingFrameOutfitPrompt?: string;
+  referenceOptions?: StartingFrameReferenceOptions;
+  stage2Version?: 2;
+  referenceId?: string;
+  sourceSha256?: string;
+} = {}) {
   const instructions = input.instructions?.trim() ?? "";
   const supporting = Math.max(0, Math.floor(input.supportingImageCount ?? 0));
+  if (input.stage2Version === 2) {
+    const supportingCropLine = supporting === 0
+      ? "Image 2 is the only close-up identity face photo."
+      : supporting === 1
+        ? "Image 3 is another close-up face photo of the same person as Image 2. Use it only to confirm that person's facial features from another angle."
+        : `Images 3 through ${2 + supporting} are other close-up face photos of the same person as Image 2. Use them only to confirm that person's facial features from other angles.`;
+    return [
+      "STAGE 2 IDENTITY LOCK (FACE SWAP & CAPTION CLEANUP ONLY):",
+      "Image 1 is the scene photograph. Keep 100% of its composition, camera angle and tilt, crop, subject size and screen position, background room, visible furniture and objects, lighting, shadows, jewelry, wardrobe, and hairstyle.",
+      "POSE, HAND & EXPRESSION LOCK — Keep Image 1's exact body pose, head tilt, eye gaze direction, and mouth opening/expression. Keep any raised hand on its original screen side with the same finger positions and separation from the mouth. Do not mirror, recenter, straighten, zoom, frontalize, move the hand to the other side, or place fingers on the lips or chin if Image 1 does not show that contact. Do not copy the closed mouth or neutral expression from Image 2.",
+      reviewedStartingFrameScene(input.referenceId, input.sourceSha256, input.referenceOptions),
+      "Image 2 is the close-up influencer face reference. It decides the face.",
+      supportingCropLine,
+      "IDENTITY REPLACEMENT — Replace only the visible face in Image 1 with the person shown in Image 2. Copy the facial features that photo actually shows: facial bone structure, eye shape, eye spacing, iris color, brows, nose, natural freckles/skin detail, lip shape (adapted to Image 1's exact mouth opening), and jawline. Do not import any background, clothing, or hairstyle from the face crops.",
+      "LIGHTING HARMONY — Relight that swapped face to Image 1 so the face, neck, and hands share the same physical scene light.",
+      instructions ? `USER IMAGE INSTRUCTIONS:\n${instructions}` : "",
+      input.startingFrameOutfitPrompt ? `USER CUSTOM INSTRUCTIONS:\n${input.startingFrameOutfitPrompt}` : "",
+      input.startingFrameTextCleanup ? STARTING_FRAME_TEXT_CLEANUP : "",
+    ].filter(Boolean).join("\n\n");
+  }
   const supportingLine = supporting === 0
     ? "Image 2 is the only identity photo."
     : supporting === 1
@@ -54,7 +130,7 @@ export function buildHookKeyframeStage2Prompt(input: { instructions?: string; su
     "Relight that face to Image 1 so the face, neck, and hands share the scene light. Keep the identity from Image 2.",
     instructions ? `USER IMAGE INSTRUCTIONS:\n${instructions}` : "",
     input.referenceOptions ? input.startingFrameOutfitPrompt ? `USER CUSTOM INSTRUCTIONS:\n${input.startingFrameOutfitPrompt}` : "" : startingFrameOutfitInstructions(input.startingFrameOutfitPrompt),
-    startingFrameReferenceInstructions(input.referenceOptions),
+    startingFrameReferenceInstructions(input.referenceOptions, 1),
     input.startingFrameTextCleanup ? startingFrameCleanup(input.startingFrameOutfitPrompt, input.referenceOptions) : "",
   ].filter(Boolean).join("\n\n");
 }
@@ -164,10 +240,14 @@ export async function generateOpenRouterGeminiImage(
 }
 
 /**
- * 2-Stage Hook Keyframe Pipeline via OpenRouter:
- * Stage 1: Full Scene & Pose Base (erasing text banners, preserving room lighting and jewelry).
- * Stage 2: Biometric Face Lock (locking the exact influencer facial biometrics onto the clean scene).
- * Harmonization: CIE LAB face-region luminance match, then 1.2% Gaussian grain.
+ * Role-Aware Hook Keyframe Pipeline via OpenRouter:
+ * - When `stage2Version === 2` and no background/outfit/hairstyle photo override is selected:
+ *   Direct Stage 2 (Identity Lock + Text Cleanup directly on the source starting frame using face-cropped identity references) + Harmonize.
+ * - When `stage2Version === 2` and a background/outfit/hairstyle photo override (or custom outfit prompt) IS selected:
+ *   Stage 1 (Scene & Appearance Builder with uncropped Image 2 and face-cropped supporting photos) ->
+ *   Stage 2 (Identity Lock on Stage 1 output with all identity photos face-cropped) ->
+ *   Harmonize.
+ * - Legacy jobs (`stage2Version` absent) retain the exact historical 2-stage flow and fingerprints.
  */
 export async function generateOpenRouterGeminiHookKeyframe(params: {
   prompt: string;
@@ -180,6 +260,10 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
   startingFrameTextCleanup?: boolean;
   startingFrameOutfitPrompt?: string;
   referenceOptions?: StartingFrameReferenceOptions;
+  /** Enabled on promptVersion 8 starting-frame jobs; absent preserves historical stage fingerprints. */
+  stage2Version?: 2;
+  referenceId?: string;
+  sourceSha256?: string;
   runStage?: ImageStageRunner;
   instructions?: string;
   apiKey?: string;
@@ -190,7 +274,70 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
     throw new ProviderRequestNotSubmittedError("Choose a verified scene and influencer photo before preparing a starting frame.");
   }
   const run = params.runStage ?? directStage;
-  const scenePrompt = [withStartingFrameReferenceOptions(params.prompt, params.referenceOptions),
+
+  if (params.stage2Version === 2) {
+    const croppedIdentityImages = await Promise.all(
+      params.referenceImages.slice(identityIndex).map(img => cropIdentityFaceReference(img)),
+    );
+    const needsSceneStage = shouldRunHookKeyframeSceneStage({
+      identityReferenceStartIndex: identityIndex,
+      startingFrameOutfitPrompt: params.startingFrameOutfitPrompt,
+      referenceOptions: params.referenceOptions,
+    });
+
+    let baseSceneImage = params.referenceImages[0];
+    if (needsSceneStage) {
+      const scenePrompt = [
+        withStartingFrameReferenceOptions(params.prompt, params.referenceOptions),
+        params.referenceOptions ? "" : startingFrameOutfitInstructions(params.startingFrameOutfitPrompt),
+        params.startingFrameTextCleanup ? startingFrameCleanup(params.startingFrameOutfitPrompt, params.referenceOptions) : "",
+      ].filter(Boolean).join("\n\n");
+      const sceneReferenceImages = [
+        ...params.referenceImages.slice(0, identityIndex + 1),
+        ...croppedIdentityImages.slice(1),
+      ];
+      const sceneInput = {
+        prompt: scenePrompt,
+        ...(params.imageSize ? { imageSize: params.imageSize } : {}),
+        aspectRatio: params.aspectRatio,
+        referenceImages: sceneReferenceImages,
+      };
+      const stage1 = await run("scene", sceneInput, () =>
+        generateOpenRouterGeminiImage(sceneInput, { apiKey: params.apiKey, fetchImpl: params.fetchImpl }),
+      );
+      if (params.imageSize) await assertImageOutputAspectRatio(stage1.buffer, params.aspectRatio);
+      baseSceneImage = { data: stage1.buffer.toString("base64"), mimeType: "image/png" };
+    }
+
+    const stage2Input = {
+      ...(params.imageSize ? { imageSize: params.imageSize } : {}),
+      prompt: buildHookKeyframeStage2Prompt({
+        instructions: params.instructions,
+        supportingImageCount: params.referenceImages.length - identityIndex - 1,
+        startingFrameTextCleanup: params.startingFrameTextCleanup,
+        startingFrameOutfitPrompt: params.startingFrameOutfitPrompt,
+        referenceOptions: params.referenceOptions,
+        stage2Version: 2,
+        referenceId: params.referenceId,
+        sourceSha256: params.sourceSha256,
+      }),
+      aspectRatio: params.aspectRatio,
+      referenceImages: [
+        baseSceneImage,
+        ...croppedIdentityImages,
+      ],
+    };
+    const stage2 = await run("identity", stage2Input, () =>
+      generateOpenRouterGeminiImage(stage2Input, { apiKey: params.apiKey, fetchImpl: params.fetchImpl }),
+    );
+    if (params.imageSize) await assertImageOutputAspectRatio(stage2.buffer, params.aspectRatio);
+    return run("harmonize", { image: stage2.buffer.toString("base64"), grain: STARTING_FRAME_HARMONIZER_GRAIN }, async () => ({
+      ...stage2,
+      buffer: (await harmonizeStartingFrameImage(stage2.buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN })).buffer,
+    }));
+  }
+
+  const scenePrompt = [withStartingFrameReferenceOptions(params.prompt, params.referenceOptions, 1),
     params.referenceOptions ? "" : startingFrameOutfitInstructions(params.startingFrameOutfitPrompt),
     params.startingFrameTextCleanup ? startingFrameCleanup(params.startingFrameOutfitPrompt, params.referenceOptions) : ""].filter(Boolean).join("\n\n");
   const sceneInput = { prompt: scenePrompt,
@@ -225,6 +372,8 @@ export async function generateOpenRouterGeminiHookKeyframe(params: {
  */
 export async function performOpenRouterFaceSwap(params: {
   runStage?: ImageStageRunner;
+  /** Opt in for new slideshow jobs; preserve historical paid stage fingerprints. */
+  identityPromptVersion?: 2;
   baseImage: { data: string; mimeType: string };
   influencerImage: { data: string; mimeType: string };
   supportingIdentityImages?: { data: string; mimeType: string }[];
@@ -235,7 +384,8 @@ export async function performOpenRouterFaceSwap(params: {
 }): Promise<{ buffer: Buffer; model: string; requestId?: string }> {
   const run = params.runStage ?? directStage;
   const stage2Input = {
-    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions }) + (params.supportingIdentityImages?.length ? "\nImages 3 onward are supporting photographs of the SAME person as Image 2. Use them only to clarify facial identity. Image 2 remains primary. Preserve Image 1 scene, clothing, composition and pose; do not copy supporting-photo backgrounds, outfits or poses." : ""),
+    prompt: buildHookKeyframeStage2Prompt({ instructions: params.instructions,
+      ...(params.identityPromptVersion === 2 ? { supportingImageCount: params.supportingIdentityImages?.length } : {}) }) + (params.supportingIdentityImages?.length ? "\nImages 3 onward are supporting photographs of the SAME person as Image 2. Use them only to clarify facial identity. Image 2 remains primary. Preserve Image 1 scene, clothing, composition and pose; do not copy supporting-photo backgrounds, outfits or poses." : ""),
     aspectRatio: params.aspectRatio,
     referenceImages: [params.baseImage, params.influencerImage, ...(params.supportingIdentityImages ?? [])],
   };

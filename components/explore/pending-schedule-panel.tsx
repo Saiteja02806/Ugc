@@ -28,10 +28,11 @@ export function useBackgroundScheduleAvailability(owner: string | null, enabled:
 }
 
 /** Confirmation saves a durable render/schedule snapshot. Polling never POSTs. */
-export function PendingExploreSchedulePanel({ owner, scope, composition, draft, onChange, timezone, active, onBackToEdit, onScheduled }: {
+export function PendingExploreSchedulePanel({ owner, scope, composition, draft, onChange, timezone, active, onBackToEdit, onScheduled, actionsTarget }: {
   owner: string; scope: string; composition: ExploreScheduleComposition; draft: WorkflowScheduleDraft; onChange: (update: WorkflowScheduleDraftUpdate) => void;
   timezone: string; active: boolean; onBackToEdit?: () => void;
   onScheduled?: () => void;
+  actionsTarget?: HTMLElement | null;
 }) {
   const queryClient = useQueryClient();
   const storageKey = `ugc-explore:background-schedule:v1:${encodeURIComponent(owner)}:${encodeURIComponent(scope)}`;
@@ -193,5 +194,5 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       <div className={styles.reviewAction}><div className={`${styles.actionHelp} ${styles.confirmation}`}><p role="status">{busy ? progress : actionHelp}</p>{confirmed ? <Link href="/scheduling" className={`${styles.schedulingLink} ${styles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link> : null}</div>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
   </div>;
-  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(current => selectWorkflowAccount(current, platform, id))} />} /></div>;
+  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} footerTarget={active ? actionsTarget : null} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccountIds(draft)} onSelect={(platform,id) => onChange(current => selectWorkflowAccount(current, platform, id))} />} /></div>;
 }

@@ -24,22 +24,22 @@ function copyFileSafe(src, dest) {
 }
 
 const MILESTONES = [
-  { frame: 48, name: "vm-01-act1-pain-pills.png" },
-  { frame: 148, name: "vm-02-act1-vidmake-reveal.png" },
-  { frame: 232, name: "vm-03-act2-url-typing-macro.png" },
-  { frame: 320, name: "vm-04-act2-brand-avatars-fan.png" },
-  { frame: 465, name: "vm-05-act3-character-selector.png" },
-  { frame: 605, name: "vm-06-act3-4k-creator-finale.png" },
-  { frame: 720, name: "vm-07-act4a-hook-remix-split.png" },
-  { frame: 840, name: "vm-08-act4b-talking-head-timeline.png" },
-  { frame: 945, name: "vm-09-act4c-phone-reel-eject.png" },
-  { frame: 1035, name: "vm-10-act4d-carousel-6slides.png" },
-  { frame: 1170, name: "vm-11-act5-autopilot-schedule.png" },
-  { frame: 1400, name: "vm-12-act6-vidmake-cta-finale.png" },
+  { frame: 30, name: "vm4-01-logo-ignition.png" },
+  { frame: 80, name: "vm4-02-vidmake-meaning.png" },
+  { frame: 190, name: "vm4-03-not-with-vidmake.png" },
+  { frame: 262, name: "vm4-04-hook-library-4x2.png" },
+  { frame: 320, name: "vm4-05-hook-isolate-recreate.png" },
+  { frame: 390, name: "vm4-06-hook-recreated.png" },
+  { frame: 466, name: "vm4-07-th-library-4x2.png" },
+  { frame: 514, name: "vm4-08-th-isolate-recreate.png" },
+  { frame: 575, name: "vm4-09-th-recreated-demo.png" },
+  { frame: 690, name: "vm4-10-slideshow-isolate-recreate.png" },
+  { frame: 750, name: "vm4-11-slideshow-6slides.png" },
+  { frame: 870, name: "vm4-12-vidmake-finale.png" },
 ];
 
 async function main() {
-  console.log("=== Step 1: Bundling VidmakeLaunchPromo (1440 frames, 48.00s @ 30fps) ===");
+  console.log("=== Step 1: Bundling VidmakeLaunchPromo (900 frames, 30.00s @ 30fps) ===");
   const serveUrl = await bundle({
     entryPoint: path.resolve(root, "remotion/vidmake-launch-index.tsx"),
     publicDir: path.resolve(root, "remotion/public"),
@@ -86,13 +86,13 @@ async function main() {
       top: Math.floor(i / cols) * tileH,
     });
   }
-  const sheetPath = path.join(outDir, "vidmake-launch-contact-sheet.png");
+  const sheetPath = path.join(outDir, "vidmake-launch-v4-sheet.png");
   await sharp({
     create: {
       width: tileW * cols,
       height: tileH * rows,
       channels: 4,
-      background: { r: 12, g: 13, b: 16, alpha: 1 },
+      background: { r: 3, g: 4, b: 10, alpha: 1 },
     },
   })
     .composite(composites)
@@ -103,7 +103,7 @@ async function main() {
   const brainDir =
     "C:/Users/chund/.gemini/antigravity/brain/387564ce-d450-414c-be0e-ee4ca38a7c80";
   if (fs.existsSync(brainDir)) {
-    copyFileSafe(sheetPath, path.join(brainDir, "vidmake-launch-contact-sheet.png"));
+    copyFileSafe(sheetPath, path.join(brainDir, "vidmake-launch-v4-sheet.png"));
     for (const m of MILESTONES) {
       copyFileSafe(path.join(outDir, m.name), path.join(brainDir, m.name));
     }
@@ -114,8 +114,8 @@ async function main() {
     return;
   }
 
-  console.log("\n=== Step 4: Rendering Full 48s MP4 Video ===");
-  const mp4Path = path.join(outDir, "vidmake-launch-v1.mp4");
+  console.log("\n=== Step 4: Rendering Full 30s MP4 Video (Hand-Drawn Storyboard v4) ===");
+  const mp4Path = path.join(outDir, "vidmake-launch-v4.mp4");
   await renderMedia({
     composition,
     serveUrl,
@@ -123,21 +123,24 @@ async function main() {
     outputLocation: mp4Path,
     pixelFormat: "yuv420p",
     crf: 18,
-    muted: true,
+    muted: false,
     concurrency: 4,
     port: 3496,
     timeoutInMilliseconds: 300000,
     onProgress: ({ progress }) => {
       const pct = Math.round(progress * 100);
       if (pct % 10 === 0) {
-        process.stdout.write(`\rRendering Vidmake Launch MP4: ${pct}%`);
+        process.stdout.write(`\rRendering Vidmake Launch v4 MP4: ${pct}%`);
       }
     },
   });
   console.log("\nSaved MP4 ->", mp4Path);
   if (fs.existsSync(brainDir)) {
-    copyFileSafe(mp4Path, path.join(brainDir, "vidmake-launch-v1.mp4"));
+    copyFileSafe(mp4Path, path.join(brainDir, "vidmake-launch-v4.mp4"));
   }
+  const publicCoverPath = path.resolve(root, "public/explore/covers/vidmake-launch.mp4");
+  copyFileSafe(mp4Path, publicCoverPath);
+  console.log("Updated public cover ->", publicCoverPath);
 }
 
 main().catch((err) => {

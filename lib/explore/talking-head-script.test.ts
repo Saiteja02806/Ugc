@@ -10,8 +10,8 @@ import { createWorkflowSession, parseWorkflowSession } from "./workflow-session.
 import { workflowGenerationPrompt } from "./workflow-generation-client.ts";
 import { getTalkingHeadScript } from "./talking-head-script-store.ts";
 
-test("all 25 transcripts bind to current full originals; hooks exclude reviewed demo openings", () => {
-  assert.equal(transcripts.items.length, 25);
+test("all 29 transcripts bind to their exact source versions; hooks exclude reviewed demo openings", () => {
+  assert.equal(transcripts.items.length, 29);
   for (const row of transcripts.items) {
     assert.equal(manifest.items.find(source => source.id === row.referenceId)?.sourceSha256, row.sourceSha256);
     assert.ok(row.fullText.trim()); assert.ok(row.hookText.trim());

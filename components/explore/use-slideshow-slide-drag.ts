@@ -41,11 +41,12 @@ export function useSlideshowSlideDrag({ ids, disabled, onMove }: {
     const bounds = rail.getBoundingClientRect();
     if (y < bounds.top - 24 || y > bounds.bottom + 24 || x < bounds.left - 24 || x > bounds.right + 24) return null;
     const cards = [...rail.querySelectorAll<HTMLElement>("[data-slideshow-slide]")];
+    const vertical = getComputedStyle(rail).flexDirection === "column";
     let nearest: number | null = null, distance = Infinity;
     for (const [index, card] of cards.entries()) {
       const rect = card.getBoundingClientRect();
-      if (rect.right <= bounds.left || rect.left >= bounds.right) continue;
-      const nextDistance = Math.abs(x - (rect.left + rect.width / 2));
+      if (vertical ? rect.bottom <= bounds.top || rect.top >= bounds.bottom : rect.right <= bounds.left || rect.left >= bounds.right) continue;
+      const nextDistance = vertical ? Math.abs(y - (rect.top + rect.height / 2)) : Math.abs(x - (rect.left + rect.width / 2));
       if (nextDistance < distance) { nearest = index; distance = nextDistance; }
     }
     return nearest;
@@ -60,10 +61,12 @@ export function useSlideshowSlideDrag({ ids, disabled, onMove }: {
       if (!current?.active || !rail) return;
       const bounds = rail.getBoundingClientRect();
       if (current.y >= bounds.top - 24 && current.y <= bounds.bottom + 24 && current.x >= bounds.left - 24 && current.x <= bounds.right + 24) {
-        const before = rail.scrollLeft;
-        const direction = current.x < bounds.left + 28 ? -1 : current.x > bounds.right - 28 ? 1 : 0;
-        if (direction) rail.scrollLeft += direction * 12;
-        if (rail.scrollLeft !== before) {
+        const vertical = getComputedStyle(rail).flexDirection === "column";
+        const before = vertical ? rail.scrollTop : rail.scrollLeft;
+        const position = vertical ? current.y : current.x;
+        const direction = position < (vertical ? bounds.top : bounds.left) + 28 ? -1 : position > (vertical ? bounds.bottom : bounds.right) - 28 ? 1 : 0;
+        if (direction) { if (vertical) rail.scrollTop += direction * 12; else rail.scrollLeft += direction * 12; }
+        if ((vertical ? rail.scrollTop : rail.scrollLeft) !== before) {
           current.target = findTarget(current.x, current.y);
           setDrag(previous => previous?.target === current.target ? previous : { id: current.id, target: current.target });
         }
@@ -109,7 +112,7 @@ export function useSlideshowSlideDrag({ ids, disabled, onMove }: {
         if (event.key === "Escape") { clear(); return; }
         if (disabled || session.current) return;
         const from = ids.indexOf(id);
-        const to = event.key === "ArrowLeft" ? from - 1 : event.key === "ArrowRight" ? from + 1 : event.key === "Home" ? 0 : event.key === "End" ? ids.length - 1 : null;
+        const to = event.key === "ArrowLeft" || event.key === "ArrowUp" ? from - 1 : event.key === "ArrowRight" || event.key === "ArrowDown" ? from + 1 : event.key === "Home" ? 0 : event.key === "End" ? ids.length - 1 : null;
         if (to === null) return;
         event.preventDefault();
         if (to >= 0 && to < ids.length && to !== from) { onMove(id, ids[to]); setAnnouncement(`Slide ${from + 1} moved to position ${to + 1}.`); }

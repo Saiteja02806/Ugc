@@ -251,6 +251,46 @@
       "height": 1280,
       "frameIndex": 0,
       "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-discovery-hook-v2",
+      "sourceSha256": "dbabaee92552950f16dc3af7a78f74ad115db5c1581c6c06c31c11ba638d57e4",
+      "frameSha256": "3b089c6e1d3116809101ba7c41b7e56af700e0aeb466152fa07a45bbd329e31d",
+      "path": "/explore/talking-head-frames/v1/talking-discovery-hook-v2.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-bittenbyaturtle-hook-v2",
+      "sourceSha256": "4075ec2ecb124995718a68f27ece439a31279d2e0d269f04cb45cb9b630fa6cc",
+      "frameSha256": "d13201a96c03d789fd20b9076734bf6a66967dd8b30da835b1ce47be58f0d0a3",
+      "path": "/explore/talking-head-frames/v1/talking-bittenbyaturtle-hook-v2.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-carla-eatsss-hook-v2",
+      "sourceSha256": "e5f0a6eca640e5dcd09f4ee458f9761f02a9b00dead48cede7c9eb019b32b05e",
+      "frameSha256": "7a66fdf66fc740a78fe0576d9bb73fb3105e5e3494839d3eb076052a6be07fb1",
+      "path": "/explore/talking-head-frames/v1/talking-carla-eatsss-hook-v2.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-taliameals-hook-v2",
+      "sourceSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "frameSha256": "fb2af3740182c7a11d304511bd18a834d4b9e42766676e3d173963192da37672",
+      "path": "/explore/talking-head-frames/v1/talking-taliameals-hook-v2.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
     }
   ]
 }

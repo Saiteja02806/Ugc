@@ -14,7 +14,7 @@ process.env.GCP_STORAGE_PUBLIC_BASE_URL ??= 'https://hook-release-fixture.exampl
 test('every active Hook resolves its reviewed prompt and matching Remix source', () => {
   const hooks = getRecreateReferences().filter(reference => reference.format === 'hook' && !reference.archived);
   assert.equal(hooks.length, 106);
-  assert.equal(Object.keys(referenceVideoPrompts).length, 110, "historical prompt identities remain available");
+  assert.equal(Object.keys(referenceVideoPrompts).length, 111, "historical prompt identities remain available");
   let ready = 0;
   for (const hook of hooks) {
     const review = referenceVideoPrompts[hook.id];

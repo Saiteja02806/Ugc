@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { sendLocalAppWorker } from "../jobs/local-starting-frame";
+import { localStartingFrameConfig } from "../../worker/src/lib/local-starting-frame.ts";
 
 import {
   createSocialPublishSchedule,
@@ -218,6 +220,7 @@ export async function createUserSchedule(params: {
   input: ScheduleCreateInput;
   userId: string;
 }) {
+  await requireLocalScheduleWorker(params.userId);
   // Only the dedicated Explore reservation API may bind a schedule to an
   // immutable finishing receipt. Generic schedule metadata cannot opt in.
   if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish") || key.startsWith("scheduleCreate") || key.startsWith("automationExecution"))) {
@@ -503,6 +506,7 @@ export async function scheduleRenderedPost(params: {
   postId: string;
   userId: string;
 }) {
+  await requireLocalScheduleWorker(params.userId);
   assertUuid(params.postId, "Schedule ID is invalid.");
 
   let existing = await getScheduledPostForUser({
@@ -935,6 +939,7 @@ export async function retryUserScheduleTargetPublishing(params: {
   targetId: string;
   userId: string;
 }) {
+  await requireLocalScheduleWorker(params.userId);
   assertUuid(params.postId, "Schedule ID is invalid.");
   assertUuid(params.targetId, "Platform target ID is invalid.");
 
@@ -1041,6 +1046,7 @@ export async function updateUserSchedule(params: {
   postId: string;
   userId: string;
 }) {
+  await requireLocalScheduleWorker(params.userId);
   assertUuid(params.postId, "Schedule ID is invalid.");
 
   const existing = await getScheduledPostForUser({
@@ -1757,6 +1763,17 @@ export async function cancelUserSchedule(params: {
     postId: params.postId,
     userId: params.userId,
   });
+}
+
+async function requireLocalScheduleWorker(userId: string) {
+  if (process.env.LOCAL_APP_WORKER !== "true") return;
+  try {
+    const config = localStartingFrameConfig(process.env);
+    if (!config?.publish || config.ownerId !== userId) throw new Error("Local publishing is disabled.");
+    await sendLocalAppWorker();
+  } catch {
+    throw new SchedulingRequestError("Local scheduling requires the tester's local worker with publishing enabled.", 503);
+  }
 }
 
 function assertScheduleTargetSelection(input: {

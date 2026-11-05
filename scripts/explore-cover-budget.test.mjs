@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import path from "node:path";
 
-test("live Explore covers use small fingerprinted fast-start 960px derivatives", () => {
+test("live Explore covers use small fingerprinted fast-start 768px derivatives", () => {
   const sources = ["lib/explore/workflows.ts", "components/explore/ai-character-card.tsx"].map(file => readFileSync(file, "utf8")).join("\n");
   const covers = [...new Set([...sources.matchAll(/"(\/explore\/covers\/[^"\n]+\.mp4)"/g)].map(match => match[1]))];
   assert.equal(covers.length, 5);
@@ -18,8 +18,8 @@ test("live Explore covers use small fingerprinted fast-start 960px derivatives",
     const moov = bytes.indexOf(Buffer.from("moov")), mdat = bytes.indexOf(Buffer.from("mdat"));
     assert(moov > 0 && moov < mdat, "Metadata must precede video bytes for early playback");
     const tkhd = bytes.indexOf(Buffer.from("tkhd")), tkhdStart = tkhd - 4, tkhdSize = bytes.readUInt32BE(tkhdStart);
-    assert.equal(bytes.readUInt32BE(tkhdStart + tkhdSize - 8) / 65536, 960);
-    assert.equal(bytes.readUInt32BE(tkhdStart + tkhdSize - 4) / 65536, 540);
+    assert.equal(bytes.readUInt32BE(tkhdStart + tkhdSize - 8) / 65536, 768);
+    assert.equal(bytes.readUInt32BE(tkhdStart + tkhdSize - 4) / 65536, 432);
   }
   assert(total < 4000000, "Combined visible preview files must stay below 4 MB");
 });

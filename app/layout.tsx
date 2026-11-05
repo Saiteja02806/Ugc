@@ -20,6 +20,7 @@ const brandSerif = localFont({
   src: "../public/subtitle-fonts/serif/InstrumentSerif-Regular.ttf",
   display: "swap",
   variable: "--font-brand-serif",
+  preload: false,
   weight: "400",
 });
 

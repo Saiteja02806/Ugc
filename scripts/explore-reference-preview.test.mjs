@@ -29,6 +29,7 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
     play() { this.plays++; return Promise.resolve(); }, pause() { this.pauses++; } };
   const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
   const imports = {
+    "./use-starting-frame-preload": { useStartingFramePreload: () => () => {} },
     "react/jsx-runtime": { jsx: element, jsxs: element },
     react: { useRef: () => ({ current: video }), useState(initial) {
       const index = cursor++;

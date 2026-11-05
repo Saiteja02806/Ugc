@@ -17,7 +17,8 @@
 .textFooter p, .imageActions p, .emptyInspector p { color: var(--muted); font-size: 12px; line-height: 20px; }
 .textFooter button { padding-inline: 0; font-size: 12px; }
 .imageActions, .emptyInspector { display: grid; gap: 12px; padding-bottom: 12px; }
-.editorPreview { display: flex; min-width: 0; min-height: 100%; flex-direction: column; gap: 16px; }
+.editorPreview { display: grid; grid-template-columns: minmax(0, 1fr) 136px; grid-template-rows: auto auto minmax(0, 1fr); min-width: 0; min-height: 100%; gap: 12px 20px; }
+.editorPreview > .previewHeading { grid-column: 1 / -1; }
 .previewHeading button { flex: none; min-height: 36px; font-size: 12px; }
 .headerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .moreActions { position: relative; }
@@ -29,29 +30,29 @@
 .moreActions > div { position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); display: grid; gap: 4px; min-width: 168px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px #0003; }
 .moreActions > div button { width: 100%; justify-content: flex-start; border: 0; background: transparent; }
 .saveFeedback { display: grid; gap: 6px; grid-column: 1 / -1; }
-.previewCanvas { display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.previewCanvas { grid-column: 1; grid-row: 3; display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .previewNavigation { display: flex; align-items: center; gap: 12px; }
 .previewNavigation button { min-height: 32px; font-size: 12px; }
 .previewNavigation > span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.sequence { display: grid; flex: none; min-width: 0; gap: 10px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
+.sequence { grid-column: 2; grid-row: 3; display: grid; align-self: start; align-content: start; min-width: 0; gap: 8px; padding-left: 12px; border-left: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .sequenceHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .sequenceHeading > div { display: flex; align-items: center; gap: 8px; }
 .sequenceHeading h3 { font-size: 13px; font-weight: 600; }
 .sequenceHeading span { color: var(--muted); font-size: 11px; }
 .sequenceHeading button { min-height: 32px; padding-inline: 10px; font-size: 12px; }
 .sequence > p { color: var(--muted); font-size: 12px; line-height: 20px; }
-.filmstrip { display: flex; min-width: 0; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 20%, transparent) transparent; scroll-snap-type: x proximity; }
+.filmstrip { display: flex; flex-direction: column; align-items: center; min-width: 0; max-height: clamp(144px, 28dvh, 280px); gap: 10px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 20%, transparent) transparent; scroll-snap-type: y proximity; }
 .filmstrip[data-reordering] { scroll-snap-type: none; user-select: none; }
-.thumbnail { position: relative; width: 72px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); scroll-snap-align: start; }
+.thumbnail { position: relative; width: 72px; height: 72px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); scroll-snap-align: start; }
 .thumbnail[data-selected] { border-color: var(--foreground); box-shadow: 0 0 0 1px var(--foreground); }
 .thumbnail[data-dragging] { opacity: .45; }
-.thumbnail[data-drop]::after { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--foreground); content: ""; pointer-events: none; }
-.thumbnail[data-drop="before"]::after { left: -7px; }
-.thumbnail[data-drop="after"]::after { right: -7px; }
-.thumbnailPreview { display: block; width: 100%; overflow: hidden; border-radius: 6px; background: transparent; cursor: pointer; }
-.thumbnail img { display: block; width: 100%; height: 62px; object-fit: contain; }
-.thumbnailPreview > span:last-child { display: grid; height: 28px; place-items: center; font-size: 11px; color: var(--muted); }
-.thumbnail .unavailable { display: grid; height: 62px; place-items: center; font-size: 9px; color: var(--destructive); }
+.thumbnail[data-drop]::after { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--foreground); content: ""; pointer-events: none; }
+.thumbnail[data-drop="before"]::after { top: -7px; }
+.thumbnail[data-drop="after"]::after { bottom: -7px; }
+.thumbnailPreview { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; background: transparent; cursor: pointer; }
+.thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.thumbnailPreview > span:last-child { position: absolute; bottom: 1px; right: 1px; display: grid; min-width: 22px; height: 20px; border-radius: 4px; background: var(--background); place-items: center; font-size: 11px; color: var(--muted); }
+.thumbnail .unavailable { display: grid; height: 100%; place-items: center; font-size: 9px; color: var(--destructive); }
 .thumbnailPreview:focus-visible, .dragHandle:focus-visible, .deleteSlide:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .dragHandle, .deleteSlide { position: absolute; z-index: 1; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 5px; color: var(--foreground); }
 .dragHandle { bottom: 1px; left: 1px; color: var(--muted); cursor: grab; touch-action: none; user-select: none; }
@@ -85,8 +86,8 @@
   .field > select, .field > input { height: 44px; }
   .field > textarea { font-size: 16px; }
   .preview > img:first-child { max-height: 48dvh; }
-  .thumbnail { width: 72px; }
-  .thumbnail img, .thumbnail .unavailable { height: 72px; }
+  .thumbnail { width: 72px; height: 72px; }
+  .thumbnail img, .thumbnail .unavailable { height: 100%; }
   .previewNavigation button, .sequenceHeading button, .arrangement button { min-height: 44px; }
   .previewHeading { flex-wrap: wrap; }
   .headerActions { justify-content: flex-start; }
@@ -95,22 +96,24 @@
 }
 @media (max-height: 520px) { .preview > img:first-child { max-height: 65dvh; } }
 @container workflow-video (max-width: 1023px) {
-  .editorPreview { display: grid; grid-template-columns: minmax(96px, .8fr) minmax(0, 1fr); gap: 8px 12px; min-height: 0; }
+  .editorPreview { display: grid; grid-template-columns: minmax(0, 1fr) 116px; gap: 8px 12px; min-height: 0; }
   .previewHeading { grid-column: 1 / -1; gap: 8px; }
   .previewHeading h2 { font-size: 15px; line-height: 22px; }
   .previewHeading p, .previewNavigation { display: none; }
   .previewHeading button { min-height: 36px; padding-inline: 8px; }
   .previewCanvas { grid-column: 1; grid-row: 3; }
   .preview > img:first-child { max-height: 24dvh; }
-  .sequence { grid-column: 2; grid-row: 3; align-content: center; padding: 0; border: 0; gap: 6px; }
+  .sequence { grid-column: 2; grid-row: 3; align-content: start; padding: 0; border: 0; gap: 6px; }
   .sequenceHeading { gap: 4px; }
   .sequenceHeading > div { flex-wrap: wrap; gap: 4px; }
   .sequenceHeading button, .arrangement button { min-height: 36px; padding-inline: 6px; font-size: 11px; }
   .sequenceHeading h3 { font-size: 12px; }
-  .filmstrip { gap: 6px; padding-bottom: 2px; }
-  .thumbnail { width: 64px; }
-  .thumbnail img, .thumbnail .unavailable { height: 64px; }
+  .filmstrip { max-height: clamp(136px, 24dvh, 224px); gap: 6px; padding-bottom: 2px; }
+  .thumbnail { width: 64px; height: 64px; }
+  .thumbnail img, .thumbnail .unavailable { height: 100%; }
   .arrangement { gap: 2px; }
   .arrangement p { display: none; }
 }
-@media (pointer: coarse) { .dragHandle, .deleteSlide { width: 30px; height: 30px; } .thumbnailPreview > span:last-child { height: 32px; } }
+@media (pointer: coarse) { .dragHandle, .deleteSlide { width: 30px; height: 30px; } .thumbnailPreview > span:last-child { height: 22px; } }
+
+.sequence > button { min-height: 28px; height: 28px; padding-block: 2px; }

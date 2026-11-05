@@ -1810,6 +1810,7 @@ export type BackgroundJobsDatabase = {
           published_at: string | null;
           scheduled_for: string;
           scheduled_post_id: string;
+          scheduler_schedule_name: string | null;
           settings: Json;
           social_connection_id: string;
           status: ScheduledPostTargetStatus;

@@ -11,14 +11,14 @@ export type ExploreWorkflow = {
 export const EXPLORE_WORKFLOWS: readonly ExploreWorkflow[] = [
   {
     id: "talking-head-demo", title: "Talking Head + Demo", description: "Create a talking-head video and add your demo.",
-    destination: "/explore/create-hook", status: "available", coverVideo: "/explore/covers/talking-head-demo-promo-a4aa6e943cf2.mp4", coverPoster: "/explore/covers/talking-head-demo-promo-opening-7c934e951780.webp",
+    destination: "/explore/create-hook", status: "available", coverVideo: "/explore/covers/talking-head-demo-promo-a4aa6e943cf2.mp4", coverPoster: "/explore/covers/talking-head-demo-promo-opening-c51c9e41d21c.webp",
   },
   {
     id: "hook-video", title: "Hook video", description: "Choose a hook reference and create your own video.",
-    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-promo-31c869823edc.mp4", coverPoster: "/explore/covers/hook-video-promo-opening-5532968569bd.webp",
+    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-promo-31c869823edc.mp4", coverPoster: "/explore/covers/hook-video-promo-opening-5ac8b093365d.webp",
   },
-  { id: "wall-of-text", title: "Text on screen", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-promo-e3d92b47d085.mp4", coverPoster: "/explore/covers/wall-of-text-promo-opening-dd074765077d.webp" },
-  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-f0669968ed21.mp4", coverPoster: "/explore/covers/slideshow-promo-opening-200b809f68f2.webp" },
+  { id: "wall-of-text", title: "Text on screen", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-promo-e3d92b47d085.mp4", coverPoster: "/explore/covers/wall-of-text-promo-opening-fe608c4b40a0.webp" },
+  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-f0669968ed21.mp4", coverPoster: "/explore/covers/slideshow-promo-opening-7abfbba992d1.webp" },
 ];
 
 // Creator Shows App on Phone remains hidden, including in development review.

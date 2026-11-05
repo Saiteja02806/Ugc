@@ -49,10 +49,11 @@ export async function resolveWorkflowGenerationReceipt(ownerId: string, requestK
   return receipt;
 }
 
-/** The fingerprint excludes random output IDs, but includes every validated input and its cost. */
+/** User intent/cost identity. Derived ownership evidence is persisted, but must
+ * not invalidate exact replay of batches accepted before it was introduced. */
 export function fingerprintWorkflowGenerationBatch(batch: ValidatedWorkflowVideoBatch, kind: WorkflowKind) {
   return createHash("sha256").update(JSON.stringify({ kind, ownerId: batch.userId, amount: batch.amountPerVideo,
-    inputs: batch.inputs.map((input) => Object.fromEntries(Object.entries(input).filter(([key]) => key !== "videoId"))) })).digest("hex");
+    inputs: batch.inputs.map((input) => Object.fromEntries(Object.entries(input).filter(([key]) => key !== "videoId" && key !== "ownedImageReferences"))) })).digest("hex");
 }
 
 export async function createWorkflowGenerationBatch(batch: ValidatedWorkflowVideoBatch, kind: WorkflowKind) {

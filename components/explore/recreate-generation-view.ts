@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { AIStudioImageResult, AIStudioVideoResult } from "@/lib/ai-studio/media-results";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
 
 /** Optional presentation for the existing generators inside Recreate. */
 export type RecreateGenerationView = {
@@ -24,10 +25,10 @@ export type RecreateGenerationView = {
   };
   referenceTitle?: string;
   styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null; generationPrompt?: string };
-  startingFrame?: HookStartingFrameSelection;
-  startingFramePreparation?: { referenceId: string; onOpen: () => void };
+  startingFrame?: StartingFrameSelection;
+  startingFramePreparation?: { referenceId: string; instructions?: string; onOpen: () => void; onUseInstructionsAlone?: () => boolean };
   onClearStartingFrame?: () => void;
-  onSelectStartingFrame?: (frame: HookStartingFrameSelection) => void;
+  onSelectStartingFrame?: (frame: StartingFrameSelection) => boolean | void;
   previewStartingFrames?: HookStartingFrameSelection[];
   previewFaceReferenceImages?: import("@/lib/media/types").MediaAsset[];
   onClearReference?: () => void;
@@ -39,6 +40,7 @@ export type RecreateGenerationView = {
     resultsTarget: HTMLElement | null;
     onGenerationStart: () => void;
     onGenerationRestore?: () => void;
+    onIdleEmpty?: () => void;
     onBusyChange?: (busy: boolean) => void;
     onSelectVideo?: (result: AIStudioVideoResult) => void;
     onGeneratedVideo?: (result: AIStudioVideoResult) => void;

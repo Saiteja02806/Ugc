@@ -1,0 +1,43 @@
+# Talking Head, Demo, and video wiring audit — 5 November 2026
+
+The audit covers Talking Head Create and Script & Remix, its handoff to Demo, Hook Video and Text on screen Create, and the shared video generation panel. Demo includes clip selection, finishing, and the handoff of the finished asset. Publication and live generation were outside local acceptance. No build, deployment, paid call, or production change occurred.
+
+## Findings and changes
+
+- Shared video admission previously accepted some trusted public image URLs without checking their owner. A regression test reproduced a foreign Omni image reaching admission with HTTP 202 before the fix. New jobs validate each selected image and save its ordered owned asset ID and canonical URL. The worker checks the same records before a new provider submission and signs private URLs at execution. Accepted provider tasks recover by their existing IDs.
+- Talking Head image-plus-voice and saved influencer inputs previously required file-size metadata. Legacy generated records can lack this field. Admission now checks the actual bytes under the selected route's limit when the size is unknown. The owner, ready status, deletion, MIME and size checks still apply. The app also verifies the approved image's URL against its owned record.
+- The ownership lookup's former six-image cap would reject valid Seedance batches. Its sole caller validates the selected model's limit first. The database helper now accepts up to 30, with the same owner and deletion filters. The full Seedance selection reaches the ReAPI request in order.
+- The workflow admission fingerprint still binds the chosen URLs, settings, and cost. It excludes the new server-derived ownership evidence to preserve exact replays of earlier accepted batches. New worker provider fingerprints include the ownership evidence when present. Earlier worker jobs keep their previous fingerprint shape.
+- A stale provider test expected Kling 3 to be rejected by ReAPI routing. The existing router and adapter support it. The corrected test checks both Kling routes and retains the earlier-provider and uncertain-submission assertions. Existing client/API fixtures now use UUID media asset IDs, matching saved records.
+- No Demo runtime gap was reproduced. The added integration exercises the actual finishing client, API, service, worker, and FFmpeg output. The fixture uses owned in-memory records and synthetic clips. Selecting another demo changes the rendered pixels, removing demo-only audio changes the mix, and the whole-video background track spans both clips. The original input files keep their hashes.
+
+| Boundary | Status and evidence |
+|---|---|
+| Talking Head source transcript, script, and Generate prompt | VERIFIED locally. UI and API tests cover source/hash checks, user review, separate full transcript, exact hook text plus saved business profile in the Terra medium v2 request, edit protection, and read-only receipt recovery. Model responses are synthetic in this audit. |
+| Approved frame and raw photo selection | VERIFIED locally. Existing carryover tests cover ordered restoration and clearing. Literal first-frame requests reject unsupported extra photos before admission. The separately approved image-plus-voice mode keeps the frame as a visual reference, followed by selected face photos and a distinct audio URL. |
+| Reviewed Talking Head script to ReAPI | VERIFIED locally. Actual workflow client, start handler, common API, serialized job, worker, and adapter put the exact reviewed words into the final request once and preserve the first-frame role and Sound on. The integration uses a fixture for the approved image receipt and synthetic provider response. |
+| Shared video reference validation and consumption | VERIFIED locally. Public and private image inputs, ordered model payloads for all five tested ReAPI models, maximum Seedance batch, explicit removal, invalid ownership/size/state, no repeat POST after uncertainty, and result URL correlation are exercised. Existing suites cover uploaded audio/video, selected settings, and native edit modes. |
+| Demo selection and recovery | VERIFIED locally. Component tests exercise replacement, removal, stale replies, restored edits, and independent audio. Actual finishing client/API/worker test correlates the saved request, output asset, and read-only status. SQL receipt tests use local PGlite. |
+| Demo render | VERIFIED on real local FFmpeg fixtures. Audio frequency and pixel checks establish source order, trims, replacement, scoped demo audio, and whole-video background audio. Framing tests check a continuous pan and preservation of original inputs. |
+| Hosted queue, authenticated browser, and generated quality | NOT TESTED. Live signing, billing, provider acceptance, exact spoken output, lip sync, visual identity, transcript accuracy, and hosted playback remain open. Real publication is outside this local audit. |
+
+The current ReAPI literal first-frame route supports the approved image alone in the app. The user can retain selected identity photos and sees a validation block for the unsupported combination. No provider or mode switch was introduced. Terra remains the configured default for Talking Head script Remix. This audit did not change transcript content or model prompts.
+
+## Changed files and rollback
+
+- Admission and persistence: `lib/ai-studio/video-generation-api.ts`, `lib/ai-studio/video-image-validation.ts`, `lib/explore/workflow-generation-receipts.ts`, `lib/media/media-storage.ts`.
+- Worker: `worker/src/jobs/generate-hook-video.ts`, `worker/src/lib/owned-video-images.ts`, `worker/src/lib/video-image-reference-contract.ts`.
+- Tests: `lib/ai-studio/video-generation-api.test.mjs`, `lib/ai-studio/video-reference-wiring.test.mjs`, `lib/explore/demo-feature-wiring.test.mjs`, `lib/media/reference-image-lookup.test.mjs`, `scripts/workflow-generation-api-contract.test.mjs`, `scripts/workflow-generation-atomic-api.test.mjs`, `worker/src/jobs/generate-hook-video.test.ts`.
+- Records: this receipt, `docs/ai-context/clear.md`, `EXPLORE_CONTEXT.md`, and the linked global mistakes ledger entry. Synthetic render samples live under the ignored `.tmp/remaining-wiring-artifacts` directory.
+
+Revert these scoped changes together for rollback. Existing saved jobs and concurrent changes in other workflows should remain in place. A future rollout should make the worker capable of consuming the new field before relying on execution-time ownership checks.
+
+## Preflight and commands
+
+Read the user and repo AGENTS instructions, the relevant historical Explore/incident sections under the previously approved waiver, protected contracts, and the global mistake lessons. Applied verify-feature-wiring and its evidence receipt, ugc-context-memory, ugc-immutable-contracts, ugc-ui-clarity, ugc-starting-frame, ugc-video-prompt, and ugc-regression-gate. Ran `python tools/preflight.py --repo . --task "Audit Talking Head, Demo and shared video workflows exact selected input wiring through API durable jobs providers renderers and result recovery; fix confirmed gaps locally, no build or deploy"`. No UI component was edited for this audit, so current visual acceptance is untested.
+
+The non-build suites use `node --import ./scripts/next-server-only-test-loader.mjs --import ./scripts/worker-source-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test` with the relevant test files. The worker loader uses current TypeScript sources. The ignored logs are `.tmp/remaining-wiring-final-main.log` for Talking Head, video, Demo state and adapter tests and `.tmp/demo-wiring-regressions.log` for 241 finishing, SQL, composition and recovery checks. These groups overlap. Static checks use ESLint on touched files, `tsc --noEmit --incremental false` for the app and worker, and `git diff --check`.
+
+Final main suite passed 442/442, and the finishing suite passed 241/241, both with zero skips. The app and worker no-emit type checks and targeted ESLint passed. The final local logs are under `.tmp/remaining-wiring-final-*`. The global prevention lesson was appended as `GLOBAL-20261105-VIDEO-REFERENCE-OWNERSHIP`.
+
+Incident `UGC-GEN-20261105-VIDEO-REFERENCE-OWNERSHIP` links the original reproduction and the tests. Hosted acceptance requires the selected owned assets and the worker's actual provider receipt to be checked against the resulting authenticated video. Demo hosted acceptance requires comparing the saved clip/audio selections with the completed owned asset. Current local evidence leaves those boundaries open.

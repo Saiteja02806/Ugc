@@ -924,7 +924,7 @@ test("full prompt editing, saving, default restoration and application reset use
  const h=harness();h.render();await h.settle();let tree=h.render();
  find(tree,"FormatGenerationReferences").props.onImagesChange([photo(photoId)]);tree=h.render();
  const editor=()=>nodes(h.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt");
- assert.match(editor().props.value,/SOURCE SHOT/);
+ assert.match(editor().props.value,/SCENE AND POSE/);
  const custom="Image 1 supplies the scene. Image 2 supplies identity. Match warm light.";
  editor().props.onChange({target:{value:custom}});tree=h.render();
  assert.equal(editor().props.value,custom);
@@ -933,7 +933,7 @@ test("full prompt editing, saving, default restoration and application reset use
  assert.equal(JSON.parse(h.stored.get(prefKey)).text,custom);
  nodes(nodes(tree).find(n=>n.type==="label"&&text(n).includes("Use as my default in this browser"))).find(n=>n.type==="input").props.onChange({target:{checked:true}});
  tree=h.render();assert.equal(JSON.parse(h.stored.get(prefKey)).useDefault,true);
- button(tree,"Use application prompt").props.onClick();h.render();assert.match(editor().props.value,/SOURCE SHOT/);
+ button(tree,"Use application prompt").props.onClick();h.render();assert.match(editor().props.value,/SCENE AND POSE/);
  const fresh=harness();fresh.stored.set(prefKey,h.stored.get(prefKey));fresh.render();await fresh.settle();
  assert.equal(nodes(fresh.render()).find(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt").props.value,custom);
  const other=harness({ownerId:"another"});other.stored.set(prefKey,h.stored.get(prefKey));other.render();await other.settle();
@@ -967,7 +967,8 @@ test("background and outfit options default to source and persist independent ph
  assert.ok(disclosure);
  assert.notEqual(disclosure.props.open,true,"appearance choices stay collapsed by default");
  assert.equal(text(nodes(disclosure).find(n=>n.type==="summary")),"Background and appearance");
- assert.equal(nodes(disclosure).filter(n=>n.type==="input"&&n.props.type==="checkbox").length,3);
+ assert.equal(nodes(disclosure).filter(n=>n.type==="input"&&n.props.type==="checkbox").length,4);
+ assert.equal(choice("Use full appearance from my photo").props.checked,false);
  assert.equal(choice("Use background from my photo").props.checked,false);
  assert.equal(choice("Use outfit from my photo").props.checked,false);
  choice("Use outfit from my photo").props.onChange({target:{checked:true}});tree=h.render();
@@ -990,6 +991,23 @@ test("background and outfit options default to source and persist independent ph
  assert.equal(choice("Use hairstyle from my photo").props.checked,true);
  choice("Use hairstyle from my photo").props.onChange({target:{checked:false}});await h.settle();
  assert.equal(choice("Use hairstyle from my photo").props.checked,false);
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"source",hairstyle:"source"});
+ choice("Use full appearance from my photo").props.onChange({target:{checked:true}});await h.settle();tree=h.render();
+ assert.equal(choice("Use full appearance from my photo").props.checked,true);
+ assert.equal(choice("Use background from my photo").props.checked,true);
+ assert.equal(choice("Use outfit from my photo").props.checked,true);
+ assert.equal(choice("Use hairstyle from my photo").props.checked,true);
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"photo",outfit:"photo",hairstyle:"photo"});
+ choice("Use background from my photo").props.onChange({target:{checked:false}});await h.settle();tree=h.render();
+ assert.equal(choice("Use full appearance from my photo").props.checked,false);
+ assert.equal(choice("Use background from my photo").props.checked,false);
+ assert.equal(choice("Use outfit from my photo").props.checked,true);
+ assert.equal(choice("Use hairstyle from my photo").props.checked,true);
+ assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"photo",hairstyle:"photo"});
+ choice("Use background from my photo").props.onChange({target:{checked:true}});await h.settle();tree=h.render();
+ assert.equal(choice("Use full appearance from my photo").props.checked,true);
+ choice("Use full appearance from my photo").props.onChange({target:{checked:false}});await h.settle();tree=h.render();
+ assert.equal(choice("Use full appearance from my photo").props.checked,false);
  assert.deepEqual(drafts.readHookKeyframeDraft(h.stored.get(h.key),scope).referenceOptions,{background:"source",outfit:"source",hairstyle:"source"});
  assert.equal(h.submissions.length,1,"Selection changes do not auto-submit a paid request");
 

@@ -7,6 +7,7 @@ import * as imagePicker from "../lib/media/image-picker.ts";
 import * as personReference from "../lib/explore/person-reference.ts";
 
 import * as imageBatch from "../lib/explore/reference-image-batch.ts";
+import * as uploadedStartingFrame from "../lib/explore/uploaded-starting-frame.ts";
 
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
@@ -32,7 +33,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "@tanstack/react-query": {
       useInfiniteQuery: options => { queries.push(options); return { data:{pages:[{images:influencerImages,nextCursor:null}]},isPending:false,isFetching:false,error:null,hasNextPage:false,isFetchingNextPage:false,refetch:async()=>{calls.push("refresh-influencers");},fetchNextPage:async()=>{} }; },
       useQuery: options => { queries.push(options); const data = options.queryKey[0] === "hook-starting-frames" ? frames : imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: queryPending || data === undefined, isError: queryError, refetch: async () => {} }; },
-      useQueryClient: () => ({ cancelQueries: async options => { cancellations.push(options); }, setQueryData: (key, update) => { const cacheKey = JSON.stringify(key); imageCache.set(cacheKey, update(imageCache.get(cacheKey))); } }),
+      useQueryClient: () => ({ invalidateQueries: async () => {}, cancelQueries: async options => { cancellations.push(options); }, setQueryData: (key, update) => { const cacheKey = JSON.stringify(key); imageCache.set(cacheKey, update(imageCache.get(cacheKey))); } }),
     },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "creator-01", fileName: "creator-reference-01.png", src: "/catalog.png" }] },
@@ -40,7 +41,10 @@ function harness(upload, { images = [], queryError = false, queryPending = false
       USER_REFERENCE_IMAGE_PROJECT: "explore-reference", CATALOG_REFERENCE_IMAGE_PROJECT: "explore-catalog-reference",
       fetchFormatReferenceImages: async () => images,
       fetchFormatReferenceImage: (...args) => { savedReads.push(args); return fetchSaved(...args); },
+      fetchUploadedStartingFrames: async () => [],
     },
+    "@/lib/explore/uploaded-starting-frame": uploadedStartingFrame,
+    "./format-person-image-picker.module.css": { default: {} },
     "@/components/ui/button": { Button: "Button" },
     "@/components/ui/popover": { Popover: "Popover", PopoverContent: "PopoverContent", PopoverTitle: "PopoverTitle", PopoverTrigger: "PopoverTrigger" },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogTitle: "DialogTitle", DialogDescription: "DialogDescription", DialogTrigger: "DialogTrigger" },
@@ -56,6 +60,11 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: (...args) => { calls.push(args); return upload(...args); } },
   };
   const exported = {};
+  const uploads = {};
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/use-starting-frame-uploads.tsx", import.meta.url), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText, { exports: uploads, AbortController, Error, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
+  imports["./use-starting-frame-uploads"] = uploads;
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/format-generation-references.tsx", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
@@ -95,13 +104,24 @@ test("face-photo removal stays available when its add/change picker is disabled 
   assert.deepEqual(Array.from(updates[0], image => image.asset.id), ["second"]);
 });
 
-test("a scene-only chooser exposes only starting-frame history without image uploads", () => {
-  const h = harness(async () => assert.fail("No uploads"));
-  const options = { selection: null, startingFramesOnly: true, startingFrame: { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 }, onSelectStartingFrame() {}, videoInputEnabled: false };
+test("a scene-only chooser uploads one image into the starting-frame library and selects it as the scene", async () => {
+  const asset = { ...savedImage("new-frame"), projectId: "explore-starting-frame", width: 512, height: 512 };
+  const h = harness(async () => ({ kind: "image", asset }));
+  const selected = [];
+  const options = { selection: null, startingFramesOnly: true, startingFrame: { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 }, onSelectStartingFrame(frame) { selected.push(frame); }, videoInputEnabled: false };
   let tree = h.render(options);
   h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
   assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["starting"]);
   assert.equal(h.all(tree, node => node.type === "input" && node.props.type === "file")[0].props.disabled, true);
+  const input = h.all(tree, node => node.type === "input" && node.props["aria-label"] === "Choose a starting frame to upload")[0];
+  assert.equal(input.props.disabled, false);
+  assert.equal(input.props.multiple, undefined);
+  input.props.onChange({ currentTarget: { value: "selected", files: [new File(["png"], "opening.png", { type: "image/png" })] } });
+  await flush();
+  assert.equal(h.calls[0][4].purpose, "explore-starting-frame");
+  assert.equal(selected[0].assetId, "new-frame");
+  assert.equal(selected[0].jobId, undefined);
+  assert.deepEqual(h.changes, []);
 });
 
 test("one image tile opens saved influencers and uploads in the same chooser", async () => {

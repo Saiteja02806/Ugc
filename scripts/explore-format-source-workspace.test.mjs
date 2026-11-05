@@ -136,8 +136,9 @@ test("Slideshow Create Your Slides reuses the current editor sequence and keeps 
   assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
   workflow().onGenerationStart(); workflow().onBusyChange(true);
   assert.equal(editor().props.previewActive, false, "Starting or recovering generation reveals progress and results");
-  select("Your Slides"); assert.equal(editor().props.previewActive, true);
+  select("Your Slides"); assert.equal(editor().props.previewActive, false);
   workflow().onBusyChange(false);
+  workflow().onIdleEmpty();
   editor().props.onEdit();
   assert.equal(editor().props.active, true);
   assert.equal(editor().props.previewActive, true);
@@ -157,7 +158,7 @@ test("A recovered slideshow job opens generated results before the current seque
   const h = harness("slideshow", "explore-slideshowJob=recover-job", { selected: null });
   assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
   nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
-  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
 });
 
 test("Slideshow restores saved work once without replacing the sequence or leaving Edit/Schedule", () => {
@@ -168,7 +169,7 @@ test("Slideshow restores saved work once without replacing the sequence or leavi
   workflow().onGenerationRestore();
   assert.equal(editor().props.previewActive, false);
   nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
-  assert.equal(editor().props.previewActive, true, "The retained sequence remains explicitly reachable");
+  assert.equal(editor().props.previewActive, false, "The recovered results remain visible on tab return");
   editor().props.onEdit(); workflow().onGenerationRestore();
   assert.equal(editor().props.active, true, "Restoration cannot leave an active editor");
   const saved = harness("slideshow", "step=edit&slideshowId=00000000-0000-4000-8000-000000000001", { selected: null });
@@ -1068,6 +1069,47 @@ test("a complete regenerated slideshow opens Your Slides as one ordered sequence
   assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.active, false);
 });
 
+test("idle empty slideshow returns to its mounted editor and Generated slides remains an explicit choice", () => {
+  const h = harness("slideshow", "", { selected: null });
+  let tree = h.render();
+  nodes(tree).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  tree = h.render();
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  workflow().onGenerationStart();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
+  workflow().onIdleEmpty();
+  let editor = nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.previewActive, true);
+  assert.equal(editor.props.active, false, "Create instructions stay available");
+  assert.ok(editor.props.previewActions);
+  editor.props.previewActions.props.onClick();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false, "Manual generated results/history remains reachable");
+  workflow().onIdleEmpty();
+  editor = nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.previewActive, true);
+  assert.equal(h.tokens.length, 0, "Presentation switching submits nothing");
+});
+
+test("slideshow tab round trips preserve generation results until the idle callback", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  const editor = () => nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  const click = label => nodes(h.render()).find(n => n.type === "button" && text(n) === label).props.onClick();
+  workflow().onGenerationStart();
+  for (const busy of [true, false]) {
+    workflow().onBusyChange(busy);
+    click("References"); click("Your Slides");
+    assert.equal(editor().props.previewActive, false, "Running work and failed work with retry both keep the results view");
+    const tab = value => nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange(value);
+    tab("edit"); tab("create");
+    assert.equal(editor().props.previewActive, false);
+  }
+  workflow().onIdleEmpty();
+  click("References"); click("Your Slides");
+  assert.equal(editor().props.previewActive, true);
+});
+
 test("slideshow shares Schedule actions and returns to Edit without changing its saved post", () => {
   const h = harness("slideshow", "", { selected: null });
   let tree = h.render();
@@ -1077,8 +1119,13 @@ test("slideshow shares Schedule actions and returns to Edit without changing its
   tree = h.render();
   const actions = nodes(tree).filter(n => n.props?.["aria-label"] === "Schedule actions");
   assert.equal(actions.length, 0, "There is no separate full-width scheduling footer");
-  const scheduling = nodes(tree).find(n => n.type === "FormatSchedulePanel");
-  assert.equal(scheduling.props.actionsTarget, undefined, "Actions stay inside the scheduling panel");
+  let scheduling = nodes(tree).find(n => n.type === "FormatSchedulePanel");
+  assert.equal(scheduling.props.actionsTarget, null, "The action target is unset before its footer slot mounts");
+  const actionTarget = { id: "schedule-footer-target" };
+  nodes(tree).find(n => n.props?.["data-schedule-action-slot"]).props.ref(actionTarget);
+  tree = h.render();
+  scheduling = nodes(tree).find(n => n.type === "FormatSchedulePanel");
+  assert.equal(scheduling.props.actionsTarget, actionTarget, "Schedule actions receive the mounted existing workflow footer");
   assert.equal(scheduling.props.imageOnly, true); assert.equal(scheduling.props.output, saved);
   const postPreview = nodes(tree).find(n => n.props?.["aria-label"] === "Saved slideshow preview");
   assert.equal(postPreview.props.tabIndex, 0, "Long saved sequences remain keyboard scrollable");
@@ -1157,6 +1204,27 @@ test("Hook Recreate opens free starting-frame preparation only behind its releas
     prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
     assert.equal(prep.props.draftId, id, "Closing and reopening preserves the image preparation");
     assert.equal(h.reads.length, 0, "Preparing does not submit or collect a generated video");
+  }
+});
+
+test("returning from Recreate exposes the exact selected prompt and clears source provenance for instructions alone", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const first = { id: "first", format, title: "First", slides: [], videoUrl: "/first.mp4", generationPrompt: "OPENING: PHASE [0–2s]: Look left, then smile." };
+    const second = { ...first, id: "second", generationPrompt: "OPENING: PHASE [0–3s]: Turn toward camera and wave." };
+    const h = harness(format, "", { local: false, selected: null, catalogue: [first, second], keyframeEnabled: true });
+    h.source.mode = "generate";
+    nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+    const view = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView;
+    for (const selected of [first, second]) {
+      nodes(h.render()).find(n => n.type === "ReferenceCard" && n.props.reference.id === selected.id).props.onRecreate();
+      nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace").props.onClose();
+      assert.equal(view().startingFramePreparation.instructions, selected.generationPrompt);
+    }
+    assert.equal(view().startingFramePreparation.onUseInstructionsAlone(), true);
+    assert.equal(view().startingFramePreparation, undefined);
+    assert.equal(view().referenceVideoUrl ?? null, null);
+    assert.equal(view().workflow.reference ?? null, null);
+    for (const name of ["refId", "refType", "sourceUrl", "exploreRecreate", "hookFrameDraft", "hookRecreation"]) assert.equal(h.params().has(name), false);
   }
 });
 

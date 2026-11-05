@@ -239,6 +239,18 @@ export class SupabaseJobStore {
     return (data ?? []).map((row) => row.job_id);
   }
 
+  async hasLocalPublishSchedule(params: { jobId: string; ownerId: string; targetId: string; name: string }) {
+    const { data, error } = await this.client.from(SCHEDULED_POST_TARGETS_TABLE)
+      .select("id")
+      .eq("id", params.targetId)
+      .eq("user_id", params.ownerId)
+      .eq("publish_job_id", params.jobId)
+      .eq("scheduler_schedule_name", params.name)
+      .maybeSingle();
+    if (error) throw new Error("Could not verify the local publish schedule.");
+    return Boolean(data);
+  }
+
   async reconcileSocialScheduleState(params: {
     limit: number;
     staleAfterSeconds: number;

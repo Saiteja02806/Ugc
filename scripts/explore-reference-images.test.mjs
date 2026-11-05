@@ -5,13 +5,14 @@ import vm from "node:vm";
 import ts from "typescript";
 import { readSlideshowGenerationSlot } from "../worker/src/lib/slideshow-generation-batch.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import * as uploadedStartingFrame from "../lib/explore/uploaded-starting-frame.ts";
 
 function load(file, imports, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => { if (name === "@/lib/http/read-deadline") return { withReadDeadline }; if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
+  vm.runInNewContext(code, { exports, require: name => { if (name === "@/lib/http/read-deadline") return { withReadDeadline }; if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; if (name === "./uploaded-starting-frame") return uploadedStartingFrame; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
 
@@ -99,7 +100,7 @@ test("Explore origin filtering happens in the owner-scoped database query; other
 });
 
 test("image uploads persist the chosen origin through the existing prepare, upload and completion flow", async () => {
-  for (const purpose of ["explore-reference", "explore-catalog-reference", undefined]) {
+  for (const purpose of ["explore-reference", "explore-starting-frame", "explore-catalog-reference", undefined]) {
     const requests = [], owners = [], released = [];
     let projectId;
     const uploader = load("lib/ai-studio/reference-media-upload.ts", {
@@ -116,7 +117,7 @@ test("image uploads persist the chosen origin through the existing prepare, uplo
         if (url === "https://storage.test/owned-image") return new Response(null, { status: 200 });
         assert.equal(url, "/api/media/complete-upload");
         const body = JSON.parse(options.body); assert.equal(body.width, 720); assert.equal(body.height, 1280); assert.equal(body.assetId, "owned-image");
-        return new Response(JSON.stringify({ ok: true, asset: image({ projectId }) }));
+        return new Response(JSON.stringify({ ok: true, asset: image({ projectId, width: body.width, height: body.height, url: "https://storage.test/owned-image" }) }));
       },
     });
     const file = new File(["image"], "reference.png", { type: "image/png" });
@@ -125,8 +126,16 @@ test("image uploads persist the chosen origin through the existing prepare, uplo
     assert.deepEqual(owners, ["owner-a"]); assert.deepEqual(released, ["blob:reference"]);
     assert.equal(requests.length, 3); assert.equal(requests[1].options.method, "PUT"); assert.equal(requests[1].options.body, file);
     assert.equal(requests[0].options.headers.Authorization, "Bearer owner-token"); assert.equal(requests[2].options.headers.Authorization, "Bearer owner-token");
-    const reopened = client({ assets: [selected.asset] });
+    const reopened = client({ assets: [selected.asset], asset: selected.asset });
     assert.equal((await reopened.fetchFormatReferenceImages("owner-a")).length, purpose === "explore-reference" ? 1 : 0);
+    assert.equal((await reopened.fetchUploadedStartingFrames("owner-a")).length, purpose === "explore-starting-frame" ? 1 : 0);
+    assert.equal(reopened.reads.at(-1).url, "/api/media?collection=image&sourceTypes=upload&projectId=explore-starting-frame");
+    if (purpose === "explore-starting-frame") {
+      const frame = await reopened.fetchUploadedStartingFrame(selected.asset.id, "owner-a");
+      assert.equal(frame.assetId, selected.asset.id);
+      assert.equal(frame.url, selected.asset.url);
+      assert.equal(frame.jobId, undefined);
+    }
   }
 });
 

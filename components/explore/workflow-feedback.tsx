@@ -13,6 +13,10 @@ function feedbackText(children: ReactNode): string {
   return Children.toArray(children).map(child => typeof child === "string" || typeof child === "number" ? String(child)
     : isValidElement<{ children?: ReactNode }>(child) ? feedbackText(child.props.children) : "").join(" ");
 }
+function hasError(children: ReactNode): boolean {
+  return Children.toArray(children).some(child => isValidElement<{ role?: string; children?: ReactNode }>(child)
+    && (child.props.role === "alert" || hasError(child.props.children)));
+}
 
 /** Show feedback outside the editor's layout; dismissal never clears a request. */
 export function WorkflowFeedback({ id, children, active = true }: { id: string; children: ReactNode; active?: boolean }) {
@@ -20,7 +24,7 @@ export function WorkflowFeedback({ id, children, active = true }: { id: string; 
   const message = feedbackText(children);
   return <>
     <span id={id} className="sr-only">{message}</span>
-    {active && host && message.trim() ? createPortal(<FeedbackNotice key={message} id={id}>{children}</FeedbackNotice>, host) : null}
+    {active && host && hasError(children) && message.trim() ? createPortal(<FeedbackNotice key={message} id={id}>{children}</FeedbackNotice>, host) : null}
   </>;
 }
 

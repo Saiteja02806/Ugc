@@ -8,7 +8,7 @@ import { buildStartingFrameAnimationPrompt } from "./starting-frame-workflow.ts"
 import { remixTextPrompt } from "./remix-text-prompt.ts";
 
 test("active reclassified Hooks bind exact source text and timed motion", () => {
-  assert.equal(release.items.length, 3);
+  assert.equal(release.items.length, 4);
   for (const item of release.items) {
     const source = ReferenceTextSchema.parse(sources.items.find(entry => entry.referenceId === item.id));
     assert.equal(source.sourceSha256, item.videoSha256);

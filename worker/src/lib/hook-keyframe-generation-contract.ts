@@ -22,7 +22,7 @@ export type HookKeyframeGenerationReceipt = {
   preparationInputKey?: string;
   customImagePrompt?: string;
   referenceOptions?: StartingFrameReferenceOptions;
-  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7;
+  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9;
   inputKey: string; promptSha256: string;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -60,13 +60,14 @@ export function hookKeyframeSourceRatio(width: number, height: number): "9:16" |
 export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframeGenerationReceipt | null {
   if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "animationOpeningFrame", "preparationInputKey", "personImageAssetIds", "instructions", "customImagePrompt", "referenceOptions", "promptVersion", "inputKey", "promptSha256"]) ||
     value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 && value.version !== 5 || value.version === 1 && value.imageModel !== undefined ||
-    (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5, 7].includes(value.promptVersion as number)) ||
+    (value.version === 2 || value.version === 3 || value.version === 4 || value.version === 5) && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4, 5, 7, 8, 9].includes(value.promptVersion as number)) ||
     value.version === 2 && ![2, 3, 4, 5].includes(value.promptVersion as number) ||
     value.version === 3 && value.promptVersion !== 4 ||
     value.version === 4 && value.promptVersion !== 5 ||
-    value.version === 5 && value.promptVersion !== 7 ||
+    value.version === 5 && ![7, 8, 9].includes(value.promptVersion as number) ||
+    value.version !== 5 && [8, 9].includes(value.promptVersion as number) ||
     value.version === 1 && ![1, 2].includes(value.promptVersion as number) ||
-    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2, 3, 4, 5, 7].includes(value.promptVersion as number) ||
+    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2, 3, 4, 5, 7, 8, 9].includes(value.promptVersion as number) ||
     typeof value.ownerId !== "string" || !value.ownerId || value.ownerId.length > 128 || /[\u0000-\u001f]/u.test(value.ownerId) ||
     typeof value.draftId !== "string" || !uuid.test(value.draftId) ||
     typeof value.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value.referenceId) ||

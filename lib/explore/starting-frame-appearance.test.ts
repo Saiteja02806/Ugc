@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isStartingFrameReferenceOptions, canonicalStartingFrameReferenceOptions, startingFrameReferenceInstructions, withStartingFrameReferenceOptions } from "../../worker/src/lib/starting-frame-reference-options.ts";
 import { hookKeyframeProviderImageLabels } from "../../worker/src/lib/hook-keyframe-image-labels.ts";
-import { buildOriginalOpeningImagePrompt } from "./hook-keyframe-image-prompt.ts";
+import { buildOriginalOpeningImagePrompt, buildHookKeyframeStage2Prompt } from "./hook-keyframe-image-prompt.ts";
 
 test("appearance accepts legacy two roles and independent hairstyle values, but rejects malformed roles", () => {
   assert.equal(isStartingFrameReferenceOptions({ background: "source", outfit: "photo" }), true);
@@ -31,6 +31,22 @@ test("all eight independent appearance choices fit Seedream's default prompt bud
       assert.ok(labels.slice(2).every(label => label.includes("no background, outfit, hairstyle")));
       assert.equal(withStartingFrameReferenceOptions(prompt, options), prompt, "Do not append roles twice");
       assert.match(startingFrameReferenceInstructions(options), hairstyle === "photo" ? /HAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume/ : /HAIRSTYLE: Keep Image1's hairstyle/);
+      if (background === "photo" && outfit === "photo" && hairstyle === "photo") {
+        assert.match(startingFrameReferenceInstructions(options), /FULL APPEARANCE: Use Image2 as the complete source of truth for hair, body build, skin tone, outfit and background/);
+        assert.doesNotMatch(prompt, /replacing only the person's identity/);
+        assert.doesNotMatch(prompt, /Identity photos supply facial features only/);
+        assert.doesNotMatch(prompt, /Retain the visible room furniture/);
+        const stage2 = buildHookKeyframeStage2Prompt({
+          supportingImageCount: 1,
+          stage2Version: 2,
+          referenceId: "explore-paired-hook-9dfcfdb8bb0d7dc8dcba3353",
+          sourceSha256: "ef2341b6d1de7bf3c7e5ac7a24f4e60d67761f12d4b0f0a4805fc4e985d87e2d",
+          referenceOptions: options,
+        });
+        assert.doesNotMatch(stage2, /Retain the visible room furniture/);
+      } else {
+        assert.doesNotMatch(startingFrameReferenceInstructions(options), /FULL APPEARANCE:/);
+      }
     }
   }
 });

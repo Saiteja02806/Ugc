@@ -11,7 +11,7 @@ import { WorkflowDurationControl } from "@/components/explore/workflow-duration-
 import { WorkflowReferencePreview } from "@/components/explore/workflow-reference-preview";
 import { TalkingHeadPhotoLibrary } from "@/components/explore/talking-head-photo-library";
 import { PersonPhotoGuide } from "@/components/explore/person-photo-guide";
-import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
 import { WorkflowImageLibrary } from "@/components/explore/workflow-image-library";
 import type { WorkflowImageAttachment } from "@/components/explore/use-local-workflow-images";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,9 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   generationSettings: WorkflowGenerationSettings;
   onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
   startingFrameControl?: ReactNode;
-  onStartingFrameSelect?: (frame: HookStartingFrameSelection) => boolean | void;
+  onStartingFrameSelect?: (frame: StartingFrameSelection) => boolean | void;
+  onStartingFramePendingChange?: (pending: boolean) => void;
+  onStartingFrameErrorChange?: (error: string | null) => void;
   startingFrameMode?: boolean;
   startingFrameSoundControl?: ReactNode;
   spokenScriptMode?: boolean;
@@ -51,7 +53,7 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -77,7 +79,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
-        {startingFrameControl ?? (kind === "hook" ? <TalkingHeadCreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile onStartingFrameSelect={onStartingFrameSelect} /> : <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} />)}
+        {startingFrameControl ?? (kind === "hook" ? <TalkingHeadCreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile onStartingFrameSelect={onStartingFrameSelect} onStartingFramePendingChange={onStartingFramePendingChange} onStartingFrameErrorChange={onStartingFrameErrorChange} startingFrameMaxBytes={getVideoReferencePolicy(generationSettings.model).maxImageBytes} /> : <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} />)}
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
@@ -141,7 +143,12 @@ function SettingField({ label, children }: { label: string; children: ReactNode 
   return <div className={creation.settingField}><span className="text-sm font-medium">{label}</span>{children}</div>;
 }
 
-function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = false, onStartingFrameSelect }: { creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; ownerId?: string | null; tile?: boolean; onStartingFrameSelect?: (frame: HookStartingFrameSelection) => boolean | void }) {
+function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = false, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMaxBytes }: {
+  creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; ownerId?: string | null; tile?: boolean;
+  onStartingFrameSelect?: (frame: StartingFrameSelection) => boolean | void;
+  onStartingFramePendingChange?: (pending: boolean) => void; startingFrameMaxBytes: number;
+  onStartingFrameErrorChange?: (error: string | null) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [librarySection, setLibrarySection] = useState<"person" | "influencers">("person");
   const [libraryRevision, setLibraryRevision] = useState(0);
@@ -171,6 +178,7 @@ function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = fa
       <div className={photoPicker.library}>
       <TalkingHeadPhotoLibrary key={`${ownerId}:${librarySection}:${libraryRevision}`} ownerId={ownerId} section={librarySection} onSectionChange={setLibrarySection}
         disabled={creator.loading} selectedIds={images.map(image => image.assetId)} limitReached={full}
+        onStartingFramePendingChange={onStartingFramePendingChange} onStartingFrameErrorChange={onStartingFrameErrorChange} startingFrameMaxBytes={startingFrameMaxBytes}
         onDeselect={id => { const image = images.find(image => image.assetId === id); if (image && imageReferences) imageReferences.removeImage(image.url); }}
         onSelectUpload={async asset => Boolean(ownerId && await imageReferences?.chooseSavedImage?.(asset, ownerId))}
         onSelectInfluencer={async id => Boolean(ownerId && await imageReferences?.chooseInfluencerImage?.(id, ownerId))}

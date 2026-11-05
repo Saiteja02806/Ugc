@@ -38,7 +38,7 @@ test("the active Hook gallery retains reviewed source links and respects silent 
   const octoberReady = validateHookAdditionRelease(octoberBatch, textCatalog);
   const refreshReady = validateHookAdditionRelease(octoberRefresh, textCatalog);
   const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible, ...reclassified.items];
-  assert.equal(ready.eligible.length, 43); assert.equal(release.items.length, 46);
+  assert.equal(ready.eligible.length, 42); assert.equal(release.items.length, 46);
   assert.equal(additionReady.eligible.length, 31); assert.equal(additions.items.length, 31);
   assert.equal(batchReady.eligible.length, 20);
   assert.equal(octoberReady.eligible.length, 1);
@@ -72,6 +72,7 @@ test("the active Hook gallery retains reviewed source links and respects silent 
 test("retired references still resolve saved remix/video/audio identities without returning to browsing", () => {
   const archives = getArchivedHookReferences(), refs = [...getRecreateReferences(), ...archives];
   assert.ok(archives.some(item => item.id === "explore-hook-01"));
+  assert.equal(archives.find(item => item.id === "explore-paired-hook-9ee299bb7c8ab66ad9387bbf")?.sourceUrl, "https://www.instagram.com/reel/DdyrKJgDLYL/");
   assert.ok(!filterReferences(refs, "hook", []).some(item => item.archived));
   for (const archived of archives) {
     assert.equal(getRecreateReference(archived.id).id, archived.id);

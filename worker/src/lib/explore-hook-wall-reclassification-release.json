@@ -60,6 +60,27 @@
       "height": 1280,
       "audioTitle": "Original Hook audio",
       "sourceFolder": "Wall 59"
+    },
+    {
+      "id": "explore-paired-hook-573ce74ab0b1421f00e93add",
+      "format": "hook",
+      "title": "Talia grocery discovery",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118",
+      "sourcePlatform": "tiktok",
+      "videoStorageKey": "explore/talking-head-hook-trims/v1/573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1.mp4",
+      "audioStorageKey": "explore/paired-references/v1/c7ee54c7e3f5d7aef14113a02b3f59b678c108682c30892317059f711d64ad79.mp3",
+      "posterStorageKey": "explore/paired-references/v1/fb237a862bec6618ae02736240c2b58099493e2bc0ef055793f692ea3b48ff56.webp",
+      "previewStorageKey": "explore/talking-head-hook-trims/v1/573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1.mp4",
+      "videoSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "audioSha256": "c7ee54c7e3f5d7aef14113a02b3f59b678c108682c30892317059f711d64ad79",
+      "posterSha256": "fb237a862bec6618ae02736240c2b58099493e2bc0ef055793f692ea3b48ff56",
+      "previewSha256": "573ce74ab0b1421f00e93addd83ad59011e4283971eabb99f3236c9e388f3da1",
+      "durationSeconds": 1.566016,
+      "audioDurationSeconds": 1.578957,
+      "width": 720,
+      "height": 1280,
+      "audioTitle": "Original Hook audio",
+      "sourceFolder": "Approved Talking Head Talia opening"
     }
   ]
 }

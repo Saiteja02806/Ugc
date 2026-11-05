@@ -9,7 +9,7 @@ const frame = { ownerId: "owner", assetId: "11111111-1111-4111-8111-111111111111
   draftId: "33333333-3333-4333-8333-333333333333", referenceId: "hook-15", sourceSha256: "a".repeat(64), url: "https://media.example.test/frame.png?signature=temporary",
   width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Custom reviewed motion", generateAudio: true };
 const settle = async () => { await new Promise(setImmediate); await new Promise(setImmediate); };
-function harness({ raw = storage.serializeHookComposerSelection(frame), load = async () => ({ ...frame, url: "https://media.example.test/fresh.png", motionInstructions: "Suggested motion", generateAudio: false }), storageFails = false, tabScoped = false, resumeDraftId = null, shared = null, tab = new Map() } = {}) {
+function harness({ raw = storage.serializeHookComposerSelection(frame), load = async () => ({ ...frame, url: "https://media.example.test/fresh.png", motionInstructions: "Suggested motion", generateAudio: false }), loadUpload = async () => assert.fail("Unexpected upload lookup"), storageFails = false, tabScoped = false, resumeDraftId = null, shared = null, tab = new Map() } = {}) {
   const stored = shared ?? new Map(raw === null ? [] : [[storage.hookComposerSelectionKey("owner"), raw]]), slots = [], effects = [], calls = [];
   let cursor = 0, owner = "owner", enabled = true, namespace = "hook";
   const react = {
@@ -28,10 +28,29 @@ function harness({ raw = storage.serializeHookComposerSelection(frame), load = a
     if (name === "react") return react;
     if (name.endsWith("hook-composer-selection")) return storage;
     if (name.endsWith("hook-starting-frame-history-client")) return { fetchRecentStartingFrame: async (...args) => { calls.push(args); return load(...args); } };
+    if (name.endsWith("format-reference-images")) return { fetchUploadedStartingFrame: loadUpload };
     throw new Error(name);
   } });
   return { stored, tab, calls, render() { cursor = 0; const result = exported.useHookComposerSelection(owner, enabled, namespace, { tabScoped, resumeDraftId }); effects.splice(0).forEach(run => run()); return result; }, setNamespace(value) { namespace = value; }, setOwner(value) { owner = value; }, disable() { enabled = false; }, unmount() { slots.forEach(value => value?.cleanup?.()); } };
 }
+
+test("uploaded frames restore from the owned asset ID without a generated job or stored URL", async () => {
+  const { jobId, draftId, referenceId, sourceSha256, ...uploaded } = frame;
+  const raw = storage.serializeHookComposerSelection(uploaded);
+  assert.equal(raw.includes(uploaded.url), false);
+  assert.equal(raw.includes(jobId), false);
+  const h = harness({ raw, loadUpload: async (id, owner) => {
+    assert.equal(id, uploaded.assetId);
+    assert.equal(owner, uploaded.ownerId);
+    return { ...uploaded, url: "https://media.example.test/current.png", motionInstructions: "", generateAudio: false };
+  } });
+  h.render(); await settle();
+  assert.equal(h.render().frame.url, "https://media.example.test/current.png");
+  assert.equal(h.render().frame.motionInstructions, uploaded.motionInstructions);
+  assert.equal(h.render().frame.generateAudio, true);
+  assert.equal(h.calls.length, 0);
+  h.unmount();
+});
 
 test("Hook, Wall and individual Talking Head drafts preserve independent approved selections", async () => {
   const h = harness(); h.render(); await settle(); assert.equal(h.render().frame.referenceId, frame.referenceId);

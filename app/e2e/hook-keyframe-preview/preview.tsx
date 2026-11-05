@@ -122,7 +122,7 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
     <header className="flex shrink-0 items-center gap-3 py-2"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">Hook video</h1></header>
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
       <section className="min-w-0 rounded-2xl border border-border bg-card p-5"><h2 className="mb-5 font-semibold">Create</h2>
-        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: setSelection, previewStartingFrames: recentFrames, previewFaceReferenceImages: fixtureInfluencers, onClearStartingFrame: () => setSelection(null),
+        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: frame => { if (frame.jobId) setSelection(frame); }, previewStartingFrames: recentFrames, previewFaceReferenceImages: fixtureInfluencers, onClearStartingFrame: () => setSelection(null),
           workflow: { format: "hook", controlsActive: true, controlsTarget: null, resultsTarget: null, onGenerationStart: () => {} } }} /> : <p className="text-sm text-muted">Choose a Hook and select Recreate to prepare its starting frame.</p>}
       </section>
       <section className="rounded-2xl border border-border bg-card p-5"><h2 className="mb-4 font-semibold">References</h2>

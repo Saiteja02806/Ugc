@@ -68,9 +68,9 @@ test("the compact Recreate composer follows its resized pane without a fixed wid
 
 test("the clearer recreate arrow still selects a reference, not resets playback or drafts", () => {
   const card = workspace.slice(workspace.indexOf("function ReferenceCard"), workspace.indexOf("function ReferenceMedia"));
-  assert.match(card, /onClick=\{onRecreate\}/);
+  assert.match(card, /onClick=\{\(\) => \{ preloadFrame\(reference\); onRecreate\(\); \}\}/);
   assert.match(card, /aria-label=\{`Recreate \$\{reference\.title\}`\}/);
-  assert.match(card, /size-10[^\n]*rounded-lg/);
-  assert.match(card, /RotateCcw className="size-5" strokeWidth=\{1\.6\}/);
+  assert.match(card, /className=\{studio\.referenceRecreateButton\}/);
+  assert.match(card, /RotateCcw className="size-4"/);
   assert.doesNotMatch(card, /currentTime|setPrompt|setInstructions/);
 });

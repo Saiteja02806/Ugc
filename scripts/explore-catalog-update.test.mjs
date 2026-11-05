@@ -121,6 +121,8 @@ function loadHookLibrary(status) {
     if (specifier === "./reference-upload-batches.json") return { batches: [] };
     if (specifier === "./reference-upload-batches.ts") return { applyReferenceUploadBatches };
     if (specifier === "server-only") return {};
+    if (specifier === "./hook-reference-views") return { getHookReferenceViews: () => undefined };
+    if (specifier === "./slideshow-reference-views") return { getSlideshowReferenceViews: () => undefined };
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./paired-reference-library") return { getPairedExploreVideos: () => [] };
     if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceGalleryItems: () => [], getHookReferenceReleaseItems: () => [] };
@@ -160,6 +162,8 @@ function loadRecreateCatalog(status, environment = "development") {
     if (specifier === "./reference-upload-batches.json") return { batches: [] };
     if (specifier === "./reference-upload-batches.ts") return { applyReferenceUploadBatches };
     if (specifier === "server-only") return {};
+    if (specifier === "./hook-reference-views") return { getHookReferenceViews: () => undefined };
+    if (specifier === "./slideshow-reference-views") return { getSlideshowReferenceViews: () => undefined };
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./slideshow-reference-sources.json") return JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8"));
     if (specifier === "./slideshow-reference-additions.json") return { mediaStatus: "staged", items: [] };

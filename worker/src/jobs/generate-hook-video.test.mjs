@@ -10,6 +10,13 @@ mock.module(new URL("../../dist/lib/automatic-hook-text-worker.js", import.meta.
   generateAutomaticHookText: async (owner, plan) => { automaticTextCalls.push({ owner, plan }); return automaticTextResult; },
 } });
 const privateReads = [];
+const ownedFrameReads = [];
+mock.module(new URL("../../dist/lib/owned-video-images.js", import.meta.url), { namedExports: {
+  resolveOwnedVideoImages: async (input, owner) => {
+    ownedFrameReads.push({ input, owner });
+    return input.images.map(image => `${image.url}?verified=owned`);
+  },
+} });
 mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
   resolveOwnedPrivateMediaUrl: async (url, owner) => {
     privateReads.push({ url, owner });
@@ -188,6 +195,28 @@ test("Omni and WAN starting-frame jobs dispatch only to their frozen provider an
     assert.equal(privateReads.length, reads);
     assert.equal(recovering.events.find(event => event.name === "reserve").requestFingerprint, fingerprint);
   }
+});
+
+test("the worker verifies the frozen upload and sends it to ReAPI as the first frame only", async () => {
+  const assetId = "00000000-0000-4000-8000-000000000009";
+  const url = "https://owned-media.example.test/uploaded-opening.png";
+  const input = { model: "google_omni", provider: "reapi", exploreFormat: "wall_text", workflow: "wall_text",
+    durationSeconds: 4, generationIntent: "animate_starting_frame", startingFrameSource: "upload",
+    startingFrameAssetId: assetId, startingFrameImageUrl: url,
+    ownedImageReferences: { version: 1, maxImageBytes: 20 * 1024 ** 2, images: [{ assetId, url }] } };
+  const f = fixture(input);
+  f.job.user_id = "fixture-user";
+  const calls = received.length, reads = ownedFrameReads.length;
+  await runGenerateHookVideoJob(f.job, f.context);
+  assert.equal(received.length, calls + 1);
+  assert.equal(received.at(-1).provider, "reapi");
+  assert.equal(received.at(-1).startingFrameImageUrl, url + "?verified=owned");
+  assert.deepEqual(received.at(-1).referenceImageUrls, []);
+  assert.deepEqual(ownedFrameReads.slice(reads), [{ input: input.ownedImageReferences, owner: f.job.user_id }]);
+  const bad = fixture({ ...input, startingFrameAssetId: "00000000-0000-4000-8000-000000000008" });
+  bad.job.user_id = f.job.user_id;
+  await assert.rejects(runGenerateHookVideoJob(bad.job, bad.context), /owned image selection/);
+  assert.equal(received.length, calls + 1);
 });
 
 test("three-second starting-frame jobs reach Omni and WAN without changing the frozen request length", async () => {

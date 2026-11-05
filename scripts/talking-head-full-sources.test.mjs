@@ -19,12 +19,12 @@ test("full Talking Head sources preserve duration, source links and archival rec
     assert.equal(replacement.durationSeconds,duration);
     assert.ok(replacement.durationSeconds > original.durationSeconds);
     assert.ok(!visible.some(item => item.id === id));
-    assert.ok(visible.some(item => item.id === replacement.id));
+    assert.equal(visible.some(item => item.id === replacement.id), id !== "talking-discovery");
     assert.ok(readFileSync("public"+original.videoUrl).length > 0);
   }
 });
 
-test("Talia's repeated opening keeps the full source visible and the short cut archived", () => {
+test("Talia's repeated opening keeps its originals archived and uses the new hook cut", () => {
   const short = catalogue.items.find(item => item.id === "talking-surprised-story");
   const long = catalogue.items.find(item => item.id === "talking-taliameals");
   assert.ok(short.sourceUrl.endsWith("/video/7687894160086486286"));
@@ -36,18 +36,19 @@ test("Talia's repeated opening keeps the full source visible and the short cut a
   assert.equal(shortFrame.frameSha256, longFrame.frameSha256, "the duplicate opening is byte-identical");
   const visible = visibleTalkingHeadReferences(catalogue.items);
   assert.ok(!visible.some(item => item.id === short.id));
-  assert.ok(visible.some(item => item.id === long.id));
-  assert.ok(visible.some(item => item.id === "talking-discovery-full"), "another Talia post is untouched");
+  assert.ok(!visible.some(item => item.id === long.id));
+  assert.ok(visible.some(item => item.id === "talking-taliameals-hook-v2"));
+  assert.ok(visible.some(item => item.id === "talking-discovery-hook-v2"));
   assert.ok(readFileSync("public" + short.videoUrl).length > 0, "saved short references remain recoverable");
 });
 test("every reference has matching media and exact prepared opening-frame hashes", () => {
   const hash = bytes => createHash("sha256").update(bytes).digest("hex");
-  assert.equal(catalogue.items.length,25);
+  assert.equal(catalogue.items.length,29);
   for (const reference of catalogue.items) {
     const source=sources.items.find(item=>item.id===reference.id);
     const frame=frames.items.find(item=>item.id===reference.id);
     assert.ok(source && frame,reference.id);
-    assert.equal(hash(readFileSync("public"+reference.videoUrl)),source.sourceSha256);
+    assert.equal(hash(readFileSync("public"+source.file)),source.sourceSha256);
     assert.equal(frame.sourceSha256,source.sourceSha256);
     assert.equal(hash(readFileSync("public"+frame.path)),frame.frameSha256);
     assert.equal(frame.frameIndex,0); assert.equal(frame.frameTimeSeconds,0);
@@ -55,12 +56,12 @@ test("every reference has matching media and exact prepared opening-frame hashes
   }
 });
 
-test("Carla and Talia references use the supplied full originals rather than short Hook cuts", () => {
+test("Carla and Talia full originals retain exact source identities beside their hook replacements", () => {
   for (const [id, duration, sha256, post] of [
     ["talking-carla-eatsss", 43.1, "7f5e52359ec53b527d0b20bef8c4314105c452299c8d3cf770fb4ebe101a998b", "7662440104488684813"],
     ["talking-taliameals", 34.922, "f5e854d171cda8062557dab189b242e0de2538b26b1227fb6f044031a7548579", "7680426189508431118"],
   ]) {
-    const reference = visibleTalkingHeadReferences(catalogue.items).find(item => item.id === id);
+    const reference = catalogue.items.find(item => item.id === id);
     assert.ok(reference, id);
     assert.equal(reference.durationSeconds, duration);
     assert.ok(reference.sourceUrl.endsWith(`/video/${post}`));

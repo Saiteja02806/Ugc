@@ -1,6 +1,12 @@
 /** Planning can stop before a job exists. Keep its explanation across remounts. */
 export type SlideshowClarification = { version: 1; owner: string; scope: string; prompt: string; items: string[]; imageIds?: string[] };
 export const slideshowClarificationKey = (owner: string) => `ugc-explore:slideshow-clarification:v1:${encodeURIComponent(owner)}`;
+export function slideshowClarificationScope(references: readonly (string | null)[], regeneration: string | null,
+  face?: { influencer: { id: string; referencePhotos?: { id: string }[] }; slideIds: string[] } | null) {
+  return JSON.stringify({ references, regeneration, ...(face?.influencer && face.slideIds.length ? {
+    faceSwap: { identityAssetIds: [face.influencer.id, ...(face.influencer.referencePhotos?.map(photo => photo.id) ?? [])], slideIds: face.slideIds },
+  } : {}) });
+}
 
 export const SLIDESHOW_CLARIFICATION_FALLBACK = "Please specify which source slides and uploaded images to use, and what should change on each slide.";
 

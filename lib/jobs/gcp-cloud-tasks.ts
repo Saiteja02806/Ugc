@@ -18,6 +18,8 @@ import {
 } from "./gcp-cloud-tasks-logic";
 import { getGcpProjectId, getQueueNameForJobType } from "@/lib/queues/config";
 import { exploreInteractiveDispatchUrl } from "./explore-interactive-dispatch";
+import { sendLocalAppWorker } from "./local-starting-frame";
+import { isLocalAppJobType, localStartingFrameConfig } from "../../worker/src/lib/local-starting-frame.ts";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 let cloudTasksAuth: GoogleAuth | null = null;
@@ -36,6 +38,14 @@ export function getMissingBackgroundJobCloudTasksEnvVars(
   jobTypes: BackgroundJobType[],
   env: Record<string, string | undefined> = process.env,
 ) {
+  if (env.LOCAL_APP_WORKER === "true") {
+    try {
+      const config = localStartingFrameConfig(env);
+      return jobTypes.every(type => isLocalAppJobType(type) && (type !== "publish_social_post" || config?.publish))
+        ? [] : ["Local worker support for this job type"];
+    }
+    catch { return ["LOCAL_APP_WORKER configuration"]; }
+  }
   const missing = new Set<string>();
 
   if (!getGcpProjectId(env)) {
@@ -72,6 +82,18 @@ export function getMissingBackgroundJobCloudTasksEnvVars(
 }
 
 export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
+  if (process.env.LOCAL_APP_WORKER === "true") {
+    const config = localStartingFrameConfig(process.env);
+    if (!isLocalAppJobType(job.jobType) || job.userId !== config?.ownerId ||
+        (job.jobType === "publish_social_post" && !config.publish)) {
+      throw new Error("This job requires a supported local delivery path.");
+    }
+    await sendLocalAppWorker(job.jobType === "publish_social_post" ? undefined : job);
+    return { messageId: `local:${job.id}`, provider: "local" as const, queueName: getQueueNameForJobType(job.jobType) };
+  }
+  if (job.input && typeof job.input === "object" && "localStartingFrameMode" in job.input) {
+    throw new Error("Local starting-frame jobs require their local worker.");
+  }
   const projectId = getRequiredProjectId();
   const location =
     process.env.GCP_CLOUD_TASKS_LOCATION?.trim() ||
@@ -120,6 +142,7 @@ export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
 
 /** A queued task may legitimately wait longer than the recovery lease. */
 export async function backgroundJobCloudTaskExists(job: BackgroundJobRecord) {
+  if (process.env.LOCAL_APP_WORKER === "true") return false;
   const baseEndpoint = getCloudTasksCreateEndpoint({
     projectId: getRequiredProjectId(),
     location: process.env.GCP_CLOUD_TASKS_LOCATION?.trim() || process.env.GCP_REGION?.trim() || DEFAULT_GCP_JOB_TASKS_LOCATION,

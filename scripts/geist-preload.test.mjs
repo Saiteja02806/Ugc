@@ -49,3 +49,14 @@ test("normal fallback metrics and original font bytes remain unchanged", async (
   assert.equal(configs.geistMono.preload, false);
   assert.equal(configs.geistEditOverlay.preload, false);
 });
+
+test("brand serif is demand-loaded with identical face, bytes and fallback metrics", async () => {
+  const before = await load({ ...configs.brandSerif, preload: true }, "brandSerif");
+  const after = await load(configs.brandSerif, "brandSerif");
+  assert.deepEqual(before.emitted.map(file => file.preload), [true]);
+  assert.deepEqual(after.emitted.map(file => file.preload), [false]);
+  assert.equal(after.emitted[0].bytes, before.emitted[0].bytes);
+  assert.equal(after.output.css, before.output.css);
+  assert.deepEqual(after.output.adjustFontFallback, before.output.adjustFontFallback);
+  assert.ok(source.includes("${brandSerif.variable}"));
+});

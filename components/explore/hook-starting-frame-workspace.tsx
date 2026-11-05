@@ -669,6 +669,13 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         <details className="text-sm" aria-label="Background and appearance">
           <summary className="cursor-pointer">Background and appearance</summary>
         <fieldset className="mt-2 flex flex-col gap-2" aria-label="Background and appearance choices" disabled={busy || creatingImage || !restored || !images.length || Boolean(retainedFrame)}>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="accent-neutral-400" checked={draft.referenceOptions?.background === "photo" && draft.referenceOptions?.outfit === "photo" && draft.referenceOptions?.hairstyle === "photo"} onChange={event => {
+              const value = event.target.checked ? "photo" as const : "source" as const;
+              const options = { background: value, outfit: value, hairstyle: value };
+              setDraft(current => updateHookKeyframeDraft(current, { referenceOptions: options })); setSaved(false);
+            }} />Use full appearance from my photo
+          </label>
           {([['background', 'Use background from my photo'], ['outfit', 'Use outfit from my photo'], ['hairstyle', 'Use hairstyle from my photo']] as const).map(([role, label]) => <label key={role} className="flex items-center gap-2">
             <input type="checkbox" className="accent-neutral-400" checked={draft.referenceOptions?.[role] === "photo"} onChange={event => {
               const options = { background: draft.referenceOptions?.background ?? "source", outfit: draft.referenceOptions?.outfit ?? "source", hairstyle: draft.referenceOptions?.hairstyle ?? "source", [role]: event.target.checked ? "photo" as const : "source" as const };

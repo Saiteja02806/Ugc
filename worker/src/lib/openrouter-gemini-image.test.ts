@@ -386,3 +386,190 @@ test("legacy two-role canonical data, image labels and identity-stage prompt rem
     assert.equal(digest,expected[`${background}/${outfit}`]);
   }
 });
+
+
+test("stage2Version 2 skips stage 1 (Direct Stage 2) when background, outfit, and hairstyle are source and face-crops identity photos", async () => {
+  const { cropIdentityFaceReference, shouldRunHookKeyframeSceneStage } = await import("./openrouter-gemini-image.js");
+  assert.equal(shouldRunHookKeyframeSceneStage({}), false);
+  assert.equal(shouldRunHookKeyframeSceneStage({ referenceOptions: { background: "source", outfit: "source", hairstyle: "source" } }), false);
+  assert.equal(shouldRunHookKeyframeSceneStage({ referenceOptions: { background: "photo", outfit: "source", hairstyle: "source" } }), true);
+  assert.equal(shouldRunHookKeyframeSceneStage({ referenceOptions: { background: "source", outfit: "photo", hairstyle: "source" } }), true);
+  assert.equal(shouldRunHookKeyframeSceneStage({ referenceOptions: { background: "source", outfit: "source", hairstyle: "photo" } }), true);
+  assert.equal(shouldRunHookKeyframeSceneStage({ startingFrameOutfitPrompt: "Wear a red jacket" }), true);
+  assert.equal(shouldRunHookKeyframeSceneStage({ identityReferenceStartIndex: 2 }), true);
+
+  const scenePng = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#112233" } }).png().toBuffer();
+  const id1Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#445566" } }).png().toBuffer();
+  const id2Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#778899" } }).png().toBuffer();
+
+  const expectedCrop1 = await cropIdentityFaceReference({ data: id1Png.toString("base64"), mimeType: "image/png" });
+  const cropMeta = await sharp(Buffer.from(expectedCrop1.data, "base64")).metadata();
+  assert.equal(cropMeta.width, Math.round(180 * 0.56));
+  assert.equal(cropMeta.height, Math.round(320 * 0.41));
+
+  const stagesRun: string[] = [];
+  const bodies: Array<{ messages: Array<{ content: Array<{ type: string; text?: string; image_url?: { url: string } }> }> }> = [];
+  await generateOpenRouterGeminiHookKeyframe({
+    prompt: "Stage 1 scene prompt",
+    aspectRatio: "9:16",
+    imageSize: "2K",
+    stage2Version: 2,
+    referenceId: "explore-paired-hook-17133540b2315e0a3a05bfbd",
+    sourceSha256: "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+    startingFrameTextCleanup: true,
+    referenceOptions: { background: "source", outfit: "source", hairstyle: "source" },
+    referenceImages: [
+      { data: scenePng.toString("base64"), mimeType: "image/png" },
+      { data: id1Png.toString("base64"), mimeType: "image/png" },
+      { data: id2Png.toString("base64"), mimeType: "image/png" },
+    ],
+    runStage: async (stage, _input, action) => {
+      stagesRun.push(stage);
+      return action();
+    },
+    apiKey,
+    fetchImpl: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${scenePng.toString("base64")}` }] } }] });
+    },
+  });
+
+  assert.deepEqual(stagesRun, ["identity", "harmonize"]);
+  assert.equal(bodies.length, 1);
+  const content = bodies[0].messages[0].content;
+  assert.equal(content.length, 4);
+  assert.match(content[0].text ?? "", /STAGE 2 IDENTITY LOCK \(FACE SWAP & CAPTION CLEANUP ONLY\):/);
+  assert.match(content[0].text ?? "", /POSE, HAND & EXPRESSION LOCK/);
+  assert.match(content[0].text ?? "", /raised hand is on screen-left/);
+  assert.match(content[0].text ?? "", /STARTING-FRAME TEXT CLEANUP/);
+  assert.doesNotMatch(content[0].text ?? "", /USER-SELECTED IMAGE ROLES/);
+  assert.equal(content[1].image_url?.url, `data:image/png;base64,${scenePng.toString("base64")}`);
+  assert.equal(content[2].image_url?.url, `data:image/png;base64,${expectedCrop1.data}`);
+});
+
+test("stage2Version 2 runs Stage 1 and Stage 2 when a photo role is selected, keeping Image 2 uncropped in Stage 1 and face-cropping all identity photos in Stage 2", async () => {
+  const { cropIdentityFaceReference } = await import("./openrouter-gemini-image.js");
+  const scenePng = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#112233" } }).png().toBuffer();
+  const id1Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#445566" } }).png().toBuffer();
+  const id2Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#778899" } }).png().toBuffer();
+  const stage1OutPng = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#223344" } }).png().toBuffer();
+
+  const expectedCrop1 = await cropIdentityFaceReference({ data: id1Png.toString("base64"), mimeType: "image/png" });
+  const expectedCrop2 = await cropIdentityFaceReference({ data: id2Png.toString("base64"), mimeType: "image/png" });
+
+  const stagesRun: string[] = [];
+  const bodies: Array<{ messages: Array<{ content: Array<{ type: string; text?: string; image_url?: { url: string } }> }> }> = [];
+  await generateOpenRouterGeminiHookKeyframe({
+    prompt: "Stage 1 scene prompt",
+    aspectRatio: "9:16",
+    imageSize: "2K",
+    stage2Version: 2,
+    startingFrameTextCleanup: true,
+    referenceOptions: { background: "source", outfit: "photo", hairstyle: "source" },
+    referenceImages: [
+      { data: scenePng.toString("base64"), mimeType: "image/png" },
+      { data: id1Png.toString("base64"), mimeType: "image/png" },
+      { data: id2Png.toString("base64"), mimeType: "image/png" },
+    ],
+    runStage: async (stage, _input, action) => {
+      stagesRun.push(stage);
+      return action();
+    },
+    apiKey,
+    fetchImpl: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      const out = bodies.length === 1 ? stage1OutPng : scenePng;
+      return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${out.toString("base64")}` }] } }] });
+    },
+  });
+
+  assert.deepEqual(stagesRun, ["scene", "identity", "harmonize"]);
+  assert.equal(bodies.length, 2);
+
+  const stage1Content = bodies[0].messages[0].content;
+  assert.match(stage1Content[0].text ?? "", /OUTFIT: Use Image2's clothing/);
+  assert.equal(stage1Content[1].image_url?.url, `data:image/png;base64,${scenePng.toString("base64")}`);
+  assert.equal(stage1Content[2].image_url?.url, `data:image/png;base64,${id1Png.toString("base64")}`);
+  assert.equal(stage1Content[3].image_url?.url, `data:image/png;base64,${expectedCrop2.data}`);
+
+  const stage2Content = bodies[1].messages[0].content;
+  assert.match(stage2Content[0].text ?? "", /STAGE 2 IDENTITY LOCK \(FACE SWAP & CAPTION CLEANUP ONLY\):/);
+  assert.equal(stage2Content[1].image_url?.url, `data:image/png;base64,${stage1OutPng.toString("base64")}`);
+  assert.equal(stage2Content[2].image_url?.url, `data:image/png;base64,${expectedCrop1.data}`);
+  assert.equal(stage2Content[3].image_url?.url, `data:image/png;base64,${expectedCrop2.data}`);
+});
+
+test("Use full appearance from my photo runs Stage 1 with uncropped Image 2, injects FULL APPEARANCE, strips conflicting source room text, and preserves scene in Stage 2", async () => {
+  const { cropIdentityFaceReference } = await import("./openrouter-gemini-image.js");
+  const scenePng = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#112233" } }).png().toBuffer();
+  const id1Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#445566" } }).png().toBuffer();
+  const id2Png = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#778899" } }).png().toBuffer();
+  const stage1OutPng = await sharp({ create: { width: 180, height: 320, channels: 3, background: "#223344" } }).png().toBuffer();
+
+  const expectedCrop1 = await cropIdentityFaceReference({ data: id1Png.toString("base64"), mimeType: "image/png" });
+  const expectedCrop2 = await cropIdentityFaceReference({ data: id2Png.toString("base64"), mimeType: "image/png" });
+
+  const stagesRun: string[] = [];
+  const bodies: Array<{ messages: Array<{ content: Array<{ type: string; text?: string; image_url?: { url: string } }> }> }> = [];
+
+  const basePrompt = [
+    "replacing only the person's identity with the influencer in Image2 and supporting photos. This is the same shot, not a newly staged portrait.",
+    "Identity photos supply facial features only, not their room, outfit, neutral pose, expression or lighting.",
+    "Retain the visible room furniture at lower screen-left and the circular ceiling fixture near the top, with the source's muted room light.",
+    "Preserve the objects, clothing and scene geometry; do not erase an object or replace the room to remove its text.",
+    "Check screen-side placement, gaze, mouth opening, head tilt, room and camera against Image1 before returning the photograph.",
+  ].join("\n\n");
+
+  await generateOpenRouterGeminiHookKeyframe({
+    prompt: basePrompt,
+    aspectRatio: "9:16",
+    imageSize: "2K",
+    stage2Version: 2,
+    referenceId: "explore-paired-hook-9dfcfdb8bb0d7dc8dcba3353",
+    sourceSha256: "ef2341b6d1de7bf3c7e5ac7a24f4e60d67761f12d4b0f0a4805fc4e985d87e2d",
+    startingFrameTextCleanup: true,
+    referenceOptions: { background: "photo", outfit: "photo", hairstyle: "photo" },
+    referenceImages: [
+      { data: scenePng.toString("base64"), mimeType: "image/png" },
+      { data: id1Png.toString("base64"), mimeType: "image/png" },
+      { data: id2Png.toString("base64"), mimeType: "image/png" },
+    ],
+    runStage: async (stage, _input, action) => {
+      stagesRun.push(stage);
+      return action();
+    },
+    apiKey,
+    fetchImpl: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      const out = bodies.length === 1 ? stage1OutPng : scenePng;
+      return Response.json({ choices: [{ message: { images: [{ url: `data:image/png;base64,${out.toString("base64")}` }] } }] });
+    },
+  });
+
+  assert.deepEqual(stagesRun, ["scene", "identity", "harmonize"]);
+  assert.equal(bodies.length, 2);
+
+  const stage1Prompt = bodies[0].messages[0].content[0].text ?? "";
+  assert.match(stage1Prompt, /FULL APPEARANCE: Use Image2 as the complete source of truth for hair, body build, skin tone, outfit and background/);
+  assert.match(stage1Prompt, /BACKGROUND: Use Image2's environment from Image1's camera viewpoint; replace the source room\./);
+  assert.match(stage1Prompt, /OUTFIT: Use Image2's clothing, body build and natural skin tone/);
+  assert.match(stage1Prompt, /HAIRSTYLE: Use Image2's hairstyle, hair color, length, texture, parting and volume/);
+  assert.doesNotMatch(stage1Prompt, /replacing only the person's identity/);
+  assert.doesNotMatch(stage1Prompt, /Identity photos supply facial features only/);
+  assert.doesNotMatch(stage1Prompt, /Retain the visible room furniture/);
+
+  // Stage 1 receives uncropped Image 2 and cropped Image 3+
+  const stage1Content = bodies[0].messages[0].content;
+  assert.equal(stage1Content[1].image_url?.url, `data:image/png;base64,${scenePng.toString("base64")}`);
+  assert.equal(stage1Content[2].image_url?.url, `data:image/png;base64,${id1Png.toString("base64")}`);
+  assert.equal(stage1Content[3].image_url?.url, `data:image/png;base64,${expectedCrop2.data}`);
+
+  // Stage 2 receives Stage 1's output as Image 1 and all face-cropped identity photos
+  const stage2Content = bodies[1].messages[0].content;
+  const stage2Prompt = stage2Content[0].text ?? "";
+  assert.match(stage2Prompt, /STAGE 2 IDENTITY LOCK \(FACE SWAP & CAPTION CLEANUP ONLY\):/);
+  assert.doesNotMatch(stage2Prompt, /Retain the visible room furniture/);
+  assert.equal(stage2Content[1].image_url?.url, `data:image/png;base64,${stage1OutPng.toString("base64")}`);
+  assert.equal(stage2Content[2].image_url?.url, `data:image/png;base64,${expectedCrop1.data}`);
+  assert.equal(stage2Content[3].image_url?.url, `data:image/png;base64,${expectedCrop2.data}`);
+});

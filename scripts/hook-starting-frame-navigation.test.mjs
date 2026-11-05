@@ -79,7 +79,7 @@ test("feature-disabled source reference flows retain their explicit video contra
 
 
 test("choosing a previous starting frame switches to its Hook and restores the image composer", () => {
-  const h = harness(); const selection = { ownerId: "owner", draftId, referenceId: "hook-2", assetId: "saved-frame" };
+  const h = harness(); const selection = { ownerId: "owner", jobId: "generated-job", draftId, referenceId: "hook-2", assetId: "saved-frame" };
   h.actions.reuseHookStartingFrame(selection);
   assert.equal(h.state.startingFrame, selection); assert.equal(h.state.reference.id, "hook-2");
   assert.equal(h.state.pane, "controls"); assert.equal(h.state.hookPreparation, null);
@@ -89,4 +89,14 @@ test("choosing a previous starting frame switches to its Hook and restores the i
     const blocked = harness(overrides); blocked.actions.reuseHookStartingFrame(selection); assert.equal(blocked.state.startingFrame, null);
   }
   assert.throws(() => harness().actions.reuseHookStartingFrame({ ...selection, referenceId: "missing" }), /no longer available/);
+});
+
+test("an uploaded starting frame clears source provenance without requiring a generated job", () => {
+  const h = harness();
+  const selection = { ownerId: "owner", assetId: "uploaded-frame" };
+  assert.equal(h.actions.reuseHookStartingFrame(selection), true);
+  assert.equal(h.state.startingFrame, selection);
+  assert.equal(h.state.reference, null);
+  assert.equal(h.state.pane, "controls");
+  for (const key of ["refId", "hookFrameDraft", "sourceUrl", "refType", "exploreRecreate", "hookRecreation"]) assert.equal(h.params().has(key), false);
 });

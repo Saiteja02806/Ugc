@@ -1,6 +1,6 @@
 import { hookStartingFrameFaceReferenceLimit } from "../../worker/src/lib/hook-starting-frame-video.ts";
 
-type StartingFrameIdentity = { assetId: string; jobId: string; referenceId: string; url: string };
+type StartingFrameIdentity = { assetId: string; jobId?: string; referenceId?: string; url: string };
 type FacePhoto = { asset: { id: string; url: string } };
 
 /** Client readiness only; the API independently verifies ownership and roles. */
@@ -18,8 +18,7 @@ export function startingFrameFaceReferenceError(model: unknown, frame: StartingF
 export function startingFrameAnimationInput(frame: StartingFrameIdentity, photos: readonly FacePhoto[]) {
   return {
     startingFrameAssetId: frame.assetId,
-    startingFrameJobId: frame.jobId,
-    referenceId: frame.referenceId,
+    ...(frame.jobId ? { startingFrameJobId: frame.jobId, referenceId: frame.referenceId } : {}),
     ...(photos.length ? { referenceImageUrls: photos.map(photo => photo.asset.url), imageReferencePurpose: "person" as const } : {}),
   };
 }

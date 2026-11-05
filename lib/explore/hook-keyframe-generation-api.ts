@@ -11,6 +11,8 @@ import { BillingAccessError, getGenerationCreditCost, reserveBillingCredits } fr
 import { getBackgroundJobByIdempotencyKey, getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "../jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "../jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "../queues/job-queue";
+import { checkLocalAppWorker, startingFrameLocalDelivery } from "../jobs/local-starting-frame";
+import type { VerifiedFirebaseUser } from "../firebase/server-auth";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl } from "../media/media-reference";
 import { getMediaAssetForOwner } from "../media/media-storage";
 import { isPrivateUserMedia } from "../media/media-delivery";
@@ -85,21 +87,26 @@ export async function handleHookKeyframeGeneration(request: Request) {
       if (pending.preparation !== preparation) throw new HookKeyframeGenerationError("This request ID already belongs to different image instructions. Recover its saved result.", 409);
       return queuedResponse(await pending.job, user.uid);
     }
-    const submission = submitPreparation(user.uid, input, key);
+    const submission = submitPreparation(user, input, key);
     inFlight.set(key, { preparation, job: submission });
     try { return queuedResponse(await submission, user.uid); }
     finally { if (inFlight.get(key)?.job === submission) inFlight.delete(key); }
   } catch (error) { return errorResult(error); }
 }
-async function submitPreparation(ownerId: string, input: Awaited<ReturnType<typeof readRequest>>, key: string) {
+async function submitPreparation(user: VerifiedFirebaseUser, input: Awaited<ReturnType<typeof readRequest>>, key: string) {
+    const ownerId = user.uid;
+    const local = startingFrameLocalDelivery(user);
     const previous = await getBackgroundJobByIdempotencyKey(key, { userId: ownerId, jobType: "generate_image" });
     if (previous) {
       const { receipt } = hookKeyframeReceiptFromJob(previous, ownerId);
       if (!samePreparation(receipt, input)) throw new HookKeyframeGenerationError("This request ID already belongs to different image instructions. Recover its saved result.", 409);
+      if (local && previous.status === "queued" && record(previous.input) && previous.input.localStartingFrameMode === local.mode) await local.dispatch(previous);
       return previous;
     }
     if (!input.imageModel) throw new HookKeyframeGenerationError("Refresh this preparation before generating a new starting image.", 400);
-    if ([...getMissingBackgroundJobStorageEnvVars(), ...getMissingJobQueueEnvVars(["generate_image"]), ...getMissingStorageEnvVars()].length) throw new HookKeyframeGenerationError("Starting-image generation is not configured.", 501);
+    if ([...getMissingBackgroundJobStorageEnvVars(), ...(local ? [] : getMissingJobQueueEnvVars(["generate_image"])), ...getMissingStorageEnvVars()].length) throw new HookKeyframeGenerationError("Starting-image generation is not configured.", 501);
+    await checkLocalAppWorker(user);
+    await local?.check();
     const photos = await Promise.all(input.personImageAssetIds.map(async id => {
       const asset = await getMediaAssetForOwner({ assetId: id, userId: ownerId });
       if (!asset || asset.user_id !== ownerId || asset.deleted_at !== null || asset.status !== "ready" || !["image", "influencer"].includes(asset.collection) ||
@@ -137,7 +144,7 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     const partial = { version: 5 as const, imageModel: model, ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
       sourceFrame, preparationInputKey: expectedPreparationInputKey, personImageAssetIds: input.personImageAssetIds, instructions: input.instructions, ...(input.customImagePrompt !== undefined ? { customImagePrompt: input.customImagePrompt } : {}),
       ...(referenceOptions ? { referenceOptions } : {}) };
-    const receipt: HookKeyframeGenerationReceipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 7,
+    const receipt: HookKeyframeGenerationReceipt = { ...partial, purpose: "hook_starting_frame", promptVersion: promptResult.version,
       inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
     const privateCreator = isCreatorAccountReference(input.referenceId);
     const snapshot = privateCreator ? { url: creatorSceneCanonicalUrl(receipt) }
@@ -146,17 +153,17 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     const referenceImageUrls = [snapshot.url, ...photos.map(photo => photo.url)];
     if ((!privateCreator && !isTrustedMediaReferenceUrl(snapshot.url)) || !isHookKeyframeImageInput({ receipt, ownerId, model, aspectRatio, prompt,
       referenceImageUrl: snapshot.url, referenceImageUrls })) throw new HookKeyframeGenerationError("The original scene snapshot could not be verified. No generation was submitted.", 503);
-    if (model === "seedream_5_pro" && `${prompt}\n\nIMAGE INPUT ORDER:\n${hookKeyframeProviderImageLabels(input.personImageAssetIds.length, 7, referenceOptions).join("\n")}`.length > 4_000) throw new HookKeyframeGenerationError("Shorten the image instructions for Seedream to fit its 4,000-character prompt limit including image roles.", 400);
+    if (model === "seedream_5_pro" && `${prompt}\n\nIMAGE INPUT ORDER:\n${hookKeyframeProviderImageLabels(input.personImageAssetIds.length, promptResult.version, referenceOptions).join("\n")}`.length > 4_000) throw new HookKeyframeGenerationError("Shorten the image instructions for Seedream to fit its 4,000-character prompt limit including image roles.", 400);
     const creditCost = hookImageCreditCost(model);
     await reserveBillingCredits({ amount: creditCost, idempotencyKey: key, jobType: "generate_image", userId: ownerId });
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
     const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: model === "gemini_3_pro" ? 3 : 1,
-      input: { generationId: crypto.randomUUID(), model, ...(model === "seedream_5_pro" || model === "gemini_3_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
+      input: { generationId: crypto.randomUUID(), model, ...(local ? { localStartingFrameMode: local.mode } : {}), ...(model === "seedream_5_pro" || model === "gemini_3_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
         referenceImageUrls, hookKeyframe: receipt, ...(model === "gemini_3_pro" ? { startingFrameTextCleanup: true, startingFramePipelineVersion: 2 } : {}),
         ...(model === "gemini_3_pro" && input.customImagePrompt !== undefined ? { startingFrameOutfitPrompt: input.customImagePrompt } : {}),
         exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
-    }, { beforeDispatch: async stored => {
+    }, { dispatchLocal: local?.dispatch, beforeDispatch: async stored => {
       const existing = hookKeyframeReceiptFromJob(stored, ownerId);
       if (!samePreparation(existing.receipt, input) || existing.receipt.inputKey !== receipt.inputKey) throw new HookKeyframeGenerationError("This request ID belongs to different work. Recover its original result.", 409);
     } });
@@ -178,6 +185,9 @@ export async function handleHookKeyframeStatus(request: Request) {
       : await getBackgroundJobByIdempotencyKey(requestStorageKey(user.uid, requestKey!), { userId: user.uid, jobType: "generate_image" });
     if (!job) throw new HookKeyframeGenerationError("The request has not been confirmed. Keep its saved request ID and check again; do not create a replacement request.", 404);
     const { receipt, generationId } = hookKeyframeReceiptFromJob(job, user.uid);
+    if (job.status === "queued" && record(job.input) && job.input.localStartingFrameMode) {
+      await startingFrameLocalDelivery(user)?.dispatch(job);
+    }
     const input = record(job.input) ? job.input : {};
     let output = null;
     if (job.status === "completed") {

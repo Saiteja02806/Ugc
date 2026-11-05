@@ -150,11 +150,6 @@ function CharacterStudioScreen({
     builder.generate.reset();
     builder.touchSession();
 
-    const compiled = compileInfluencerPrompt(selection, customCharacters);
-    const uploadedFaceId = customCharacters.some((character) => character.id === selection.characterTypeId)
-      ? selection.characterTypeId
-      : null;
-
     if (!userId) {
       setErrorMessage("Please sign in to generate and save your AI influencer.");
       return;
@@ -164,6 +159,16 @@ function CharacterStudioScreen({
     setReferencePending(true);
     let submitted = false;
     try {
+      if (builder.session.pendingRequest) {
+        submitted = true;
+        await builder.generate.mutateAsync(builder.session.pendingRequest);
+        return;
+      }
+
+      const compiled = compileInfluencerPrompt(selection, customCharacters);
+      const uploadedFaceId = customCharacters.some((character) => character.id === selection.characterTypeId)
+        ? selection.characterTypeId
+        : null;
       let uploadedFaceAssetId: string | undefined;
       if (uploadedFaceId) {
         uploadedFaceAssetId = faceAssetIds.current.get(uploadedFaceId);
@@ -253,7 +258,8 @@ function CharacterStudioScreen({
   ]);
 
   const access = builder.access.data?.access;
-  const generateBlocked = Boolean(userId && access && batchSize > access.affordableImageCount);
+  const retryingPreviousRequest = Boolean(builder.session.pendingRequest);
+  const generateBlocked = Boolean(!retryingPreviousRequest && userId && access && batchSize > access.affordableImageCount);
   const visitJobIds = new Set(builder.visibleJobs.map((job) => job.jobId));
   const sessionJobs = (builder.visibleStatuses ?? []).filter((job) => builder.historyImage || visitJobIds.has(job.id));
   const activeCanvasJobs = sessionJobs;
@@ -312,6 +318,7 @@ function CharacterStudioScreen({
           maxBatchSize={access?.affordableImageCount ?? 3}
           availabilityMessage={generateBlocked ? access?.message : null}
           generateDisabled={generateBlocked}
+          generateLabel={retryingPreviousRequest ? "Retry previous request" : undefined}
           disabled={isBusy}
           customCharacters={customCharacters}
           onUploadCharacter={handleUploadCharacter}

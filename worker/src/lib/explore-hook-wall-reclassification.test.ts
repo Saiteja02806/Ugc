@@ -6,7 +6,7 @@ import { getHookReferenceGalleryItems, getHookReferenceReleaseItems } from "./ex
 test("published Wall-to-Hook assets are available to Recreate only after activation", () => {
   assert.equal(staged.mediaStatus, "published");
   assert.equal(staged.activation, "active");
-  assert.equal(staged.items.length, 3);
+  assert.equal(staged.items.length, 4);
   for (const item of staged.items) {
     assert.equal(getHookReferenceGalleryItems().some(existing => existing.id === item.id), true);
     assert.equal(getHookReferenceReleaseItems().some(existing => existing.id === item.id), true);

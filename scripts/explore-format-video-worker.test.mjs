@@ -7,6 +7,7 @@ import ts from "typescript";
 import * as keyframeContract from "../worker/src/lib/hook-keyframe-generation-contract.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 import * as wallInitialTextLayout from "../worker/src/lib/wall-initial-text-layout.ts";
+import * as videoImageContract from "../worker/src/lib/video-image-reference-contract.ts";
 
 function load(file, imports = {}) {
   const exports = {};
@@ -23,6 +24,8 @@ const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts
   "../lib/explore-reference-soundtrack.js": { getGenerationReferenceSoundtrack: () => null },
   "../lib/explore-generated-reference-audio.js": { applyGeneratedReferenceAudio: () => assert.fail("No soundtrack is selected in this provider fixture"), silenceGeneratedVideo: () => assert.fail("This legacy fixture has no explicit sound setting") },
   "../lib/video-reference-input.js": load("worker/src/lib/video-reference-input.ts"),
+  "../lib/video-image-reference-contract.js": videoImageContract,
+  "../lib/owned-video-images.js": { resolveOwnedVideoImages: () => assert.fail("Historical jobs must not perform a new owned-image lookup") },
   "../lib/private-media.js": { resolveOwnedPrivateMediaUrl: async url => url },
   "../lib/hook-keyframe-generation-contract.js": keyframeContract,
   "../lib/hook-starting-frame-video.js": startingFrameVideo,

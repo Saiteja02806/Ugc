@@ -54,7 +54,7 @@ test("the payload keeps first-frame identity and ordered face references in sepa
     referenceImageUrls: photos.map(value => value.asset.url), imageReferencePurpose: "person" });
   assert.deepEqual(startingFrameAnimationInput(frame, []), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId });
   assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /selections are kept/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /Open Change and clear/);
   assert.match(startingFrameFaceReferenceError("seedance_2_5", frame, photos), /starting image alone/);
   assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /starting image alone/);
   assert.match(startingFrameFaceReferenceError("google_omni", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /starting image alone/);

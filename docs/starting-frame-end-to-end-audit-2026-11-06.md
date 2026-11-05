@@ -1,0 +1,19 @@
+# Explore starting-frame wiring audit, 6 November 2026
+
+Scope: Hook Video (including private creator references), Text on screen / Wall of Text, Talking Head + Demo, Slideshow, and the retired Creator Phone route. Read-only runtime audit using Verify Feature Wiring, the global mistake ledger, protected contracts and relevant Explore incidents. No application changes, build, deployment, publishing or paid generation.
+
+| Boundary | Status | Evidence |
+| --- | --- | --- |
+| Image generation request through worker payload | VERIFIED locally with fixtures | Source frame at t=0, ordered owned person photos, frozen image-model receipt and worker scene/person roles. Private creator delivery uses signed scene URLs. |
+| Use this frame through composer | VERIFIED locally with fixtures | Exact owned asset/job/reference and current draft pass to the composer. Preview must load. Changed inputs and foreign jobs cannot replace selection. Approval alone makes no video request. |
+| Generate Video through API and saved job | VERIFIED locally with fixtures | Hook, Wall and Talking Head preserve exact image identity. API validates completed job, output asset, current source hash, settings and ownership. Uploaded images use separate ownership validation. Multi-output admission preserves request IDs. |
+| Video worker through provider payload | VERIFIED locally with mocked transport | ReAPI literal first-frame roles, selected duration and recovery without duplicate provider POST. Talking Head image plus voice has a separate appearance/voice route. |
+| Hosted worker revision | VERIFIED read-only | Cloud Run sends 100% of generation-worker traffic to r-9d840243. Its version-five receipt parser accepts prompt versions 7, 8 and 9. The old r-ddbe2fdd version restriction does not apply to that active worker. |
+| Authenticated website, actual provider output and display | NOT TESTED | No fresh paid image/video job submitted. Need signed-in image approval and one actual result per active workflow, comparing the output opening with the selected image. For Talking Head voice-reference mode, review appearance and voice delivery instead of literal first-frame equality. |
+| Slideshow and Creator Phone | N/A for this handoff | Slideshow generates individual slides and uses its own photo/face-swap path. Creator Phone route returns notFound. |
+
+The main known submission block is restored person photos on the literal-first-frame route. Current ReAPI first-frame models allow zero extra portraits. Hook and Wall have a local Use starting frame only action. Talking Head can clear them under Change. An approved generated frame with a compatible voice model uses the separate image-plus-voice route. The uploaded-frame route rejects audio guidance. Script mode also requires reviewed spoken words, Sound on and enough duration.
+
+Other expected gates include disabled rollout or missing entitlement/credits, unresolved Hook motion review, missing or changed source/asset, image still collecting or preview error, unsupported duration/aspect ratio/model, conflicting references and unconfirmed earlier submission. A Hook duration shorter than its source can be rejected to preserve the ending.
+
+Checks: 243 browser-handler/API/client fixtures passed. Two source worker suites initially failed to load because the base runner did not resolve worker .js imports to .ts. Rerun with a scratch source resolver plus additional worker, adapter, picker and result suites passed 151 tests. A further 19 actual worker handler tests passed with mocked provider I/O using the repository worker source loader. See .tmp/frame-wiring-audit-20261106.txt, .tmp/frame-wiring-worker-20261106.txt and .tmp/frame-wiring-handler-20261106.txt. Existing photo-block incident UGC-UI-20261106-STARTING-FRAME-VIDEO-BLOCK remains open for hosted acceptance. No new application regression established.

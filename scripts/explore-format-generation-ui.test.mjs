@@ -209,9 +209,9 @@ test("Hook and Wall default to Sound off and submit the explicitly toggled choic
   assert.equal(harness("studio").composer.props.promptAction, undefined);
 });
 
-test("approved starting-frame handoff retains photos, blocks unsupported input, and submits only after explicit removal", async () => {
-  for (const sound of [false, true]) {
-    const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
+test("Hook and Text on screen retain photos and only submit after explicit frame-only recovery", async () => {
+  for (const [format, sound] of [["hook", false], ["hook", true], ["wall_text", false]]) {
+    const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
     const controls = h.render().composer.props.referenceControls.props;
     controls.onImagesChange([{ kind: "image", asset: { id: "old-photo", url: "https://owned.test/old.png" } }]);
     controls.onChange({ kind: "video", asset: { id: "old-clip", url: "https://owned.test/old.mp4", durationSeconds: 4, fileSizeBytes: 1000 } }, "video");
@@ -237,9 +237,16 @@ test("approved starting-frame handoff retains photos, blocks unsupported input, 
     assert.equal(composer.props.generateDisabled, true);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 0, "Unsupported frame-plus-photo combinations must block before submission");
-    composer.props.referenceControls.props.onPhotosChange([]);
+    const recovery = h.render().composer.props.secondaryActions;
+    assert.equal(recovery.props.children, "Use starting frame only");
+    assert.equal(recovery.props.type, "button");
+    recovery.props.onClick();
     composer = h.render().composer;
     assert.equal(composer.props.referenceControls.props.frame.assetId, selection.assetId);
+    assert.deepEqual(Array.from(composer.props.referenceControls.props.photos), []);
+    assert.equal(composer.props.feedbackError, null);
+    assert.equal(composer.props.secondaryActions, undefined);
+    assert.equal(h.requests.length, 0, "Choosing frame-only must not submit or spend credits");
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 1);

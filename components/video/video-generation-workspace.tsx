@@ -45,7 +45,7 @@ import { Input } from "@/components/ui/input";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { StartingFrameAnimationReferences } from "@/components/explore/starting-frame-animation-references";
-import { startingFrameAnimationInput, startingFrameFaceReferenceError } from "@/lib/explore/starting-frame-animation-input";
+import { startingFrameAnimationInput, startingFrameFaceReferenceError, UNSUPPORTED_STARTING_FRAME_PHOTOS } from "@/lib/explore/starting-frame-animation-input";
 import { useStartingFramePhotos } from "@/components/explore/use-starting-frame-photos";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import creation from "@/components/explore/workflow-creation.module.css";
@@ -1213,6 +1213,10 @@ export function VideoGenerationStudioPanel({
     jobQueryError ??
     (effectiveGenerationState === "failed" ? durableNotice : null) ??
     (isGenerating ? null : resultsError ?? recoveryError);
+  const composerFeedbackError = resultsErrorMessage ?? generationReferenceError ?? earlierRequests.error ?? (accessState === "error" || hasInsufficientCredits ? composerMessage : null);
+  const canUseStartingFrameOnly = generationReferenceError === UNSUPPORTED_STARTING_FRAME_PHOTOS &&
+    composerFeedbackError === UNSUPPORTED_STARTING_FRAME_PHOTOS && !generationLocked && !isGenerating &&
+    !pendingSubmission && !recoveringJobs && !referenceFilesPending && !creatorReferenceUploadPending;
   const resultsStatus: AiStudioResultsStatus | null =
     resultsErrorMessage
       ? {
@@ -1537,7 +1541,7 @@ export function VideoGenerationStudioPanel({
         accessMessage={!generationLocked && generationReferenceError ? generationReferenceError : workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}
         ariaLabel="Video prompt"
-        feedbackError={resultsErrorMessage ?? generationReferenceError ?? earlierRequests.error ?? (accessState === "error" || hasInsufficientCredits ? composerMessage : null)}
+        feedbackError={composerFeedbackError}
         contextBanner={
           <>{automaticHookTextAvailable ? <div><label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={automaticHookText} onChange={event => setAutomaticHookText(event.target.checked)} disabled={isGenerating || Boolean(pendingSubmission)} className="mt-1 accent-primary" /><span>Automatically adapt and add {workflowFormat === "wall_text" ? "on-screen" : "Hook"} text<span className="block text-xs text-muted">Uses your business context and one text remix per batch. You can edit the text on the video.</span></span></label>{automaticTextProblem ? <p role="status" className="mt-2 text-xs text-muted">{automaticTextProblem}{automaticTextReadiness.isError ? <button type="button" onClick={() => void automaticTextReadiness.refetch()} className="ml-2 underline">Retry</button> : null}</p> : null}</div> : null}{recreateView?.contextBanner ?? (referenceContext ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-white/30 px-3 py-1.5 text-xs text-foreground shadow-sm">
@@ -1630,7 +1634,10 @@ export function VideoGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
-        secondaryActions={workflow ? undefined : generationActions}
+        secondaryActions={canUseStartingFrameOnly ? <Button type="button" variant="outline" size="sm" onClick={() => {
+          handleImageReferencesChange([]);
+          setActionError(error => error === UNSUPPORTED_STARTING_FRAME_PHOTOS ? null : error);
+        }}>Use starting frame only</Button> : workflow ? undefined : generationActions}
 
         settings={
           <>

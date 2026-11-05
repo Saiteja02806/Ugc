@@ -506,6 +506,13 @@ p {
   accent-color: #a3a3a3 !important;
 }
 
+/* Portaled schedule action slots use a global attribute, outside CSS Modules. */
+[data-schedule-action-slot] {
+  max-height: 40dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

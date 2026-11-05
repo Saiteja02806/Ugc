@@ -647,3 +647,7 @@ export const publicWorkflow = task({
 Design tasks to be stateless, idempotent, and resilient to failures. Use metadata for state tracking and queues for resource management.
 
 <!-- TRIGGER.DEV advanced-tasks END -->
+
+
+## No automatic MCP builds — explicit user rule, 6 November 2026
+Website, worker and combined-release approval does not authorize building or deploying the MCP service/project. Require explicit MCP-build authorization. Check Git/CI/deployment fanout before pushing; do not silently change project settings/connections. Continue separately authorized website/worker work. This rule persists until the user changes it.

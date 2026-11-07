@@ -3,7 +3,7 @@ import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } 
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 import { uploadedStartingFrameRatio, type StartingFrameSelection } from "./uploaded-starting-frame";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
-import { startingFrameFaceReferenceError } from "./starting-frame-animation-input";
+import { startingFrameFaceReferenceError, startingFrameForwardsPhotos } from "./starting-frame-animation-input";
 import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline";
 import { talkingHeadScriptInputError } from "./talking-head-script-input";
 
@@ -30,6 +30,7 @@ export type WorkflowGenerationDraft = {
   referencesError?: string | null;
   startingFrame?: StartingFrameSelection | null;
   startingFramePhotos?: WorkflowImageSource[];
+  startingFrameMode?: "first_frame_with_identity";
 };
 export type WorkflowGenerationBatch = {
   jobs: { jobId: string; videoId: string }[];
@@ -72,6 +73,7 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   if ((Object.keys(validSettings) as (keyof WorkflowGenerationSettings)[]).some((key) => validSettings[key] !== draft.settings[key])) {
     return "These generation settings are unavailable. Choose a supported model, duration and quality.";
   }
+  if (draft.startingFrameMode && (!draft.startingFrame || draft.settings.model !== "google_omni" || draft.audioReference)) return "Use direct Gemini Omni with a starting frame and optional identity photos, without a voice reference.";
   if (draft.startingFrame) {
     if (draft.kind !== "hook") return "Starting-frame Recreate is unavailable in this workflow.";
     if (!isHookStartingFrameVideoModel(draft.settings.model) || !hookStartingFrameVideoDurations(draft.settings.model).includes(draft.settings.duration)) return "Choose a supported starting-frame model and duration.";
@@ -95,7 +97,7 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     if (photos.some(photo => !photo.assetId || !photo.url.startsWith("https://"))) return "Choose owned ready face photos before generating.";
     const faceError = draft.audioReference
       ? photos.length + 1 > getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: true }).maxImages ? "Use fewer identity photos with this image and voice reference." : null
-      : startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })));
+      : startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })), draft.startingFrameMode);
     if (faceError) return faceError;
     return null;
   }
@@ -203,8 +205,9 @@ export function createWorkflowGenerationClient(dependencies: {
       const images = (draft.startingFrame ? draft.startingFramePhotos ?? [] : selectedWorkflowImages(draft)).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
+      const startingFrameMode = draft.startingFrameMode;
       const startingFrame = draft.startingFrame ? { ...draft.startingFrame } : null;
-      const fingerprint = JSON.stringify({ kind: draft.kind, prompt, ...(talkingHeadScript !== undefined ? { talkingHeadScript } : {}), settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url, startingFrame: startingFrame ? { assetId: startingFrame.assetId, jobId: startingFrame.jobId, referenceId: startingFrame.referenceId, generateAudio: startingFrame.generateAudio } : null });
+      const fingerprint = JSON.stringify({ kind: draft.kind, ...(startingFrameMode ? { startingFrameMode } : {}), prompt, ...(talkingHeadScript !== undefined ? { talkingHeadScript } : {}), settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url, startingFrame: startingFrame ? { assetId: startingFrame.assetId, jobId: startingFrame.jobId, referenceId: startingFrame.referenceId, generateAudio: startingFrame.generateAudio } : null });
       if (pending?.attempted && pending.fingerprint !== fingerprint) {
         throw new Error("The previous request has not been confirmed. Restore its original instructions, references and settings, then retry to recover its saved status before starting a different request.");
       }
@@ -215,7 +218,10 @@ export function createWorkflowGenerationClient(dependencies: {
         if (!await withReadDeadline(() => dependencies.getOwnerToken(), undefined, dependencies.requestTimeoutMs ?? WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS)) throw new Error("Sign in before generating a video.");
         dependencies.assertActive();
         if (!submission.body) {
-          const references = await Promise.all(images.map(prepareImage));
+          // Kling 3.0 exposes only first/last frame slots, so photos that cannot
+          // travel with the approved frame are not uploaded for that request.
+          const forwardsStartingFramePhotos = !startingFrame || startingFrameForwardsPhotos(settings.model, startingFrameMode);
+          const references = forwardsStartingFramePhotos ? await Promise.all(images.map(prepareImage)) : [];
           const referenceImageUrls = [...new Set(references.map((image) => image.url))];
           async function prepareMedia(source: WorkflowTimedSource | null, kind: "video" | "audio") {
             if (!source) return null;
@@ -241,8 +247,8 @@ export function createWorkflowGenerationClient(dependencies: {
             aspectRatio: settings.aspectRatio,
             ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId,
               ...(startingFrame.jobId ? { startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId } : {}),
-              ...(audioReference ? { startingFrameMode: "image_voice_reference" } : {}), exploreFormat: "hook", generateAudio: startingFrame.generateAudio,
-              ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) }
+              ...(audioReference ? { startingFrameMode: "image_voice_reference" } : startingFrameMode ? { startingFrameMode } : {}), exploreFormat: "hook", generateAudio: startingFrame.generateAudio,
+              ...(referenceImageUrls.length && (!startingFrame || startingFrameForwardsPhotos(settings.model, startingFrameMode)) ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) }
               : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
             ...(videoReference ? { referenceVideoUrl: videoReference.url, referenceVideoAssetId: videoReference.assetId, referenceVideoDurationSeconds: videoReference.duration } : {}),
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),

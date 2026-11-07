@@ -33,12 +33,12 @@ export default function PrivacyPolicyPage() {
           </p>
           <p>
             Privacy questions can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
             . General support questions can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-              support@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+              hello@vidmake.io
             </a>
             .
           </p>
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
         </LegalSection>
 
         <LegalSection title="Optional resource notifications">
-          <p>If you request the Hook Video Library Batch 2 announcement, we store your email address, consent version and request date privately for that announcement only. Downloading a resource does not subscribe you or create an account. We do not use this list for unrelated marketing. Requests are deleted after the announcement or when you ask us to cancel at <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">privacy@getugcpilot.com</a>.</p>
+          <p>If you request the Hook Video Library Batch 2 announcement, we store your email address, consent version and request date privately for that announcement only. Downloading a resource does not subscribe you or create an account. We do not use this list for unrelated marketing. Requests are deleted after the announcement or when you ask us to cancel at <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">privacy@vidmake.io</a>.</p>
         </LegalSection>
 
         <LegalSection title="Website analytics">
@@ -271,8 +271,8 @@ export default function PrivacyPolicyPage() {
           <p>
             Users can request deletion by using product settings where available
             or by emailing{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
             . Data deletion instructions are available at{" "}
             <a className="font-bold text-primary" href="https://vidmake.io/data-deletion">
@@ -310,8 +310,8 @@ export default function PrivacyPolicyPage() {
           <p>
             Users may request access, correction, deletion, export, or
             restriction of their personal data by contacting{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
             .
           </p>

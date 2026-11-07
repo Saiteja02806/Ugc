@@ -51,8 +51,8 @@ export default async function DataDeletionPage({
           </LegalList>
           <p>
             You can also request deletion by emailing{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
             .
           </p>

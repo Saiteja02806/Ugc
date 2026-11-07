@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Does Vidmake support Claude or Codex MCP automation?",
-    answer: "Yes. Vidmake includes a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp, allowing developers to generate video hooks directly inside AI coding assistants.",
+    answer: "Yes. Vidmake includes a hosted Streamable HTTP OAuth MCP server at https://vidmake.io/mcp, allowing developers to generate video hooks directly inside AI coding assistants.",
   },
 ] as const;
 

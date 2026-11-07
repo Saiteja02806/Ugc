@@ -28,7 +28,7 @@ test("Kling limits new references while legacy Seedance video jobs remain recove
   assert.match(videoApi, /model !== "seedance_2_5"/);
   assert.match(videoApi, /Choose WAN 3.0 or Seedance 2.5 to use the attached audio or video references/);
   assert.match(videoApi, /getMediaAssetForOwner/);
-  assert.match(videoApi, /const maxReferences = referencePolicy\.maxFiles/);
+  assert.match(videoApi, /const maxReferences = .*referencePolicy\.maxFiles/);
   assert.match(providerRouting, /input\.model === "kling_3_0"\) return "runway"/);
   assert.match(providerRouting, /input\.model === "seedance_2_5"\) return "runway"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);

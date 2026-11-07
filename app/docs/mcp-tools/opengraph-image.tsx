@@ -7,7 +7,7 @@ export const contentType = ogContentType;
 export default function OpenGraphImage() {
   return marketingOgImage({
     kicker: "Tool reference",
-    title: "78 MCP tools, grouped by job.",
+    title: "105 MCP tools, grouped by job.",
     subtitle: "Names, descriptions, and OAuth scopes from the Vidmake registry.",
   });
 }

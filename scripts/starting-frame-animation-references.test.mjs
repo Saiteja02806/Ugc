@@ -53,12 +53,33 @@ test("the payload keeps first-frame identity and ordered face references in sepa
   assert.deepEqual(startingFrameAnimationInput(frame, photos), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId,
     referenceImageUrls: photos.map(value => value.asset.url), imageReferencePurpose: "person" });
   assert.deepEqual(startingFrameAnimationInput(frame, []), { startingFrameAssetId: frame.assetId, startingFrameJobId: frame.jobId, referenceId: frame.referenceId });
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, photos), /Open Change and clear/);
-  assert.match(startingFrameFaceReferenceError("seedance_2_5", frame, photos), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /starting image alone/);
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, [photos[0], photos[0]]), /starting image alone/);
+  // The approved frame stays the opening authority; photos ride behind it as
+  // ordered identity references on every route that can carry them.
+  assert.deepEqual(startingFrameAnimationInput(frame, photos, undefined, "wan_3_0").referenceImageUrls, photos.map(value => value.asset.url));
+  assert.deepEqual(startingFrameAnimationInput(frame, photos, undefined, "seedance_2_5").referenceImageUrls, photos.map(value => value.asset.url));
+  assert.deepEqual(startingFrameAnimationInput(frame, photos, undefined, "kling_4_0").referenceImageUrls, photos.map(value => value.asset.url));
+  assert.deepEqual(startingFrameAnimationInput(frame, photos, "first_frame_with_identity", "google_omni").referenceImageUrls, photos.map(value => value.asset.url));
+  // Kling 3.0 exposes only a first-frame and a last-frame slot, so the approved
+  // frame travels alone and the photos shaped it during preparation.
+  assert.equal("referenceImageUrls" in startingFrameAnimationInput(frame, photos, undefined, "kling_3_0"), false);
+  assert.equal(policy.hookStartingFrameFaceReferenceRoute("kling_3_0"), "frame_only");
+  for (const model of ["google_omni", "kling_4_0", "seedance_2_5", "wan_3_0"]) {
+    assert.equal(policy.hookStartingFrameFaceReferenceRoute(model, model === "google_omni" ? "first_frame_with_identity" : undefined), "frame_and_references");
+  }
+});
+
+test("identity photos are accepted with a starting frame on every animation model", () => {
+  const photos = [photo("face-a"), photo("face-b")];
+  for (const model of ["kling_3_0", "kling_4_0", "seedance_2_5", "wan_3_0"]) {
+    assert.equal(startingFrameFaceReferenceError(model, frame, photos), null, model);
+  }
+  assert.equal(startingFrameFaceReferenceError("google_omni", frame, photos, "first_frame_with_identity"), null);
+  // Omni's direct identity route is opt-in; without it the limit is zero.
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /Gemini Omni route/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /up to 5 face references/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`)), "first_frame_with_identity"), /up to 5 face references/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /separate clear face photo/);
+  assert.match(startingFrameFaceReferenceError("wan_3_0", frame, [photos[0], photos[0]]), /duplicate face references/);
 });
 
 test("scene history and optional faces have independent selectors and removals", async () => {

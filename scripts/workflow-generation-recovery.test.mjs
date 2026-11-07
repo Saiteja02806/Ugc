@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
-import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
+import { startingFrameFaceReferenceError, startingFrameForwardsPhotos } from "../lib/explore/starting-frame-animation-input.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 import * as talkingHeadScriptInput from "../lib/explore/talking-head-script-input.ts";
 
@@ -12,7 +12,7 @@ const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf
 const load = (file, imports = {}, globals = {}) => {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports: exported, require(name) { if (name === "./uploaded-starting-frame") return load("lib/explore/uploaded-starting-frame.ts"); if (name === "../http/read-deadline") return readDeadline; if(name === "./starting-frame-animation-input") return { startingFrameFaceReferenceError }; if(name === "../../worker/src/lib/hook-starting-frame-video") return startingFrameVideo; if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
+    exports: exported, require(name) { if (name === "./uploaded-starting-frame") return load("lib/explore/uploaded-starting-frame.ts"); if (name === "../http/read-deadline") return readDeadline; if(name === "./starting-frame-animation-input") return { startingFrameFaceReferenceError, startingFrameForwardsPhotos }; if(name === "../../worker/src/lib/hook-starting-frame-video") return startingFrameVideo; if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
   });
   return exported;
 };

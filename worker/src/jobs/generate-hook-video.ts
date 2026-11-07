@@ -25,7 +25,7 @@ import { parseOwnedVideoImages, type OwnedVideoImages } from "../lib/video-image
 import { resolveOwnedVideoImages } from "../lib/owned-video-images.js";
 import { parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "../lib/hook-starting-frame-video.js";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit, hookStartingFrameFaceReferenceRoute } from "../lib/hook-starting-frame-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
 import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
@@ -660,6 +660,9 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   const savedInput = job.input_json;
   const hasStartingFrame = ["startingFrameImageUrl", "startingFrameAssetId", "startingFrameJobId", "startingFrameReceipt", "startingFrameSource"]
     .some(field => savedInput[field] !== undefined);
+  if (savedInput.startingFrameMode !== undefined && !hasStartingFrame) {
+    throw new ProviderRequestNotSubmittedError("The saved identity route is missing its starting frame.");
+  }
   if (hasStartingFrame) {
     const receipt = parseHookKeyframeGenerationReceipt(job.input_json.startingFrameReceipt);
     const imageUrl = getOptionalHttpsUrl(job.input_json.startingFrameImageUrl);
@@ -667,9 +670,13 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     const assetId = job.input_json.startingFrameAssetId;
     const imageJobId = job.input_json.startingFrameJobId;
     const uploaded = savedInput.startingFrameSource === "upload";
+    const directIdentityFrame = savedInput.startingFrameMode === "first_frame_with_identity";
+    if (savedInput.startingFrameMode !== undefined && (!directIdentityFrame || model !== "google_omni" || provider !== "gemini")) {
+      throw new ProviderRequestNotSubmittedError("The saved starting-frame identity route is invalid.");
+    }
     const validFrameSource = uploaded
       ? imageJobId === undefined && savedInput.startingFrameReceipt === undefined && savedInput.hookSourceTimeline === undefined &&
-        savedInput.referenceId == null && provider === "reapi" && job.user_id === sharedInput.userId && savedInput.ownedImageReferences !== undefined
+        savedInput.referenceId == null && (provider === "reapi" || directIdentityFrame) && job.user_id === sharedInput.userId && savedInput.ownedImageReferences !== undefined
       : savedInput.startingFrameSource === undefined && typeof imageJobId === "string" && uuid.test(imageJobId) &&
         receipt?.ownerId === sharedInput.userId && receipt.referenceId === savedInput.referenceId;
     const photos = sharedInput.referenceImageUrls;
@@ -687,7 +694,8 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || !validFrameSource ||
       (job.user_id && job.user_id !== sharedInput.userId) || sharedInput.avatarImageUrl || !faceRolesValid ||
       (photos.length > 0 && job.user_id !== sharedInput.userId) ||
-      photos.length > (legacyGoogleOmni ? 5 : hookStartingFrameFaceReferenceLimit(model)) || photos.includes(imageUrl ?? "") ||
+      photos.length > (legacyGoogleOmni ? 5 : hookStartingFrameFaceReferenceLimit(model)) ||
+      (photos.length > 0 && !legacyGoogleOmni && hookStartingFrameFaceReferenceRoute(model, savedInput.startingFrameMode) !== "frame_and_references") || photos.includes(imageUrl ?? "") ||
       sharedInput.referenceAudioUrls.length || sharedInput.referenceAudioDurationSeconds.length || sharedInput.referenceVideoUrl ||
       job.input_json.referenceVideoDurationSeconds != null || job.input_json.referenceVideoMode !== undefined ||
       !durationAllowed) {

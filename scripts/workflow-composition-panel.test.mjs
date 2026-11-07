@@ -523,6 +523,12 @@ test("generation drafts use only their own voice reference and never the demo or
           let expression = property.expression;
           while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
           assert.ok(ts.isConditionalExpression(expression), "Only an explicit conditional script spread is permitted");
+          if (expression.condition.getText(tree) === "directIdentityFrame") {
+            assert.ok(ts.isObjectLiteralExpression(expression.whenTrue) && ts.isObjectLiteralExpression(expression.whenFalse));
+            assert.equal(expression.whenFalse.properties.length, 0);
+            assert.deepEqual(expression.whenTrue.properties.map(field => { assert.ok(ts.isPropertyAssignment(field)); return field.name.getText(tree); }), ["startingFrameMode"]);
+            continue;
+          }
           assert.equal(expression.condition.getText(tree), "startingFrame && scriptMode");
           assert.ok(ts.isObjectLiteralExpression(expression.whenTrue) && ts.isObjectLiteralExpression(expression.whenFalse));
           assert.equal(expression.whenFalse.properties.length, 0);

@@ -450,3 +450,18 @@ test("Talking Head forwards the exact stored frame and influencer ownership call
   assert.ok(nodes(tree).some(n=>n.type==="photo-guide"));
   assert.ok(text(tree).includes("My Influencers"));assert.ok(text(tree).includes("Person photos"));
 });
+
+
+test("Talking Head selects direct identity animation through its existing model control", () => {
+  const h = harness({seedanceEnabled: true});
+  let direct = false;
+  const render = () => h.render({startingFrameMode: true, directIdentityFrame: direct, onDirectIdentityFrameChange: value => { direct = value; }});
+  const picker = tree => nodes(tree).find(n => n.type === "select" && n.props.ariaLabel === "Hook model");
+  picker(render()).props.onChange("google_omni_direct");
+  assert.equal(direct, true);
+  assert.equal(picker(render()).props.value, "google_omni_direct");
+  picker(render()).props.onChange("seedance_2_5");
+  assert.equal(direct, false);
+  assert.equal(picker(render()).props.value, "seedance_2_5");
+  assert.equal(picker(h.render({kind: "phone"}))?.props.options?.some(o => o.value === "google_omni_direct") ?? false, false);
+});

@@ -14,6 +14,7 @@ export interface CursorActorProps {
   opacity?: number;
   isGrabbing?: boolean;
   clickFrame?: number;
+  showRipple?: boolean;
   payload?: React.ReactNode;
   payloadOffset?: { x: number; y: number };
 }
@@ -29,6 +30,7 @@ export const CursorActor: React.FC<CursorActorProps> = ({
   opacity = 1,
   isGrabbing = false,
   clickFrame,
+  showRipple = true,
   payload,
   payloadOffset = { x: -48, y: -56 },
 }) => {
@@ -93,7 +95,7 @@ export const CursorActor: React.FC<CursorActorProps> = ({
       )}
 
       {/* Subtle Contact Ripple Ring on Click/Drop */}
-      {rippleOpacity > 0.01 && (
+      {showRipple && rippleOpacity > 0.01 && (
         <div
           style={{
             position: "absolute",

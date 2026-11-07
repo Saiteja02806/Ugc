@@ -42,8 +42,8 @@ export const publicMcpToolCount = publicMcpGroups.reduce((count, group) => count
 export const publicMcpToolCatalog = { toolCount: publicMcpToolCount, groups: publicMcpGroups };
 
 export { publicOrigin };
-export const mcpEndpoint = "https://mcp.getugcpilot.com/mcp";
-export const mcpIssuer = "https://mcp.getugcpilot.com";
+export const mcpEndpoint = "https://vidmake.io/mcp";
+export const mcpIssuer = "https://vidmake.io";
 
 export const mcpSetupScopes = [
   "account:read",
@@ -62,7 +62,7 @@ export const connectionCheckPrompt =
   "Use Vidmake to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
 
 export const codexConfigToml = `[mcp_servers.ugc-pilot]
-url = "https://mcp.getugcpilot.com/mcp"
+url = "https://vidmake.io/mcp"
 scopes = [
   "account:read",
   "brand:read",
@@ -75,10 +75,10 @@ scopes = [
 ]
 `;
 
-export const codexLoginCommands = `codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp
+export const codexLoginCommands = `codex mcp add ugc-pilot --url https://vidmake.io/mcp
 codex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write`;
 
-export const claudeCodeCommand = "claude mcp add --transport http ugc-pilot https://mcp.getugcpilot.com/mcp";
+export const claudeCodeCommand = "claude mcp add --transport http ugc-pilot https://vidmake.io/mcp";
 
 export type McpFaq = { question: string; answer: string };
 
@@ -156,7 +156,7 @@ export const mcpPages = {
       ...sharedFaqs,
       {
         question: "How do I add Vidmake in Claude?",
-        answer: "Open Customize, then Connectors, then Add custom connector. Name it Vidmake and paste https://mcp.getugcpilot.com/mcp. Finish the detected OAuth sign-in and approve the requested scopes. Enable the connector in the conversation before you send a prompt.",
+        answer: "Open Customize, then Connectors, then Add custom connector. Name it Vidmake and paste https://vidmake.io/mcp. Finish the detected OAuth sign-in and approve the requested scopes. Enable the connector in the conversation before you send a prompt.",
       },
       {
         question: "Does a Team or Enterprise workspace need an admin?",
@@ -175,7 +175,7 @@ export const mcpPages = {
       ...sharedFaqs,
       {
         question: "What goes in ~/.codex/config.toml?",
-        answer: "Add a [mcp_servers.ugc-pilot] table with url = \"https://mcp.getugcpilot.com/mcp\" and the eight setup scopes. Leave bearer tokens out of the file. Run codex mcp login ugc-pilot if Codex has not already opened the consent screen.",
+        answer: "Add a [mcp_servers.ugc-pilot] table with url = \"https://vidmake.io/mcp\" and the eight setup scopes. Leave bearer tokens out of the file. Run codex mcp login ugc-pilot if Codex has not already opened the consent screen.",
       },
       {
         question: "Why does a new Codex thread miss the tools?",

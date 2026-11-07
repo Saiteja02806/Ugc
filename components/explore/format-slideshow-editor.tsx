@@ -591,11 +591,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const saveDisabled = !canSave || localPreview || !savingEnabled || busy || uploading || restoring || generationBusy;
   const saveOnly = !output ? <Button type="button" variant="ghost" disabled={saveDisabled} onClick={() => void save()}>{busy ? "Saving…" : pending ? "Resume save" : "Save slideshow"}</Button> : null;
   const actions = <div aria-label="Slideshow actions" className={textStyles.saveActions}>
+    {saveOnly}
     <Button type="button" size="lg" className="h-10 px-4 font-semibold" disabled={output ? locked || generationBusy : saveDisabled} onClick={output ? continueToSchedule : () => void save(true)}>{output ? "Review post" : busy ? "Saving…" : pending ? "Resume & review post" : "Save & review post"}<ArrowRight size={16} aria-hidden="true" /></Button>
-    {saveOnly || previewActions ? <details className={textStyles.moreActions} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
-      <summary aria-label="More slideshow options">More</summary>
-      <div onClick={event => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.closest("details")?.removeAttribute("open"); }}>{saveOnly}{previewActions}</div>
-    </details> : null}
+    {previewActions}
   </div>;
   const feedback = <div className={textStyles.saveFeedback}>
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}

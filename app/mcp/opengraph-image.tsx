@@ -8,6 +8,6 @@ export default function OpenGraphImage() {
   return marketingOgImage({
     kicker: "Vidmake MCP",
     title: "UGC video MCP server for your agent.",
-    subtitle: "78 tools. OAuth sign-in. One hosted URL for Claude, Codex, and ChatGPT.",
+    subtitle: "105 tools. OAuth sign-in. One hosted URL for Claude, Codex, and ChatGPT.",
   });
 }

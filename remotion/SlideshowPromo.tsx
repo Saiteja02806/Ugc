@@ -25,22 +25,6 @@ const WIDE_X = [-765, -459, -153, 153, 459, 765];
 const WIDE_Y = [-24, -40, -50, -50, -40, -24];
 const WIDE_ROT = [-2.4, -1.4, -0.5, 0.5, 1.4, 2.4];
 
-// Twelve small droplets released once from the raised Regenerate action.
-const SPLASH_DROPLETS = [
-  { angleDeg: -172, travel: 68, size: 11, color: "#FFFFFF" },
-  { angleDeg: -148, travel: 76, size: 13, color: "#FF2A7A" },
-  { angleDeg: -122, travel: 64, size: 10, color: "#FF4D94" },
-  { angleDeg: -90, travel: 58, size: 11, color: "#FFFFFF" },
-  { angleDeg: -58, travel: 66, size: 12, color: "#FF1E6E" },
-  { angleDeg: -32, travel: 78, size: 13, color: "#FFFFFF" },
-  { angleDeg: -8, travel: 70, size: 11, color: "#FF4D94" },
-  { angleDeg: 18, travel: 72, size: 12, color: "#FFFFFF" },
-  { angleDeg: 45, travel: 64, size: 10, color: "#FF2A7A" },
-  { angleDeg: 90, travel: 54, size: 9, color: "#FF4D94" },
-  { angleDeg: 135, travel: 66, size: 11, color: "#FF1E6E" },
-  { angleDeg: 162, travel: 74, size: 12, color: "#FFFFFF" },
-];
-
 /**
  * KineticHeader renders the clean, pill-free top-left kinetic step typography
  * that narrates each stage of the Slideshow regeneration workflow using a crisp
@@ -134,7 +118,31 @@ const KineticHeader: React.FC<{ frame: number; fps: number }> = ({
   );
 };
 
-/** Three-layer pushable action, adapted from the supplied Button82 style. */
+/** Skewed Parallelogram CTA with Triple-Chevron Cascade & Hard Offset Shadow (adapted from user-supplied HTML/CSS concept). */
+const PATH_ONE_D =
+  "M40.1543933,3.89485454 L43.9763149,0.139296592 C44.1708311,-0.0518420739 44.4826329,-0.0518571125 44.6771675,0.139262789 L65.6916134,20.7848311 C66.0855801,21.1718824 66.0911863,21.8050225 65.704135,22.1989893 C65.7000188,22.2031791 65.6958657,22.2073326 65.6916762,22.2114492 L44.677098,42.8607841 C44.4825957,43.0519059 44.1708242,43.0519358 43.9762853,42.8608513 L40.1545186,39.1069479 C39.9575152,38.9134427 39.9546793,38.5968729 40.1481845,38.3998695 C40.1502893,38.3977268 40.1524132,38.395603 40.1545562,38.3934985 L56.9937789,21.8567812 C57.1908028,21.6632968 57.193672,21.3467273 57.0001876,21.1497035 C56.9980647,21.1475418 56.9959223,21.1453995 56.9937605,21.1432767 L40.1545208,4.60825197 C39.9574869,4.41477773 39.9546013,4.09820839 40.1480756,3.90117456 C40.1501626,3.89904911 40.1522686,3.89694235 40.1543933,3.89485454 Z";
+const PATH_TWO_D =
+  "M20.1543933,3.89485454 L23.9763149,0.139296592 C24.1708311,-0.0518420739 24.4826329,-0.0518571125 24.6771675,0.139262789 L45.6916134,20.7848311 C46.0855801,21.1718824 46.0911863,21.8050225 45.704135,22.1989893 C45.7000188,22.2031791 45.6958657,22.2073326 45.6916762,22.2114492 L24.677098,42.8607841 C24.4825957,43.0519059 24.1708242,43.0519358 23.9762853,42.8608513 L20.1545186,39.1069479 C19.9575152,38.9134427 19.9546793,38.5968729 20.1481845,38.3998695 C20.1502893,38.3977268 20.1524132,38.395603 20.1545562,38.3934985 L36.9937789,21.8567812 C37.1908028,21.6632968 37.193672,21.3467273 37.0001876,21.1497035 C36.9980647,21.1475418 36.9959223,21.1453995 36.9937605,21.1432767 L20.1545208,4.60825197 C19.9574869,4.41477773 19.9546013,4.09820839 20.1480756,3.90117456 C20.1501626,3.89904911 20.1522686,3.89694235 20.1543933,3.89485454 Z";
+const PATH_THREE_D =
+  "M0.154393339,3.89485454 L3.97631488,0.139296592 C4.17083111,-0.0518420739 4.48263286,-0.0518571125 4.67716753,0.139262789 L25.6916134,20.7848311 C26.0855801,21.1718824 26.0911863,21.8050225 25.704135,22.1989893 C25.7000188,22.2031791 25.6958657,22.2073326 25.6916762,22.2114492 L4.67709797,42.8607841 C4.48259567,43.0519059 4.17082418,43.0519358 3.97628526,42.8608513 L0.154518591,39.1069479 C-0.0424848215,38.9134427 -0.0453206733,38.5968729 0.148184538,38.3998695 C0.150289256,38.3977268 0.152413239,38.395603 0.154556228,38.3934985 L16.9937789,21.8567812 C17.1908028,21.6632968 17.193672,21.3467273 17.0001876,21.1497035 C16.9980647,21.1475418 16.9959223,21.1453995 16.9937605,21.1432767 L0.15452076,4.60825197 C-0.0425130651,4.41477773 -0.0453986756,4.09820839 0.148075568,3.90117456 C0.150162624,3.89904911 0.152268631,3.89694235 0.154393339,3.89485454 Z";
+
+function lerpChevronColor(t: number): string {
+  // Smooth triangle wave 0 -> 1 -> 0 between #FFFFFF and #FBC638
+  const r = Math.round(255 + (251 - 255) * t);
+  const g = Math.round(255 + (198 - 255) * t);
+  const b = Math.round(255 + (56 - 255) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function chevronWaveFactor(activeAge: number, delayFrames: number): number {
+  const local = activeAge - delayFrames;
+  if (local <= 0) return 0;
+  // 1s cycle (30 frames @ 30fps), faster 18-frame pulse after click
+  const period = 18;
+  const phase = (local % period) / period;
+  return phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+}
+
 const RegenerateActionButton: React.FC<{
   frame: number;
   fps: number;
@@ -146,74 +154,87 @@ const RegenerateActionButton: React.FC<{
 }> = ({ frame, fps, enterFrame, hoverStartFrame, clickFrame, loadingDoneFrame, exitFrame }) => {
   if (frame < enterFrame || frame > exitFrame + 10) return null;
   const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
-  const enter = spring({ frame: frame - enterFrame, fps, config: { damping: 13, mass: 0.45, stiffness: 260 } });
+  const enter = spring({ frame: frame - enterFrame, fps, config: { damping: 14, mass: 0.45, stiffness: 260 } });
   const exit = interpolate(frame, [exitFrame, exitFrame + 9], [0, 1], clamp);
-  const hover = interpolate(frame, [hoverStartFrame, hoverStartFrame + 5], [0, 1], clamp);
+  const hover = interpolate(frame, [hoverStartFrame, hoverStartFrame + 6], [0, 1], clamp);
+  const pathOneHover = interpolate(frame, [hoverStartFrame, hoverStartFrame + 5], [0, 1], clamp);
+  const pathTwoHover = interpolate(frame, [hoverStartFrame, hoverStartFrame + 7], [0, 1], clamp);
   const clicked = frame >= clickFrame;
   const completed = frame >= loadingDoneFrame;
   const age = frame - clickFrame;
-  const frontY = clicked
-    ? interpolate(age, [0, 2, 6, 12], [-16, -4, -18, -10], clamp)
-    : interpolate(hover, [0, 1], [-10, -16]);
-  const shadowY = clicked
-    ? interpolate(age, [0, 2, 6, 12], [8, 2, 9, 4], clamp)
-    : interpolate(hover, [0, 1], [4, 8]);
-  const splashAge = age - 2;
-  const splash = interpolate(splashAge, [0, 12], [0, 1], clamp);
-  const splashOpacity = splashAge > 0 && splashAge < 12
-    ? interpolate(splashAge, [0, 2, 12], [0, 1, 0], clamp) : 0;
-  const state = completed ? "complete" : clicked ? age <= 2 ? "pressed" : splashOpacity > 0 ? "splash" : "working" : hover > 0 ? "hover" : "ready";
-  const iconSpin = clicked ? interpolate(age, [0, 12], [0, -360], clamp) : hover * -18;
 
-  return <div data-regenerate-state={state} style={{
-    position: "absolute", left: "50%", top: "50%", width: 472, height: 100,
-    transform: `translate3d(-50%, calc(-50% + ${346 + interpolate(enter, [0, 1], [48, 0]) + exit * 36}px), 0) scale(${interpolate(enter, [0, 1], [0.72, 1]) * (1 - exit * 0.18)})`,
+  // Physical press into the hard offset block shadow on click
+  const pressScale = clicked
+    ? interpolate(age, [0, 2, 6, 11], [1.03, 0.92, 1.04, 1], clamp)
+    : interpolate(hover, [0, 1], [1, 1.03]);
+  const pressOffset = clicked
+    ? interpolate(age, [0, 2, 6, 11], [0, 5, -1, 0], clamp)
+    : 0;
+  const shadowSize = clicked
+    ? interpolate(age, [0, 2, 6, 11], [10, 4, 11, 10], clamp)
+    : interpolate(hover, [0, 1], [6, 10]);
+
+  const state = completed ? "complete" : clicked ? age <= 2 ? "pressed" : "working" : hover > 0 ? "hover" : "ready";
+  const activeAge = Math.max(0, frame - hoverStartFrame);
+
+  // Staggered color_anim wave across path.three (0.2s -> 2f), path.two (0.4s -> 5f), path.one (0.6s -> 8f)
+  const fillThree = hover > 0 ? lerpChevronColor(chevronWaveFactor(activeAge, 1)) : "#FFFFFF";
+  const fillTwo = hover > 0 ? lerpChevronColor(chevronWaveFactor(activeAge, 4)) : "#FFFFFF";
+  const fillOne = hover > 0 ? lerpChevronColor(chevronWaveFactor(activeAge, 7)) : "#FFFFFF";
+
+  // SVG path.one (-60% = -39.6px -> 0) and path.two (-30% = -19.8px -> 0)
+  const oneTx = interpolate(pathOneHover, [0, 1], [-39.6, 0]);
+  const twoTx = interpolate(pathTwoHover, [0, 1], [-19.8, 0]);
+  const chevronMarginRight = interpolate(hover, [0, 1], [0, 45]);
+
+  // Smooth transition from 6px 6px 0 #000000 to 10px 10px 0 #FBC638 on hover
+  const shadowColor = hover > 0.25 ? "#FBC638" : "#000000";
+
+  return <div data-regenerate-state={state} data-press-scale={Number(pressScale.toFixed(4))} style={{
+    position: "absolute", left: "50%", top: "50%",
+    transform: `translate3d(-50%, calc(-50% + ${342 + interpolate(enter, [0, 1], [38, 0]) + exit * 28}px), 0) scale(${interpolate(enter, [0, 1], [0.84, 1]) * pressScale * (1 - exit * 0.12)})`,
     opacity: interpolate(frame, [enterFrame, enterFrame + 5], [0, 1], clamp) * (1 - exit),
     zIndex: 48, pointerEvents: "none",
   }}>
-    <div data-pushable-layer="shadow" data-shadow-y={shadowY} style={{
-      position: "absolute", inset: 0, borderRadius: 22, background: "rgba(0,0,0,0.32)",
-      transform: `translateY(${shadowY}px)`, filter: "blur(6px)",
-    }} />
-    <div data-pushable-layer="edge" style={{
-      position: "absolute", inset: 0, borderRadius: 22,
-      background: "linear-gradient(to left, hsl(340deg 100% 16%) 0%, hsl(340deg 100% 32%) 8%, hsl(340deg 100% 32%) 92%, hsl(340deg 100% 16%) 100%)",
-    }} />
-    <div data-pushable-layer="front" data-front-y={frontY} style={{
-      position: "relative", width: "100%", height: "100%", borderRadius: 22,
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 18,
-      background: "hsl(345deg 100% 47%)", color: "#FFFFFF",
-      transform: `translateY(${frontY}px)`, filter: `brightness(${!clicked ? 1 + hover * 0.1 : 1})`,
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.24)",
+    <div data-cta-button="skew-chevron" style={{
+      display: "flex", alignItems: "center",
+      padding: "12px 45px",
+      backgroundColor: "#FF1E6E",
+      color: "#FFFFFF",
+      transform: `skewX(-15deg) translate3d(${pressOffset}px, ${pressOffset}px, 0)`,
+      boxShadow: `${shadowSize}px ${shadowSize}px 0 ${shadowColor}`,
     }}>
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: `rotate(${completed ? 0 : iconSpin}deg)` }}>
-        {completed ? <path d="M5 12L10 17L20 7" /> : <>
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-          <path d="M3 3v5h5" />
-        </>}
-      </svg>
       <span data-regenerate-label style={{
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif", fontSize: 34,
-        fontWeight: 900, letterSpacing: "-0.025em", whiteSpace: "nowrap", lineHeight: 1,
+        transform: "skewX(15deg)",
+        display: "inline-block",
+        fontFamily: "'Poppins', 'Clash Display', 'Cabinet Grotesk', Inter, sans-serif",
+        fontSize: 36,
+        fontWeight: 900,
+        fontStyle: "italic",
+        letterSpacing: "0.01em",
+        textTransform: "uppercase",
+        whiteSpace: "nowrap",
+        lineHeight: 1.05,
+        color: "#FFFFFF",
       }}>{completed ? "6 Slides Ready" : clicked && age >= 3 ? "Regenerating…" : "Regenerate"}</span>
+      <span style={{
+        transform: "skewX(15deg)",
+        width: 20,
+        marginLeft: 30,
+        marginRight: chevronMarginRight,
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+      }}>
+        <svg width="66px" height="43px" viewBox="0 0 66 43" style={{ overflow: "visible", flexShrink: 0 }}>
+          <g id="arrow" stroke="none" strokeWidth="1" fill="none" fillRule="evenodd">
+            <path className="one" d={PATH_ONE_D} fill={fillOne} transform={`translate(${oneTx.toFixed(2)}, 0)`} />
+            <path className="two" d={PATH_TWO_D} fill={fillTwo} transform={`translate(${twoTx.toFixed(2)}, 0)`} />
+            <path className="three" d={PATH_THREE_D} fill={fillThree} />
+          </g>
+        </svg>
+      </span>
     </div>
-    {splashOpacity > 0.01 && <div data-regenerate-splash style={{
-      position: "absolute", left: "50%", top: "50%", width: 0, height: 0, zIndex: 10,
-    }}>
-      {SPLASH_DROPLETS.map((drop, i) => {
-        const angle = drop.angleDeg * Math.PI / 180;
-        const ease = 1 - Math.pow(1 - splash, 2.2);
-        const x = Math.cos(angle) * (236 + drop.travel * 0.65 * ease);
-        const y = Math.sin(angle) * (50 + drop.travel * 0.5 * ease);
-        const scale = interpolate(splash, [0, 0.25, 1], [0.5, 1.15, 0.2]);
-        return <span key={i} data-splash-droplet={i} style={{
-          position: "absolute", width: drop.size * 1.7, height: drop.size, borderRadius: 999,
-          background: drop.color, opacity: splashOpacity, boxShadow: `0 0 5px ${drop.color}`,
-          transform: `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${drop.angleDeg}deg) scale(${scale})`,
-        }} />;
-      })}
-    </div>}
   </div>;
 };
 
@@ -548,19 +569,28 @@ export const SlideshowPromo: React.FC = () => {
     }
   }
 
-  // Global camera punch on click and on regeneration completion
+  // Screen-wide tactile camera reaction on click (cushion dip -> spring rebound) and on regeneration reveal (frames 68..108)
   const clickCameraPulse =
-    frame >= clickFrame && frame < clickFrame + 12
-      ? interpolate(frame - clickFrame, [0, 3, 12], [1, 1.016, 1], {
+    frame >= clickFrame && frame < clickFrame + 18
+      ? interpolate(frame - clickFrame, [0, 2, 7, 18], [1, 0.968, 1.026, 1], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
         })
-      : frame >= loadingDoneFrame && frame < loadingDoneFrame + 14
-        ? interpolate(frame - loadingDoneFrame, [0, 4, 14], [1, 1.018, 1], {
+      : frame >= loadingDoneFrame && frame < loadingDoneFrame + 16
+        ? interpolate(frame - loadingDoneFrame, [0, 4, 16], [1, 1.028, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           })
         : 1;
+
+  // Soft studio ambient backlight response on click (strictly frames 68..108)
+  const stageReactionGlow =
+    frame >= clickFrame && frame <= 108
+      ? interpolate(frame, [clickFrame, clickFrame + 5, 96, 108], [0, 1, 0.75, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      : 0;
 
   return (
     <AbsoluteFill
@@ -598,6 +628,23 @@ export const SlideshowPromo: React.FC = () => {
           transform: `scale(${clickCameraPulse})`,
         }}
       >
+        {stageReactionGlow > 0.001 && (
+          <div
+            data-stage-click-reaction="ambient-pulse"
+            style={{
+              position: "absolute",
+              width: 1680,
+              height: 760,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(ellipse at 50% 48%, rgba(255, 30, 110, 0.18) 0%, rgba(255, 30, 110, 0.06) 44%, rgba(255, 30, 110, 0) 72%)",
+              opacity: stageReactionGlow,
+              pointerEvents: "none",
+              zIndex: 4,
+            }}
+          />
+        )}
+
         {/* 2A. 6-CARD SIMULTANEOUS PUSH-UP & WIDEN DECK */}
         {[0, 1, 2, 3, 4, 5].map((i) => {
           // Entrance fan-out from stacked center deck (Frames 0-14)
@@ -675,8 +722,21 @@ export const SlideshowPromo: React.FC = () => {
               : interpolate(easedFlip, [0.5, 1], [-90, 0]);
 
           const isShowingUpdated = easedFlip > 0.5;
-          const flipLiftY = Math.sin(easedFlip * Math.PI) * -42;
-          const flipScalePop = 1 + Math.sin(easedFlip * Math.PI) * 0.08;
+          // Staggered tactile reaction wave across the 6 cards when Regenerate is clicked (frames 68..89)
+          const clickWaveStart = clickFrame + i * 1.6;
+          const clickWaveProg =
+            frame >= clickWaveStart && frame < loadingDoneFrame - 2
+              ? interpolate(frame, [clickWaveStart, clickWaveStart + 4, clickWaveStart + 11], [0, 1, 0], {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                })
+              : 0;
+          const clickWaveLiftY = clickWaveProg * -18;
+          const clickWaveScale = 1 + clickWaveProg * 0.035;
+          const isClickWaveActive = clickWaveProg > 0.15;
+
+          const flipLiftY = Math.sin(easedFlip * Math.PI) * -42 + clickWaveLiftY;
+          const flipScalePop = (1 + Math.sin(easedFlip * Math.PI) * 0.08) * clickWaveScale;
           const isMidFlip = flipProg > 0.06 && flipProg < 0.94;
 
           // Simultaneous scale-up when pushed up & widened (all 6 cards get equal prominence!)
@@ -707,7 +767,9 @@ export const SlideshowPromo: React.FC = () => {
                 transformOrigin: "center center",
                 border: isMidFlip
                   ? "3.5px solid #FFFFFF"
-                  : isWideActive
+                  : isClickWaveActive
+                    ? "3px solid #FF2A7A"
+                    : isWideActive
                     ? "2.5px solid rgba(255, 255, 255, 0.92)"
                     : "2px solid rgba(255, 255, 255, 0.38)",
                 boxShadow: isMidFlip
@@ -802,6 +864,7 @@ export const SlideshowPromo: React.FC = () => {
           opacity={cursorOpacity}
           isGrabbing={frame >= clickFrame && frame <= clickFrame + 6}
           clickFrame={activeClickFrame}
+          showRipple={false}
         />
       </AbsoluteFill>
     </AbsoluteFill>

@@ -97,8 +97,8 @@ export default function AcceptableUsePage() {
           </p>
           <p>
             To report abuse or a rights concern, contact{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-              support@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+              hello@vidmake.io
             </a>
             .
           </p>

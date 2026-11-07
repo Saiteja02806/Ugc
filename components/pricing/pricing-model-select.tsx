@@ -37,7 +37,7 @@ export function PricingModelSelect({ planName, value, onChange }: {
         <ChevronDown className="size-3.5 text-muted" aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent id={menuId} align="start" sideOffset={6} role="listbox" aria-label={`Video models for ${planName}`}
-        className="w-[var(--anchor-width)] min-w-52 max-w-[calc(100vw-32px)] gap-0 overflow-hidden rounded-xl border border-border bg-card p-1.5 text-foreground shadow-floating">
+        className="max-h-[min(var(--available-height),24rem)] w-[var(--anchor-width)] min-w-52 max-w-[calc(100vw-32px)] gap-0 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1.5 text-foreground shadow-floating">
         {PRICING_VIDEO_MODELS.map(model => (
           <button key={model.id} type="button" role="option" aria-selected={model.id === value} onKeyDown={moveOption}
             onClick={() => {onChange(model.id); setOpen(false);}}

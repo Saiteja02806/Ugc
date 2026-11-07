@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I automate AI UGC generation inside Claude or Codex?",
-    answer: "Yes. Vidmake includes a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating video clips, and managing media directly inside AI agents.",
+    answer: "Yes. Vidmake includes a hosted Streamable HTTP MCP server at https://vidmake.io/mcp with 105 public tools for researching hooks, generating video clips, and managing media directly inside AI agents.",
   },
 ] as const;
 

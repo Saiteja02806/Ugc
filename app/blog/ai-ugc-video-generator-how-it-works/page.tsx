@@ -119,7 +119,7 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
 
         <ArticleH2>Using an AI UGC video generator from Claude or Codex</ArticleH2>
         <p>
-          Vidmake runs a hosted MCP (Model Context Protocol) server at <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode>. MCP lets an AI assistant call outside tools on your behalf. Once it&apos;s connected, you can ask Claude or Codex something like &quot;make a 15-second UGC-style clip for this landing page&quot; and the assistant calls Vidmake&apos;s tools to do it.
+          Vidmake runs a hosted MCP (Model Context Protocol) server at <ArticleCode>https://vidmake.io/mcp</ArticleCode>. MCP lets an AI assistant call outside tools on your behalf. Once it&apos;s connected, you can ask Claude or Codex something like &quot;make a 15-second UGC-style clip for this landing page&quot; and the assistant calls Vidmake&apos;s tools to do it.
         </p>
         <p>
           The server signs in through OAuth, so you approve access in your browser and never paste an API key into a chat. Generation uses your own Vidmake plan and credits. The full list of tools, with names, descriptions and permission scopes, is on the <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink>. Setup guides:

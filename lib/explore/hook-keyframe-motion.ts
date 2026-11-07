@@ -180,7 +180,7 @@ export function hookMotionPlanDirections(plan: HookMotionPlan): string {
 }
 
 /** Prompt construction only, never evidence of catalog review or paid admission. */
-export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean }) {
+export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; identityPhotoCount?: number }) {
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) {
     throw new Error("Describe the animation within 6,000 characters.");
@@ -195,8 +195,11 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
     ? "SOUND SETTING: ON. Preserve the timed lip and jaw movements above and generate a matching brief vocal reaction synchronized to them. If exact reaction words are explicitly supplied, voice those words; otherwise use a natural nonverbal reaction without inventing a sentence. Natural ambient sound is allowed."
     : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Preserve every instructed lip and jaw movement, including visible word articulation, at the same timing without audible sound. Do not replace the mouth performance with a closed or motionless mouth.";
   return [
-    `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
+    input.identityPhotoCount && input.identityPhotoCount > 0
+      ? `Animate Image 1, the approved starting image, into a ${input.durationSeconds}-second video. Image 1 supplies the person's appearance and the complete opening composition.`
+      : `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
+    ...(input.identityPhotoCount && input.identityPhotoCount > 0 ? [`Images 2 through ${input.identityPhotoCount + 1} are supporting facial identity references for that same person only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the supporting photos' scenes, outfits or poses, and do not add another person.`] : []),
     retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds, input.actionDurationSeconds),
     input.removePhysicalText ? "Keep the approved scene free of captions, physical logos, readable text, labels, signage and watermarks. Keep the underlying clothing, props and surfaces intact; do not regenerate removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     sound,

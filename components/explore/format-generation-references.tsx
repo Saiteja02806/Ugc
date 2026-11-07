@@ -417,11 +417,17 @@ export function FormatGenerationReferences({ startingFrame, startingFramePreview
               <div className={picker.headerActions}>
               {headerPhotoSections ? <div role="group" aria-label="Photo library sections" className={picker.purpose}>
                 {(["user", "influencers"] as const).map(section => <Button key={section} type="button" size="sm" variant="outline"
-                  aria-pressed={section === "influencers" ? activeImageTab === "influencers" : activeImageTab !== "influencers"} disabled={disabled || Boolean(pending)}
-                  onClick={() => { onImagePurposeChange?.("person"); changeImageTab(section); }} className={cn("text-xs", (section === "influencers" ? activeImageTab === "influencers" : activeImageTab !== "influencers") && "border-foreground/30 bg-card")}>
+                  aria-pressed={section === "influencers" ? activeImageTab === "influencers" : activeImageTab !== "influencers" && activeImageTab !== "catalog"} disabled={disabled || Boolean(pending)}
+                  onClick={() => { onImagePurposeChange?.("person"); changeImageTab(section); }} className={cn("text-xs", (section === "influencers" ? activeImageTab === "influencers" : activeImageTab !== "influencers" && activeImageTab !== "catalog") && "border-foreground/30 bg-card")}>
                   {section === "user" ? "Person photos" : "My Influencers"}
                 </Button>)}
               </div> : null}
+              {headerPhotoSections ? <Button type="button" size="sm" variant="outline"
+                aria-pressed={activeImageTab === "catalog"} disabled={disabled || Boolean(pending) || frameUploads.pending}
+                onClick={() => { onImagePurposeChange?.("person"); changeImageTab(activeImageTab === "catalog" ? previousOwnedTab.current : "catalog"); }}
+                className={cn("ml-auto text-xs", activeImageTab === "catalog" && "border-foreground/30 bg-card")}>
+                Vidmake Influencers
+              </Button> : null}
               {personPhotos && !startingFrame && activeImageTab !== "starting" ? <PersonPhotoGuide /> : null}
               </div>
               </header> : null}
@@ -448,9 +454,9 @@ export function FormatGenerationReferences({ startingFrame, startingFramePreview
               </div>}
                 </aside> : null}
                 <div className={picker.library}>
-                  <div className={picker.libraryHeading}><h3>{startingFramesOnly ? "Starting frames" : activeImageTab === "catalog" ? "Vidmake images" : "Image library"}</h3>{!startingFramesOnly ? <Button type="button" size="sm" variant="ghost" className={picker.catalogControl} aria-pressed={activeImageTab === "catalog"} disabled={frameUploads.pending} onClick={() => changeImageTab(activeImageTab === "catalog" ? previousOwnedTab.current : "catalog")}>{activeImageTab === "catalog" ? "Back to your library" : "Vidmake images"}</Button> : null}{activeImageTab === "starting" ? <div className="flex flex-wrap items-center gap-2">{frameUploads.upload}<Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh starting frames" disabled={!ownerId || Boolean(pending) || frameUploads.pending || frameUploads.refreshing || startingFramesQuery.isFetching || preview} onClick={() => { frameUploads.refresh(); void startingFramesQuery.refetch(); }}><RefreshCw className="size-3.5" aria-hidden="true" /></Button></div> : uploadActions}</div>
+                  <div className={picker.libraryHeading}><h3>{startingFramesOnly ? "Starting frames" : activeImageTab === "catalog" ? "Vidmake Influencers" : "Image library"}</h3>{!startingFramesOnly && !headerPhotoSections ? <Button type="button" size="sm" variant="ghost" className={picker.catalogControl} aria-pressed={activeImageTab === "catalog"} disabled={frameUploads.pending} onClick={() => changeImageTab(activeImageTab === "catalog" ? previousOwnedTab.current : "catalog")}>{activeImageTab === "catalog" ? "Back to your library" : "Vidmake images"}</Button> : null}{activeImageTab === "starting" ? <div className="flex flex-wrap items-center gap-2">{frameUploads.upload}<Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh starting frames" disabled={!ownerId || Boolean(pending) || frameUploads.pending || frameUploads.refreshing || startingFramesQuery.isFetching || preview} onClick={() => { frameUploads.refresh(); void startingFramesQuery.refetch(); }}><RefreshCw className="size-3.5" aria-hidden="true" /></Button></div> : activeImageTab === "catalog" ? null : uploadActions}</div>
               <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog" || value === "starting" && onSelectStartingFrame || value === "influencers" && influencerLibrary) changeImageTab(value); }} className={picker.tabs}>
-                <Tabs.List aria-label="Image sources" className={picker.sourceTabs} style={headerPhotoSections && activeImageTab === "influencers" ? { display: "none" } : undefined}>
+                <Tabs.List aria-label="Image sources" className={picker.sourceTabs} style={headerPhotoSections && (activeImageTab === "influencers" || activeImageTab === "catalog") ? { display: "none" } : undefined}>
                   {influencerLibrary && !startingFramesOnly ? <Tabs.Tab value="influencers" type="button" style={headerPhotoSections ? { display: "none" } : undefined} className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted hover:bg-card-muted focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-foreground/30 data-[active]:text-foreground-strong">My Influencers</Tabs.Tab> : null}
                   {!startingFramesOnly ? <Tabs.Tab value="user" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-foreground/30 data-[active]:bg-card-muted data-[active]:text-foreground-strong">Uploaded photos</Tabs.Tab> : null}
 

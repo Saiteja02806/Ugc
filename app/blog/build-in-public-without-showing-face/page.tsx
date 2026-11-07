@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Can I automate faceless video generation with Claude or Codex?",
-    answer: "Yes. Vidmake features a 78-tool Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp, letting technical founders trigger video rendering directly from AI coding environments.",
+    answer: "Yes. Vidmake features a 105-tool Streamable HTTP OAuth MCP server at https://vidmake.io/mcp, letting technical founders trigger video rendering directly from AI coding environments.",
   },
   {
     question: "Is there a free trial to test this workflow?",

@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I generate creator avatars through Claude or Codex MCP?",
-    answer: "Yes. The hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp includes tools to specify creator personas, styles, and scripts directly inside AI coding assistants.",
+    answer: "Yes. The hosted Streamable HTTP OAuth MCP server at https://vidmake.io/mcp includes tools to specify creator personas, styles, and scripts directly inside AI coding assistants.",
   },
 ] as const;
 

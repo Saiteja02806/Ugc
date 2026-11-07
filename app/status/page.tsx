@@ -41,14 +41,14 @@ export default function StatusPage() {
         <LegalSection title="Contacts">
           <p>
             Product and publishing support:{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-              support@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+              hello@vidmake.io
             </a>
           </p>
           <p>
             Privacy or deletion requests:{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
           </p>
         </LegalSection>

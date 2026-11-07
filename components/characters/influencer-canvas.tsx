@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Bookmark, Sparkles } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import type {
   InfluencerSelectionState,
   InfluencerTrait,
 } from "@/lib/characters/influencer-registry";
+import { STUDIO_HERO_FAN_CARDS } from "@/lib/characters/studio-showcase";
 import type { CharacterJobStatusResponse } from "@/lib/characters/types";
 import { ImageDownloadButton } from "./image-download-button";
 import styles from "./influencer-studio.module.css";
@@ -24,14 +25,12 @@ interface InfluencerCanvasProps {
 
 export function InfluencerCanvas({
   userId,
-  selection: _selection,
   activeJobs,
   isGenerating,
   onSaveCharacter,
   savingJobId,
   onReturnToSession,
   savedCharacterIds = new Set(),
-  customCharacters: _customCharacters = [],
 }: InfluencerCanvasProps) {
   const completedJobs = activeJobs.filter(
     (job) => job.isTerminal && job.output?.url
@@ -112,11 +111,29 @@ export function InfluencerCanvas({
       {/* Empty Hero State (Before Generation) */}
       {!isGenerating && completedJobs.length === 0 && failedJobs.length === 0 && (
         <div className={styles.heroStudioStage}>
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-2xl backdrop-blur-md">
-            <Sparkles className="w-8 h-8 text-[#F4F4F5]" />
+          <div className={styles.heroFanDeck} aria-label="Featured AI influencers">
+            {STUDIO_HERO_FAN_CARDS.map((card, index) => (
+              <div
+                key={card.id}
+                className={`${styles.heroFanCard} ${styles[`heroFanCardSlot${index}`] ?? ""}`}
+              >
+                <Image
+                  src={card.url}
+                  alt={card.title}
+                  fill
+                  sizes="220px"
+                  className={styles.heroFanCardImage}
+                  unoptimized
+                />
+              </div>
+            ))}
           </div>
 
-          <h1 className={styles.heroTitle}>Your portrait shows up here</h1>
+          <h2 className={styles.heroTitle}>
+            YOUR INFLUENCER,
+            <br />
+            YOUR VIRAL HIT
+          </h2>
           <p className={styles.heroSubtitle}>
             Build your AI influencer with the face, body, and style you want.
             Choose traits on the left dock and tap Generate to bring them to life in 4K.

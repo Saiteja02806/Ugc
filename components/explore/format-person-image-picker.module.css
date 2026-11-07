@@ -43,7 +43,7 @@
 .library { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; padding: 20px 24px 0; }
 .libraryHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .libraryHeading h3 { flex: 1; }
-.catalogControl { display: none !important; }
+.catalogControl { color: var(--muted); }
 .catalogControl[aria-pressed="true"] { color: var(--foreground); }
 .builderLink { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 .builderLink:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }

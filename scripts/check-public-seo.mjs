@@ -26,8 +26,10 @@ async function check(name, url, inspect, options = {}) {
   }
 }
 
-await check("www canonical redirect", "https://www.getugcpilot.com", response => {
-  assert.equal(response.status, 307);
+await check("www canonical redirect", "https://www.vidmake.io/", response => {
+  // proxy.ts performs the public-domain migration as a permanent 308 (see
+  // clear.md UGC-TEST-20261103: the earlier 307 expectation predates it).
+  assert.equal(response.status, 308);
   assert.equal(response.headers.get("location"), `${canonicalOrigin}/`);
 }, { redirect: "manual" });
 await check("HTTPS redirect", "http://getugcpilot.com", response => {
@@ -39,6 +41,17 @@ await check("HTTPS redirect", "http://getugcpilot.com", response => {
 await check("robots", `${canonicalOrigin}/robots.txt`, (response, body) => {
   assert.equal(response.status, 200);
   assert(body.includes(`Sitemap: ${canonicalOrigin}/sitemap.xml`));
+});
+await check("root serves the workflow app without redirect", `${canonicalOrigin}/`, (response, html) => {
+  // The public root is the Explore workspace served by a proxy rewrite: the
+  // address never changes and crawlers see an explicit noindex instead of a
+  // redirect to a disallowed app route. The guides hub is the listed entry
+  // point for indexing.
+  assert.equal(response.status, 200);
+  assert.equal(new URL(response.url).href, `${canonicalOrigin}/`);
+  assert(/\bnoindex\b/i.test(response.headers.get("x-robots-tag") ?? ""));
+  assert(!/\bnofollow\b/i.test(response.headers.get("x-robots-tag") ?? ""));
+  assert(html.includes("Explore"), "Root must render the Explore workspace");
 });
 const sitemap = await check("sitemap", `${canonicalOrigin}/sitemap.xml`, (response, body) => {
   assert.equal(response.status, 200);

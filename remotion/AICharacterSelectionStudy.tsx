@@ -183,7 +183,7 @@ function cameraAt(frame: number, config: FlowConfig = STUDY_CONFIG) {
 const worldToScreen = (frame: number, wx: number, wy: number, config: FlowConfig = STUDY_CONFIG) => {
   const { focusY, scale } = cameraAt(frame, config);
   return {
-    x: (wx - PANEL_W / 2) * scale + (config.full ? 140 : 0),
+    x: (wx - PANEL_W / 2) * scale,
     y: (wy - focusY) * scale + SCREEN_OFFSET_Y,
   };
 };
@@ -327,6 +327,11 @@ const Section: React.FC<{
     ? spring({ frame: frame - (group.click as number) - 4, fps, config: { damping: 14, stiffness: 200 } })
     : 0;
   const detail = group.detail && frame >= group.detail.at ? group.detail : undefined;
+  const titleFocus =
+    group.start !== undefined
+      ? interpolate(frame, [group.start - 6, group.start + 10], [0, 1], CLAMP)
+      : 1;
+  const valueBlur = group.start !== undefined ? (1 - valueIn) * 7 : 0;
   return (
     <div
       style={{
@@ -355,7 +360,18 @@ const Section: React.FC<{
         }}
       >
         <div style={{ width: 14, height: 14, borderRadius: 4, background: group.accent }} />
-        <div style={{ fontSize: 26, fontWeight: 700, color: "#E9E9EC" }}>{group.title}</div>
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#E9E9EC",
+            opacity: group.start !== undefined ? 0.35 + titleFocus * 0.65 : 1,
+            filter: titleFocus < 0.99 ? `blur(${((1 - titleFocus) * 5).toFixed(2)}px)` : undefined,
+            transform: group.start !== undefined ? `translateY(${((1 - titleFocus) * 6).toFixed(2)}px)` : undefined,
+          }}
+        >
+          {group.title}
+        </div>
         <div style={{ fontSize: 26, fontWeight: 500, color: "rgba(255,255,255,0.38)" }}>
           · {group.count}
         </div>
@@ -371,6 +387,7 @@ const Section: React.FC<{
               fontWeight: 700,
               color: YELLOW,
               opacity: valueIn,
+              filter: valueBlur > 0.15 ? `blur(${valueBlur.toFixed(2)}px)` : undefined,
               transform: `translateX(${(1 - valueIn) * 16}px)`,
             }}
           >
@@ -403,6 +420,7 @@ const Section: React.FC<{
 /* ------------------------------------------------------------------------ */
 
 const PickedStrip: React.FC<{ frame: number; fps: number; config: FlowConfig }> = ({ frame, fps, config }) => {
+  if (config.full) return null;
   const picks = config.groups.filter((g) => g.click !== undefined && g.picked);
   const first = (picks[0].click as number) + 4;
   if (frame < first) return null;
@@ -696,7 +714,7 @@ const SelectionFlowStage: React.FC<{ config: FlowConfig }> = ({ config }) => {
         <div
           style={{
             position: "absolute",
-            left: panelX * cam.scale + (config.full ? 140 : 0),
+            left: panelX * cam.scale,
             top: 0,
             width: PANEL_W,
             transformOrigin: "0 0",

@@ -18,22 +18,13 @@
 .summary h3 { margin: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
 .summary p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
 .summary p.summaryDestination { color: var(--foreground); font-size: 14px; font-weight: 550; }
+/* Actions sit directly in the workflow footer; no nested container or extra spacing. */
 .actions {
   position: static;
   width: 100%;
   display: grid;
   gap: 12px;
-  margin-top: 10px;
-  padding: 14px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(18, 18, 24, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
 }
-/* Action slots live outside the settings scroller; keep the existing palette. */
-:global([data-schedule-action-slot]) > .actions { margin-top: 0; }
 .schedulingLink { display: inline-flex; align-items: center; justify-self: start; gap: 6px; max-width: 100%; min-height: 36px; padding-block: 6px; color: var(--primary); font-size: 14px; font-weight: 600; line-height: 20px; text-decoration: underline; text-underline-offset: 4px; border-radius: 4px; }
 .schedulingLink:hover { color: var(--primary-hover); }
 .schedulingLink:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }

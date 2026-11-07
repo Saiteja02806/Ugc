@@ -1,17 +1,19 @@
 /** App animation limits; each route receives one literal first frame. */
-export function isHookStartingFrameVideoModel(model: unknown): model is "google_omni" | "seedance_2_5" | "wan_3_0" {
-  return model === "google_omni" || model === "seedance_2_5" || model === "wan_3_0";
+export function isHookStartingFrameVideoModel(model: unknown): model is "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0" | "kling_4_0" {
+  return model === "google_omni" || model === "seedance_2_5" || model === "wan_3_0" || model === "kling_3_0" || model === "kling_4_0";
 }
 
-export function hookStartingFrameVideoProvider(model: unknown) {
+export function hookStartingFrameVideoProvider(model: unknown, mode?: unknown) {
+  if (mode === "first_frame_with_identity" && model === "google_omni") return "gemini" as const;
   return isHookStartingFrameVideoModel(model) ? "reapi" as const : null;
 }
 
 export function hookStartingFrameVideoDurations(model: unknown): number[] {
   if (model === "google_omni") return [4, 6, 8, 10];
   const minimum = model === "seedance_2_5" ? 4 : 3;
+  const maximum = model === "kling_4_0" ? 30 : 15;
   return isHookStartingFrameVideoModel(model)
-    ? Array.from({ length: 15 - minimum + 1 }, (_, index) => index + minimum) : [];
+    ? Array.from({ length: maximum - minimum + 1 }, (_, index) => index + minimum) : [];
 }
 
 /** Initial choice only; explicit duration selections remain editable. */
@@ -19,9 +21,25 @@ export function hookStartingFrameDefaultDuration(model: unknown): 3 | 4 {
   return model === "wan_3_0" ? 3 : 4;
 }
 
-/** ReAPI Omni Flash locks one starting image. Extra face photos are rejected. */
-export function hookStartingFrameFaceReferenceLimit(_model: unknown): number {
-  return 0;
+/** Identity photos the app accepts beside an approved starting frame. */
+export function hookStartingFrameFaceReferenceLimit(model: unknown, mode?: unknown): number {
+  if (!isHookStartingFrameVideoModel(model)) return 0;
+  // The direct Gemini route needs its explicit identity mode; the ReAPI routes
+  // carry the frame as the first image of a reference job.
+  if (model === "google_omni") return mode === "first_frame_with_identity" ? 5 : 0;
+  return 5;
+}
+
+/**
+ * How the frame and the identity photos reach the provider.
+ * `frame_and_references` sends both. `frame_only` can only animate the approved
+ * frame (Kling 3.0 exposes a first and a last frame slot and has no reference
+ * mode), so the photos shaped the frame during preparation instead.
+ */
+export function hookStartingFrameFaceReferenceRoute(model: unknown, mode?: unknown): "frame_and_references" | "frame_only" {
+  if (!isHookStartingFrameVideoModel(model)) return "frame_only";
+  if (!hookStartingFrameFaceReferenceLimit(model, mode)) return "frame_only";
+  return model === "kling_3_0" ? "frame_only" : "frame_and_references";
 }
 export function supportsHookStartingFrameFaceReferences(model: unknown): boolean {
   return hookStartingFrameFaceReferenceLimit(model) > 0;

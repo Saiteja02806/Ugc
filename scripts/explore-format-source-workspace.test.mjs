@@ -131,11 +131,10 @@ test("Slideshow Create Your Slides reuses the current editor sequence and keeps 
   assert.equal(overview.props.active, false, "Create keeps generation instructions in its sidebar");
   assert.equal(overview.props.previewActive, true);
   assert.equal(nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function")[overview.props.resultsTarget.index].props.hidden, false);
-  nodes(overview.props.previewActions).find(n => text(n) === "Generated slides").props.onClick();
-  assert.equal(editor().props.previewActive, false);
-  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
+  assert.equal(overview.props.previewActions, undefined, "Your slideshow header does not show a redundant Generated slides button");
   workflow().onGenerationStart(); workflow().onBusyChange(true);
   assert.equal(editor().props.previewActive, false, "Starting or recovering generation reveals progress and results");
+  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
   select("Your Slides"); assert.equal(editor().props.previewActive, false);
   workflow().onBusyChange(false);
   workflow().onIdleEmpty();
@@ -1081,9 +1080,9 @@ test("idle empty slideshow returns to its mounted editor and Generated slides re
   let editor = nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
   assert.equal(editor.props.previewActive, true);
   assert.equal(editor.props.active, false, "Create instructions stay available");
-  assert.ok(editor.props.previewActions);
-  editor.props.previewActions.props.onClick();
-  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false, "Manual generated results/history remains reachable");
+  assert.equal(editor.props.previewActions, undefined, "Your slideshow header does not show a redundant Generated slides button");
+  workflow().onGenerationStart();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false, "Generation activity returns to results");
   workflow().onIdleEmpty();
   editor = nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
   assert.equal(editor.props.previewActive, true);

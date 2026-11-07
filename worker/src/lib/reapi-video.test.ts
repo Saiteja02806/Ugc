@@ -45,12 +45,32 @@ test("WAN starting frames use the literal frame family, not general reference mo
   assert.equal("generation_type" in request, false); assert.equal("image_urls" in request, false);
 });
 
+test("approved frame plus identity photos run as one ordered reference job with the frame first", () => {
+  const frame = "https://storage.example.com/approved-frame.png";
+  const photos = ["https://storage.example.com/face-a.png", "https://storage.example.com/face-b.png"];
+  const seedance = buildReapiVideoRequest({ ...input, durationSeconds: 8, startingFrameImageUrl: frame, referenceImageUrls: photos });
+  assert.equal(seedance.model, "doubao-seedance-2.5-face");
+  assert.deepEqual(seedance.image_urls, [frame, ...photos]);
+  assert.equal(seedance.generation_type, undefined);
+  assert.equal("omni_reference_task_type" in seedance && seedance.omni_reference_task_type, "reference");
+  assert.equal("image_with_roles" in seedance, false);
+  const wan = buildReapiVideoRequest({ ...input, model: "wan_3_0", durationSeconds: 4, startingFrameImageUrl: frame, referenceImageUrls: photos });
+  assert.equal(wan.model, "wan3.0-video");
+  assert.deepEqual(wan.image_urls, [frame, ...photos]);
+  assert.equal(wan.generation_type, "reference");
+  assert.equal("image_with_roles" in wan, false);
+  const kling = buildReapiVideoRequest({ ...input, model: "kling_4_0", durationSeconds: 4, startingFrameImageUrl: frame, referenceImageUrls: photos });
+  assert.equal(kling.model, "kling-4-0");
+  assert.deepEqual(kling.image_urls, [frame, ...photos]);
+  assert.equal(kling.omni_reference_task_type, "reference");
+  // Kling 3.0 exposes only first/last frame slots, so the mix is refused locally.
+  assert.throws(() => buildReapiVideoRequest({ ...input, model: "kling_3_0", durationSeconds: 4, startingFrameImageUrl: frame, referenceImageUrls: photos }), ProviderRequestNotSubmittedError);
+});
+
 test("first-frame conflicts and unsupported models or durations reject before any paid request", async () => {
   for (const patch of [
     { durationSeconds: -1 }, { durationSeconds: 16 }, { durationSeconds: 3.5 },
     { startingFrameImageUrl: "http://storage.example.com/frame.png" },
-    { referenceImageUrl: "https://storage.example.com/portrait.png" },
-    { referenceImageUrls: ["https://storage.example.com/portrait.png"] },
     { referenceVideoUrl: "https://storage.example.com/video.mp4", referenceVideoDurationSeconds: 4 },
     { referenceAudioUrls: ["https://storage.example.com/music.mp3"], referenceAudioDurationSeconds: [4] },
     { referenceVideoMode: "edit" },

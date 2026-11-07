@@ -132,8 +132,8 @@ export function AiStudioComposer({
   const workflowFeedbackId = `${formId}-feedback`;
   const workflowFeedback = accessMessage || feedbackError || secondaryActions ? <WorkflowFeedback id={workflowFeedbackId} active={active}>
     {accessMessage ? <p className="sr-only">{accessMessage}</p> : null}
-    {feedbackError ? <p role="alert" className="text-xs text-destructive">{feedbackError}</p> : null}
-    {secondaryActions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{secondaryActions}</div> : null}
+    {feedbackError ? <p role="alert" className="sr-only">{feedbackError}</p> : null}
+    {secondaryActions ? <div className="flex min-w-0 flex-wrap items-center gap-2 [&_[role=alert]]:sr-only">{secondaryActions}</div> : null}
   </WorkflowFeedback> : null;
 
   useEffect(() => {
@@ -550,10 +550,13 @@ export function AiStudioSettingSelect<TValue extends string>({
         sideOffset={6}
         className={cn(
           "w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5",
+          // Long lists (durations, models) scroll inside the popup instead of
+          // growing past the viewport and scrolling the page behind it.
+          "max-h-[min(var(--available-height),24rem)]",
           options.some((o) => o.description || o.icon) && "min-w-64 max-w-[min(26rem,calc(100vw-1rem))]"
         )}
       >
-        <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
+        <div role="listbox" aria-label={ariaLabel} className="flex min-h-0 flex-col gap-0.5 overflow-y-auto overscroll-contain">
           {options.map((option) => {
             const isSelected = option.value === value;
 

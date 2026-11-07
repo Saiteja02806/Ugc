@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Does Creatify support developer agent workflows like Claude MCP?",
-    answer: "No. Creatify operates as a closed web platform. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp for Claude Desktop and Codex CLI agents.",
+    answer: "No. Creatify operates as a closed web platform. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://vidmake.io/mcp for Claude Desktop and Codex CLI agents.",
   },
   {
     question: "How does pricing compare between Creatify and Vidmake?",

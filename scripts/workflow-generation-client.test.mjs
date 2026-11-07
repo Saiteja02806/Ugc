@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
-import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
+import { startingFrameFaceReferenceError, startingFrameForwardsPhotos } from "../lib/explore/starting-frame-animation-input.ts";
 import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
 import * as creditPolicy from "../lib/billing/generation-credit-policy.ts";
 
@@ -23,7 +23,7 @@ const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { en
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
   "./talking-head-script-input": load("lib/explore/talking-head-script-input.ts"),
-  "./starting-frame-animation-input": { startingFrameFaceReferenceError },
+  "./starting-frame-animation-input": { startingFrameFaceReferenceError, startingFrameForwardsPhotos },
   "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),
   "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
@@ -98,7 +98,6 @@ test("Talking Head approved image with voice uses explicit reference mode on WAN
 
 test("Starting-frame animation blocks unsupported settings and retained audio before uploads or submission", async () => {
   for (const overrides of [
-    { settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0", duration: 5 }) },
     { settings: { ...settings.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 4 }), duration: 3 } },
     { audioReference: { url: "blob:audio", file: { type: "audio/wav", size: 20 }, duration: 4 } },
     { creator: { url: "blob:portrait" } },

@@ -5,14 +5,19 @@ import { useEffect, useRef } from "react";
 export const COVER_WATCHDOG_MS = 4_000;
 /** A source still not playable this long after assignment counts as stalled. */
 export const COVER_STALL_GRACE_MS = 4_000;
-/** Source reloads allowed before waiting for the next return/focus/hover. */
+/** Source reloads allowed back-to-back after a freeze or error. */
 export const COVER_MAX_RELOADS = 3;
+/** Wait after the fast budget is spent before probing the source again. Keeps a
+ * cover that froze while the page sat idle recovering on its own without a
+ * focus/hover/refresh, while an offline source still cannot reload in a loop. */
+export const COVER_RETRY_COOLDOWN_MS = 30_000;
 const HAVE_FUTURE_DATA = 3;
 
 /** Visible landing covers buffer once; galleries load only on sustained interest.
  * Continuous covers play while they are on screen and do not pause when the pointer leaves.
  * Playback that errors, stalls or silently freezes (for example after the tab sits idle)
- * recovers in place with a bounded number of source reloads. It never refreshes the page. */
+ * recovers in place with a bounded burst of source reloads and then slower probes, so a
+ * visible cover self-heals on its own. It never refreshes the page. */
 export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", warmCover = false, continuous = false) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -27,7 +32,7 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     let interested = link.matches(":hover") || document.activeElement === link;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
     let watchdog: ReturnType<typeof setInterval> | null = null;
-    let assignedAt = 0, lastTime = -1, frozenChecks = 0, reloads = 0;
+    let assignedAt = 0, lastTime = -1, frozenChecks = 0, reloads = 0, retryAfter = 0;
     const play = () => { void video.play().catch(() => {}); };
     const assign = () => { assignedAt = Date.now(); video.src = source; };
     const allowed = () => visible && !preference.matches && document.visibilityState !== "hidden";
@@ -44,8 +49,17 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     };
     // Re-request the same URL (HTTP cache still applies) on a fresh media pipeline.
     const reload = () => {
-      if (reloads >= COVER_MAX_RELOADS) return;
-      reloads++; lastTime = -1; frozenChecks = 0;
+      const now = Date.now();
+      if (reloads >= COVER_MAX_RELOADS) {
+        // Three attempts in a row produced no playback. Do not keep hammering a
+        // source that is actually unreachable, but do not give up forever on a
+        // cover that only needs the media pipeline restarted after an idle period:
+        // probe again once the cooldown passes, still without user interaction.
+        if (now < retryAfter) return;
+        reloads = 0;
+      }
+      reloads++; retryAfter = now + COVER_RETRY_COOLDOWN_MS;
+      lastTime = -1; frozenChecks = 0;
       video.removeAttribute("src"); video.load(); assign(); play();
     };
     const stalled = () => Boolean(video.error) || (video.readyState < HAVE_FUTURE_DATA && Date.now() - assignedAt > COVER_STALL_GRACE_MS);

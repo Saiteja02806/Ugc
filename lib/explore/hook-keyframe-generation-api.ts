@@ -155,7 +155,8 @@ async function submitPreparation(user: VerifiedFirebaseUser, input: Awaited<Retu
       referenceImageUrl: snapshot.url, referenceImageUrls })) throw new HookKeyframeGenerationError("The original scene snapshot could not be verified. No generation was submitted.", 503);
     if (model === "seedream_5_pro" && `${prompt}\n\nIMAGE INPUT ORDER:\n${hookKeyframeProviderImageLabels(input.personImageAssetIds.length, promptResult.version, referenceOptions).join("\n")}`.length > 4_000) throw new HookKeyframeGenerationError("Shorten the image instructions for Seedream to fit its 4,000-character prompt limit including image roles.", 400);
     const creditCost = hookImageCreditCost(model);
-    await reserveBillingCredits({ amount: creditCost, idempotencyKey: key, jobType: "generate_image", userId: ownerId });
+    const eligibleKeyframeFormat = frame.workflow === "talking_head" ? null : frame.workflow === "wall_text" ? ("wall_text" as const) : ("hook" as const);
+    await reserveBillingCredits({ amount: creditCost, ...(eligibleKeyframeFormat ? { freeVideoPassContext: { format: eligibleKeyframeFormat, generationKey: key, kind: "starting_frame" as const } } : {}), idempotencyKey: key, jobType: "generate_image", userId: ownerId });
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
     const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: model === "gemini_3_pro" ? 3 : 1,

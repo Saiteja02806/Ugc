@@ -20,6 +20,15 @@ export type BillingSubscription = {
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth" | "Startup";
   freeGenerationCredits?: { granted: number; remaining: number; reserved: number; used: number };
+  freeVideoPass?: {
+    allowedFormats: readonly ("hook" | "wall_text" | "slideshow")[];
+    available: boolean;
+    claimedAt: string | null;
+    code: string;
+    reservedFormat: "hook" | "wall_text" | "slideshow" | null;
+    status: "available" | "reserved" | "used";
+    usedAt: string | null;
+  } | null;
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;

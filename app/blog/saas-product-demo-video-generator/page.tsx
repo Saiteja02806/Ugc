@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I generate product demo video assets via API or MCP?",
-    answer: "Yes. Vidmake provides a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for researching hooks, generating media, and managing video jobs directly inside Claude and Codex.",
+    answer: "Yes. Vidmake provides a hosted Streamable HTTP OAuth MCP server at https://vidmake.io/mcp with 105 public tools for researching hooks, generating media, and managing video jobs directly inside Claude and Codex.",
   },
 ] as const;
 

@@ -23,6 +23,12 @@ import {
   type FreeGenerationCredits,
 } from "@/lib/billing/free-generation-credit-policy";
 import {
+  FreeVideoPassError,
+  reserveFreeVideoPassCredits,
+  type FreeVideoPassReservationContext,
+  type FreeVideoPassStatus,
+} from "./free-video-pass";
+import {
   getBillingUsageRetryDelayMs,
   isPaidBillingPlan,
   getSubscriptionEntitlementPlanKey,
@@ -58,6 +64,7 @@ export type UserSubscriptionInfo = {
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth" | "Startup";
   freeGenerationCredits: FreeGenerationCredits;
+  freeVideoPass?: FreeVideoPassStatus | null;
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
@@ -569,6 +576,7 @@ export async function recordIgnoredDodoWebhookEvent(params: {
 
 export async function reserveBillingCredits(params: {
   amount: number;
+  freeVideoPassContext?: FreeVideoPassReservationContext;
   idempotencyKey: string;
   jobType: string;
   userId: string;
@@ -579,6 +587,26 @@ export async function reserveBillingCredits(params: {
     refreshCredits: false,
   });
   if (!subscription.isActive) {
+    if (
+      params.freeVideoPassContext &&
+      (params.jobType === "generate_image" ||
+        params.jobType === "generate_hook_video")
+    ) {
+      try {
+        return await reserveFreeVideoPassCredits({
+          amount: params.amount,
+          context: params.freeVideoPassContext,
+          idempotencyKey: params.idempotencyKey,
+          jobType: params.jobType,
+          userId: params.userId,
+        });
+      } catch (error) {
+        if (error instanceof FreeVideoPassError) {
+          throw new BillingAccessError(error.message, error.status);
+        }
+        throw error;
+      }
+    }
     throw new BillingAccessError("You do not have enough AI credits for this generation.");
   }
   const { data, error } = await getClient().rpc("reserve_billing_credits", {

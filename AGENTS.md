@@ -651,3 +651,14 @@ Design tasks to be stateless, idempotent, and resilient to failures. Use metadat
 
 ## No automatic MCP builds — explicit user rule, 6 November 2026
 Website, worker and combined-release approval does not authorize building or deploying the MCP service/project. Require explicit MCP-build authorization. Check Git/CI/deployment fanout before pushing; do not silently change project settings/connections. Continue separately authorized website/worker work. This rule persists until the user changes it.
+
+## Global preserve existing functionality — explicit user instruction, 6 November 2026
+Preserve existing functionality across fixes, refactors, migrations and releases. If the user has not explicitly requested removing, disabling, hiding or materially restricting an existing capability, ask for and obtain their explicit permission before doing so. A provider change, general fix, or deployment approval does not grant permission to drop a working capability or silently substitute a weaker mode. If a proposed change conflicts with existing behavior, explain the exact capability affected, why, and the available alternatives. Continue independent work that preserves the feature while awaiting a decision. Applies across all projects until explicitly changed.
+
+## User-reported issue ledger
+
+Record each issue the user reports in docs/ISSUES_LEDGER.md at intake. Append verification and status updates under its stable ID, link related engineering incidents, and keep open checks visible.
+
+## Website build and deployment authorization — updated 6 November 2026
+
+A request to run the website locally authorizes the local development server and its compilation without separate confirmation. A real Vercel deployment or action that triggers one requires explicit user authorization. This supersedes the prior no-build rule for local website development only. Existing restrictions on other targets, including the no-automatic-MCP-build rule, still apply.

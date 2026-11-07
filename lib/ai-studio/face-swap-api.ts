@@ -83,6 +83,15 @@ export async function handleAIStudioFaceSwap(request: Request) {
   try {
     await reserveBillingCredits({
       amount: creditCost,
+      ...(slideshowGeneration?.batchKey
+        ? {
+            freeVideoPassContext: {
+              format: "slideshow" as const,
+              generationKey: slideshowGeneration.batchKey,
+              kind: "slideshow_face_swap" as const,
+            },
+          }
+        : {}),
       idempotencyKey,
       jobType: "generate_image",
       userId: user.uid,

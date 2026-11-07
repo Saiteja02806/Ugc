@@ -37,6 +37,7 @@ export function AiStudioResults({
   statusPlacement = "toolbar",
   scrollToLatestKey,
   toolbar,
+  toolbarClassName,
   portalTarget,
 }: {
   ariaLabel: string;
@@ -55,6 +56,8 @@ export function AiStudioResults({
   statusPlacement?: "toolbar" | "inline";
   scrollToLatestKey?: string | null;
   toolbar?: ReactNode;
+  /** Match the results surface so the sticky row paints no darker band or edge. */
+  toolbarClassName?: string;
   portalTarget?: HTMLElement | null;
 }) {
   const resultsRef = useRef<HTMLElement>(null);
@@ -91,7 +94,13 @@ export function AiStudioResults({
       className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain"
     >
       {toolbar ? (
-        <div className="sticky top-0 z-20 flex shrink-0 justify-end bg-background/90 px-1 pb-2 pt-1 backdrop-blur-sm">
+        <div className={cn(
+          "sticky top-0 z-20 flex shrink-0 justify-end px-1 pb-2 pt-1",
+          // Workflow panes sit on the card surface. Reusing the page background
+          // here painted a darker bar whose top edge read as a black line.
+          toolbarClassName ? undefined : "bg-background/90 backdrop-blur-sm",
+          toolbarClassName,
+        )}>
           {toolbar}
         </div>
       ) : null}

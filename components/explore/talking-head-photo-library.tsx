@@ -19,7 +19,7 @@ import picker from "./format-person-image-picker.module.css";
 
 /** Hook's owned sources, with Talking Head's existing reference callbacks. */
 export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, disabled, selectedIds, limitReached, onSelectUpload, onSelectInfluencer, onDeselect, onSelectStartingFrame, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMaxBytes = 20 * 1024 ** 2, uploadControl, children }: {
-  ownerId?: string | null; section: "person" | "influencers"; onSectionChange: (section: "person" | "influencers") => void;
+  ownerId?: string | null; section: "person" | "influencers" | "catalog"; onSectionChange: (section: "person" | "influencers" | "catalog") => void;
   disabled: boolean; selectedIds: (string | undefined)[]; limitReached: boolean;
   onSelectUpload: (asset: MediaAsset) => Promise<boolean>; onSelectInfluencer: (id: string) => Promise<boolean>;
   onDeselect: (id: string) => void; onSelectStartingFrame?: (frame: StartingFrameSelection) => boolean | void;
@@ -33,7 +33,7 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
   const working = useRef(false);
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
-  const current = section === "influencers" && source !== "catalog" ? "influencers" : source;
+  const current = section === "influencers" ? "influencers" : section === "catalog" ? "catalog" : source;
   const uploads = useQuery({ queryKey: ["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"],
     queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: Boolean(ownerId) && current === "user", staleTime: REFERENCE_IMAGE_STALE_MS });
   const influencers = useInfiniteQuery({ queryKey: ["hook-influencer-history", ownerId ?? "signed-out"], initialPageParam: null as string | null,
@@ -69,13 +69,12 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
   }
   const activeQuery = current === "influencers" ? influencers : current === "starting" ? frames : uploads;
   return <>
-    <div className={picker.libraryHeading}><h3>Image library</h3>
-      <Button type="button" variant="ghost" size="sm" className={picker.catalogControl} aria-pressed={current === "catalog"} disabled={pending || frameUploads.pending} onClick={() => setSource(current === "catalog" ? "user" : "catalog")}>{current === "catalog" ? "Back to your library" : "Vidmake images"}</Button>
-      {current === "starting" ? frameUploads.upload : uploadControl}
-      <Button type="button" variant="ghost" size="icon-sm" aria-label={current === "influencers" ? "Refresh my influencers" : current === "starting" ? "Refresh starting frames" : "Refresh your images"} disabled={!ownerId || pending || frameUploads.pending || frameUploads.refreshing || activeQuery.isFetching} onClick={() => { if (current === "starting") frameUploads.refresh(); void activeQuery.refetch(); }}><RefreshCw className="size-3.5" /></Button>
+    <div className={picker.libraryHeading}><h3>{current === "catalog" ? "Vidmake Influencers" : "Image library"}</h3>
+      {current === "starting" ? frameUploads.upload : current === "catalog" ? null : uploadControl}
+      {current === "catalog" ? null : <Button type="button" variant="ghost" size="icon-sm" aria-label={current === "influencers" ? "Refresh my influencers" : current === "starting" ? "Refresh starting frames" : "Refresh your images"} disabled={!ownerId || pending || frameUploads.pending || frameUploads.refreshing || activeQuery.isFetching} onClick={() => { if (current === "starting") frameUploads.refresh(); void activeQuery.refetch(); }}><RefreshCw className="size-3.5" /></Button>}
     </div>
     <Tabs.Root value={current} onValueChange={change} className={picker.tabs}>
-      {current !== "influencers" ? <Tabs.List aria-label="Image sources" className={picker.sourceTabs}>
+      {current !== "influencers" && current !== "catalog" ? <Tabs.List aria-label="Image sources" className={picker.sourceTabs}>
         <Tabs.Tab value="user" className={tabClass}>Uploaded photos</Tabs.Tab>
         {onSelectStartingFrame ? <Tabs.Tab value="starting" className={tabClass}>Starting frames</Tabs.Tab> : null}
       </Tabs.List> : null}
@@ -95,7 +94,10 @@ export function TalkingHeadPhotoLibrary({ ownerId, section, onSectionChange, dis
         {frameUploads.library}
         {!ownerId ? <p>Sign in to see your starting frames.</p> : frames.isPending ? <p role="status">Loading starting frames…</p> : frames.isError ? <p role="alert">Could not load your starting frames. Use Refresh to try again.</p> : frames.data?.length ? <div className={picker.libraryGrid}>{frames.data.map((frame, index) => photo(frame.assetId, frame.url, `Use starting frame ${index + 1}`, () => fetchRecentStartingFrame(frame, ownerId!), true))}</div> : !frameUploads.hasUploads ? <p>No starting frames yet.</p> : null}
       </Tabs.Panel>
-      <Tabs.Panel value="catalog" className={picker.libraryPanel} aria-label="Vidmake images">{children}</Tabs.Panel>
+      <Tabs.Panel value="catalog" className={picker.libraryPanel} aria-label="Vidmake images">
+        <p className={picker.libraryHint}>Choose photos of the same person.</p>
+        {children}
+      </Tabs.Panel>
     </Tabs.Root>
     {pending ? <p role="status">Preparing your image…</p> : null}{error ? <p role="alert" className="text-destructive">{error}</p> : null}
   </>;

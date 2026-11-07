@@ -9,6 +9,7 @@ import { HookVideoPromo } from "./HookVideoPromo";
 import { WallOfTextPromo, WOT_PROMO_FRAMES } from "./WallOfTextPromo";
 import { SlideshowPromo, SLIDESHOW_PROMO_FRAMES } from "./SlideshowPromo";
 import { AICharacterPromo, AI_CHARACTER_PROMO_FRAMES } from "./AICharacterPromo";
+import { VidmakeLaunchPromo, VIDMAKE_LAUNCH_FRAMES } from "./VidmakeLaunchPromo";
 import { TIMELINE } from "./assets.config";
 
 export const RemotionRoot: React.FC = () => {
@@ -58,6 +59,14 @@ export const RemotionRoot: React.FC = () => {
         id="AICharacterPromo"
         component={AICharacterPromo}
         durationInFrames={AI_CHARACTER_PROMO_FRAMES}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="VidmakeLaunchPromo"
+        component={VidmakeLaunchPromo}
+        durationInFrames={VIDMAKE_LAUNCH_FRAMES}
         fps={30}
         width={1920}
         height={1080}

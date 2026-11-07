@@ -22,6 +22,13 @@ export function shouldBlockDeploymentRoute(input: {
   isMcpOnlyDeployment: boolean;
   isProduction: boolean;
   pathname: string;
+  /**
+   * Optional cutover flag. When true on the website deployment, the MCP protocol
+   * routes (/mcp, /oauth/*, /.well-known/oauth-*) are served at vidmake.io so
+   * the public endpoint can move off the legacy MCP host. Defaults to false to
+   * preserve the isolated-deployment contract for every existing test and host.
+   */
+  allowMcpProtocolOnWebsite?: boolean;
 }) {
   const hostname = input.hostname.toLowerCase().replace(/\.$/u, "");
   const isMcpDeployment = input.isMcpOnlyDeployment || hostname === MCP_HOSTNAME;
@@ -30,5 +37,11 @@ export function shouldBlockDeploymentRoute(input: {
     return !isMcpDeploymentPath(input.pathname);
   }
 
-  return input.isProduction && isMcpExclusivePath(input.pathname);
+  // Website deployment normally 404s MCP-exclusive paths (isolated boundary).
+  // The cutover env flag opt-in makes them reachable at vidmake.io.
+  if (input.isProduction && isMcpExclusivePath(input.pathname) && input.allowMcpProtocolOnWebsite !== true) {
+    return true;
+  }
+
+  return false;
 }

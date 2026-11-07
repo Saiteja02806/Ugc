@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I generate hooks via the Vidmake MCP server?",
-    answer: "Yes. With our hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp, your Claude or Codex agent can generate hooks and inspect status programmatically.",
+    answer: "Yes. With our hosted Streamable HTTP MCP server at https://vidmake.io/mcp, your Claude or Codex agent can generate hooks and inspect status programmatically.",
   },
 ] as const;
 

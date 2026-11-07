@@ -206,8 +206,8 @@ export default function TermsPage() {
         <LegalSection title="Contact">
           <p>
             Questions about these terms can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-              support@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+              hello@vidmake.io
             </a>
             .
           </p>

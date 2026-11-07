@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { actionLayoutFixture, composerProps, element, nodes, text } from "./workflow-action-feedback-fixture.mjs";
 
-const { WorkflowCreationPanel, AiStudioComposer, feedbackHost } = actionLayoutFixture();
+const { WorkflowCreationPanel, AiStudioComposer } = actionLayoutFixture();
 const inlineNodes = node => Array.isArray(node) ? node.flatMap(inlineNodes) : node && typeof node === "object" ? [node, ...(node.type === "portal" ? [] : inlineNodes(node.props?.children))] : [];
 const getFooter = tree => nodes(tree).find(node => node.type === "footer");
 const getSettings = tree => nodes(tree).find(node => node.props?.["data-workflow-section-content"] !== undefined);
@@ -20,8 +20,8 @@ for (const kind of ["hook", "phone"]) for (const error of errors) test(`${kind}:
   assert.ok(text(settings).includes(error)); assert.ok(text(settings).includes(generation.message)); assert.ok(!text(settings).includes(generation.notice), "routine notice is omitted");
   assert.ok(nodes(settings).includes(child), "same editable child stays mounted");
   assert.equal(inlineNodes(settings).some(n => n.props?.["data-workflow-feedback"] !== undefined), false, "no message stack occupies the form flow");
-  assert.ok(nodes(settings).some(n => n.type === "portal" && n.props.target === feedbackHost));
-  assert.equal(nodes(tree).filter(n => n.props?.role === "alert").length, 1);
+  assert.equal(nodes(settings).some(n => n.type === "portal"), false);
+  assert.equal(nodes(tree).filter(n => n.props?.role === "alert" && n.props.className === "sr-only").length, 1);
   const button = nodes(footer).find(n => n.type === "button");
   assert.equal(button.props.disabled, true); assert.equal(button.props["aria-busy"], false);
   assert.ok(nodes(settings).some(n => n.props?.id === button.props["aria-describedby"]));
@@ -64,13 +64,13 @@ for (const design of ["classic", "focused", undefined]) for (const portaled of [
   const secondaryActions = element("fragment", { children: [element("span", { role: "alert", children: errors[1] }), element("button", { type: "button", children: "Refresh access", onClick() { refreshed++; } }), element("button", { type: "button", children: "Cancel", onClick() { cancelled++; } })] });
   const tree = AiStudioComposer(composerProps({ workflowDesign: design, actionsTarget: portaled ? target : null, portalTarget: portaled ? controls : null, accessMessage: "The previous request is not confirmed.", secondaryActions, estimatedCredits: 7, generateDisabled: true, onSubmit() { submits++; } }));
   const content = nodes(tree).find(n => n.type === "form");
-  const feedback = nodes(content).find(n => n.props?.["data-workflow-feedback"] !== undefined);
-  assert.ok(feedback); assert.match(text(feedback), /previous request is not confirmed/); assert.match(text(feedback), /Unknown request/);
   const primary = nodes(tree).find(n => n.type === "button" && n.props.type === "submit");
+  const feedback = nodes(content).find(n => n.props?.id === primary.props["aria-describedby"]);
+  assert.ok(feedback); assert.match(text(feedback), /previous request is not confirmed/); assert.match(text(feedback), /Unknown request/);
   assert.equal(primary.props.disabled, true); assert.equal(primary.props.form, content.props.id);
-  assert.ok(inlineNodes(content).some(n => n.props?.id === primary.props["aria-describedby"] && n.props.className === "sr-only"));
+  assert.ok(inlineNodes(content).some(n => n.props?.id === primary.props["aria-describedby"]));
   assert.equal(inlineNodes(content).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
-  assert.ok(nodes(content).some(n => n.type === "portal" && n.props.target === feedbackHost));
+  assert.equal(nodes(content).some(n => n.type === "portal"), false);
   const actionTree = portaled ? nodes(tree).find(n => n.type === "portal" && n.props.target === target).props.children : content.props.children.at(-1);
   assert.doesNotMatch(text(actionTree), /Unknown request|previous request|Refresh access|Cancel/);
   assert.equal(nodes(actionTree).filter(n => n.props?.role === "alert" || n.props?.role === "status").length, 0);
@@ -103,14 +103,14 @@ test("inactive workflow composers never portal feedback over the active section"
   assert.equal(nodes(tree).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
 });
 
-test("all workflow composer variants suppress routine cards while retaining the primary action and explicit error visibility", () => {
+test("all workflow composer variants suppress routine cards including real failures while retaining accessible feedback", () => {
   for (const design of ["classic", "focused", undefined]) for (const message of ["This generation uses 6 AI credits.", "Generating…", "Your slides are ready.", "Write your instructions."]) {
     const tree = AiStudioComposer(composerProps({ workflowDesign: design, accessMessage: message, generateDisabled: true }));
     assert.equal(nodes(tree).some(n => n.props?.["data-workflow-feedback"] !== undefined), false);
     assert.equal(nodes(tree).find(n => n.type === "button" && n.props.type === "submit").props.disabled, true);
     const errorTree = AiStudioComposer(composerProps({ workflowDesign: design, accessMessage: message, feedbackError: "Could not confirm the saved request.", generateDisabled: true }));
-    assert.ok(nodes(errorTree).some(n => n.props?.["data-workflow-feedback"] !== undefined));
-    assert.ok(nodes(errorTree).some(n => n.props?.role === "alert" && text(n).includes("Could not confirm")));
+    assert.equal(nodes(errorTree).some(n => n.type === "portal"), false);
+    assert.ok(nodes(errorTree).some(n => n.props?.role === "alert" && n.props.className === "sr-only" && text(n).includes("Could not confirm")));
   }
   for (const kind of ["hook", "phone"]) for (const section of ["create", "edit", "schedule"]) {
     const action = { disabled: true, busy: true, processing: true, message: "Preparing…", error: null, recoveryAvailable: false };

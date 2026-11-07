@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Can SaaS founders generate UGC videos through Claude or Codex?",
-    answer: "Yes. Vidmake includes a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for drafting hooks, rendering clips, and managing media directly inside AI agents.",
+    answer: "Yes. Vidmake includes a hosted Streamable HTTP OAuth MCP server at https://vidmake.io/mcp with 105 public tools for drafting hooks, rendering clips, and managing media directly inside AI agents.",
   },
   {
     question: "What is the cost of AI UGC for startups?",

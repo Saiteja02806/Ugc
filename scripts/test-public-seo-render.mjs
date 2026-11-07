@@ -70,7 +70,9 @@ for (const path of ["/brand/ugc-pilot-logo.png", "/guides/opengraph-image"]) {
   assert(asset.headers.get("content-type")?.startsWith("image/"), `Schema asset is not an image: ${path}`);
 }
 const visited = new Set();
-const queue = ["/"];
+// The guides hub is the sitemap's indexed entry point; the root is the
+// intentionally non-indexed app surface (rewrite + noindex).
+const queue = ["/guides"];
 while (queue.length) {
   const path = queue.shift();
   if (visited.has(path)) continue;
@@ -78,7 +80,7 @@ while (queue.length) {
   const page = report.pages.find(item => item.path === path);
   for (const link of page?.links ?? []) if (paths.includes(link) && !visited.has(link)) queue.push(link);
 }
-assert.deepEqual([...visited].sort(), [...paths].sort(), "A sitemap page is orphaned from homepage links");
+assert.deepEqual([...visited].sort(), [...paths].sort(), "A sitemap page is orphaned from the guides hub links");
 report.reachableFromHome = [...visited].sort();
 const outputFlag = process.argv.indexOf("--output");
 if (outputFlag >= 0) await fs.writeFile(process.argv[outputFlag + 1], JSON.stringify(report, null, 2) + "\n");

@@ -87,7 +87,7 @@ export default function UgcAdsWithClaudeMcpPage() {
           <li>A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $19 a month.</li>
           <li>Claude on the web or desktop (or Claude Code).</li>
           <li>
-            The hosted server URL: <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode>
+            The hosted server URL: <ArticleCode>https://vidmake.io/mcp</ArticleCode>
           </li>
         </ul>
         <p>The server uses Streamable HTTP and signs in with OAuth (PKCE). You approve access in your browser, so you never paste an API key or token into the chat. Generation uses your account&apos;s plan and credits.</p>
@@ -98,7 +98,7 @@ export default function UgcAdsWithClaudeMcpPage() {
             In Claude, open <strong className="font-semibold text-foreground-strong">Customize → Connectors → Add custom connector</strong>.
           </li>
           <li>
-            Name it <strong className="font-semibold text-foreground-strong">Vidmake</strong> and paste <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode>.
+            Name it <strong className="font-semibold text-foreground-strong">Vidmake</strong> and paste <ArticleCode>https://vidmake.io/mcp</ArticleCode>.
           </li>
           <li>Finish the OAuth sign-in and approve the requested scopes.</li>
           <li>Enable the connector in the conversation before you send a prompt.</li>
@@ -107,7 +107,7 @@ export default function UgcAdsWithClaudeMcpPage() {
         <p>
           <strong className="font-semibold text-foreground-strong">Using Claude Code instead?</strong> Add the server with one command:
         </p>
-        <ArticleCommand>claude mcp add --transport http ugc-pilot https://mcp.getugcpilot.com/mcp</ArticleCommand>
+        <ArticleCommand>claude mcp add --transport http ugc-pilot https://vidmake.io/mcp</ArticleCommand>
         <p>
           Full details are on the <ArticleLink href="/mcp/claude">Claude setup page</ArticleLink>. If your team uses Codex, the <ArticleLink href="/mcp/codex">Codex setup page</ArticleLink> covers the <ArticleCode>~/.codex/config.toml</ArticleCode> route.
         </p>

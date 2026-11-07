@@ -209,8 +209,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const uploadedFrameWorkflow = body?.exploreFormat === "wall_text" ? "wall_text" : body?.workflow === "talking_head" ? "talking_head" : "hook";
   if (body?.talkingHeadScript !== undefined && (!usesStartingFrame || body.workflow !== "talking_head" || typeof body.talkingHeadScript !== "string")) return NextResponse.json({ ok: false, error: "Use an approved Talking Head starting frame and spoken script." }, { status: 400 });
   if (body?.talkingHeadScript !== undefined && body.talkingHeadScriptReviewed !== true) return NextResponse.json({ ok: false, error: "Review the spoken words and confirm demo narration is excluded before generating." }, { status: 400 });
+  const directIdentityFrame = body?.startingFrameMode === "first_frame_with_identity";
+  if (directIdentityFrame && (!usesStartingFrame || body?.model !== "google_omni")) return NextResponse.json({ ok: false, error: "Use direct Gemini Omni with an approved starting frame." }, { status: 400 });
   const frameVoiceReference = body?.startingFrameMode === "image_voice_reference";
-  if (body?.startingFrameMode !== undefined && (!frameVoiceReference || !usesStartingFrame || usesUploadedFrame ||
+  if (body?.startingFrameMode !== undefined && !directIdentityFrame && (!frameVoiceReference || !usesStartingFrame || usesUploadedFrame ||
     (body.model !== "wan_3_0" && body.model !== "seedance_2_5") || body.generateAudio !== true ||
     !Array.isArray(body.referenceAudioUrls) || body.referenceAudioUrls.length !== 1)) {
     return NextResponse.json({ ok: false, error: "Use WAN 3.0 or Seedance 2.5 with Sound on and one voice reference." }, { status: 400 });
@@ -229,9 +231,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       return NextResponse.json({ ok: false, error: "Use the uploaded image as a standalone starting frame." }, { status: 400 });
     }
     const faceCount = Array.isArray(body.referenceImageUrls) ? body.referenceImageUrls.length : 0;
-    if (faceCount && (!frameVoiceReference && (!hookStartingFrameFaceReferenceLimit(body.model) || faceCount > hookStartingFrameFaceReferenceLimit(body.model)) ||
+    if (faceCount && body.model === "kling_3_0") {
+      return NextResponse.json({ ok: false, error: "Kling 3.0 animates the approved frame alone. Choose Kling 4.0, Seedance 2.5, WAN 3.0 or Omni to use identity photos." }, { status: 400 });
+    }
+    if (faceCount && (!frameVoiceReference && (!hookStartingFrameFaceReferenceLimit(body.model, body.startingFrameMode) || faceCount > hookStartingFrameFaceReferenceLimit(body.model, body.startingFrameMode)) ||
       frameVoiceReference && faceCount + 1 > getVideoReferencePolicy(body.model as AIStudioVideoModel, { hasTimedReferences: true }).maxImages)) {
-      return NextResponse.json({ ok: false, error: "Omni Flash animates the starting image alone. Remove the extra face photos." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Use up to five face photos with your starting frame. Remove an extra photo." }, { status: 400 });
     }
     if ((faceCount && body.imageReferencePurpose !== "person") || (!faceCount && body.imageReferencePurpose !== undefined)) {
       return NextResponse.json({ ok: false, error: "Use the additional images as face references for the same person." }, { status: 400 });
@@ -245,7 +250,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     if (typeof body.durationSeconds !== "number" || !hookStartingFrameVideoDurations(body.model).includes(body.durationSeconds)) {
       return NextResponse.json({ ok: false, error: body.model === "google_omni"
         ? "Google Omni duration must be 4, 6, 8, or 10 seconds."
-        : `Choose a whole-number starting-frame duration from ${body.model === "seedance_2_5" ? 4 : 3} to 15 seconds.` }, { status: 400 });
+        : `Choose a whole-number starting-frame duration from ${hookStartingFrameVideoDurations(body.model)[0]} to ${hookStartingFrameVideoDurations(body.model).at(-1)} seconds.` }, { status: 400 });
     }
   }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
@@ -289,9 +294,6 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const referencePolicy = getVideoReferencePolicy(model, { allowOmniVideo: Boolean(body?.exploreFormat), hasTimedReferences: Boolean(referenceVideoUrl || referenceAudioUrls.length || body?.useGalleryVideoReference) });
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "hook" && body.exploreFormat !== "wall_text") {
     return NextResponse.json({ error: "Choose a video workflow.", ok: false }, { status: 400 });
-  }
-  if (body?.exploreFormat && model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
-    return NextResponse.json({ error: "Choose the workflow's supported video model.", ok: false }, { status: 400 });
   }
   const useGalleryVideoReference = body?.useGalleryVideoReference === true;
   if ((body?.useGalleryVideoReference !== undefined && typeof body.useGalleryVideoReference !== "boolean") ||
@@ -445,13 +447,16 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   let hookSourceTimeline;
   try {
     if (startingFrame?.receipt.version === 5 && startingFrame.workflow === "hook") {
+      // A shorter user-selected duration is allowed; the timeline retimes the
+      // source action into it (user decision, 2026-11-06).
       const verifiedSourceTimeline = createHookSourceTimeline(startingFrame.receipt,
-        (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds, { preserveFullSource: true });
+        (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds);
       if (prompt.includes("PHASE [")) hookSourceTimeline = verifiedSourceTimeline;
     }
     generationPrompt = firstFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame?.workflow ?? uploadedFrameWorkflow, directions: prompt, durationSeconds, generateAudio: generateAudio === true,
       ...(typeof body?.talkingHeadScript === "string" ? { spokenScript: body.talkingHeadScript } : {}),
       ...(frameVoiceReference ? { voiceReference: true, voiceIdentityPhotoCount: referenceImageUrls.length } : {}),
+      ...(personPhotos && referenceImageUrls.length ? { identityPhotoCount: referenceImageUrls.length } : {}),
       ...(startingFrame?.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
       : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
   } catch (error) {
@@ -493,9 +498,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (referenceAudioUrls.length > 1) {
     return NextResponse.json({ error: "Use one audio reference in Vidmake.", ok: false }, { status: 400 });
   }
-  const maxReferences = referencePolicy.maxFiles;
-  if (referenceImageUrls.length > referencePolicy.maxImages) {
-    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${referencePolicy.maxImages} reference images in Vidmake. Remove an image or choose another model.`, ok: false }, { status: 400 });
+  const maxReferences = directIdentityFrame ? 5 : referencePolicy.maxFiles;
+  const maxImages = directIdentityFrame ? 5 : referencePolicy.maxImages;
+  if (referenceImageUrls.length > maxImages) {
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${maxImages} reference images in Vidmake. Remove an image or choose another model.`, ok: false }, { status: 400 });
   }
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
@@ -697,7 +703,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const projectId = "ai-studio";
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
-  const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
+  const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model, body?.startingFrameMode) ?? undefined
     : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" || model === "kling_3_0" || model === "kling_4_0" ? "reapi" : undefined;
   const providerReferenceImages = frameVoiceReference && startingFrame ? [startingFrame.imageUrl, ...referenceImageUrls] : referenceImageUrls;
   const startingFrameInput = frameVoiceReference && startingFrame ? {
@@ -705,12 +711,14 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       referenceId: startingFrame.referenceId, sourceSha256: startingFrame.sourceSha256, sourceFrameIndex: startingFrame.startingFrameIndex,
       receipt: startingFrame.receipt as unknown as Json },
   } : startingFrame ? {
+    ...(directIdentityFrame ? { startingFrameMode: "first_frame_with_identity" } : {}),
     ...(hookSourceTimeline ? { hookSourceTimeline: hookSourceTimeline as unknown as Json } : {}),
     startingFrameAssetId: startingFrame.assetId,
     startingFrameJobId: startingFrame.imageJobId,
     startingFrameImageUrl: startingFrame.imageUrl,
     startingFrameReceipt: startingFrame.receipt as unknown as Json,
   } : uploadedFrame ? {
+    ...(directIdentityFrame ? { startingFrameMode: "first_frame_with_identity" } : {}),
     startingFrameSource: "upload",
     startingFrameAssetId: uploadedFrame.assetId,
     startingFrameImageUrl: uploadedFrame.imageUrl,
@@ -772,8 +780,39 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     let creditsReserved = false;
 
     try {
+      const resolvedWorkflow =
+        typeof body?.workflow === "string"
+          ? body.workflow
+          : startingFrame?.workflow
+            ? startingFrame.workflow
+            : typeof body?.referenceId === "string" &&
+                (body.referenceId.startsWith("talking-") ||
+                  body.referenceId.includes("talking"))
+              ? "talking_head"
+              : body?.exploreFormat === "wall_text"
+                ? "wall_text"
+                : body?.exploreFormat === "hook"
+                  ? "hook"
+                  : null;
+      const eligibleFreeVideoFormat =
+        (body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text") &&
+        resolvedWorkflow !== "talking_head" &&
+        typeof body?.talkingHeadScript !== "string" &&
+        quantity === 1
+          ? body.exploreFormat
+          : null;
       await reserveBillingCredits({
         amount: getGenerationCreditCost("video", durationSeconds, model),
+        ...(eligibleFreeVideoFormat
+          ? {
+              freeVideoPassContext: {
+                format: eligibleFreeVideoFormat,
+                generationKey: baseIdempotencyKey,
+                kind: "generation" as const,
+                totalUnits: 1,
+              },
+            }
+          : {}),
         idempotencyKey,
         jobType: VIDEO_JOB_TYPE,
         userId: user.uid,

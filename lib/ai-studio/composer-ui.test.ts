@@ -187,6 +187,10 @@ test("setting pills use themed popovers instead of native select menus", () => {
   assert.match(settingSelect, /role="option"/);
   assert.match(settingSelect, /aria-selected=\{isSelected\}/);
   assert.match(settingSelect, /bg-brand-soft font-semibold text-primary/);
+  // Long lists (for example Kling 4.0's 28 durations) must scroll inside the
+  // popup instead of growing past the viewport and scrolling the page behind it.
+  assert.match(settingSelect, /max-h-\[min\(var\(--available-height\),24rem\)\]/);
+  assert.match(settingSelect, /flex min-h-0 flex-col gap-0\.5 overflow-y-auto overscroll-contain/);
 });
 
 test("every image and video settings dropdown uses the shared themed pill", () => {

@@ -1083,50 +1083,81 @@ export const VidmakeLaunchPromo: React.FC = () => {
       ))}
 
       {/* =================================================================== */}
-      {/* LIVING SOLAR HORIZON & DARK STUDIO STAGE (`Arcjet` + `solor light`) */}
+      {/* AURORA HORIZON STAGE (Matches preview_540p_crf22_higher_quality 1)  */}
+      {/* Pure pitch-black upper stage + luminous purple/indigo/coral bottom  */}
       {/* =================================================================== */}
-      <AbsoluteFill style={{ opacity: 0.48 }}>
-        <OffthreadVideo
-          src={solarBgSrc}
-          muted
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            filter: "hue-rotate(15deg) saturate(1.35) contrast(1.15)",
-          }}
-        />
-      </AbsoluteFill>
+      <style>
+        {`
+          @font-face {
+            font-family: 'Silkscreen Pixel';
+            font-style: normal;
+            font-weight: 400;
+            src: url('${staticFile("fonts/silkscreen-400.woff2")}') format('woff2');
+          }
+          @font-face {
+            font-family: 'JetBrains Mono';
+            font-style: normal;
+            font-weight: 700;
+            src: url('${staticFile("fonts/jetbrains-mono-700.woff2")}') format('woff2');
+          }
+        `}
+      </style>
 
-      <div
-        style={{
-          position: "absolute",
-          left: "-15%",
-          right: "-15%",
-          bottom: -240,
-          height: 520,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse at 50% 30%, rgba(0, 240, 255, 0.42) 0%, rgba(99, 102, 241, 0.34) 38%, rgba(255, 23, 107, 0.22) 64%, transparent 80%)",
-          filter: "blur(38px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <AbsoluteFill
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-          opacity: 0.45,
-          pointerEvents: "none",
-        }}
-      />
+      {(() => {
+        const coralShiftX = interpolate(
+          frame,
+          [0, 60, 120, 180, 260, 345, 500, 900],
+          [22, 62, 34, 58, 28, 60, 35, 52],
+          CLAMP
+        );
+        const coralOpacity = interpolate(
+          frame,
+          [0, 35, 65, 95, 140, 200, 280, 345],
+          [0.35, 0.85, 0.95, 0.65, 0.55, 0.82, 0.68, 0.75],
+          CLAMP
+        );
+        return (
+          <AbsoluteFill style={{ backgroundColor: "#000000", pointerEvents: "none" }}>
+            {/* Deep Electric Indigo / Violet Horizon Base at Bottom */}
+            <div
+              style={{
+                position: "absolute",
+                left: "-15%",
+                right: "-15%",
+                bottom: "-28%",
+                height: "78%",
+                background:
+                  "radial-gradient(ellipse 85% 65% at 50% 100%, rgba(92, 36, 255, 0.92) 0%, rgba(56, 18, 175, 0.68) 38%, rgba(20, 6, 72, 0.28) 68%, rgba(0, 0, 0, 0) 100%)",
+                filter: "blur(36px)",
+              }}
+            />
+            {/* Warm Coral-Orange Secondary Bloom (from preview_540p_crf22 (1).mp4) */}
+            <div
+              style={{
+                position: "absolute",
+                left: `${coralShiftX - 25}%`,
+                bottom: "-18%",
+                width: "55%",
+                height: "62%",
+                background:
+                  "radial-gradient(ellipse at 50% 85%, rgba(235, 94, 56, 0.78) 0%, rgba(168, 52, 130, 0.42) 48%, rgba(0, 0, 0, 0) 78%)",
+                filter: "blur(48px)",
+                opacity: coralOpacity,
+              }}
+            />
+          </AbsoluteFill>
+        );
+      })()}
 
       {/* =================================================================== */}
-      {/* SCENE 1 (Frames 0–105): LOGO + VIDMAKE HIGH-ATTENTION INTRO         */}
+      {/* SCENE 1 (Frames 0–165):                                             */}
+      {/*   Beat 1 (0–42):   "Introducing Vidmake" ALONE -> fades away        */}
+      {/*   Beat 2 (42–92):  "Higgsfield for / SaaS & Sales Marketing" ALONE  */}
+      {/*                    -> fades away                                    */}
+      {/*   Beat 3 (92–165): Input Bar ALONE -> User types -> Clicks Send     */}
+      {/*                    -> Docks top-right + Left "OK ... finding viral" */}
       {/* =================================================================== */}
-      {frame < 105 && (
+      {frame < 165 && (
         <AbsoluteFill
           style={{
             display: "flex",
@@ -1135,148 +1166,598 @@ export const VidmakeLaunchPromo: React.FC = () => {
             justifyContent: "center",
           }}
         >
-          <FourPointShootingStar
-            startFrame={0}
-            durationFrames={18}
-            fromX={-820}
-            fromY={320}
-            toX={0}
-            toY={-40}
-            color="#00F0FF"
-            size={56}
-          />
-
           {(() => {
-            const logoSpr = spring({
-              frame: Math.max(0, frame - 8),
+            const MONO_FONT = "'JetBrains Mono', monospace";
+            const CLEAN_SANS =
+              "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+            // ---------------------------------------------------------------
+            // BEAT 1 (Frames 0–42): "Introducing Vidmake" + 3D 4-Point Star
+            // Matches Row 1-2 of preview_540p_crf22_higher_quality (1).mp4
+            // ---------------------------------------------------------------
+            const beat1Chars = Array.from("Introducing Vidmake");
+            const beat1ExitOpacity = interpolate(frame, [32, 41], [1, 0], CLAMP);
+            const beat1ExitBlur = interpolate(frame, [32, 41], [0, 14], CLAMP);
+            const beat1ExitScale = interpolate(frame, [32, 41], [1, 0.94], CLAMP);
+
+            // 3D Faceted 4-Point Star underneath "Introducing Vidmake"
+            const starEnterSpr = spring({
+              frame: Math.max(0, frame - 2),
               fps,
-              config: { damping: 10, mass: 0.42, stiffness: 310 },
+              config: { damping: 12, mass: 0.45, stiffness: 220 },
             });
-            const logoScale = interpolate(logoSpr, [0, 0.65, 1], [0.2, 1.14, 1]);
-            const logoRotY = interpolate(logoSpr, [0, 1], [-45, 0]);
-            const ringScale = interpolate(frame, [10, 48], [0.4, 2.4], CLAMP);
-            const ringOpacity = interpolate(
-              frame,
-              [10, 22, 48],
-              [0, 0.85, 0],
+            const starScale =
+              interpolate(starEnterSpr, [0, 1], [1.45, 1]) *
+              interpolate(frame, [20, 33], [1, 0], CLAMP);
+            const starY = interpolate(starEnterSpr, [0, 1], [65, 0]);
+            const starRot = interpolate(frame, [0, 33], [-18, 28], CLAMP);
+            const starOpacity =
+              interpolate(frame, [0, 5], [0, 1], CLAMP) *
+              interpolate(frame, [24, 33], [1, 0], CLAMP);
+
+            // ---------------------------------------------------------------
+            // BEAT 2 (Frames 42–92): "Higgsfield for / SaaS & Sales Marketing"
+            // Comes in ONLY AFTER Beat 1 fades away! Matches Row 3-4 & 7-8
+            // of preview_540p_crf22_higher_quality (1).mp4
+            // ---------------------------------------------------------------
+            const b2Rel = frame - 42;
+            const beat2ExitOpacity = interpolate(frame, [81, 91], [1, 0], CLAMP);
+            const beat2ExitBlur = interpolate(frame, [81, 91], [0, 14], CLAMP);
+            const beat2ExitScale = interpolate(frame, [81, 91], [1, 0.94], CLAMP);
+
+            const beat2Line1Words = [
+              { text: "Higgsfield", color: "#FFFFFF", delay: 0 },
+              { text: "for", color: "#8B5CF6", delay: 5 },
+            ];
+            const beat2Line2Words = [
+              { text: "SaaS", color: "#FFFFFF", delay: 9 },
+              { text: "&", color: "rgba(255,255,255,0.75)", delay: 13 },
+              { text: "Sales", color: "#FFFFFF", delay: 16 },
+              { text: "Marketing", color: "#8B5CF6", delay: 20 },
+            ];
+
+            // Glowing purple comet/droplet arc from "Advanced" in preview_540p (1).mp4
+            const dropletProg = interpolate(b2Rel, [4, 24], [0, 1], CLAMP);
+            const dropletX = interpolate(dropletProg, [0, 1], [-140, 165]);
+            const dropletY =
+              interpolate(dropletProg, [0, 0.5, 1], [-55, -110, -18]) +
+              Math.sin(dropletProg * Math.PI) * -28;
+            const dropletOpacity = interpolate(
+              b2Rel,
+              [4, 8, 20, 26],
+              [0, 1, 0.9, 0],
               CLAMP
             );
-            const liftY =
-              frame >= 54
-                ? interpolate(
-                    spring({
-                      frame: frame - 54,
-                      fps,
-                      config: { damping: 13, mass: 0.4, stiffness: 280 },
-                    }),
-                    [0, 1],
-                    [0, -110]
-                  )
+
+            // ---------------------------------------------------------------
+            // BEAT 3 (Frames 92–165): Input Bar appears ONLY AFTER Beat 2 disappears
+            // ---------------------------------------------------------------
+            const PROMPT_TEXT = "Create a marketing video for my SaaS";
+            const typedCount = Math.floor(
+              interpolate(frame, [100, 134], [0, PROMPT_TEXT.length], CLAMP)
+            );
+            const typedStr = PROMPT_TEXT.slice(0, typedCount);
+
+            const barEnterSpr =
+              frame >= 92
+                ? spring({
+                    frame: frame - 92,
+                    fps,
+                    config: { damping: 13, mass: 0.45, stiffness: 250 },
+                  })
+                : 0;
+            const barOpacity = interpolate(frame, [92, 100], [0, 1], CLAMP);
+            const barEnterBlur = interpolate(frame, [92, 101], [10, 0], CLAMP);
+
+            const isClicked = frame >= 142;
+            const clickAge = Math.max(0, frame - 142);
+            const postSendSpr =
+              frame >= 142
+                ? spring({
+                    frame: frame - 142,
+                    fps,
+                    config: { damping: 14, mass: 0.46, stiffness: 250 },
+                  })
+                : 0;
+
+            const sendBtnScale = isClicked
+              ? interpolate(clickAge, [0, 3, 8, 14], [1, 0.82, 1.14, 1], CLAMP)
+              : interpolate(frame, [132, 140], [1, 1.07], CLAMP);
+
+            const barX = interpolate(postSendSpr, [0, 1], [0, 290]);
+            const barY =
+              interpolate(barEnterSpr, [0, 1], [36, 0]) +
+              interpolate(postSendSpr, [0, 1], [0, -255]);
+            const barWidth = interpolate(postSendSpr, [0, 1], [1020, 680]);
+            const barHeight = interpolate(postSendSpr, [0, 1], [92, 74]);
+
+            // 3-square L-grid spinner state (steps around 2x2 grid every 4 frames)
+            const spinnerStep = Math.floor(Math.max(0, frame - 146) / 4) % 4;
+            const slotCoords = [
+              { x: 2, y: 2 },
+              { x: 18, y: 2 },
+              { x: 18, y: 18 },
+              { x: 2, y: 18 },
+            ];
+            const activeSlots = [
+              slotCoords[(spinnerStep + 0) % 4],
+              slotCoords[(spinnerStep + 1) % 4],
+              slotCoords[(spinnerStep + 2) % 4],
+            ];
+
+            const agentReplySpr =
+              frame >= 147
+                ? spring({
+                    frame: frame - 147,
+                    fps,
+                    config: { damping: 13, mass: 0.42, stiffness: 280 },
+                  })
                 : 0;
 
             return (
               <div
                 style={{
                   position: "relative",
+                  width: 1680,
+                  height: 920,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  transform: `translate3d(0, ${liftY}px, 0)`,
+                  justifyContent: "center",
                 }}
               >
-                <div
-                  style={{
-                    position: "absolute",
-                    width: 240,
-                    height: 240,
-                    borderRadius: "50%",
-                    border: "4px solid #00F0FF",
-                    boxShadow:
-                      "0 0 48px #00F0FF, inset 0 0 36px rgba(255, 23, 107, 0.8)",
-                    transform: `scale(${ringScale})`,
-                    opacity: ringOpacity,
-                  }}
-                />
-
-                <div style={{ marginBottom: 22 }}>
-                  <OpticalBloomText
-                    startFrame={12}
-                    staggerFrames={3}
-                    fontSize={92}
-                    words={[{ text: "VIDMAKE", accent: "white" }]}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    position: "relative",
-                    width: 176,
-                    height: 176,
-                    borderRadius: 44,
-                    background:
-                      "linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(15,23,42,0.88) 100%)",
-                    border: "2.5px solid rgba(0, 240, 255, 0.78)",
-                    boxShadow:
-                      "0 30px 80px rgba(0, 0, 0, 0.95), 0 0 65px rgba(0, 240, 255, 0.55), 0 0 95px rgba(255, 23, 107, 0.38)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transform: `perspective(1000px) rotateY(${logoRotY}deg) scale(${logoScale})`,
-                    overflow: "hidden",
-                  }}
-                >
-                  <Img
-                    src={logoSrc}
+                {/* ========================================================= */}
+                {/* BEAT 1 (Frames 0–42): "Introducing Vidmake" ALONE         */}
+                {/* ========================================================= */}
+                {frame < 42 && (
+                  <div
                     style={{
-                      width: "76%",
-                      height: "76%",
-                      objectFit: "contain",
-                      filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.6))",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transform: `scale(${beat1ExitScale})`,
+                      opacity: beat1ExitOpacity,
+                      filter:
+                        beat1ExitBlur > 0.2 ? `blur(${beat1ExitBlur}px)` : "none",
                     }}
+                  >
+                    {/* Per-Character Left-to-Right Focus Sweep */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        whiteSpace: "pre",
+                      }}
+                    >
+                      {beat1Chars.map((ch, idx) => {
+                        const cStart = 1 + idx * 0.85;
+                        const cRel = frame - cStart;
+                        const cOpacity = interpolate(
+                          cRel,
+                          [0, 3, 7],
+                          [0, 0.38, 1],
+                          CLAMP
+                        );
+                        const cBlur = interpolate(
+                          cRel,
+                          [0, 4, 8],
+                          [10, 3, 0],
+                          CLAMP
+                        );
+                        const cY = interpolate(cRel, [0, 7], [10, 0], CLAMP);
+
+                        return (
+                          <span
+                            key={idx}
+                            style={{
+                              display: "inline-block",
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 700,
+                              fontSize: 92,
+                              lineHeight: 1.08,
+                              letterSpacing: "-0.035em",
+                              color: "#FFFFFF",
+                              opacity: cOpacity,
+                              transform: `translate3d(0, ${cY}px, 0)`,
+                              filter: cBlur > 0.2 ? `blur(${cBlur}px)` : "none",
+                            }}
+                          >
+                            {ch}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* 3D Faceted 4-Point Glowing Star underneath (from preview_540p 1) */}
+                    <div
+                      style={{
+                        marginTop: 22,
+                        transform: `translate3d(0, ${starY}px, 0) scale(${starScale}) rotate(${starRot}deg)`,
+                        opacity: starOpacity,
+                        filter:
+                          "drop-shadow(0 0 24px rgba(168, 85, 247, 0.9)) drop-shadow(0 0 48px rgba(124, 58, 237, 0.6))",
+                      }}
+                    >
+                      <svg width="96" height="96" viewBox="0 0 100 100">
+                        <defs>
+                          <radialGradient
+                            id="starCoreGrad"
+                            cx="50%"
+                            cy="50%"
+                            r="50%"
+                          >
+                            <stop offset="0%" stopColor="#FFFFFF" />
+                            <stop offset="38%" stopColor="#F0ABFC" />
+                            <stop offset="72%" stopColor="#9333EA" />
+                            <stop offset="100%" stopColor="#3B0764" />
+                          </radialGradient>
+                        </defs>
+                        <path
+                          d="M50 4 C54 34, 66 46, 96 50 C66 54, 54 66, 50 96 C46 66, 34 54, 4 50 C34 46, 46 34, 50 4 Z"
+                          fill="url(#starCoreGrad)"
+                        />
+                        <path
+                          d="M50 14 C52.5 36, 64 47.5, 86 50 C64 52.5, 52.5 64, 50 86 C47.5 64, 36 52.5, 14 50 C36 47.5, 47.5 36, 50 14 Z"
+                          fill="#FFFFFF"
+                          opacity="0.7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========================================================= */}
+                {/* BEAT 2 (Frames 42–92): "Higgsfield for / SaaS & Sales..." */}
+                {/* ========================================================= */}
+                {frame >= 42 && frame < 92 && (
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 10,
+                      transform: `scale(${beat2ExitScale})`,
+                      opacity: beat2ExitOpacity,
+                      filter:
+                        beat2ExitBlur > 0.2 ? `blur(${beat2ExitBlur}px)` : "none",
+                    }}
+                  >
+                    {/* Glowing Violet Comet/Droplet Streak (from "Advanced" in preview_540p 1) */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: "50%",
+                        width: 28,
+                        height: 54,
+                        borderRadius: 999,
+                        background:
+                          "linear-gradient(180deg, rgba(168, 85, 247, 0.95) 0%, rgba(99, 102, 241, 0.2) 100%)",
+                        boxShadow: "0 0 32px rgba(139, 92, 246, 0.9)",
+                        transform: `translate3d(${dropletX}px, ${dropletY}px, 0) rotate(28deg)`,
+                        opacity: dropletOpacity,
+                        filter: "blur(3px)",
+                        pointerEvents: "none",
+                      }}
+                    />
+
+                    {/* Line 1: "Higgsfield for" */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 22,
+                      }}
+                    >
+                      {beat2Line1Words.map((w, idx) => {
+                        const wRel = b2Rel - w.delay;
+                        const wOp = interpolate(
+                          wRel,
+                          [0, 4, 9],
+                          [0, 0.32, 1],
+                          CLAMP
+                        );
+                        const wBlur = interpolate(
+                          wRel,
+                          [0, 5, 10],
+                          [12, 4, 0],
+                          CLAMP
+                        );
+                        const wY = interpolate(wRel, [0, 8], [14, 0], CLAMP);
+                        return (
+                          <span
+                            key={idx}
+                            style={{
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 700,
+                              fontSize: 82,
+                              lineHeight: 1.08,
+                              letterSpacing: "-0.035em",
+                              color: w.color,
+                              opacity: wOp,
+                              transform: `translate3d(0, ${wY}px, 0)`,
+                              filter: wBlur > 0.2 ? `blur(${wBlur}px)` : "none",
+                            }}
+                          >
+                            {w.text}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Line 2: "SaaS & Sales Marketing" */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 22,
+                      }}
+                    >
+                      {beat2Line2Words.map((w, idx) => {
+                        const wRel = b2Rel - w.delay;
+                        const wOp = interpolate(
+                          wRel,
+                          [0, 4, 9],
+                          [0, 0.32, 1],
+                          CLAMP
+                        );
+                        const wBlur = interpolate(
+                          wRel,
+                          [0, 5, 10],
+                          [12, 4, 0],
+                          CLAMP
+                        );
+                        const wY = interpolate(wRel, [0, 8], [14, 0], CLAMP);
+                        return (
+                          <span
+                            key={idx}
+                            style={{
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 700,
+                              fontSize: 82,
+                              lineHeight: 1.08,
+                              letterSpacing: "-0.035em",
+                              color: w.color,
+                              opacity: wOp,
+                              transform: `translate3d(0, ${wY}px, 0)`,
+                              filter: wBlur > 0.2 ? `blur(${wBlur}px)` : "none",
+                            }}
+                          >
+                            {w.text}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ========================================================= */}
+                {/* BEAT 3 (Frames 92–165): INPUT BAR ALONE -> SEND TO CHAT   */}
+                {/* ========================================================= */}
+                {frame >= 92 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: barWidth,
+                      height: barHeight,
+                      borderRadius: 999,
+                      backgroundColor: isClicked
+                        ? "rgba(88, 56, 235, 0.28)"
+                        : "rgba(18, 18, 28, 0.92)",
+                      border: isClicked
+                        ? "2px solid rgba(139, 92, 246, 0.85)"
+                        : "1.5px solid rgba(255, 255, 255, 0.22)",
+                      boxShadow: isClicked
+                        ? "0 24px 60px rgba(0, 0, 0, 0.85), 0 0 42px rgba(139, 92, 246, 0.4)"
+                        : "0 32px 80px rgba(0, 0, 0, 0.92), 0 0 40px rgba(124, 58, 237, 0.22)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: isClicked ? "0 28px" : "0 14px 0 34px",
+                      transform: `translate3d(${barX}px, ${barY}px, 0)`,
+                      opacity: barOpacity,
+                      filter:
+                        barEnterBlur > 0.2 ? `blur(${barEnterBlur}px)` : "none",
+                      zIndex: 30,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        overflow: "hidden",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: CLEAN_SANS,
+                          fontWeight: 600,
+                          fontSize: isClicked ? 26 : 30,
+                          letterSpacing: "-0.015em",
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        {typedStr || "Ask Vidmake..."}
+                      </span>
+                      {!isClicked && frame % 12 < 7 && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 3,
+                            height: 34,
+                            backgroundColor: "#A855F7",
+                            borderRadius: 2,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Send Chevron Button on the right */}
+                    <div
+                      style={{
+                        width: isClicked ? 44 : 64,
+                        height: isClicked ? 44 : 64,
+                        borderRadius: 999,
+                        background: isClicked
+                          ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+                          : "linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%)",
+                        boxShadow: isClicked
+                          ? "0 0 28px rgba(139, 92, 246, 0.8)"
+                          : "0 8px 24px rgba(255, 255, 255, 0.28)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transform: `scale(${sendBtnScale})`,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isClicked ? (
+                        <span
+                          style={{
+                            fontFamily: MONO_FONT,
+                            fontWeight: 900,
+                            fontSize: 18,
+                            color: "#FFFFFF",
+                          }}
+                        >
+                          ✓
+                        </span>
+                      ) : (
+                        <svg
+                          width="28"
+                          height="28"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M5 12H19M19 12L13 6M19 12L13 18"
+                            stroke="#090A0F"
+                            strokeWidth="2.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sculpted Cursor clicking the Send Chevron Button */}
+                {frame >= 116 && frame < 152 && (
+                  <CursorActor
+                    x={interpolate(frame, [116, 138], [640, 468], CLAMP)}
+                    y={interpolate(frame, [116, 138], [300, 12], CLAMP)}
+                    clickFrame={142}
+                    showRipple={false}
                   />
-                </div>
+                )}
+
+                {/* LEFT AGENT RESPONSE AT FRAME 147+: "OK" above, and "[3-Square L-Grid Spinner] finding viral content" below */}
+                {frame >= 147 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 110,
+                      top: 390,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 18,
+                      transform: `translate3d(0, ${interpolate(agentReplySpr, [0, 1], [36, 0])}px, 0) scale(${interpolate(agentReplySpr, [0, 1], [0.92, 1])})`,
+                      opacity: interpolate(frame, [147, 152], [0, 1], CLAMP),
+                    }}
+                  >
+                    {/* "OK" Badge */}
+                    <div
+                      style={{
+                        padding: "8px 22px",
+                        borderRadius: 999,
+                        backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        border: "1.5px solid rgba(255, 255, 255, 0.28)",
+                        fontFamily: CLEAN_SANS,
+                        fontWeight: 700,
+                        fontSize: 24,
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      OK
+                    </div>
+
+                    {/* 3-Square L-Grid Loader SVG inline before "finding viral content" (replacing "...") */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 10,
+                          backgroundColor: "rgba(139, 92, 246, 0.16)",
+                          border: "1.5px solid rgba(139, 92, 246, 0.55)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <svg width="28" height="28" viewBox="0 0 32 32">
+                          {activeSlots.map((slot, idx) => (
+                            <rect
+                              key={idx}
+                              x={slot.x}
+                              y={slot.y}
+                              width="12"
+                              height="12"
+                              rx="3"
+                              fill={idx === 0 ? "#A855F7" : "#FFFFFF"}
+                            />
+                          ))}
+                        </svg>
+                      </div>
+
+                      <div
+                        style={{
+                          fontFamily: MONO_FONT,
+                          fontWeight: 700,
+                          fontSize: 28,
+                          color: "#E2E8F0",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        finding viral content
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
-
-          {frame >= 54 && (
-            <div style={{ position: "absolute", bottom: 130 }}>
-              <StackedKineticTypography
-                startFrame={54}
-                blocks={[
-                  {
-                    text: "THE AI VIRAL CONTENT ENGINE",
-                    bgColor: "#FF176B",
-                    textColor: "#FFFFFF",
-                    rotation: -1.8,
-                    fontSize: 64,
-                    paddingX: 34,
-                    paddingY: 12,
-                    delayFrames: 0,
-                  },
-                  {
-                    text: "FOR SAAS ORGANIC MARKETING & UGC",
-                    bgColor: "#FFFFFF",
-                    textColor: "#03040A",
-                    rotation: 1.4,
-                    fontSize: 52,
-                    paddingX: 32,
-                    paddingY: 12,
-                    delayFrames: 5,
-                    accentDotColor: "#FF176B",
-                  },
-                ]}
-              />
-            </div>
-          )}
         </AbsoluteFill>
       )}
 
       {/* =================================================================== */}
-      {/* SCENE 2 (Frames 105–225): STORY TYPOGRAPHY WITH BIG EFFECT          */}
-      {/* "Marketing is harder, But Not with Vidmake ✓" (Zero Edge Clipping!) */}
+      {/* STEP 1 (Frames 165–345 / 5.5s–11.5s):                               */}
+      {/*   1A (165–240): Interactive Viral Hooks Pull-Up Screen (from        */}
+      {/*                 D:\hookswithlinks) -> Select Winning Hook (3.4M)    */}
+      {/*                 -> Closes smoothly back into the chat               */}
+      {/*   1B (240–294): [3-square spinner] recreating for you -> Recreated  */}
+      {/*                 Hook Video pops in WITHOUT text overlay first       */}
+      {/*   1C (294–345): [3-square spinner] attaching the text -> Visual     */}
+      {/*                 hook caption flies in and locks onto the video      */}
       {/* =================================================================== */}
-      {frame >= 105 && frame < 225 && (
+      {frame >= 165 && frame < 345 && (
         <AbsoluteFill
           style={{
             display: "flex",
@@ -1284,135 +1765,849 @@ export const VidmakeLaunchPromo: React.FC = () => {
             justifyContent: "center",
           }}
         >
-          <FourPointShootingStar
-            startFrame={152}
-            durationFrames={20}
-            fromX={-760}
-            fromY={40}
-            toX={680}
-            toY={-60}
-            color="#FF176B"
-            size={60}
-          />
-
           {(() => {
-            const rel = frame - 105;
-            const revealRight = rel >= 48; // Frame 153
-            // Starts centered on the left box (+390px), then slides smoothly to 0px so BOTH fit 100% inside 1920px!
-            const panX = revealRight
-              ? interpolate(
-                  spring({
-                    frame: rel - 48,
+            const MONO_FONT = "'JetBrains Mono', monospace";
+            const CLEAN_SANS =
+              "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+            // 3-square L-grid spinner helper
+            const spinnerStep = Math.floor(frame / 4) % 4;
+            const slotCoords = [
+              { x: 2, y: 2 },
+              { x: 18, y: 2 },
+              { x: 18, y: 18 },
+              { x: 2, y: 18 },
+            ];
+            const activeSlots = [
+              slotCoords[(spinnerStep + 0) % 4],
+              slotCoords[(spinnerStep + 1) % 4],
+              slotCoords[(spinnerStep + 2) % 4],
+            ];
+
+            const renderThreeSquareSpinner = () => (
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  backgroundColor: "rgba(139, 92, 246, 0.18)",
+                  border: "1.5px solid rgba(139, 92, 246, 0.65)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  boxShadow: "0 0 18px rgba(139, 92, 246, 0.35)",
+                }}
+              >
+                <svg width="28" height="28" viewBox="0 0 32 32">
+                  {activeSlots.map((slot, idx) => (
+                    <rect
+                      key={idx}
+                      x={slot.x}
+                      y={slot.y}
+                      width="12"
+                      height="12"
+                      rx="3"
+                      fill={idx === 0 ? "#A855F7" : "#FFFFFF"}
+                    />
+                  ))}
+                </svg>
+              </div>
+            );
+
+            const renderCompletedBadge = () => (
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  backgroundColor: "rgba(16, 185, 129, 0.16)",
+                  border: "1.5px solid rgba(52, 211, 153, 0.65)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  fontFamily: CLEAN_SANS,
+                  fontWeight: 800,
+                  fontSize: 20,
+                  color: "#34D399",
+                }}
+              >
+                ✓
+              </div>
+            );
+
+            // Background chat layer recedes slightly during the Pull-Up Screen (165–238)
+            // and returns to full focus at 238+
+            const pullUpActive = interpolate(
+              frame,
+              [165, 174, 226, 238],
+              [0, 1, 1, 0],
+              CLAMP
+            );
+            const chatScale = interpolate(pullUpActive, [0, 1], [1, 0.9]);
+            const chatY = interpolate(pullUpActive, [0, 1], [0, -75]);
+            const chatOpacity = interpolate(pullUpActive, [0, 1], [1, 0.24]);
+            const chatBlur = interpolate(pullUpActive, [0, 1], [0, 6]);
+
+            // Pull-Up Viral Hooks Screen physics (165–240)
+            const pullEnterSpr = spring({
+              frame: Math.max(0, frame - 166),
+              fps,
+              config: { damping: 13, mass: 0.48, stiffness: 230 },
+            });
+            const pullCloseProg = interpolate(
+              frame,
+              [226, 239],
+              [0, 1],
+              CLAMP
+            );
+            const pullY =
+              interpolate(pullEnterSpr, [0, 1], [220, 24]) +
+              interpolate(pullCloseProg, [0, 1], [0, 110]);
+            const pullScale =
+              interpolate(pullEnterSpr, [0, 1], [0.84, 1]) *
+              interpolate(pullCloseProg, [0, 1], [1, 0.76]);
+            const pullOpacity =
+              interpolate(frame, [166, 174], [0, 1], CLAMP) *
+              interpolate(frame, [226, 239], [1, 0], CLAMP);
+            const pullBlur = interpolate(frame, [226, 239], [0, 14], CLAMP);
+
+            const hookPullCards = [
+              {
+                src: staticFile("explore/covers/sources/vidmake/hook-viral-1.mp4"),
+                views: "2.4M",
+                tag: "Stop Scrolling",
+                xOffset: -540,
+                rot: -5,
+              },
+              {
+                src: staticFile("explore/covers/sources/vidmake/hook-viral-2.mp4"),
+                views: "1.9M",
+                tag: "Founder POV",
+                xOffset: -275,
+                rot: -2.5,
+              },
+              {
+                src: hookViralVideoSrc,
+                views: "3.4M",
+                tag: "SaaS Viral Hook",
+                xOffset: 0,
+                rot: 0,
+              },
+              {
+                src: staticFile("explore/covers/sources/vidmake/hook-viral-3.mp4"),
+                views: "4.8M",
+                tag: "App Reveal",
+                xOffset: 275,
+                rot: 2.5,
+              },
+              {
+                src: staticFile("explore/covers/sources/vidmake/hook-viral-4.mp4"),
+                views: "2.9M",
+                tag: "Reaction Split",
+                xOffset: 540,
+                rot: 5,
+              },
+            ];
+
+            const isHookSelected = frame >= 202;
+            const selectSpr = isHookSelected
+              ? spring({
+                  frame: frame - 202,
+                  fps,
+                  config: { damping: 12, mass: 0.42, stiffness: 290 },
+                })
+              : 0;
+
+            // Step 1B (240+): "recreating for you" + Recreated Hook Video (without text first)
+            const recreateRowSpr =
+              frame >= 240
+                ? spring({
+                    frame: frame - 240,
                     fps,
-                    config: { damping: 12, mass: 0.42, stiffness: 320 },
-                  }),
-                  [0, 1],
-                  [390, 0]
-                )
-              : 390;
+                    config: { damping: 13, mass: 0.42, stiffness: 270 },
+                  })
+                : 0;
+            const videoCardSpr =
+              frame >= 244
+                ? spring({
+                    frame: frame - 244,
+                    fps,
+                    config: { damping: 13, mass: 0.46, stiffness: 250 },
+                  })
+                : 0;
+
+            // Step 1C (294+): "attaching the text" + Visual Text Overlay flying onto video
+            const attachTextRowSpr =
+              frame >= 294
+                ? spring({
+                    frame: frame - 294,
+                    fps,
+                    config: { damping: 13, mass: 0.42, stiffness: 270 },
+                  })
+                : 0;
+            const textFlySpr =
+              frame >= 297
+                ? spring({
+                    frame: frame - 297,
+                    fps,
+                    config: { damping: 12, mass: 0.42, stiffness: 260 },
+                  })
+                : 0;
+            const isTextLocked = frame >= 315;
+            const editorChromeOpacity =
+              interpolate(frame, [297, 302], [0, 1], CLAMP) *
+              interpolate(frame, [322, 332], [1, 0], CLAMP);
 
             return (
               <div
                 style={{
                   position: "relative",
-                  width: 1720,
+                  width: 1680,
+                  height: 920,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 44,
-                  transform: `translate3d(${panX}px, 0, 0)`,
                 }}
               >
-                {/* Left Story Box: "Marketing was harder, But Not" */}
+                {/* ========================================================= */}
+                {/* MAIN CHAT STAGE (Recedes during Pull-Up, sharp at 238+)   */}
+                {/* ========================================================= */}
                 <div
                   style={{
-                    width: 820,
-                    padding: "46px 48px",
-                    borderRadius: 34,
-                    backgroundColor: "rgba(10, 13, 24, 0.9)",
-                    border: "2px solid rgba(255, 255, 255, 0.22)",
-                    boxShadow: "0 38px 90px rgba(0, 0, 0, 0.92)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 20,
-                    flexShrink: 0,
+                    position: "absolute",
+                    inset: 0,
+                    transform: `translate3d(0, ${chatY}px, 0) scale(${chatScale})`,
+                    opacity: chatOpacity,
+                    filter: chatBlur > 0.2 ? `blur(${chatBlur}px)` : "none",
                   }}
                 >
-                  <OpticalBloomText
-                    startFrame={106}
-                    staggerFrames={4}
-                    fontSize={74}
-                    words={[
-                      { text: "MARKETING", accent: "white" },
-                      { text: "WAS", accent: "white" },
-                      { text: "HARDER,", accent: "magenta" },
-                    ]}
-                  />
-                  {rel >= 26 && (
-                    <OpticalBloomText
-                      startFrame={131}
-                      staggerFrames={4}
-                      fontSize={74}
-                      words={[
-                        { text: "BUT", accent: "white" },
-                        { text: "NOT", accent: "cyan" },
-                      ]}
-                    />
+                  {/* Top-Right Sent User Bubble */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: 680,
+                      height: 74,
+                      left: "50%",
+                      top: "50%",
+                      marginLeft: -340,
+                      marginTop: -37,
+                      transform: "translate3d(290px, -255px, 0)",
+                      borderRadius: 999,
+                      backgroundColor: "rgba(88, 56, 235, 0.28)",
+                      border: "2px solid rgba(139, 92, 246, 0.85)",
+                      boxShadow:
+                        "0 24px 60px rgba(0, 0, 0, 0.85), 0 0 42px rgba(139, 92, 246, 0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0 28px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: CLEAN_SANS,
+                        fontWeight: 600,
+                        fontSize: 26,
+                        letterSpacing: "-0.015em",
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      Create a marketing video for my SaaS
+                    </span>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 999,
+                        background:
+                          "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)",
+                        boxShadow: "0 0 28px rgba(139, 92, 246, 0.8)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: MONO_FONT,
+                        fontWeight: 900,
+                        fontSize: 18,
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      ✓
+                    </div>
+                  </div>
+
+                  {/* Left Agent Status Stack */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 110,
+                      top: frame >= 240 ? 310 : 390,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 20,
+                    }}
+                  >
+                    {/* "OK" Badge */}
+                    <div
+                      style={{
+                        padding: "8px 22px",
+                        borderRadius: 999,
+                        backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        border: "1.5px solid rgba(255, 255, 255, 0.28)",
+                        fontFamily: CLEAN_SANS,
+                        fontWeight: 700,
+                        fontSize: 24,
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      OK
+                    </div>
+
+                    {/* Line 1: finding viral content */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 16,
+                        opacity: frame >= 240 ? 0.65 : 1,
+                      }}
+                    >
+                      {frame >= 238
+                        ? renderCompletedBadge()
+                        : renderThreeSquareSpinner()}
+                      <div
+                        style={{
+                          fontFamily: MONO_FONT,
+                          fontWeight: 700,
+                          fontSize: 28,
+                          color: frame >= 240 ? "#CBD5E1" : "#E2E8F0",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        finding viral content
+                      </div>
+                    </div>
+
+                    {/* Line 2 (240+): recreating for you */}
+                    {frame >= 240 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 16,
+                          transform: `translate3d(0, ${interpolate(recreateRowSpr, [0, 1], [22, 0])}px, 0)`,
+                          opacity:
+                            interpolate(frame, [240, 246], [0, 1], CLAMP) *
+                            (frame >= 294 ? 0.68 : 1),
+                        }}
+                      >
+                        {frame >= 294
+                          ? renderCompletedBadge()
+                          : renderThreeSquareSpinner()}
+                        <div
+                          style={{
+                            fontFamily: MONO_FONT,
+                            fontWeight: 700,
+                            fontSize: 28,
+                            color: frame >= 294 ? "#CBD5E1" : "#FFFFFF",
+                            letterSpacing: "0.01em",
+                          }}
+                        >
+                          recreating for you
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Line 3 (294+): attaching the text */}
+                    {frame >= 294 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 16,
+                          transform: `translate3d(0, ${interpolate(attachTextRowSpr, [0, 1], [22, 0])}px, 0)`,
+                          opacity: interpolate(
+                            frame,
+                            [294, 300],
+                            [0, 1],
+                            CLAMP
+                          ),
+                        }}
+                      >
+                        {frame >= 332
+                          ? renderCompletedBadge()
+                          : renderThreeSquareSpinner()}
+                        <div
+                          style={{
+                            fontFamily: MONO_FONT,
+                            fontWeight: 700,
+                            fontSize: 28,
+                            color: "#FFFFFF",
+                            letterSpacing: "0.01em",
+                          }}
+                        >
+                          attaching the text
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ======================================================= */}
+                  {/* RECREATED HOOK VIDEO IN CHAT (Frames 244–345)           */}
+                  {/* Appears WITHOUT text first (244–296), then text flies   */}
+                  {/* in and locks onto the video (297–345)!                  */}
+                  {/* ======================================================= */}
+                  {frame >= 244 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 830,
+                        top: 230,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 32,
+                        transform: `translate3d(0, ${interpolate(videoCardSpr, [0, 1], [48, 0])}px, 0) scale(${interpolate(videoCardSpr, [0, 1], [0.86, 1])})`,
+                        opacity: interpolate(frame, [244, 252], [0, 1], CLAMP),
+                      }}
+                    >
+                      {/* Vertical 9:16 Recreated Hook Video Card */}
+                      <div
+                        style={{
+                          position: "relative",
+                          width: 344,
+                          height: 612,
+                          borderRadius: 28,
+                          overflow: "hidden",
+                          backgroundColor: "#080912",
+                          border: isTextLocked
+                            ? "2.5px solid #A855F7"
+                            : "2px solid rgba(255, 255, 255, 0.26)",
+                          boxShadow: isTextLocked
+                            ? "0 36px 90px rgba(0, 0, 0, 0.95), 0 0 54px rgba(168, 85, 247, 0.45)"
+                            : "0 36px 90px rgba(0, 0, 0, 0.92), 0 0 36px rgba(124, 58, 237, 0.25)",
+                        }}
+                      >
+                        <Sequence from={240} durationInFrames={105}>
+                          <OffthreadVideo
+                            src={hookRecreatedVideoSrc}
+                            muted
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </Sequence>
+
+                        {/* Top status pill on video */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 14,
+                            left: 14,
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            backgroundColor: "rgba(10, 12, 22, 0.82)",
+                            border: "1px solid rgba(255, 255, 255, 0.22)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            zIndex: 25,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              backgroundColor: isTextLocked
+                                ? "#34D399"
+                                : "#A855F7",
+                              boxShadow: isTextLocked
+                                ? "0 0 10px #34D399"
+                                : "0 0 10px #A855F7",
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 700,
+                              fontSize: 13,
+                              color: "#FFFFFF",
+                            }}
+                          >
+                            {isTextLocked
+                              ? "Hook + Text Attached"
+                              : "Recreated Hook"}
+                          </span>
+                        </div>
+
+                        {/* VISUAL TEXT OVERLAY FLY-IN & LOCK (Frames 297–345) */}
+                        {frame >= 297 && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 108,
+                              left: 14,
+                              right: 14,
+                              transform: `translate3d(${interpolate(textFlySpr, [0, 1], [-220, 0])}px, ${interpolate(textFlySpr, [0, 1], [38, 0])}px, 0) scale(${interpolate(textFlySpr, [0, 0.75, 1], [1.18, 0.97, 1])})`,
+                              opacity: interpolate(
+                                frame,
+                                [297, 303],
+                                [0, 1],
+                                CLAMP
+                              ),
+                              zIndex: 30,
+                            }}
+                          >
+                            {/* Interactive Text Layer Bounding Chrome while attaching */}
+                            <div
+                              style={{
+                                position: "relative",
+                                padding: "12px 10px",
+                                borderRadius: 14,
+                                backgroundColor: `rgba(139, 92, 246, ${0.22 * editorChromeOpacity})`,
+                                border: `2px dashed rgba(192, 132, 252, ${0.95 * editorChromeOpacity})`,
+                                boxShadow:
+                                  editorChromeOpacity > 0.05
+                                    ? `0 0 28px rgba(168, 85, 247, ${0.55 * editorChromeOpacity})`
+                                    : "none",
+                              }}
+                            >
+                              {editorChromeOpacity > 0.05 && (
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    top: -26,
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    padding: "3px 10px",
+                                    borderRadius: 999,
+                                    backgroundColor: "#9333EA",
+                                    fontFamily: CLEAN_SANS,
+                                    fontWeight: 700,
+                                    fontSize: 11,
+                                    color: "#FFFFFF",
+                                    whiteSpace: "nowrap",
+                                    opacity: editorChromeOpacity,
+                                  }}
+                                >
+                                  T • Hook Text Overlay
+                                </div>
+                              )}
+                              <div
+                                style={{
+                                  fontFamily: CLEAN_SANS,
+                                  fontWeight: 700,
+                                  fontSize: 19,
+                                  lineHeight: 1.26,
+                                  color: "#FFFFFF",
+                                  textAlign: "center",
+                                  textShadow:
+                                    "-1px -1px 0 rgba(0,0,0,0.9), 1px -1px 0 rgba(0,0,0,0.9), -1px 1px 0 rgba(0,0,0,0.9), 1px 1px 0 rgba(0,0,0,0.9), 0 3px 8px rgba(0,0,0,0.65)",
+                                }}
+                              >
+                                Coding for 6 months ❌
+                              </div>
+                              <div
+                                style={{
+                                  marginTop: 4,
+                                  fontFamily: CLEAN_SANS,
+                                  fontWeight: 700,
+                                  fontSize: 19,
+                                  lineHeight: 1.26,
+                                  color: "#FFFFFF",
+                                  textAlign: "center",
+                                  textShadow:
+                                    "-1px -1px 0 rgba(0,0,0,0.9), 1px -1px 0 rgba(0,0,0,0.9), -1px 1px 0 rgba(0,0,0,0.9), 1px 1px 0 rgba(0,0,0,0.9), 0 3px 8px rgba(0,0,0,0.65)",
+                                }}
+                              >
+                                This can make content for me ✅
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Right Breakout: "WITH VIDMAKE ✓" */}
-                <div
-                  style={{
-                    width: 840,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: 18,
-                    opacity: revealRight ? 1 : 0,
-                    flexShrink: 0,
-                  }}
-                >
-                  {revealRight && (
-                    <>
-                      <OpticalBloomText
-                        startFrame={154}
-                        staggerFrames={4}
-                        fontSize={98}
-                        justify="flex-start"
-                        words={[
-                          { text: "WITH", accent: "white" },
-                          {
-                            text: "VIDMAKE",
-                            accent: "cyan",
-                            underline: true,
-                          },
-                        ]}
-                      />
-                      <div
+                {/* ========================================================= */}
+                {/* INTERACTIVE VIRAL HOOKS PULL-UP SCREEN (Frames 165–240)   */}
+                {/* Pulls up 5 real viral hooks from D:\hookswithlinks,       */}
+                {/* selects the center 3.4M viral hook, and closes smoothly   */}
+                {/* ========================================================= */}
+                {frame < 240 && (
+                  <div
+                    style={{
+                      position: "relative",
+                      width: 1580,
+                      height: 760,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transform: `translate3d(0, ${pullY}px, 0) scale(${pullScale})`,
+                      opacity: pullOpacity,
+                      filter: pullBlur > 0.2 ? `blur(${pullBlur}px)` : "none",
+                      zIndex: 50,
+                    }}
+                  >
+                    {/* Pull-Up Screen Header */}
+                    <div
+                      style={{
+                        marginBottom: 28,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 16,
+                        padding: "10px 26px",
+                        borderRadius: 999,
+                        backgroundColor: "rgba(18, 18, 30, 0.88)",
+                        border: "1.5px solid rgba(255, 255, 255, 0.2)",
+                        boxShadow: "0 18px 44px rgba(0, 0, 0, 0.75)",
+                      }}
+                    >
+                      {isHookSelected
+                        ? renderCompletedBadge()
+                        : renderThreeSquareSpinner()}
+                      <span
                         style={{
-                          marginTop: 18,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: "10px 26px",
-                          borderRadius: 999,
-                          backgroundColor: "rgba(0, 240, 255, 0.14)",
-                          border: "2px solid #00F0FF",
-                          boxShadow: "0 0 32px rgba(0, 240, 255, 0.45)",
-                          fontFamily: DISPLAY_FONT,
-                          fontWeight: 900,
-                          fontSize: 22,
+                          fontFamily: CLEAN_SANS,
+                          fontWeight: 700,
+                          fontSize: 28,
+                          letterSpacing: "-0.02em",
                           color: "#FFFFFF",
-                          textTransform: "uppercase",
                         }}
                       >
-                        <span style={{ color: "#00F0FF", fontSize: 26 }}>✓</span>
-                        <span>CLONE ANY VIRAL FORMAT IN 1 CLICK</span>
-                      </div>
-                    </>
-                  )}
-                </div>
+                        {isHookSelected
+                          ? "Selected winning viral hook"
+                          : "Scanning viral hooks for your SaaS"}
+                      </span>
+                    </div>
+
+                    {/* 5-Card Interactive Row of Real Viral Hook Videos */}
+                    <div
+                      style={{
+                        position: "relative",
+                        width: 1520,
+                        height: 520,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {hookPullCards.map((card, idx) => {
+                        const isCenter = idx === 2;
+                        const cEnterSpr = spring({
+                          frame: Math.max(0, frame - 168 - idx * 2),
+                          fps,
+                          config: { damping: 13, mass: 0.44, stiffness: 250 },
+                        });
+
+                        const cardScale =
+                          interpolate(cEnterSpr, [0, 1], [0.75, 1]) *
+                          (isCenter
+                            ? interpolate(selectSpr, [0, 1], [1.04, 1.15])
+                            : interpolate(selectSpr, [0, 1], [0.94, 0.86]));
+
+                        const cardX =
+                          interpolate(cEnterSpr, [0, 1], [card.xOffset * 0.5, card.xOffset]) +
+                          (isCenter
+                            ? interpolate(selectSpr, [0, 1], [0, -90])
+                            : 0);
+                        const cardY = isCenter
+                          ? interpolate(selectSpr, [0, 1], [-8, -16])
+                          : Math.abs(idx - 2) * 12;
+                        const cardRot = isCenter
+                          ? 0
+                          : interpolate(selectSpr, [0, 1], [card.rot, card.rot * 0.6]);
+                        const cardOpacity = isCenter
+                          ? 1
+                          : interpolate(selectSpr, [0, 1], [0.88, 0.35]);
+                        const cardBlur =
+                          !isCenter && isHookSelected
+                            ? interpolate(selectSpr, [0, 1], [0, 3.5])
+                            : 0;
+
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              position: "absolute",
+                              width: 248,
+                              height: 440,
+                              borderRadius: 24,
+                              overflow: "hidden",
+                              backgroundColor: "#0A0C16",
+                              border:
+                                isCenter && isHookSelected
+                                  ? "3px solid #A855F7"
+                                  : "1.5px solid rgba(255, 255, 255, 0.22)",
+                              boxShadow:
+                                isCenter && isHookSelected
+                                  ? "0 36px 90px rgba(0, 0, 0, 0.95), 0 0 60px rgba(168, 85, 247, 0.65)"
+                                  : "0 24px 54px rgba(0, 0, 0, 0.85)",
+                              transform: `translate3d(${cardX}px, ${cardY}px, 0) scale(${cardScale}) rotate(${cardRot}deg)`,
+                              opacity: cardOpacity,
+                              filter:
+                                cardBlur > 0.2 ? `blur(${cardBlur}px)` : "none",
+                              zIndex: isCenter ? 30 : 10 - Math.abs(idx - 2),
+                            }}
+                          >
+                            <Sequence from={165} durationInFrames={75}>
+                              <OffthreadVideo
+                                src={card.src}
+                                muted
+                                playbackRate={0.85}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            </Sequence>
+
+                            <div
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                background:
+                                  "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 32%, transparent 62%, rgba(0,0,0,0.88) 100%)",
+                              }}
+                            />
+
+                            {/* Top Views Pill */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: 12,
+                                left: 12,
+                                padding: "5px 12px",
+                                borderRadius: 999,
+                                backgroundColor: "rgba(0, 0, 0, 0.72)",
+                                border: "1px solid rgba(255, 255, 255, 0.22)",
+                                fontFamily: CLEAN_SANS,
+                                fontWeight: 700,
+                                fontSize: 13,
+                                color: "#FFFFFF",
+                              }}
+                            >
+                              🔥 {card.views}
+                            </div>
+
+                            {/* Bottom Format Tag */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: 14,
+                                left: 14,
+                                right: 14,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: CLEAN_SANS,
+                                  fontWeight: 700,
+                                  fontSize: 15,
+                                  color: "#FFFFFF",
+                                }}
+                              >
+                                {card.tag}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* UseFastlane-style Callout Card on Selection (Frames 202–239) */}
+                      {isHookSelected && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: "50%",
+                            top: "50%",
+                            transform: `translate3d(${interpolate(selectSpr, [0, 1], [40, 85])}px, -95px, 0) scale(${interpolate(selectSpr, [0, 1], [0.86, 1])})`,
+                            opacity: interpolate(
+                              frame,
+                              [202, 208],
+                              [0, 1],
+                              CLAMP
+                            ),
+                            width: 310,
+                            padding: "24px 26px",
+                            borderRadius: 24,
+                            backgroundColor: "rgba(18, 18, 30, 0.95)",
+                            border: "2px solid rgba(168, 85, 247, 0.75)",
+                            boxShadow:
+                              "0 28px 70px rgba(0, 0, 0, 0.92), 0 0 42px rgba(168, 85, 247, 0.35)",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                            zIndex: 40,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 800,
+                              fontSize: 48,
+                              lineHeight: 1,
+                              letterSpacing: "-0.03em",
+                              color: "#FFFFFF",
+                            }}
+                          >
+                            3.4M
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 600,
+                              fontSize: 16,
+                              color: "rgba(255, 255, 255, 0.72)",
+                            }}
+                          >
+                            views • 98% 3-second hold
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 6,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "8px 14px",
+                              borderRadius: 999,
+                              backgroundColor: "rgba(16, 185, 129, 0.16)",
+                              border: "1.5px solid rgba(52, 211, 153, 0.65)",
+                              fontFamily: CLEAN_SANS,
+                              fontWeight: 700,
+                              fontSize: 15,
+                              color: "#34D399",
+                              alignSelf: "flex-start",
+                            }}
+                          >
+                            <span>✓</span>
+                            <span>Selected for recreation</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cursor selecting the center viral hook card */}
+                      {frame >= 182 && frame < 222 && (
+                        <CursorActor
+                          x={interpolate(frame, [182, 200], [320, -10], CLAMP)}
+                          y={interpolate(frame, [182, 200], [260, 40], CLAMP)}
+                          clickFrame={202}
+                          showRipple={false}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -1420,247 +2615,9 @@ export const VidmakeLaunchPromo: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* SCENE 3 (Frames 225–435): WORKFLOW 1 — HOOK VIDEO                   */}
-      {/* Uses Exact Cover-Page Pair: hook-explore-video -> hook-recreated    */}
+      {/* SCENE 4 (Frames 345–615): WORKFLOW 2 — TALKING HEAD                 */}
       {/* =================================================================== */}
-      {frame >= 225 && frame < 435 && (
-        <AbsoluteFill
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <WorkflowTopBanner
-            stepNum="01"
-            workflowName="HOOK VIDEO"
-            activeStage={frame < 285 ? 0 : frame < 350 ? 1 : 2}
-            accentColor="#FF176B"
-          />
-
-          {/* STEP 3A (Frames 225–285): 4x2 Library Grid of 8 Viral Hooks */}
-          {frame < 285 && (
-            <>
-              <ViralLibrary4x2Grid
-                relFrame={frame - 225}
-                thumbnails={hookLibThumbs}
-                meta={HOOK_LIBRARY_META}
-                selectedIndex={1}
-                highlightRelFrame={32}
-                accentColor="#FF176B"
-                libraryTitle="VIRAL HOOK LIBRARY"
-              />
-              <CursorActor
-                x={interpolate(frame, [235, 258], [480, -170], CLAMP)}
-                y={interpolate(frame, [235, 258], [340, -120], CLAMP)}
-                clickFrame={265}
-              />
-            </>
-          )}
-
-          {/* STEP 3B (Frames 285–350): Sudden Isolate 1 Viral Hook + Click Recreate */}
-          {frame >= 285 && frame < 350 && (
-            <>
-              <IsolatedViralCardWithRecreate
-                relFrame={frame - 285}
-                headerTitle="VIRAL HOOK"
-                viewsLabel="3.4M Views"
-                nicheLabel="98% Hook Retention • Proven Format"
-                accentColor="#FF176B"
-                hoverRelFrame={24}
-                clickRelFrame={37}
-                mediaNode={
-                  <OffthreadVideo
-                    src={hookViralVideoSrc}
-                    muted
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                }
-              />
-              <LuminousMistEffect
-                triggerFrame={324}
-                durationFrames={26}
-                centerX={0}
-                centerY={0}
-              />
-              <CursorActor
-                x={interpolate(frame, [290, 314], [-140, 385], CLAMP)}
-                y={interpolate(frame, [290, 314], [-60, 345], CLAMP)}
-                clickFrame={322}
-              />
-            </>
-          )}
-
-          {/* STEP 3C (Frames 350–435): Recreated Hook Video + Synced Product Demo */}
-          {frame >= 350 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 48,
-                marginTop: 48,
-              }}
-            >
-              {/* Dual Card Lockup matching HookVideoPromo: Recreated Hook + Product Demo */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 24,
-                }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    width: 350,
-                    height: 620,
-                    borderRadius: 28,
-                    overflow: "hidden",
-                    backgroundColor: "#070A14",
-                    border: "3px solid #00F0FF",
-                    boxShadow:
-                      "0 36px 95px rgba(0, 0, 0, 0.95), 0 0 60px rgba(0, 240, 255, 0.45)",
-                  }}
-                >
-                  <OffthreadVideo
-                    src={hookRecreatedVideoSrc}
-                    muted
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                  <RecreatedHookTextOverlay />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 14,
-                      left: 14,
-                      padding: "6px 14px",
-                      borderRadius: 999,
-                      backgroundColor: "#00F0FF",
-                      color: "#03040A",
-                      fontFamily: DISPLAY_FONT,
-                      fontWeight: 900,
-                      fontSize: 14,
-                      textTransform: "uppercase",
-                      boxShadow: "0 0 24px #00F0FF",
-                      zIndex: 20,
-                    }}
-                  >
-                    ✓ RECREATED HOOK
-                  </div>
-                </div>
-
-                {/* Plus Symbol Connector */}
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: "50%",
-                    backgroundColor: "#070912",
-                    border: "2px solid #FF176B",
-                    boxShadow: "0 0 28px rgba(255, 23, 107, 0.7)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Img
-                    src={plusSymbolSrc}
-                    style={{ width: 34, height: 34, objectFit: "contain" }}
-                  />
-                </div>
-
-                {/* Synced SaaS Demo Video */}
-                <div
-                  style={{
-                    position: "relative",
-                    width: 350,
-                    height: 620,
-                    borderRadius: 28,
-                    overflow: "hidden",
-                    backgroundColor: "#070A14",
-                    border: "3px solid #FF176B",
-                    boxShadow:
-                      "0 36px 95px rgba(0, 0, 0, 0.95), 0 0 55px rgba(255, 23, 107, 0.4)",
-                  }}
-                >
-                  <OffthreadVideo
-                    src={hookDemoVideoSrc}
-                    muted
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 14,
-                      left: 14,
-                      padding: "6px 14px",
-                      borderRadius: 999,
-                      backgroundColor: "#FF176B",
-                      color: "#FFFFFF",
-                      fontFamily: DISPLAY_FONT,
-                      fontWeight: 900,
-                      fontSize: 14,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    ✓ YOUR SAAS DEMO
-                  </div>
-                </div>
-              </div>
-
-              <StackedKineticTypography
-                startFrame={354}
-                blocks={[
-                  {
-                    text: "RECREATED",
-                    bgColor: "#FF176B",
-                    textColor: "#FFFFFF",
-                    rotation: -2.2,
-                    fontSize: 84,
-                    delayFrames: 0,
-                  },
-                  {
-                    text: "FOR YOUR BRAND",
-                    bgColor: "#07080C",
-                    textColor: "#00F0FF",
-                    borderColor: "#00F0FF",
-                    rotation: 1.4,
-                    fontSize: 72,
-                    delayFrames: 5,
-                  },
-                  {
-                    text: "SAME VIRAL HOOK • YOUR CREATOR",
-                    bgColor: "#FFFFFF",
-                    textColor: "#03040A",
-                    rotation: -1.1,
-                    fontSize: 38,
-                    delayFrames: 10,
-                    accentDotColor: "#FF176B",
-                  },
-                ]}
-              />
-            </div>
-          )}
-        </AbsoluteFill>
-      )}
-
-      {/* =================================================================== */}
-      {/* SCENE 4 (Frames 435–615): WORKFLOW 2 — TALKING HEAD                 */}
-      {/* Uses Exact Cover-Page Pair: talking-head-start -> talking-head-src  */}
-      {/* =================================================================== */}
-      {frame >= 435 && frame < 615 && (
+      {frame >= 345 && frame < 615 && (
         <AbsoluteFill
           style={{
             display: "flex",

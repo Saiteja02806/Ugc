@@ -19,7 +19,8 @@ export function readStartingFramePhotos(raw: string | null, scope: StartingFrame
   return [...value.ids];
 }
 export function serializeStartingFramePhotos(ids: string[], scope: StartingFramePhotoScope) {
-  const raw = JSON.stringify({ version: 1, ...scope, ids });
+  const { ownerId, jobId, assetId } = scope;
+  const raw = JSON.stringify({ version: 1, ownerId, jobId, assetId, ids });
   readStartingFramePhotos(raw, scope);
   return raw;
 }

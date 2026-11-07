@@ -30,7 +30,7 @@ const faqs = [
   },
   {
     question: "How many tools does the Vidmake MCP server have?",
-    answer: "The public tool list has 78 tools. The MCP tools reference at /docs/mcp-tools shows each one with its scope.",
+    answer: "The public tool list has 105 tools. The MCP tools reference at /docs/mcp-tools shows each one with its scope.",
   },
   {
     question: "Does the MCP connection cost extra?",
@@ -104,19 +104,19 @@ export default function UgcVideosWithCodexMcpPage() {
           </li>
           <li>Codex CLI or the Codex IDE extension.</li>
           <li>
-            The hosted server URL: <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode>
+            The hosted server URL: <ArticleCode>https://vidmake.io/mcp</ArticleCode>
           </li>
         </ul>
         <p>The server uses Streamable HTTP and OAuth with PKCE. You approve access in a browser window, so no API key or bearer token goes into your config file or your chat.</p>
 
         <ArticleH2>Step 1: Add the server to Codex</ArticleH2>
         <p>The quickest route is the CLI:</p>
-        <ArticleCommand>codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp</ArticleCommand>
+        <ArticleCommand>codex mcp add ugc-pilot --url https://vidmake.io/mcp</ArticleCommand>
         <p>
           Or add it to <ArticleCode>~/.codex/config.toml</ArticleCode> by hand:
         </p>
         <ArticleCommand>{`[mcp_servers.ugc-pilot]
-url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
+url = "https://vidmake.io/mcp"`}</ArticleCommand>
         <p>Keep tokens out of this file. Sign-in happens through OAuth.</p>
 
         <ArticleH2>Step 2: Sign in</ArticleH2>
@@ -133,7 +133,7 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
           Codex should call tools such as <ArticleCode>get_profile</ArticleCode>, <ArticleCode>get_entitlements</ArticleCode> and <ArticleCode>get_capabilities</ArticleCode> and summarise what your plan allows. If the tools don&apos;t show up, start a new session; an open session can keep the tool list it loaded at the start.
         </p>
         <p>
-          The public server exposes 78 tools for account reads, images, video, speech, edit drafts and exports. Each one is listed with its permission scope in the <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink>.
+          The public server exposes 105 tools for account reads, images, video, speech, edit drafts and exports. Each one is listed with its permission scope in the <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink>.
         </p>
 
         <ArticleH2>Step 4: Write the script from your repo</ArticleH2>
@@ -266,7 +266,7 @@ url = "https://mcp.getugcpilot.com/mcp"`}</ArticleCommand>
               question: faqs[2].question,
               answer: (
                 <>
-                  The public tool list has 78 tools. The <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink> shows each one with its scope.
+                  The public tool list has 105 tools. The <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink> shows each one with its scope.
                 </>
               ),
             },

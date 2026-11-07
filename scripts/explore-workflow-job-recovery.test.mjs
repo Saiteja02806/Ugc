@@ -23,7 +23,6 @@ function load(file, imports = {}, globals = {}) {
     if (name === "../../worker/src/lib/wall-initial-text-layout.ts") return wallInitialTextLayout;
     if (name === "@/lib/explore/slideshow-generation-recovery") return load("lib/explore/slideshow-generation-recovery.ts", imports, globals);
     if (name in imports) return imports[name];
-    if (name === "@/components/generation/model-provider-logos") return load("components/generation/model-provider-logos.tsx", imports, globals);
     if (name === "../../lib/explore/motion-phase-display.ts") return load("lib/explore/motion-phase-display.ts", imports, globals);
     if (name === "@/lib/explore/slideshow-face-swap") return load("lib/explore/slideshow-face-swap.ts", imports, globals);
     if (name === "./person-reference.ts") return load("lib/explore/person-reference.ts");

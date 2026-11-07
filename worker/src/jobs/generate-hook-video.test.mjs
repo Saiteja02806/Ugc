@@ -279,7 +279,7 @@ test("Omni starting-frame face references preserve order, private ownership and 
 test("starting-frame face roles and model compatibility are checked before reserving provider operations", async () => {
   const photos = ["https://owned-media.example.test/main.png"];
   for (const patch of [
-    { model: "wan_3_0", provider: "reapi" }, { model: "seedance_2_5", provider: "reapi" },
+    { model: "kling_3_0", provider: "reapi" },
     { personReference: undefined }, { personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [photos[0]] } },
     { referenceImageUrls: ["https://owned-media.example.test/approved-start.png"], personReference: { version: 1, mainImageUrl: "https://owned-media.example.test/approved-start.png", supportingImageUrls: [] } },
     { referenceImageUrls: Array.from({ length: 6 }, (_, i) => `https://owned.test/face-${i}.png`) },
@@ -289,6 +289,16 @@ test("starting-frame face roles and model compatibility are checked before reser
     f.job.user_id = "fixture-user";
     await assert.rejects(runGenerateHookVideoJob(f.job, f.context), ProviderRequestNotSubmittedError);
     assert.deepEqual(f.events, []);
+  }
+  // ReAPI reference models carry the approved frame first and the identity
+  // photos after it in one ordered request.
+  for (const model of ["wan_3_0", "seedance_2_5"]) {
+    const accepted = fixture(startingFrameInput({ model, provider: "reapi", durationSeconds: 4, referenceImageUrls: photos,
+      personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [] } }));
+    accepted.job.user_id = "fixture-user";
+    await runGenerateHookVideoJob(accepted.job, accepted.context);
+    assert.match(received.at(-1).startingFrameImageUrl, /^https:\/\/owned-media\.example\.test\/approved-start\.png/);
+    assert.deepEqual(received.at(-1).referenceImageUrls.map(url => url.split("?")[0]), photos);
   }
   const missingOwner = fixture(startingFrameInput({ model: "google_omni", provider: "gemini", referenceImageUrls: photos,
     personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [] } }));
@@ -568,4 +578,25 @@ test("structured Wall 04 output passes through the actual worker as two full-dur
   const edit=output.automaticHookText.editing;assert.equal(edit.format,'wall_text');assert.equal(edit.trimEndMs,output.durationSeconds*1000);
   assert.deepEqual(edit.textOverlays.map(t=>t.value),[automaticTextResult.heading,automaticTextResult.body]);assert.ok(edit.textOverlays.every(t=>t.endMs===edit.trimEndMs));
  }finally{automaticTextResult=old;}
+});
+
+
+test("explicit direct identity jobs dispatch Gemini for all three workflows and reject mismatched routes", async () => {
+  const photos = ["https://owned-media.example.test/main.png", "https://owned-media.example.test/support.png"];
+  for (const workflow of ["hook", "wall_text", "talking_head"]) {
+    const input = startingFrameInput({ workflow, exploreFormat: workflow === "wall_text" ? "wall_text" : "hook", model: "google_omni", provider: "gemini", startingFrameMode: "first_frame_with_identity", durationSeconds: 4, referenceImageUrls: photos,
+      personReference: {version: 1, mainImageUrl: photos[0], supportingImageUrls: photos.slice(1)} });
+    const f = fixture(input); f.job.user_id = "fixture-user";
+    await runGenerateHookVideoJob(f.job, f.context);
+    assert.equal(received.at(-1).provider, "gemini");
+    assert.equal(received.at(-1).startingFrameImageUrl.split("?")[0], input.startingFrameImageUrl);
+    assert.deepEqual(received.at(-1).referenceImageUrls, photos);
+    for (const patch of [{provider: "reapi"}, {model: "wan_3_0"}, {startingFrameMode: "unknown"}]) {
+      const invalid = fixture({...input, ...patch}); invalid.job.user_id = "fixture-user";
+      const before = received.length;
+      await assert.rejects(runGenerateHookVideoJob(invalid.job, invalid.context), /saved starting-frame identity route/);
+      assert.equal(received.length, before);
+      assert.equal(invalid.events.filter(e => e.name === "reserve").length, 0);
+    }
+  }
 });

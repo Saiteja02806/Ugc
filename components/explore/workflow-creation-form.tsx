@@ -41,6 +41,8 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   imageReferences?: WorkflowImageAttachment;
   videoReference: WorkflowAttachment;
   generationSettings: WorkflowGenerationSettings;
+  directIdentityFrame?: boolean;
+  onDirectIdentityFrameChange?: (enabled: boolean) => void;
   onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
   startingFrameControl?: ReactNode;
   onStartingFrameSelect?: (frame: StartingFrameSelection) => boolean | void;
@@ -53,7 +55,7 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, directIdentityFrame, onDirectIdentityFrameChange, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -130,7 +132,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
 
     <section aria-label="Video settings" className={kind === "hook" ? "space-y-3" : "mt-4 border-t border-border pt-4"}>
     <div role="group" aria-label={`${prefix} generation settings`} className={creation.settingsGrid}>
-      <SettingField label="Model"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
+      <SettingField label="Model"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} model`} value={directIdentityFrame ? "google_omni_direct" : model} onChange={(value) => { onDirectIdentityFrameChange?.(value === "google_omni_direct"); onGenerationSettingsChange({ model: parseAIStudioVideoModel(value === "google_omni_direct" ? "google_omni" : value) }); }} options={[...(startingFrameMode && onDirectIdentityFrameChange ? [{ value: "google_omni_direct", label: "Gemini Omni" }] : []), ...models]} /></SettingField>
       <SettingField label="Duration">{startingFrameMode ? <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} duration`} value={String(duration)} onChange={value => onGenerationSettingsChange({ duration: Number(value) as AIStudioVideoDuration })} options={hookStartingFrameVideoDurations(model).map(value => ({ value: String(value), label: `${value} seconds` }))} /> : <WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} />}</SettingField>
       {qualityField}{quantityField}
       {ratioField}
@@ -150,7 +152,7 @@ function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = fa
   onStartingFrameErrorChange?: (error: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [librarySection, setLibrarySection] = useState<"person" | "influencers">("person");
+  const [librarySection, setLibrarySection] = useState<"person" | "influencers" | "catalog">("person");
   const [libraryRevision, setLibraryRevision] = useState(0);
   const uploadInput = useRef<HTMLInputElement>(null);
   const images = imageReferences?.assets ?? (creator.asset ? [creator.asset] : []);
@@ -168,7 +170,7 @@ function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = fa
       <header className={photoPicker.header}>
       <DialogTitle className={photoPicker.title}>Choose person photos</DialogTitle>
       <DialogDescription className={photoPicker.description}>Choose clear photos of the same person.</DialogDescription>
-      <div className={photoPicker.headerActions}><div className={photoPicker.purpose} role="group" aria-label="Photo library sections">{(["person", "influencers"] as const).map(section => <Button key={section} type="button" variant="outline" size="sm" aria-pressed={librarySection === section} disabled={creator.loading} onClick={() => { setLibrarySection(section); setLibraryRevision(value => value + 1); }} className={cn(librarySection === section && "border-foreground/30 bg-card")}>{section === "person" ? "Person photos" : "My Influencers"}</Button>)}</div><PersonPhotoGuide /></div>
+      <div className={photoPicker.headerActions}><div className={photoPicker.purpose} role="group" aria-label="Photo library sections">{(["person", "influencers"] as const).map(section => <Button key={section} type="button" variant="outline" size="sm" aria-pressed={librarySection === section} disabled={creator.loading} onClick={() => { setLibrarySection(section); setLibraryRevision(value => value + 1); }} className={cn(librarySection === section && "border-foreground/30 bg-card")}>{section === "person" ? "Person photos" : "My Influencers"}</Button>)}</div><Button type="button" variant="outline" size="sm" aria-pressed={librarySection === "catalog"} disabled={creator.loading} onClick={() => { setLibrarySection(librarySection === "catalog" ? "person" : "catalog"); setLibraryRevision(value => value + 1); }} className={cn("ml-auto text-xs", librarySection === "catalog" && "border-foreground/30 bg-card")}>Vidmake Influencers</Button><PersonPhotoGuide /></div>
       </header>
       <div className={photoPicker.body}>
       <aside hidden className={photoPicker.selection} aria-label="Selected reference images">

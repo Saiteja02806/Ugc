@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Can I connect Vidmake to Claude or Codex via MCP?",
-    answer: "Yes. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp, allowing AI coding assistants to research hooks, generate videos, and monitor jobs directly.",
+    answer: "Yes. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://vidmake.io/mcp, allowing AI coding assistants to research hooks, generate videos, and monitor jobs directly.",
   },
   {
     question: "How does Vidmake pricing work?",

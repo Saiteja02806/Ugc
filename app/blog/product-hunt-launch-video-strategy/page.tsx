@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I orchestrate launch assets via Claude or Codex MCP?",
-    answer: "Yes. Vidmake features a 78-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp for generating hooks, videos, and carousels directly from AI prompts.",
+    answer: "Yes. Vidmake features a 105-tool Model Context Protocol (MCP) server at https://vidmake.io/mcp for generating hooks, videos, and carousels directly from AI prompts.",
   },
 ] as const;
 

@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Does Vidmake support developer workflows via MCP?",
-    answer: "Yes. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://mcp.getugcpilot.com/mcp for direct agent orchestration in Claude and Codex.",
+    answer: "Yes. Vidmake provides an official multi-tool Model Context Protocol (MCP) server at https://vidmake.io/mcp for direct agent orchestration in Claude and Codex.",
   },
 ] as const;
 

@@ -30,7 +30,7 @@ test('empty photo choice is explicit and owner/frame scoped; no URL is stored',(
  assert.throws(()=>selection.readStartingFramePhotos(raw,{...frame,ownerId:'other'}));assert.throws(()=>selection.serializeStartingFramePhotos([photo,photo],frame));assert.throws(()=>selection.serializeStartingFramePhotos([frame.assetId],frame));
  assert.doesNotMatch(raw,/https/);
 });
-test('all three models restore the ordered raw photos even when their frame route does not accept extra inputs',async()=>{
+test('every starting-frame model restores the ordered raw photos for an approved frame',async()=>{
  for(const model of ['google_omni','seedance_2_5','wan_3_0']){
   const h=harness();assert.equal(h.render({model}).pending,true);await settle();
   assert.deepEqual(h.reads.map(r=>r.id),frame.identityAssetIds);
@@ -87,6 +87,18 @@ test('a late restoration cannot overwrite an explicit photo change',async()=>{
  assert.equal(h.applied.length,0);assert.equal(h.render().pending,false);
 });
 
+test('clearing photos before the queued WAN restoration starts keeps readiness settled', async () => {
+ const h = harness();
+ const selectionState = h.render({ model: 'wan_3_0' });
+ assert.equal(selectionState.pending, true);
+ selectionState.remember([]);
+ await settle();
+ assert.equal(h.render().pending, false);
+ assert.equal(h.render().error, null);
+ assert.deepEqual(h.reads, []);
+ assert.deepEqual(selection.readStartingFramePhotos(h.values.get(selection.startingFramePhotoKey(frame)), frame), []);
+});
+
 test('a fresh page restores edited raw-photo IDs instead of reinserting removed originals',async()=>{
  const first=harness();first.render();await settle();
  first.render().remember([{asset:{id:second}}]);
@@ -135,4 +147,19 @@ test('switching starting frames restores only the new frame photos and ignores a
  assert.deepEqual(h.applied.at(-1).map(p=>p.asset.id),[second]);
  complete({id:photo,status:'ready',collection:'image',mimeType:'image/png'});await settle();
  assert.equal(h.applied.length,1);assert.deepEqual(h.applied.at(-1).map(p=>p.asset.id),[second]);
+});
+
+test('long approved-frame instructions never enter photo storage or block selecting and clearing photos', async () => {
+ const approved = { ...frame, motionInstructions: 'camera '.repeat(450), url: 'https://owned.test/frame' };
+ for (const tabScoped of [false, true]) {
+  const h = harness(undefined, new Map(), { tabScoped });
+  h.render({ frame: approved });
+  await settle();
+  for (const ids of [[second, photo], []]) {
+   h.render().remember(ids.map(id => ({ asset: { id } })));
+   assert.equal(h.render().error, null);
+   const raw = (tabScoped ? h.tabValues : h.values).get(selection.startingFramePhotoKey(approved));
+   assert.deepEqual(JSON.parse(raw), { version: 1, ownerId: frame.ownerId, jobId: frame.jobId, assetId: frame.assetId, ids });
+  }
+ }
 });

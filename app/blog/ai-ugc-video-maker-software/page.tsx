@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I connect Vidmake to my development environment via MCP?",
-    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with 78 public tools for Claude and Codex.",
+    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://vidmake.io/mcp with 105 public tools for Claude and Codex.",
   },
 ] as const;
 

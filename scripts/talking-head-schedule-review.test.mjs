@@ -178,3 +178,12 @@ test("schedule actions scroll with the form rather than covering timezone conten
   assert.doesNotMatch(css, /position:\s*(?:fixed|sticky)/);
   assert.match(css, /\.reviewButton\s*\{[^}]*white-space:\s*nowrap/);
 });
+
+test("schedule actions sit plainly in the workflow footer without a nested container", () => {
+  const css = readFileSync(new URL("../components/explore/workflow-schedule-review.module.css", import.meta.url), "utf8");
+  const block = css.match(/\.actions\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.ok(block, "the actions layout rule exists");
+  assert.doesNotMatch(block, /border(?:\s|:|-)|background|backdrop-filter|box-shadow|padding|margin/);
+  assert.match(block, /display:\s*grid/);
+  assert.match(block, /gap:\s*12px/);
+});

@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     question: "Can a UGC video maker work from Claude or Codex?",
-    answer: "Some can, through an MCP server. Vidmake connects to both with OAuth sign-in and exposes 78 public tools.",
+    answer: "Some can, through an MCP server. Vidmake connects to both with OAuth sign-in and exposes 105 public tools.",
   },
   {
     question: "Do I own the videos I make?",
@@ -161,7 +161,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
         <ArticleH3>9. Works with your AI assistant</ArticleH3>
         <p>If you already use Claude or Codex, a tool with an MCP server lets you write scripts and generate videos from the same chat or terminal. This is still rare among UGC video makers.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> offers a hosted <ArticleLink href="/mcp">MCP server</ArticleLink> at <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode> with 78 public tools for account reads, images, video, speech, edit drafts and exports. Setup guides: <ArticleLink href="/mcp/claude">Claude</ArticleLink>, <ArticleLink href="/mcp/codex">Codex</ArticleLink>. Walkthroughs: <ArticleLink href="/blog/ugc-ads-with-claude-mcp">UGC ads with Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">UGC videos with Codex</ArticleLink>.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> offers a hosted <ArticleLink href="/mcp">MCP server</ArticleLink> at <ArticleCode>https://vidmake.io/mcp</ArticleCode> with 105 public tools for account reads, images, video, speech, edit drafts and exports. Setup guides: <ArticleLink href="/mcp/claude">Claude</ArticleLink>, <ArticleLink href="/mcp/codex">Codex</ArticleLink>. Walkthroughs: <ArticleLink href="/blog/ugc-ads-with-claude-mcp">UGC ads with Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">UGC videos with Codex</ArticleLink>.
         </p>
 
         <ArticleH3>10. Honest limits</ArticleH3>

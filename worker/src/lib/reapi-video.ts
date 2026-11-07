@@ -63,7 +63,20 @@ type ReapiVideoRequest = {
 export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoRequest {
   if (input.model === "kling_4_0") {
     if (input.prompt.trim().length > KLING_4_VIDEO_PROMPT_MAX_LENGTH) throw new ProviderRequestNotSubmittedError("This prompt is too long for the selected model. Shorten it and try again.");
-    const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+    // https://reapi.ai/docs/kling-4-0: frames and reference media cannot be mixed
+    // in one request. An approved frame plus identity photos therefore runs as a
+    // reference job with the frame as Image 1 and the photos after it.
+    const identityReferences = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+    if (input.startingFrameImageUrl && identityReferences.length) {
+      const referenceImages = [input.startingFrameImageUrl, ...identityReferences];
+      if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 30 || !["720p", "1080p"].includes(input.resolution) ||
+        !["9:16", "16:9"].includes(input.aspectRatio) || !input.prompt.trim() || referenceImages.length > 10 || referenceImages.some(url => !isHttpsUrl(url)) ||
+        input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode) {
+        throw new ProviderRequestNotSubmittedError("Choose supported Kling 4.0 settings: 3-30 seconds, 720p/1080p, and up to ten HTTPS reference images.");
+      }
+      return { model: "kling-4-0", prompt: input.prompt.trim(), duration: input.durationSeconds, resolution: input.resolution, aspect_ratio: input.aspectRatio, omni_reference_task_type: "reference", image_urls: referenceImages };
+    }
+    const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : identityReferences;
     if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 30 || !["720p", "1080p"].includes(input.resolution) || !["9:16", "16:9"].includes(input.aspectRatio) || !input.prompt.trim() || images.length > 2 || images.some(url => !isHttpsUrl(url)) || input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode || (input.startingFrameImageUrl && (input.referenceImageUrl || input.referenceImageUrls?.length))) throw new ProviderRequestNotSubmittedError("Choose supported Kling 4.0 settings: 3-30 seconds, 720p/1080p, and up to two HTTPS frames.");
     return { model: "kling-4-0", prompt: input.prompt.trim(), duration: input.durationSeconds, resolution: input.resolution, aspect_ratio: input.aspectRatio, ...(images.length ? { image_urls: images } : {}) };
   }
@@ -78,13 +91,17 @@ export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoReques
   const seedance = input.model === "seedance_2_5";
   const startingFrame = input.startingFrameImageUrl !== undefined;
   const editing = input.referenceVideoMode === "edit";
-  // https://reapi.ai/docs/seedance-2-5: timed references turn frame roles
-  // into general references. This path must contain exactly one first frame.
+  // https://reapi.ai/docs/seedance-2-5 and /wan-3-0 separate strict frame roles
+  // from reference images, so an approved frame plus identity photos runs as a
+  // reference job with the frame as Image 1.
+  const frameReferences = startingFrame
+    ? (input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [])
+    : [];
+  const frameWithReferences = startingFrame && frameReferences.length > 0;
   if (startingFrame && (!isHttpsUrl(input.startingFrameImageUrl!) ||
-    input.referenceImageUrl !== undefined || (input.referenceImageUrls?.length ?? 0) > 0 ||
     (input.referenceAudioUrls?.length ?? 0) > 0 || (input.referenceAudioDurationSeconds?.length ?? 0) > 0 ||
     input.referenceVideoUrl !== undefined || input.referenceVideoDurationSeconds !== undefined || input.referenceVideoMode !== undefined)) {
-    throw new ProviderRequestNotSubmittedError("Starting-frame animation requires one HTTPS starting image without other image, video or audio references.");
+    throw new ProviderRequestNotSubmittedError("Starting-frame animation requires one HTTPS starting image without video or audio references.");
   }
   if (input.referenceVideoMode !== undefined && (!editing || !seedance || !input.referenceVideoUrl)) {
     throw new ProviderRequestNotSubmittedError("Source editing on ReAPI requires Seedance 2.5 and a source video.");
@@ -101,13 +118,14 @@ export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoReques
   const prompt = input.prompt.trim();
   if (input.generateAudio !== undefined && typeof input.generateAudio !== "boolean") throw new ProviderRequestNotSubmittedError("Choose a valid sound setting.");
   if (!prompt || prompt.length > 10_000) throw new ProviderRequestNotSubmittedError("Add a video prompt of 1–10000 characters.");
-  const images = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+  const images = frameWithReferences ? frameReferences : input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
+  const providerImages = frameWithReferences ? [input.startingFrameImageUrl!, ...frameReferences] : images;
   const audio = input.referenceAudioUrls ?? [];
   const media = [...images, ...audio, ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : [])];
   const maxImages = seedance ? 30 : 10;
   // ReAPI counts image references separately from timed references. The app
   // currently exposes one audio and one video slot; neither consumes an image.
-  if (images.length > maxImages || audio.length > 1 || new Set(media).size !== media.length || media.some(url => !isHttpsUrl(url))) {
+  if (providerImages.length > maxImages || audio.length > 1 || new Set(media).size !== media.length || media.some(url => !isHttpsUrl(url)) || providerImages.some(url => !isHttpsUrl(url))) {
     throw new ProviderRequestNotSubmittedError(`Use up to ${maxImages} distinct HTTPS images, plus one audio and one video reference.`);
   }
   const minReferenceDuration = seedance ? 2 : 1;
@@ -132,10 +150,11 @@ export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoReques
     // The user explicitly selected ReAPI's Less Restriction Seedance route.
     // WAN uses its moderated route; never retry on a different review channel.
     content_filter: !seedance,
-    ...(seedance ? { generate_audio: input.generateAudio ?? !startingFrame, output_format: "mp4", ...(!startingFrame && media.length ? { omni_reference_task_type: editing ? "edit" : "reference" } : {}) }
-      : { audio: input.generateAudio ?? !startingFrame, ...(media.length ? { generation_type: "reference" } : {}) }),
-    ...(startingFrame ? { image_with_roles: [{ url: input.startingFrameImageUrl!, role: "first_frame" as const }] } : {}),
-    ...(images.length ? { image_urls: images } : {}),
+    ...(seedance
+      ? { generate_audio: input.generateAudio ?? !startingFrame, output_format: "mp4", ...(frameWithReferences ? { omni_reference_task_type: "reference" } : !startingFrame && media.length ? { omni_reference_task_type: editing ? "edit" : "reference" } : {}) }
+      : { audio: input.generateAudio ?? !startingFrame, ...(media.length || frameWithReferences ? { generation_type: "reference" } : {}) }),
+    ...(startingFrame && !frameWithReferences ? { image_with_roles: [{ url: input.startingFrameImageUrl!, role: "first_frame" as const }] } : {}),
+    ...(providerImages.length ? { image_urls: providerImages } : {}),
     ...(audio.length ? { audio_urls: audio } : {}),
     ...(input.referenceVideoUrl ? { video_urls: [input.referenceVideoUrl] } : {}),
   };

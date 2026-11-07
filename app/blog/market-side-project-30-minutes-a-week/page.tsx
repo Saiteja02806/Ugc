@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Can I automate this routine via AI agent tools?",
-    answer: "Yes. Vidmake features a hosted Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp, allowing developers to trigger video generation directly from Claude Desktop or Codex CLI.",
+    answer: "Yes. Vidmake features a hosted Streamable HTTP OAuth MCP server at https://vidmake.io/mcp, allowing developers to trigger video generation directly from Claude Desktop or Codex CLI.",
   },
   {
     question: "How much does Vidmake cost for a side project?",
@@ -144,7 +144,7 @@ export default function MarketSideProject30MinutesAWeekPage() {
           If you already spend your evening coding in Claude Desktop or Codex CLI, you don&apos;t even need to open a web browser. With Vidmake&apos;s <ArticleLink href="/mcp">Model Context Protocol (MCP) server</ArticleLink>, you can trigger video rendering directly from a prompt:
         </p>
         <pre className="overflow-x-auto rounded-xl bg-card-muted p-4 text-xs font-mono text-foreground-strong">
-          <code>codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp</code>
+          <code>codex mcp add ugc-pilot --url https://vidmake.io/mcp</code>
         </pre>
         <p>
           Explore our guide on <ArticleLink href="/blog/ugc-videos-with-codex-mcp">generating videos with Codex MCP</ArticleLink> for full terminal workflows.
@@ -175,7 +175,7 @@ export default function MarketSideProject30MinutesAWeekPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Learn more in our <ArticleLink href="/docs/mcp-tools">78-tool MCP documentation</ArticleLink>.
+                  Yes. Learn more in our <ArticleLink href="/docs/mcp-tools">105-tool MCP documentation</ArticleLink>.
                 </>
               ),
             },

@@ -167,7 +167,7 @@ export default function UgcPilotVsHiringCreatorsPage() {
         <ArticleH2>Control and workflow</ArticleH2>
         <p>With creators, you share creative control. That can be a strength, since good creators know what works on their platforms, but it means briefs, feedback rounds and contracts.</p>
         <p>
-          With Vidmake, you control the brief and approve every file before download. If you already work in an AI assistant, the hosted MCP server at <ArticleCode>https://mcp.getugcpilot.com/mcp</ArticleCode> lets Claude or Codex write the script, generate the video, add a voiceover and export the edit in one conversation. Sign-in uses OAuth, and the <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink> lists every tool. For a walkthrough, see <ArticleLink href="/blog/ugc-ads-with-claude-mcp">How to make UGC ads with Claude</ArticleLink>.
+          With Vidmake, you control the brief and approve every file before download. If you already work in an AI assistant, the hosted MCP server at <ArticleCode>https://vidmake.io/mcp</ArticleCode> lets Claude or Codex write the script, generate the video, add a voiceover and export the edit in one conversation. Sign-in uses OAuth, and the <ArticleLink href="/docs/mcp-tools">MCP tools reference</ArticleLink> lists every tool. For a walkthrough, see <ArticleLink href="/blog/ugc-ads-with-claude-mcp">How to make UGC ads with Claude</ArticleLink>.
         </p>
         <p>One thing to be clear about: Vidmake doesn&apos;t post for you. You download the finished file and share it from the channels or ad accounts you already manage, just as you would with a file a creator sends you.</p>
 

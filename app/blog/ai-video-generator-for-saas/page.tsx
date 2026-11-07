@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Can I trigger video generation through Claude or Codex?",
-    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp with MCP tools to research hooks, generate creator videos, and inspect job status directly from your AI agent.",
+    answer: "Yes. Vidmake features an official Streamable HTTP OAuth MCP server at https://vidmake.io/mcp with MCP tools to research hooks, generate creator videos, and inspect job status directly from your AI agent.",
   },
   {
     question: "How long does it take to render an AI UGC video?",
@@ -160,7 +160,7 @@ export default function AiVideoGeneratorForSaasPage() {
           Connect in one line with your terminal:
         </p>
         <pre className="overflow-x-auto rounded-xl bg-card-muted p-4 text-xs font-mono text-foreground-strong">
-          <code>codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp</code>
+          <code>codex mcp add ugc-pilot --url https://vidmake.io/mcp</code>
         </pre>
         <p>
           You can inspect our complete <ArticleLink href="/docs/mcp-tools">multi-tool MCP documentation</ArticleLink> or read our step-by-step tutorial on <ArticleLink href="/blog/ugc-ads-with-claude-mcp">creating UGC ads with Claude MCP</ArticleLink>.

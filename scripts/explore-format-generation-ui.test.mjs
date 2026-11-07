@@ -32,7 +32,6 @@ function load(file, imports = {}, globals = {}) {
     if (name === "@/lib/explore/slideshow-generation-recovery") return load("lib/explore/slideshow-generation-recovery.ts");
     if (name in imports) return imports[name];
     if (name === "@/components/explore/slideshow-clarification-notice") return load("components/explore/slideshow-clarification-notice.tsx", imports, globals);
-    if (name === "@/components/generation/model-provider-logos") return load("components/generation/model-provider-logos.tsx", imports, globals);
     if (name === "@/lib/explore/slideshow-face-swap") return load("lib/explore/slideshow-face-swap.ts", imports, globals);
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
@@ -209,7 +208,7 @@ test("Hook and Wall default to Sound off and submit the explicitly toggled choic
   assert.equal(harness("studio").composer.props.promptAction, undefined);
 });
 
-test("Hook and Text on screen retain photos and only submit after explicit frame-only recovery", async () => {
+test("Hook and Text on screen keep identity photos alongside the approved frame and submit both", async () => {
   for (const [format, sound] of [["hook", false], ["hook", true], ["wall_text", false]]) {
     const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
     const controls = h.render().composer.props.referenceControls.props;
@@ -234,28 +233,18 @@ test("Hook and Text on screen retain photos and only submit after explicit frame
     assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "4");
     assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
     assert.deepEqual(Array.from(composer.props.referenceControls.props.photos, photo => photo.asset.id), ["old-photo"], "User selections cannot be silently removed to make a request valid");
-    assert.equal(composer.props.generateDisabled, true);
+    assert.equal(composer.props.generateDisabled, false, "Photos no longer block the approved frame");
+    assert.equal(composer.props.feedbackError, null, "reference compatibility belongs beside the inputs");
+    assert.equal(resultNodes(composer.props.promptSupplement).some(node => node.props?.children === "Use starting frame only"), false);
     await composer.props.onSubmit({ preventDefault() {} });
-    assert.equal(h.requests.length, 0, "Unsupported frame-plus-photo combinations must block before submission");
-    const recovery = h.render().composer.props.secondaryActions;
-    assert.equal(recovery.props.children, "Use starting frame only");
-    assert.equal(recovery.props.type, "button");
-    recovery.props.onClick();
+    assert.equal(h.requests.length, 1, "The approved frame and its identity photos submit together");
     composer = h.render().composer;
-    assert.equal(composer.props.referenceControls.props.frame.assetId, selection.assetId);
-    assert.deepEqual(Array.from(composer.props.referenceControls.props.photos), []);
-    assert.equal(composer.props.feedbackError, null);
-    assert.equal(composer.props.secondaryActions, undefined);
-    assert.equal(h.requests.length, 0, "Choosing frame-only must not submit or spend credits");
-    assert.equal(composer.props.generateDisabled, false);
-    await composer.props.onSubmit({ preventDefault() {} });
-    assert.equal(h.requests.length, 1);
     const body = h.requests[0].body;
     assert.equal(body.startingFrameAssetId, selection.assetId); assert.equal(body.startingFrameJobId, selection.jobId);
     assert.equal(body.referenceId, "hook-15"); assert.equal(body.model, "seedance_2_5");
     assert.equal(body.durationSeconds, 4); assert.equal(body.generateAudio, sound); assert.equal(body.prompt, selection.motionInstructions);
-    assert.equal("referenceImageUrls" in body, false);
-    assert.equal("imageReferencePurpose" in body, false);
+    assert.deepEqual(body.referenceImageUrls, ["https://owned.test/old.png"]);
+    assert.equal(body.imageReferencePurpose, "person");
     for (const key of ["avatarImageUrl", "referenceVideoUrl", "referenceAudioUrls", "referenceVideoMode", "useGalleryVideoReference"]) {
       assert.equal(key in body, false, `${key} must not accompany first-frame animation`);
     }
@@ -287,6 +276,28 @@ test("a replacement clears stale face URLs and unsupported model submission keep
   assert.equal(h.requests[0].body.startingFrameAssetId, replacement.assetId);
 });
 
+test("WAN at five seconds keeps Generate enabled with extra identity photos and submits them after the approved frame", async () => {
+  const h = harness("hook", { reference: false, captureRequests: true, wanEnabled: true });
+  const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
+    url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 5, sourceDurationSeconds: 4.1,
+    motionInstructions: "Hold the surprised reaction, then lower the raised hand.", generateAudio: false };
+  let composer = h.selectStartingFrame(frame).composer;
+  composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.onChange("wan_3_0");
+  composer = h.render().composer;
+  composer.props.referenceControls.props.onPhotosChange([{ kind: "image", asset: { id: "face", url: "https://owned.test/face.png" } }]);
+  composer = h.render().composer;
+  assert.equal(composer.props.generateDisabled, false);
+  assert.equal(h.requests.length, 0);
+  await composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests.length, 1);
+  const body = h.requests[0].body;
+  assert.equal(body.model, "wan_3_0");
+  assert.equal(body.durationSeconds, 5);
+  assert.equal(body.startingFrameAssetId, frame.assetId);
+  assert.deepEqual(body.referenceImageUrls, ["https://owned.test/face.png"]);
+  assert.equal(body.imageReferencePurpose, "person");
+});
+
 test("approved starting frames retain model choices and submit each model with the same owned image", async () => {
   const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
     url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Look up and smile.", generateAudio: false };
@@ -315,18 +326,20 @@ test("approved starting frames retain model choices and submit each model with t
   }
 });
 
-test("unapproved Hook Recreate stays blocked after leaving preparation and never falls back to source-video editing", async () => {
-  const h = harness("hook", { startingFrameRequired: true, captureRequests: true });
+for (const format of ["hook", "wall_text"]) test(`${format}: unapproved Recreate stays blocked without an idle error popup`, async () => {
+  const h = harness(format, { startingFrameRequired: true, captureRequests: true });
   let composer = h.render().composer;
   assert.equal(composer.props.referenceControls.props["aria-label"], "Reference instructions");
   assert.equal(resultNodes(composer.props.contextBanner).filter(node => node.type !== "Fragment").length, 0, "legacy URL reference metadata must not be presented as attached context");
   assert.equal(composer.props.estimatedCredits, undefined);
   assert.equal(composer.props.generateDisabled, true);
   assert.match(composer.props.accessMessage, /approve a starting frame/);
+  assert.equal(composer.props.feedbackError, null, "waiting for approval is not an error alert");
   assert.equal(resultNodes(composer.props.promptSupplement).some(node => node.props?.["aria-label"] === "Source video task"), false);
   assert.equal(resultNodes(composer.props.referenceControls).some(node => node.type === "Button" && node.props.children === "Use instructions alone"), true);
   composer = h.render().composer;
   assert.equal(composer.props.generateDisabled, true, "closing/reopening does not approve an image");
+  assert.equal(composer.props.feedbackError, null);
   await composer.props.onSubmit({ preventDefault() {} });
   assert.equal(h.requests.length, 0);
   assert.equal(h.events.includes("show-results"), false);
@@ -594,8 +607,8 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.model, "seedance_2_5");
     assert.equal(h.requests[0].body.durationSeconds, 17);
     assert.equal(h.requests[0].body.resolution, "480p");
-    const disabled = harness(format).composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.options.find(option => option.value === "seedance_2_5");
-    assert.equal(disabled.disabled, true, "the provider kill switch remains respected");
+    const offered = harness(format).composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.options.some(option => option.value === "seedance_2_5");
+    assert.equal(offered, false, "the provider kill switch removes the unavailable model instead of listing it");
   });
   test(`${format}: local preview allows supported quality changes while generation remains locked`, () => {
     const h = harness(format, { preview: true, access: "signed_out", reference: false });
@@ -1102,6 +1115,23 @@ test("4s and 5s Hook sources initialize the shortest supported duration covering
  }
 });
 
+test("a shorter Hook or Text on screen duration than the source is the user's choice and never blocks Generate", async () => {
+  for (const format of ["hook", "wall_text"]) for (const model of ["google_omni", "kling_3_0", "kling_4_0", "seedance_2_5", "wan_3_0"]) {
+    const h = harness(format, { reference: false, captureRequests: true, seedanceEnabled: true, wanEnabled: true });
+    h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.onChange(model);
+    let composer = h.selectStartingFrame({ ownerId: "test-owner", draftId: "shorter-duration", referenceId: "hook-fixture", assetId: "frame", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, sourceDurationSeconds: 4.1, motionInstructions: "OPENING: PHASE [0–1]: Preserve source motion.", generateAudio: false }).composer;
+    const duration = composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration");
+    duration.props.onChange("4");
+    composer = h.render().composer;
+    assert.equal(composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "4", `${format}/${model}: 4 seconds stays selected`);
+    assert.equal(composer.props.generateDisabled, false, `${format}/${model}: a shorter supported duration must not block Generate`);
+    assert.doesNotMatch(String(composer.props.accessMessage ?? ""), /at least .* seconds/i, `${format}/${model}: no minimum-duration block`);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1, `${format}/${model}: submits the user's duration`);
+    assert.equal(h.requests[0].body.durationSeconds, 4);
+  }
+});
+
 test("workflow progress keeps Cancel beside results rather than inside a floating notification", () => {
   for (const format of ["hook", "wall_text", "slideshow"]) {
     const job = { id: "running-job", jobType: format === "slideshow" ? "image_generation" : "video_generation", exploreFormat: format, status: "processing", output: null, updatedAt: new Date().toISOString() };
@@ -1158,4 +1188,53 @@ test("old missing-face clarification disappears when the dedicated selection or 
   h.render().composer.props.onPromptChange("Use the source face unchanged and adapt the copy.");
   node = notice(); assert.equal(node.type(node.props), null, "changed instructions do not retain an old question");
   assert.equal(h.requests.length, 1, "editing never automatically retries planning");
+});
+
+
+test("Hook and Text on screen use direct Gemini with Omni and retain ordered face photos", async () => {
+  for (const format of ["hook", "wall_text"]) {
+    const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
+    const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-15", sourceSha256: "a".repeat(64), assetId: "scene", jobId: "scene-job", url: "https://owned.test/scene.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Raise the same hand.", generateAudio: false };
+    let composer = h.selectStartingFrame(frame).composer;
+    const picker = () => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+    picker().props.onChange("google_omni");
+    composer = h.render().composer;
+    const photos = ["main", "support"].map(id => ({ kind: "image", asset: { id, url: `https://owned.test/${id}.png` } }));
+    composer.props.referenceControls.props.onPhotosChange(photos);
+    composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    assert.equal(picker().props.value, "google_omni_direct");
+    assert.ok(picker().props.options.some(option => option.value === "google_omni_direct"));
+    picker().props.onChange("google_omni_direct");
+    composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    assert.equal(picker().props.value, "google_omni_direct");
+    assert.equal(h.requests.length, 0);
+    picker().props.onChange("seedance_2_5");
+    assert.equal(h.render().composer.props.generateDisabled, false);
+    assert.deepEqual(Array.from(h.render().composer.props.referenceControls.props.photos, p => p.asset.id), ["main", "support"]);
+    picker().props.onChange("google_omni");
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].body.startingFrameMode, "first_frame_with_identity");
+    assert.equal(h.requests[0].body.model, "google_omni");
+    assert.equal(h.requests[0].body.startingFrameAssetId, frame.assetId);
+    assert.deepEqual(h.requests[0].body.referenceImageUrls, photos.map(p => p.asset.url));
+  }
+});
+
+test("Hook and Wall of Text submit the approved starting frame with either Kling model", async () => {
+  for (const format of ["hook", "wall_text"]) for (const model of ["kling_3_0", "kling_4_0"]) {
+    const h = harness(format, { reference: false, captureRequests: true });
+    const frame = { ownerId: "test-owner", assetId: "scene", url: "https://owned.test/scene.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Raise the same hand.", generateAudio: false };
+    h.selectStartingFrame(frame);
+    const picker = h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+    assert.equal(picker.props.options.find(option => option.value === model)?.disabled, false);
+    picker.props.onChange(model);
+    const composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.model, model);
+    assert.equal(h.requests[0].body.startingFrameAssetId, frame.assetId);
+  }
 });

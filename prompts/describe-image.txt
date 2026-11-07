@@ -1,0 +1,10 @@
+Describe this image in detail for a video recreation workflow.
+
+Cover, in order:
+1. Subject and identity: who or what is the main subject; apparent age, gender, expression, posture.
+2. Clothing and accessories: garments, colors, fabrics, jewelry, props held.
+3. Pose and hands: body orientation, hand positions, gestures, what the hands are holding or touching.
+4. Lighting and environment: light direction, softness, color cast, background, depth of field, any visible text or overlays.
+5. Composition and framing: camera angle, shot size, subject placement, notable foreground/background elements.
+
+Be factual and concrete. Do not invent details you cannot see. If a region is occluded or unclear, say so rather than guessing.

@@ -58,6 +58,7 @@ export function proxy(request: NextRequest) {
     isMcpOnlyDeployment: process.env.MCP_ONLY_DEPLOYMENT === "true",
     isProduction: process.env.NODE_ENV === "production",
     pathname,
+    allowMcpProtocolOnWebsite: process.env.MCP_PROTOCOL_ON_WEBSITE === "true",
   })) {
     return new NextResponse(null, { status: 404 });
   }
@@ -82,10 +83,17 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  if (!mcpHost && pathname === "/" && request.method === "GET") {
+  if (!mcpHost && (request.method === "GET" || request.method === "HEAD") && pathname === "/") {
+    // Serve the workflow app at the public root without changing the address.
+    // Users land directly on Explore; crawlers see 200 at "/" plus an explicit
+    // X-Robots-Tag noindex, so the intentionally non-indexed app root is never
+    // confused with a redirecting or missing page. Indexable content lives in
+    // the public sitemap (the guides network is the listed hub entry).
     const url = request.nextUrl.clone();
     url.pathname = "/explore";
-    return NextResponse.redirect(url, 307);
+    const response = NextResponse.rewrite(url);
+    response.headers.set("X-Robots-Tag", "noindex");
+    return response;
   }
 
   // Authenticated pages/API rollout guards own Explore/Audio availability.

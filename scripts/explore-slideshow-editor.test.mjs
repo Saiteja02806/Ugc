@@ -15,6 +15,19 @@ import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import { sameBackgroundTargets } from "../lib/media/image-library.ts";
 import { imagePickerThumbnailUrl } from "../lib/media/image-picker.ts";
 
+test("the slideshow preview fills its pane and the header wraps instead of overflowing", () => {
+  const css = readFileSync(new URL("../components/explore/slideshow-editor.module.css", import.meta.url), "utf8");
+  // The overview used to shrink-wrap and center inside the pane, leaving a wide
+  // left gutter on desktop and overflowing narrower laptop panes.
+  assert.match(css, /\.editorPreview \{[^}]*width: 100%/);
+  assert.match(css, /\.editorPreview \{[^}]*align-self: stretch/);
+  assert.match(css, /\.previewHeading \{[^}]*flex-wrap: wrap/);
+  assert.match(css, /\.previewHeading \{[^}]*align-items: center/);
+  assert.match(css, /\.headerActions \{[^}]*min-width: 0/);
+  assert.match(css, /\.headerActions \{[^}]*margin-left: auto/);
+  assert.match(css, /\.filmstrip \{[^}]*max-height: clamp\(244px, 38dvh, 340px\)/);
+});
+
 function load(file, imports = {}, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
@@ -282,9 +295,14 @@ test("Create preview shares the edited sequence, text and upload actions without
   const target = h.props.resultsTarget;
   h.props.active = false; h.props.previewActive = true;
   let opened = 0; h.props.onEdit = () => opened++;
-  h.props.previewActions = { type: "Button", props: { children: "Generated slides" } };
+  let generatedOpened = 0;
+  h.props.previewActions = { type: "Button", props: { children: "Generated slides", onClick: () => generatedOpened++ } };
   const preview = nodes(h.render()).find(n => n.props?.["aria-label"] === "Slideshow edit preview");
-  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Edit slides.*Save & review post.*More.*Generated slides/s);
+  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Edit slides.*Save & review post/s);
+  const actions = nodes(preview).find(n => n.props?.["aria-label"] === "Slideshow actions");
+  assert.deepEqual(Array.from(actions.props.children, text), ["Save slideshow", "Save & review post", "Generated slides"]);
+  h.control("Button", "Generated slides").props.onClick();
+  assert.equal(generatedOpened, 1);
   assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
   assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
   assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
@@ -569,7 +587,7 @@ test("simplified toolbar retains library background replacement, text and save i
   assert.deepEqual(h.requests.at(-1).editorDraft.slides.map(slide => slide.mediaAssetId), [id(808), id(202)]);
   assert.equal(h.requests.at(-1).editorDraft.slides[0].design.heading, "Keep my words");
 });
-test("the preview header exposes review and retains save-only under More throughout recovery", async () => {
+test("the preview header exposes review and save-only directly throughout recovery", async () => {
   let continued = 0;
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
   const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Review post", "Saving…"].includes(text(node)));
@@ -579,7 +597,9 @@ test("the preview header exposes review and retains save-only under More through
     const header = nodes(preview).find(node => node.type === "header");
     assert.equal(nodes(header).filter(node => node.type === "Button" && text(node) === label).length, 1);
     assert.equal(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
-    if (label !== "Review post") assert.ok(nodes(header).some(node => node.type === "details" && nodes(node).some(child => child.type === "Button" && text(child) === label)));
+    const actions = nodes(header).find(node => node.props?.["aria-label"] === "Slideshow actions");
+    assert.ok(actions.props.children.some(node => node?.type === "Button" && text(node) === label));
+    assert.equal(nodes(actions).some(node => node.type === "details"), false);
   };
   assertAction("Save slideshow"); await h.clickSave("Save slideshow"); assertAction("Resume save");
   assert.equal(h.control("Button", "Move slide 1 later").props.disabled, true);

@@ -3,9 +3,17 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {STUDIO_HERO_FAN_CARDS,STUDIO_SHOWCASE_ITEMS} from '../../lib/characters/studio-showcase.ts';
 
 const exports={};const jsx=(type,props)=>({type,props});
-const imports={'react/jsx-runtime':{jsx,jsxs:jsx},'next/image':{default:'Image'},'lucide-react':{Bookmark:'Bookmark',Sparkles:'Sparkles'},'./image-download-button':{ImageDownloadButton:'Download'},'./influencer-studio.module.css':{default:new Proxy({},{get:(_,key)=>key})}};
+const imports={
+  'react/jsx-runtime':{jsx,jsxs:jsx},
+  'next/image':{default:'Image'},
+  'lucide-react':{Bookmark:'Bookmark'},
+  '@/lib/characters/studio-showcase':{STUDIO_HERO_FAN_CARDS,STUDIO_SHOWCASE_ITEMS},
+  './image-download-button':{ImageDownloadButton:'Download'},
+  './influencer-studio.module.css':{default:new Proxy({},{get:(_,key)=>key})},
+};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('./influencer-canvas.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:name=>{assert(name in imports,name);return imports[name]}});
 const flatten=node=>!node||typeof node!=='object'?[]:[node,...[node.props?.children].flat(Infinity).flatMap(flatten)];
 const job={id:'job-owned',isTerminal:true,output:{url:'https://owned/image.png',mediaAssetId:'asset-owned'}};
@@ -24,4 +32,18 @@ test('saved and saving locks remain while download remains available',()=>{
 });
 test('loading empty and error states do not expose stale result actions',()=>{
  for(const patch of[{isGenerating:true},{activeJobs:[]},{activeJobs:[{id:'failed',isTerminal:true,status:'failed',error:'Retry later'}]}])assert(!render(patch).nodes.some(n=>n.type==='Download'));
+});
+test('empty studio stage renders the 5-card hero fan deck and headline, hides tabs/grid, and switches to generation on Generate',()=>{
+ const {nodes:emptyNodes}=render({activeJobs:[]});
+ const fanCards=emptyNodes.filter(n=>typeof n.props?.className==='string'&&n.props.className.includes('heroFanCard '));
+ assert.equal(fanCards.length,5);
+ assert(!emptyNodes.some(n=>n.props?.className==='showcaseTabsBar'));
+ assert(!emptyNodes.some(n=>n.props?.className==='showcaseGrid'));
+ assert.equal(STUDIO_SHOWCASE_ITEMS.length,7);
+ const {nodes:generatingNodes}=render({activeJobs:[],isGenerating:true});
+ assert(generatingNodes.some(n=>n.props?.className==='generatingState'));
+ assert(!generatingNodes.some(n=>n.props?.className==='heroStudioStage'));
+ const {nodes:resultNodes}=render({activeJobs:[job],isGenerating:false});
+ assert(resultNodes.some(n=>n.props?.className==='resultsGrid'));
+ assert(!resultNodes.some(n=>n.props?.className==='heroStudioStage'));
 });

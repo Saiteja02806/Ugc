@@ -34,7 +34,6 @@ import {
   AiStudioSettingSelect,
   AiStudioRatioPicker,
 } from "@/components/generation/ai-studio-composer";
-import { getModelProviderInfo } from "@/components/generation/model-provider-logos";
 import {
   AiStudioResults,
   type AiStudioResultsStatus,
@@ -264,6 +263,7 @@ export function VideoGenerationStudioPanel({
   accessState = "locked",
   active = true,
   creditsRemaining = null,
+  freeVideoPassAvailable = false,
   recreateView,
 }: {
   accessMessage?: string | null;
@@ -271,6 +271,7 @@ export function VideoGenerationStudioPanel({
   active?: boolean;
   creditsPerSecond?: number;
   creditsRemaining?: number | null;
+  freeVideoPassAvailable?: boolean;
   recreateView?: RecreateGenerationView;
 }) {
   const workflow = recreateView?.workflow;
@@ -350,6 +351,7 @@ export function VideoGenerationStudioPanel({
     const requested = parseAIStudioVideoModel(searchParams.get("model"));
     return isAIStudioVideoModelAvailable(requested) ? requested : "kling_3_0";
   });
+  const [directIdentityFrameId, setDirectIdentityFrameId] = useState<string | null>(null);
   const [durationSeconds, setDurationSeconds] =
     useState<AIStudioVideoDuration>(5);
   const [resolution, setResolution] =
@@ -542,13 +544,25 @@ export function VideoGenerationStudioPanel({
   const creditsPerSecond = getVideoModelCreditsPerSecond(model);
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
+  const eligibleForFreeVideoPass =
+    freeVideoPassAvailable &&
+    (workflowFormat === "hook" || workflowFormat === "wall_text");
+  const coveredByFreeVideoPass =
+    eligibleForFreeVideoPass &&
+    quantity === 1 &&
+    (creditsRemaining === null || creditsRemaining < requiredCredits);
   const hasInsufficientCredits =
     accessState === "pro" &&
+    !coveredByFreeVideoPass &&
     (!hasWorkflowVideoReference || Boolean(sourceDuration)) &&
     creditsRemaining !== null &&
     creditsRemaining < requiredCredits;
   const composerMessage = generationLocked
     ? accessMessage
+    : coveredByFreeVideoPass
+      ? "Covered by your 1 free video generation pass."
+    : eligibleForFreeVideoPass && quantity > 1 && hasInsufficientCredits
+      ? "Your free video pass covers 1 video generation. Set quantity to 1 or upgrade."
     : hasInsufficientCredits
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
       : hasWorkflowVideoReference && !sourceDuration ? "Credits are based on the source clip's duration, checked before generation."
@@ -580,15 +594,43 @@ export function VideoGenerationStudioPanel({
   const referenceCreationError = workflow && hasVideoReference && !hasWorkflowVideoReference && model === "google_omni" &&
     (referenceImages.length > 0 || (sourceDuration != null && sourceDuration > 3))
     ? "Choose Seedance 2.5 or WAN 3.0 to create from this reference, or choose Edit source video with Google Omni." : null;
-  const startingFrameError = startingFrame && workflowFormat === "hook" && Number.isFinite(startingFrame.sourceDurationSeconds) && durationSeconds + .001 < startingFrame.sourceDurationSeconds! ? `Choose a duration of at least ${model === "google_omni" ? hookStartingFrameSourceDuration(model, startingFrame.sourceDurationSeconds) : Math.ceil(startingFrame.sourceDurationSeconds! - .001)} seconds to preserve the full source Hook, or choose a model that supports it.`
-    : startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to animate this starting frame."
+  // The user chooses the output duration. A shorter choice retimes the source
+  // action into it instead of blocking generation (user decision, 2026-11-06).
+  const startingFrameError = startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose a model that supports starting-frame animation."
     : startingFrame?.jobId && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation."
-    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? model === "google_omni" ? "Google Omni duration must be 4, 6, 8, or 10 seconds." : `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to 15 seconds.`
+    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? model === "google_omni" ? "Google Omni duration must be 4, 6, 8, or 10 seconds." : `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to ${hookStartingFrameVideoDurations(model).at(-1)} seconds.`
     : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
-  const startingFramePhotosError = startingFrame ? startingFrameFaceReferenceError(model, startingFrame, referenceImages) : null;
-  const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null)
-    ?? (startingFramePhotos.pending ? "Restoring your selected face photos…" : startingFramePhotos.error)
-    ?? startingFrameError ?? startingFramePhotosError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
+  const startingFrameMode = startingFrame && model === "google_omni" &&
+    (referenceImages.length > 0 || directIdentityFrameId === startingFrame.assetId)
+    ? "first_frame_with_identity" as const : undefined;
+  // ReAPI's Kling, Seedance and WAN routes reject a literal first frame combined
+  // ReAPI's Kling, Seedance and WAN routes separate strict frame roles from
+  // reference images, so an approved frame plus identity photos runs as a
+  // reference job with the frame first. Kling 3.0 exposes only first/last frame
+  // slots, so it animates the approved frame alone.
+  const identityPhotosAttached = Boolean(startingFrame && referenceImages.length > 0);
+  const frameOnlyWithPhotos = identityPhotosAttached && model === "kling_3_0";
+  function selectVideoModel(nextModel: AIStudioVideoModel, directRoute: boolean) {
+    if (!isAIStudioVideoModelAvailable(nextModel) || startingFrame && !isHookStartingFrameVideoModel(nextModel)) return false;
+    setDirectIdentityFrameId(directRoute && startingFrame ? startingFrame.assetId : null);
+    const durations = startingFrame ? hookStartingFrameVideoDurations(nextModel) : getAIStudioVideoDurations(nextModel);
+    if (startingFrame) {
+      setDurationSeconds((workflowFormat === "hook" ? hookStartingFrameSourceDuration(nextModel, startingFrame.sourceDurationSeconds, startingFrame.durationSeconds) : startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(nextModel)) as AIStudioVideoDuration);
+    } else if (!durations.includes(durationSeconds)) {
+      setDurationSeconds(Math.min(Math.max(durationSeconds, durations[0]), durations[durations.length - 1]) as AIStudioVideoDuration);
+    }
+    if (nextModel === "kling_3_0" && durationSeconds > 15) setDurationSeconds(5);
+    if (!isAIStudioVideoResolutionSupported(nextModel, resolution)) setResolution("720p");
+    setModel(nextModel);
+    return true;
+  }
+  /** Adding or clearing identity photos never changes the selected model. */
+  const startingFramePhotosError = startingFrame ? startingFrameFaceReferenceError(model, startingFrame, referenceImages, startingFrameMode) : null;
+  const referenceReadinessMessage = awaitingStartingFrame ? "Create and approve a starting frame before generating this video."
+    : startingFramePhotos.pending ? "Restoring your selected face photos…" : null;
+  const referenceValidationError = startingFramePhotos.error ?? startingFrameError ?? startingFramePhotosError
+    ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
+  const generationReferenceError = referenceReadinessMessage ?? referenceValidationError;
   const activeReferenceImageUrl = startingFrame?.url ?? (awaitingStartingFrame ? null : uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null)) ?? null;
   function useReferenceInstructionsAlone() {
     const instructions = startingFramePreparation?.instructions;
@@ -1012,7 +1054,6 @@ export function VideoGenerationStudioPanel({
       return;
     }
     if (!pendingSubmission && generationReferenceError) {
-      setActionError(generationReferenceError);
       return;
     }
 
@@ -1058,7 +1099,7 @@ export function VideoGenerationStudioPanel({
           exploreFormat: workflow?.format,
           ...(automaticHookTextAvailable ? { automaticHookText } : {}),
           ...(supportsWorkflowSound ? { generateAudio } : {}),
-          ...(startingFrame ? startingFrameAnimationInput(startingFrame, referenceImages) : {
+          ...(startingFrame ? startingFrameAnimationInput(startingFrame, referenceImages, startingFrameMode, model) : {
             avatarImageUrl: activeReferenceImageUrl,
             referenceImageUrls: referenceImages.length ? referenceImages.map((image) => image.asset.url) : activeReferenceImageUrl ? [activeReferenceImageUrl] : [],
             ...(workflow && referenceImages.length ? { imageReferencePurpose: imagePurpose } : {}),
@@ -1213,9 +1254,11 @@ export function VideoGenerationStudioPanel({
     jobQueryError ??
     (effectiveGenerationState === "failed" ? durableNotice : null) ??
     (isGenerating ? null : resultsError ?? recoveryError);
-  const composerFeedbackError = resultsErrorMessage ?? generationReferenceError ?? earlierRequests.error ?? (accessState === "error" || hasInsufficientCredits ? composerMessage : null);
+  const composerFeedbackError = resultsErrorMessage
+    ?? (referenceReadinessMessage ? null : startingFramePhotos.error ?? referenceError)
+    ?? earlierRequests.error ?? (accessState === "error" || hasInsufficientCredits ? composerMessage : null);
   const canUseStartingFrameOnly = generationReferenceError === UNSUPPORTED_STARTING_FRAME_PHOTOS &&
-    composerFeedbackError === UNSUPPORTED_STARTING_FRAME_PHOTOS && !generationLocked && !isGenerating &&
+    !generationLocked && !isGenerating &&
     !pendingSubmission && !recoveringJobs && !referenceFilesPending && !creatorReferenceUploadPending;
   const resultsStatus: AiStudioResultsStatus | null =
     resultsErrorMessage
@@ -1372,6 +1415,7 @@ export function VideoGenerationStudioPanel({
       <AiStudioResults
         portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated videos"
+        toolbarClassName={workflow ? "bg-card" : undefined}
         emptyContent={recreateView?.emptyContent}
         emptyContentClassName={workflow ? "justify-center" : recreateView ? "items-start pt-8" : undefined}
         emptyDescription="Start a new video below. Your earlier generations are in History."
@@ -1497,6 +1541,14 @@ export function VideoGenerationStudioPanel({
           Sound {generateAudio ? "on" : "off"}
         </button> : undefined}
         promptSupplement={workflow ? <>
+          {!referenceReadinessMessage && referenceValidationError && !startingFramePhotos.error && !referenceError ? <div className="mb-3 space-y-2">
+            <p className="text-xs leading-5 text-muted">{referenceValidationError}</p>
+            {canUseStartingFrameOnly ? <Button type="button" variant="outline" size="sm" onClick={() => {
+              handleImageReferencesChange([]);
+              setActionError(error => error === UNSUPPORTED_STARTING_FRAME_PHOTOS ? null : error);
+            }}>Use starting frame only</Button> : null}
+          </div> : null}
+          {frameOnlyWithPhotos ? <p className="mb-3 text-xs leading-5 text-muted">Kling 3.0 animates your approved frame and has no reference-photo slot. Your identity photos were already used to create that frame; choose Kling 4.0, Seedance, WAN or Omni to attach them to the video too.</p> : null}
           {hasVideoReference ? <div className="mb-3 space-y-1.5">
             <label className="flex flex-wrap items-center justify-between gap-2 text-sm">Use source video
               <select aria-label="Source video task" value={workflowSourceMode} disabled={isGenerating || Boolean(pendingSubmission)} onChange={event => {
@@ -1529,7 +1581,7 @@ export function VideoGenerationStudioPanel({
         </section> : null}</> : undefined}
         estimatedCredits={workflow && !awaitingStartingFrame && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${hasWorkflowVideoReference && model === "seedance_2_5" ? "Source shape" : aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
+        settingsSummary={workflow ? `${model === "google_omni" ? "Google Omni" : getAIStudioVideoModelLabel(model)} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${hasWorkflowVideoReference && model === "seedance_2_5" ? "Source shape" : aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         referenceControls={awaitingStartingFrame ? <section aria-label="Reference instructions" className="space-y-3 rounded-xl border border-border p-3"><p className="text-sm font-medium">Use this reference’s instructions</p><p className="text-xs leading-5 text-muted">Copy its video prompt into Your instructions, then edit it and generate your video.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission) || referenceFilesPending || creatorReferenceUploadPending || !startingFramePreparation?.instructions?.trim() || !startingFramePreparation.onUseInstructionsAlone} onClick={useReferenceInstructionsAlone}>Use instructions alone</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div>{!startingFramePreparation?.instructions?.trim() ? <p className="text-xs leading-5 text-muted">This reference’s instructions are unavailable. Choose another reference.</p> : null}</section> : workflow && startingFrame ? <StartingFrameAnimationReferences key={user?.uid ?? "preview"}
           compact frame={startingFrame} model={model} photos={referenceImages} onPhotosChange={handleImageReferencesChange}
           onSelectFrame={recreateView?.onSelectStartingFrame} onClearFrame={recreateView?.onClearStartingFrame}
@@ -1634,10 +1686,7 @@ export function VideoGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
-        secondaryActions={canUseStartingFrameOnly ? <Button type="button" variant="outline" size="sm" onClick={() => {
-          handleImageReferencesChange([]);
-          setActionError(error => error === UNSUPPORTED_STARTING_FRAME_PHOTOS ? null : error);
-        }}>Use starting frame only</Button> : workflow ? undefined : generationActions}
+        secondaryActions={workflow ? undefined : generationActions}
 
         settings={
           <>
@@ -1647,37 +1696,16 @@ export function VideoGenerationStudioPanel({
               fieldLayout={workflow ? "classic" : undefined}
               disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || creatorReferenceUploadPending}
               size="sm"
-              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "seedance_2_5" || value === "wan_3_0").map((value) => {
-                const meta = getModelProviderInfo(value);
-                return {
-                  label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " — temporarily unavailable"}`,
-                  triggerLabel: getAIStudioVideoModelLabel(value),
-                  disabled: !isAIStudioVideoModelAvailable(value) || Boolean(startingFrame && !isHookStartingFrameVideoModel(value)),
-                  value,
-                  icon: meta.logo,
-                  badge: meta.badge,
-                  description: meta.description,
-                };
-              })}
-              value={model}
+              options={[...(startingFrame ? [{ value: "google_omni_direct", label: "Gemini Omni" }] : []), ...AI_STUDIO_VIDEO_MODELS.filter((value) => isAIStudioVideoModelAvailable(value) || value === model).map((value) => ({
+                label: getAIStudioVideoModelLabel(value),
+                disabled: !isAIStudioVideoModelAvailable(value) || Boolean(startingFrame && !isHookStartingFrameVideoModel(value)),
+                value,
+              }))]}
+              value={startingFrameMode ? "google_omni_direct" : model}
               onChange={(value) => {
                 if (isGenerating || referenceFilesPending || creatorReferenceUploadPending) return;
                 submissionKeyRef.current = null;
-                const nextModel = value as AIStudioVideoModel;
-                if (!isAIStudioVideoModelAvailable(nextModel) || startingFrame && !isHookStartingFrameVideoModel(nextModel)) return;
-                const durations = startingFrame ? hookStartingFrameVideoDurations(nextModel) : getAIStudioVideoDurations(nextModel);
-                if (startingFrame) {
-                  setDurationSeconds((workflowFormat === "hook" ? hookStartingFrameSourceDuration(nextModel, startingFrame.sourceDurationSeconds, startingFrame.durationSeconds) : startingFrame.durationSeconds === 6 ? 6 : hookStartingFrameDefaultDuration(nextModel)) as AIStudioVideoDuration);
-                } else if (!durations.includes(durationSeconds)) {
-                  setDurationSeconds(Math.min(Math.max(durationSeconds, durations[0]), durations[durations.length - 1]) as AIStudioVideoDuration);
-                }
-                if (value === "kling_3_0" && durationSeconds > 15) {
-                  setDurationSeconds(5);
-                }
-                if (!isAIStudioVideoResolutionSupported(nextModel, resolution)) {
-                  setResolution("720p");
-                }
-                setModel(nextModel);
+                selectVideoModel((value === "google_omni_direct" ? "google_omni" : value) as AIStudioVideoModel, value === "google_omni_direct");
               }}
             />
             {workflow ? durationSetting : qualitySetting}

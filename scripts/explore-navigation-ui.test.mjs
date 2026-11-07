@@ -452,6 +452,44 @@ test("idle catalog covers recover in place from errors, frozen time, browser pau
   assert.equal(watchdog, null);
 });
 
+test("a visible cover that stays frozen after the fast reload budget is spent recovers on its own, without focus, hover or refresh", () => {
+  const handlers = new Map(), videoHandlers = new Map(), pageHandlers = new Map(), windowHandlers = new Map();
+  let effect, observe, watchdog = null, loads = 0, now = 0, source = null;
+  const link = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const video = { preload: "none", paused: false, error: null, currentTime: 10, readyState: 4, closest: () => link,
+    get src() { return source; }, set src(value) { source = value; },
+    hasAttribute: () => source !== null, removeAttribute() { source = null; }, load() { loads++; }, pause() {},
+    play: async () => { video.paused = false; },
+    addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
+  const page = { visibilityState: "visible", activeElement: null, addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
+  const { useCoverPlayback, COVER_WATCHDOG_MS, COVER_MAX_RELOADS, COVER_RETRY_COOLDOWN_MS } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener: (name, fn) => windowHandlers.set(name, fn), removeEventListener: name => windowHandlers.delete(name) },
+    navigator: {}, document: page, Date: { now: () => now },
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout() { throw Error("Catalog covers must not wait"); }, clearTimeout() {},
+    setInterval(fn, delay) { assert.equal(delay, COVER_WATCHDOG_MS); watchdog = fn; return 1; }, clearInterval() { watchdog = null; },
+  });
+  useCoverPlayback("/cover.mp4", "a", true, true); const cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  // Two unchanged time samples reload once; the source never emits `playing`, so
+  // the fast budget is consumed exactly like a media pipeline that stayed dead.
+  const freeze = () => { watchdog(); watchdog(); watchdog(); };
+  for (let i = 0; i < COVER_MAX_RELOADS; i++) freeze();
+  assert.equal(loads, COVER_MAX_RELOADS, "the fast budget still bounds a source that could be offline");
+  now = COVER_RETRY_COOLDOWN_MS - 1; freeze();
+  assert.equal(loads, COVER_MAX_RELOADS, "the frozen cover does not hammer the source before the cooldown");
+  now = COVER_RETRY_COOLDOWN_MS; freeze();
+  assert.equal(loads, COVER_MAX_RELOADS + 1, "the visible cover probes the source again by itself");
+  assert.equal(source, "/cover.mp4");
+  // No pointerenter, focus, pageshow, online or page refresh was involved.
+  assert.equal(handlers.size > 0, true);
+  cleanup();
+  assert.equal(watchdog, null); assert.equal(handlers.size, 0); assert.equal(videoHandlers.size, 0);
+  assert.equal(pageHandlers.size, 0); assert.equal(windowHandlers.size, 0);
+});
+
 test("hover-only gallery previews never start a watchdog or play without interest", () => {
   const videoHandlers = new Map(), windowHandlers = new Map(), timers = new Map();
   let effect, observe, plays = 0, intervals = 0, source = null;

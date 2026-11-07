@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
-const endpoint = "https://mcp.getugcpilot.com/mcp";
+const endpoint = "https://vidmake.io/mcp";
 const firstPrompt = "Use Vidmake to check my connection, plan, credits, and available generation options. Do not generate anything yet.";
 const clients = [
   {
@@ -14,7 +14,7 @@ const clients = [
       "Start a new chat if the tools have not appeared, then try the connection-check prompt below. Install the beta plugin through your trusted plugin source to add its workflow skills.",
     ],
     docs: "https://learn.chatgpt.com/docs/extend/mcp",
-    command: "codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp\ncodex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write",
+    command: "codex mcp add ugc-pilot --url https://vidmake.io/mcp\ncodex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write",
   },
   {
     name: "ChatGPT", label: "Web and desktop",
@@ -42,7 +42,7 @@ const clients = [
       "Try the connection-check prompt below. If you use the direct command instead of the plugin, it connects the MCP without installing the bundled workflow skills.",
     ],
     docs: "https://code.claude.com/docs/en/plugins",
-    command: "claude mcp add --transport http ugc-pilot https://mcp.getugcpilot.com/mcp",
+    command: "claude mcp add --transport http ugc-pilot https://vidmake.io/mcp",
   },
 ];
 

@@ -1,38 +1,6 @@
-"use client";
+import type { ReactNode } from "react";
 
-import { Children, isValidElement, useState, useSyncExternalStore, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
-import styles from "./workflow-feedback.module.css";
-
-const subscribe = () => () => {};
-const clientHost = () => document.body;
-const serverHost = () => null;
-
-function feedbackText(children: ReactNode): string {
-  return Children.toArray(children).map(child => typeof child === "string" || typeof child === "number" ? String(child)
-    : isValidElement<{ children?: ReactNode }>(child) ? feedbackText(child.props.children) : "").join(" ");
-}
-function hasError(children: ReactNode): boolean {
-  return Children.toArray(children).some(child => isValidElement<{ role?: string; children?: ReactNode }>(child)
-    && (child.props.role === "alert" || hasError(child.props.children)));
-}
-
-/** Show feedback outside the editor's layout; dismissal never clears a request. */
+/** Keep workflow feedback in its own section and out of the results overlay. */
 export function WorkflowFeedback({ id, children, active = true }: { id: string; children: ReactNode; active?: boolean }) {
-  const host = useSyncExternalStore(subscribe, clientHost, serverHost);
-  const message = feedbackText(children);
-  return <>
-    <span id={id} className="sr-only">{message}</span>
-    {active && host && hasError(children) && message.trim() ? createPortal(<FeedbackNotice key={message} id={id}>{children}</FeedbackNotice>, host) : null}
-  </>;
-}
-
-function FeedbackNotice({ id, children }: { id: string; children: ReactNode }) {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
-  return <aside data-workflow-feedback data-feedback-id={id} aria-label="Workflow status" className={`${styles.notice} app-canvas`}>
-    <div className={styles.closeRow}><button type="button" className={styles.close} onClick={() => setDismissed(true)} aria-label="Dismiss workflow notification" title="Dismiss notification"><X aria-hidden="true" className="size-4" /></button></div>
-    <div className={styles.content}>{children}</div>
-  </aside>;
+  return <div id={id} hidden={!active}>{children}</div>;
 }

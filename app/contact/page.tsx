@@ -24,8 +24,8 @@ export default function ContactPage() {
             For product support, automatic carousel generation, video uploads,
             Instagram connection, scheduling, publishing, or account questions,
             contact{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-              support@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+              hello@vidmake.io
             </a>
             .
           </p>
@@ -35,8 +35,8 @@ export default function ContactPage() {
           <p>
             For privacy questions, data deletion requests, connected account
             deletion, or personal data requests, contact{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
-              privacy@getugcpilot.com
+            <a className="font-bold text-primary" href="mailto:privacy@vidmake.io">
+              privacy@vidmake.io
             </a>
             .
           </p>
@@ -50,14 +50,14 @@ export default function ContactPage() {
           <LegalList>
             <li>
               Support email:{" "}
-              <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
-                support@getugcpilot.com
+              <a className="font-bold text-primary" href="mailto:hello@vidmake.io">
+                hello@vidmake.io
               </a>
             </li>
             <li>
               Developer/admin email:{" "}
-              <a className="font-bold text-primary" href="mailto:admin@getugcpilot.com">
-                admin@getugcpilot.com
+              <a className="font-bold text-primary" href="mailto:admin@vidmake.io">
+                admin@vidmake.io
               </a>
             </li>
           </LegalList>

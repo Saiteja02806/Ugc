@@ -20,17 +20,16 @@ export function WorkflowCreationPanel({ kind, section, children, generation, cre
   const action = section === "edit" ? edit : section === "schedule" ? schedule : undefined;
   const preparing = Boolean(action?.busy || action?.processing);
   const editToolbar = section === "edit" && Boolean(actionContent);
-  const feedbackActive = Boolean(action ? action.error || action.recoveryAvailable : !createAction && generation?.error);
   return <section aria-label="Creation controls" data-section={section} className={cn(creation.controls, sections.controls)}>
     {navigation}
     {heading}
     {editToolbar ? <div data-workflow-edit-actions className={sections.editToolbar}>{actionContent}</div> : null}
     <div data-workflow-section-content className={creation.controlContent} role="region" aria-label="Workflow section settings">
-      {!editToolbar && !actionContent ? <WorkflowFeedback id={`${kind}-preview-limits`} active={feedbackActive}>
+      {!editToolbar && !actionContent ? <WorkflowFeedback id={`${kind}-preview-limits`}>
         <p role="status" className="sr-only">{createAction ? createAction.message : action ? action.message : generation ? generation.message : <>Local preview · not saved or connected.<span className="sr-only"> Generation, music, subtitles and scheduling are not connected. Video rendering is also not connected.</span></>}</p>
-        {action?.error ? <div className="space-y-1"><p role="alert" className="text-xs leading-5 text-destructive">{action.error}</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Refresh status</Button></div> : null}
-        {action?.recoveryAvailable && !action.error ? <><p role="alert" className="text-xs leading-5 text-muted">An earlier request needs confirmation. Check its saved result before trying again.</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Check saved requests</Button></> : null}
-        {generation?.error && section === "create" ? <div className="space-y-1"><p role="alert" className="text-xs leading-5 text-destructive">{generation.error}</p><Button type="button" variant="ghost" className="h-8 text-xs" onClick={generation.refreshStatus}>Refresh status</Button></div> : null}
+        {action?.error ? <div className="space-y-1"><p role="alert" className="sr-only">{action.error}</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Refresh status</Button></div> : null}
+        {action?.recoveryAvailable && !action.error ? <><p role="alert" className="sr-only">An earlier request needs confirmation. Check its saved result before trying again.</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Check saved requests</Button></> : null}
+        {!createAction && generation?.error && section === "create" ? <div className="space-y-1"><p role="alert" className="sr-only">{generation.error}</p><Button type="button" variant="ghost" className="h-8 text-xs" onClick={generation.refreshStatus}>Refresh status</Button></div> : null}
       </WorkflowFeedback> : null}
       {children}
     </div>

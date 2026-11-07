@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "Does Synthesia integrate with AI coding agents like Claude and Codex?",
-    answer: "Synthesia provides enterprise APIs, but lacks a Model Context Protocol (MCP) server. Vidmake provides a hosted multi-tool Streamable HTTP OAuth MCP server at https://mcp.getugcpilot.com/mcp for direct agent workflow execution.",
+    answer: "Synthesia provides enterprise APIs, but lacks a Model Context Protocol (MCP) server. Vidmake provides a hosted multi-tool Streamable HTTP OAuth MCP server at https://vidmake.io/mcp for direct agent workflow execution.",
   },
   {
     question: "When should a company use both Synthesia and Vidmake?",

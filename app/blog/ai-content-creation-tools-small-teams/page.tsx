@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     question: "Does Vidmake support AI UGC generation via MCP?",
-    answer: "Yes. Vidmake provides a hosted Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp with OAuth sign-in and 78 public tools for generating images, videos, speech, and edits directly inside Claude and Codex.",
+    answer: "Yes. Vidmake provides a hosted Streamable HTTP MCP server at https://vidmake.io/mcp with OAuth sign-in and 105 public tools for generating images, videos, speech, and edits directly inside Claude and Codex.",
   },
   {
     question: "How much does AI UGC for SaaS cost compared to hiring creators?",
@@ -183,7 +183,7 @@ export default function AiContentCreationToolsPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Yes. Vidmake has a hosted Streamable HTTP <ArticleLink href="/mcp">MCP server</ArticleLink> with OAuth sign-in and 78 public tools. Follow the setup guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>.
+                  Yes. Vidmake has a hosted Streamable HTTP <ArticleLink href="/mcp">MCP server</ArticleLink> with OAuth sign-in and 105 public tools. Follow the setup guides for <ArticleLink href="/blog/ugc-ads-with-claude-mcp">Claude</ArticleLink> and <ArticleLink href="/blog/ugc-videos-with-codex-mcp">Codex</ArticleLink>.
                 </>
               ),
             },
@@ -217,6 +217,12 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type and how to use them." },
           { href: "/mcp", title: "Vidmake MCP server", description: "Connect Claude, Codex, or ChatGPT to generate UGC assets." },
           { href: "/pricing", title: "Pricing", description: "Seven-day trial and monthly plan details." },
+          { href: "/blog/build-in-public-without-showing-face", title: "Build in public without showing your face", description: "Creator-style content without recording yourself on camera." },
+          { href: "/blog/from-zero-to-1k-mrr-tiktok", title: "From zero to $1k MRR with TikTok", description: "A founder growth path using short-form video." },
+          { href: "/blog/market-side-project-30-minutes-a-week", title: "Market a side project in 30 minutes a week", description: "A sustainable weekly content routine for founders." },
+          { href: "/blog/overcoming-founder-camera-anxiety", title: "Overcoming founder camera anxiety", description: "Make founder content without being on camera." },
+          { href: "/blog/product-hunt-launch-video-strategy", title: "Product Hunt launch video strategy", description: "Plan the video assets for a launch." },
+          { href: "/blog/zero-ad-spend-saas-growth-engine", title: "Zero-ad-spend SaaS growth engine", description: "Grow without paid ads using short-form content." },
         ]}
       />
     </VideoMarketingPage>

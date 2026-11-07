@@ -251,10 +251,28 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.equal(job.input.provider, "reapi");
     assert.deepEqual(job.input.referenceImageUrls, []);
     const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
-    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /starting image alone|face photos/);
+    // Omni's direct identity route is opt-in, so plain Omni refuses photos before any job.
+    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /Gemini Omni route|face photos/);
     const count = jobs.size;
-    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) })), /starting image alone|face photos/);
-    assert.equal(jobs.size,count);
+    // ReAPI models carry the approved frame as Image 1 of a reference job and
+    // the identity photos behind it, so Generate stays usable with both inputs.
+    await client({ createIdempotencyKey: () => "wan-frame-photos" }).generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) }));
+    const wanJob = [...jobs.values()].at(-1);
+    assert.equal(wanJob.input.model, "wan_3_0");
+    assert.equal(wanJob.input.startingFrameImageUrl, frame.url);
+    assert.deepEqual(wanJob.input.referenceImageUrls, ["https://storage.example.com/1.png", "https://storage.example.com/2.png"]);
+    assert.match(wanJob.input.hookIdea, /Images 2 through 3 are supporting facial identity/);
+    assert.equal(jobs.size, count + 1);
+    // Kling 3.0 has no reference mode: the approved frame animates alone and the
+    // unused photos are not uploaded.
+    const uploadsBeforeKling = uploads.length;
+    await client({ createIdempotencyKey: () => "kling-frame-photos" }).generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"kling_3_0",duration:4},true) }));
+    const klingJob = [...jobs.values()].at(-1);
+    assert.equal(klingJob.input.model, "kling_3_0");
+    assert.equal(klingJob.input.startingFrameImageUrl, frame.url);
+    assert.deepEqual(klingJob.input.referenceImageUrls, []);
+    assert.equal(uploads.length, uploadsBeforeKling);
+    assert.equal(jobs.size, count + 2);
   } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });
 
@@ -316,4 +334,31 @@ test("Talking Head image plus owned voice reaches real admission in reference mo
       ownedAssets.set(audioId,audio);ownedAssets.set(frame.assetId,image);approvedFrame={...approvedFrame,workflow:"talking_head"};
     }
   }finally{approvedFrame=null;if(previous===undefined)delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION=previous;}
+});
+
+
+test("direct Gemini opt-in freezes ordered owned identity references through real client and API", async () => {
+  const previous = process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;
+  process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = "true";
+  const frame = { assetId: "00000000-0000-4000-8000-000000000001", jobId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-car-story", url: "https://storage.example.com/opening.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Keep the source camera.", generateAudio: false };
+  approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, receipt: { version: 1 }, output: { width: 720, height: 1280, ratio: "9:16" } };
+  const photos = Array.from({length: 5}, (_, i) => ({ assetId: `00000000-0000-4000-8000-00000000001${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
+  for (const photo of photos) ownedAssets.set(photo.assetId, { id: photo.assetId, url: photo.url, user_id: "owner-a", collection: "image", status: "ready", deleted_at: null, mime_type: "image/png", file_size_bytes: 1024 });
+  try {
+    const input = draft({ startingFrame: frame, startingFramePhotos: photos, startingFrameMode: "first_frame_with_identity", settings: normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4, quantity: 1 }, true) });
+    await client({ uploadImage: async image => ({ url: image.url }) }).generate(input);
+    const job = [...jobs.values()][0];
+    assert.equal(job.input.provider, "gemini");
+    assert.equal(job.input.startingFrameMode, "first_frame_with_identity");
+    assert.equal(job.input.startingFrameImageUrl, frame.url);
+    assert.deepEqual(job.input.referenceImageUrls, photos.map(p => p.url));
+    assert.deepEqual(job.input.personReference, {version: 1, mainImageUrl: photos[0].url, supportingImageUrls: photos.slice(1).map(p => p.url)});
+    assert.deepEqual(job.input.ownedImageReferences.images.map(p => p.assetId), [frame.assetId, ...photos.map(p => p.assetId)]);
+    jobs.clear(); reservations.clear();
+    ownedAssets.delete(photos[0].assetId);
+    await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate(input), /own ready/);
+    assert.equal(jobs.size, 0); assert.equal(reservations.size, 0);
+    await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate({...input, startingFrameMode: undefined}), /Gemini Omni route/);
+    await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate({...input, settings: {...input.settings, model: "wan_3_0"}}), /direct Gemini Omni/);
+  } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });

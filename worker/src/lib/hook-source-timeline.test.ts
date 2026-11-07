@@ -11,10 +11,9 @@ test('new original-opening policy preserves source speed and reversible trim; le
 });
 
 
-test('new requests retain 4s and 5s sources and trim only generated excess; legacy compressed receipts still parse',()=>{
- for(const [source,generated,end] of [[4,4,4000],[5,5,5000],[4.3,5,4300],[2.3,4,2300]]){
-  const t=createHookSourceTimeline(receipt,source,generated,{preserveFullSource:true});assert.equal(t.trimEndMs,end);assert.equal(t.actionDurationSeconds,source);
+test('user-selected durations shorter than the source are accepted and trim to the chosen duration; legacy compressed receipts still parse',()=>{
+ for(const [source,generated,end,action] of [[4,4,4000,4],[5,5,5000,5],[4.3,5,4300,4.3],[2.3,4,2300,2.3],[4.1,4,4000,4],[8,3,3000,3]]){
+  const t=createHookSourceTimeline(receipt,source,generated);assert.equal(t.trimEndMs,end);assert.equal(t.actionDurationSeconds,action);
  }
- for(const source of [4,5])assert.throws(()=>createHookSourceTimeline(receipt,source,3,{preserveFullSource:true}),/preserve the full source/);
  const old=createHookSourceTimeline(receipt,5,3);assert.equal(parseHookSourceTimeline(old,receipt,3).trimEndMs,3000);
 });

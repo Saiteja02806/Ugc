@@ -18,7 +18,7 @@ export const EXPLORE_WORKFLOWS: readonly ExploreWorkflow[] = [
     destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-promo-31c869823edc.mp4", coverPoster: "/explore/covers/hook-video-promo-opening-5ac8b093365d.webp",
   },
   { id: "wall-of-text", title: "Text on screen", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-promo-e3d92b47d085.mp4", coverPoster: "/explore/covers/wall-of-text-promo-opening-fe608c4b40a0.webp" },
-  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-f0669968ed21.mp4", coverPoster: "/explore/covers/slideshow-promo-opening-7abfbba992d1.webp" },
+  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshow-promo-61d9b7aebe9a.mp4", coverPoster: "/explore/covers/slideshow-promo-opening-7abfbba992d1.webp" },
 ];
 
 // Creator Shows App on Phone remains hidden, including in development review.

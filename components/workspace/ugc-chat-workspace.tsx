@@ -241,6 +241,7 @@ export function ImageGenerationStudioPanel({
   active = true,
   creditCost = 1,
   creditsRemaining = null,
+  freeVideoPassAvailable = false,
   recreateView,
 }: {
   accessMessage?: string | null;
@@ -248,6 +249,7 @@ export function ImageGenerationStudioPanel({
   active?: boolean;
   creditCost?: number;
   creditsRemaining?: number | null;
+  freeVideoPassAvailable?: boolean;
   recreateView?: RecreateGenerationView;
 }) {
   const workflow = recreateView?.workflow;
@@ -390,8 +392,15 @@ export function ImageGenerationStudioPanel({
   const faceSwapCredits = getSlideshowFaceSwapCredits(faceSwap?.slideIds ?? [], faceSwap?.influencer?.id ?? null, creditCost);
   const totalRequiredCredits = requiredCredits + faceSwapCredits;
   const tooManySlides = Boolean(slideshowSlideCount && slideshowSlideCount > 10);
+  const coveredByFreeVideoPass =
+    freeVideoPassAvailable &&
+    workflowFormat === "slideshow" &&
+    quantity === 1 &&
+    !tooManySlides &&
+    (creditsRemaining === null || creditsRemaining < totalRequiredCredits);
   const hasInsufficientCredits =
     accessState === "pro" &&
+    !coveredByFreeVideoPass &&
     creditsRemaining !== null &&
     creditsRemaining < totalRequiredCredits;
   const faceSwapCreditWarning = !pendingSubmission && hasInsufficientCredits && faceSwapCredits > 0
@@ -404,6 +413,8 @@ export function ImageGenerationStudioPanel({
       : "Choose a slideshow reference. Its slides can receive this face."
     : generationLocked
     ? accessMessage
+    : coveredByFreeVideoPass
+      ? "Covered by your 1 free generation pass (1 complete slideshow)."
     : hasInsufficientCredits && !faceSwapCredits
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
       : `This generation uses ${requiredCredits} AI credit${requiredCredits === 1 ? "" : "s"}.`;
@@ -1275,6 +1286,7 @@ export function ImageGenerationStudioPanel({
       <AiStudioResults
         portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated images"
+        toolbarClassName={workflow ? "bg-card" : undefined}
         emptyContent={recreateView?.emptyContent}
         emptyContentClassName={workflow ? "justify-center" : recreateView ? "items-start pt-8" : undefined}
         emptyTitle="What will you create?"

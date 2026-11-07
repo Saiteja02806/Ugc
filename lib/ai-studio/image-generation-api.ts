@@ -405,6 +405,16 @@ export async function handleAIStudioImageGeneration(request: Request) {
     try {
       await reserveBillingCredits({
         amount: getGenerationCreditCost("image") * (slideshowFaceSwap ? 2 : 1),
+        ...((body?.exploreFormat === "slideshow") && quantity === 1
+          ? {
+              freeVideoPassContext: {
+                format: "slideshow" as const,
+                generationKey: baseIdempotencyKey,
+                kind: "generation" as const,
+                totalUnits: totalOutputs,
+              },
+            }
+          : {}),
         idempotencyKey,
         jobType: IMAGE_JOB_TYPE,
         userId: user.uid,

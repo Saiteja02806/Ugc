@@ -26,7 +26,7 @@ export function useStartingFramePhotos(frame: StartingFrameSelection | undefined
     const scope = { ownerId, jobId, assetId };
     void (async () => {
       await Promise.resolve();
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || revision.current !== current) return;
       setState({ key: loadKey, pending: true, error: null });
       try {
         const photoKey = startingFramePhotoKey(scope), raw = photoStore(tabScoped).getItem(photoKey);

@@ -676,3 +676,30 @@ test("a photo-only Change action does not promise an unavailable starting-frame 
   assert.equal(trigger.props.title, "Manage your person photos");
   assert.equal(h.all(tree, n => n.type === "TabsTab" && n.props.value === "starting").length, 0);
 });
+
+test("Vidmake Influencers button in the top header row switches to built-in creator photos and allows selecting them", async () => {
+  const h = harness(async () => ({ kind: "image", asset: { ...savedImage("vidmake-1"), fileName: "creator-reference-01.png", projectId: "explore-catalog-reference" } }));
+  let selected = [];
+  const opts = () => ({ selection: null, imageSelections: selected, onImagesChange: next => { selected = next; }, onChange: item => { selected = [...selected, item]; }, imagePurpose: "person", videoInputEnabled: false });
+  let tree = h.render(opts());
+  h.all(tree, n => n.type === "Dialog")[0].props.onOpenChange(true);
+  tree = h.render(opts());
+  const textOf = node => [node?.props?.children].flat(Infinity).filter(v => typeof v === "string").join("");
+  const headerButton = label => h.all(h.render(opts()), n => n.type === "Button" && textOf(n) === label)[0];
+  assert.ok(headerButton("Vidmake Influencers"));
+  assert.equal(headerButton("Vidmake Influencers").props["aria-pressed"], false);
+  headerButton("Vidmake Influencers").props.onClick();
+  tree = h.render(opts());
+  assert.equal(headerButton("Vidmake Influencers").props["aria-pressed"], true);
+  assert.equal(headerButton("Person photos").props["aria-pressed"], false);
+  assert.equal(headerButton("My Influencers").props["aria-pressed"], false);
+  assert.equal(h.all(tree, n => n.type === "TabsRoot")[0].props.value, "catalog");
+  assert.equal(h.all(tree, n => n.type === "TabsList")[0].props.style?.display, "none");
+  await h.all(tree, n => n.type === "Button" && n.props["aria-label"] === "Use creator 1")[0].props.onClick();
+  await flush();
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0].asset.id, "vidmake-1");
+  headerButton("Vidmake Influencers").props.onClick();
+  assert.equal(h.all(h.render(opts()), n => n.type === "TabsRoot")[0].props.value, "user");
+  h.cleanup();
+});

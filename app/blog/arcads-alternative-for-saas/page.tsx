@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I automate video generation in Vidmake with an AI coding assistant?",
-    answer: "Yes. Vidmake features an official Streamable HTTP MCP server at https://mcp.getugcpilot.com/mcp, allowing Claude Desktop and Codex CLI agents to research hooks, generate creator videos, and inspect render jobs directly.",
+    answer: "Yes. Vidmake features an official Streamable HTTP MCP server at https://vidmake.io/mcp, allowing Claude Desktop and Codex CLI agents to research hooks, generate creator videos, and inspect render jobs directly.",
   },
 ] as const;
 

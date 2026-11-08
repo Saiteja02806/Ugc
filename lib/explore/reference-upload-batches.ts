@@ -12,8 +12,12 @@ type ReferenceUploadItem = {
   uploadBatchId?: string; uploadBatchSequence?: number; isNew?: true;
 };
 
+type MarkedReferenceUpload<T> = Omit<T, "uploadBatchId" | "uploadBatchSequence" | "isNew"> & {
+  uploadBatchId?: string; uploadBatchSequence?: number; isNew?: true;
+};
+
 /** No wall clock or per-user seen state: a successfully published next batch retires New. */
-export function applyReferenceUploadBatches<T extends ReferenceUploadItem>(items: readonly T[], batches: readonly ReferenceUploadBatch[], includeStaged = false): T[] {
+export function applyReferenceUploadBatches<T extends ReferenceUploadItem>(items: readonly T[], batches: readonly ReferenceUploadBatch[], includeStaged = false): MarkedReferenceUpload<T>[] {
   const visible = new Map(items.filter(item => !item.archived).map(item => [item.id, item.format]));
   const eligible = batches.filter(batch => (batch.status === "published" || includeStaged) && batch.referenceIds.length > 0 &&
     batch.referenceIds.every(id => visible.get(id) === batch.format));

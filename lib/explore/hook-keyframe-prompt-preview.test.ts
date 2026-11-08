@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHookKeyframeDraft, updateHookKeyframeDraft } from "./hook-keyframe-draft.ts";
 import { hookKeyframeMotionCatalog, getHookKeyframeMotionPrompt } from "./hook-keyframe-motion.ts";
-import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
+import { adoptCurrentTalkingHeadMotion, adoptCurrentWhatMotion, getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
+import { getReferenceVideoPrompt } from "./reference-video-prompts.ts";
+import { startingFrameWorkflowDirections } from "./starting-frame-workflow.ts";
+import talkingSources from "./talking-head-source-manifest.json" with { type: "json" };
 import publicMiddle from "./hook-middle-frame-public.json" with { type: "json" };
 import { buildSourceMotionDirections, type MiddleFrameMotionEntry } from "./hook-middle-frame-motion.ts";
 import { formatGeneratedMotionPhases } from "./motion-phase-display.ts";
@@ -310,4 +313,80 @@ test("five reviewed mouth performances survive both sound modes and explicit use
       assert.equal(getHookKeyframePromptPreview({...base,motionInstructions}).directions,motionInstructions);
     }
   }
+});
+
+test("WHAT hooks stretch one what and do not ask the mouth to form it again", () => {
+  const ids = ["43f2c2d266d23e3af05875d8", "09c4e9b5de6a85f0f4c371da", "4ddf4d0f6dc4493f7eb6572f", "f216fd8e9397a7747a445ab7", "cdddd09fdd3b5a23d9949205"];
+  for (const suffix of ids) {
+    const referenceId = "explore-paired-hook-" + suffix;
+    const source = hookKeyframeMotionCatalog[referenceId];
+    const base = createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId, sourceSha256: source.sourceSha256 });
+    const preview = getHookKeyframePromptPreview(base, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
+    assert.equal(preview.animationError, null);
+    assert.deepEqual(preview.directions.match(/\bwhat\b/gi), ["what"]);
+    assert.match(preview.directions, /Stretch one what/);
+    assert.match(preview.directions, /form it only this once/);
+    assert.match(preview.directions, /keep the AH open and held/);
+    assert.doesNotMatch(preview.directions, /form that one word|mouth the word what|no voice is produced|Open the mouth again|mouth opens in surprise/);
+  }
+  const hook26Plan = hookKeyframeMotionCatalog["explore-paired-hook-09c4e9b5de6a85f0f4c371da"];
+  const unframed26 = getHookKeyframePromptPreview(createHookKeyframeDraft({
+    ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111",
+    referenceId: "explore-paired-hook-09c4e9b5de6a85f0f4c371da", sourceSha256: hook26Plan.sourceSha256,
+  }), "hook", undefined, undefined, undefined, hook26Plan.sourceDurationSeconds);
+  assert.match(unframed26.directions, /Hold sunglasses over eyes with fingers at temple/);
+  assert.match(unframed26.directions, /Keep glasses on while lips purse/);
+  assert.match(unframed26.directions, /face shape, not another word/);
+  const hook26 = hookKeyframeMotionCatalog["explore-paired-hook-09c4e9b5de6a85f0f4c371da"];
+  const framed = getHookKeyframePromptPreview(updateHookKeyframeDraft(createHookKeyframeDraft({
+    ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111",
+    referenceId: "explore-paired-hook-09c4e9b5de6a85f0f4c371da", sourceSha256: hook26.sourceSha256,
+  }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } }), "hook", undefined, undefined, undefined, hook26.sourceDurationSeconds);
+  assert.equal(framed.animationError, null);
+  assert.match(framed.directions, /Hold sunglasses over eyes with fingers at temple/);
+  assert.deepEqual(framed.directions.match(/\bwhat\b/gi), ["what"]);
+  assert.match(framed.directions, /form it only this once/);
+  assert.match(framed.directions, /face shape, not another word/);
+  assert.doesNotMatch(framed.directions, /mouth the word what|form that one word|mouth opens in surprise|Open the mouth again/);
+  for (const suffix of ids) {
+    const referenceId = "explore-paired-hook-" + suffix;
+    const source = hookKeyframeMotionCatalog[referenceId];
+    const recreate = getReferenceVideoPrompt(referenceId, `https://example.test/${source.sourceSha256}.mp4`);
+    assert.ok(recreate);
+    assert.equal(recreate.match(/\bwhat\b/gi)?.length, 1);
+    assert.match(recreate, /form it only this once/);
+    assert.doesNotMatch(recreate, /Open the mouth again|mouth opens in surprise|form that one word/);
+  }
+  const stale = "PHASE [0–0.34]: Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced.";
+  const refreshed = adoptCurrentWhatMotion(stale, "explore-paired-hook-f216fd8e9397a7747a445ab7", hookKeyframeMotionCatalog["explore-paired-hook-f216fd8e9397a7747a445ab7"].sourceSha256);
+  assert.match(refreshed, /form it only this once/);
+  assert.equal(refreshed.match(/\bwhat\b/gi)?.length, 1);
+  assert.equal(adoptCurrentWhatMotion("My own movement.", "explore-paired-hook-f216fd8e9397a7747a445ab7", hookKeyframeMotionCatalog["explore-paired-hook-f216fd8e9397a7747a445ab7"].sourceSha256), "My own movement.");
+});
+
+test("Talking Head Recreate sends the selected clip's scene prompt", () => {
+  const generic = startingFrameWorkflowDirections("talking_head");
+  for (const referenceId of ["talking-kamile-car-what", "talking-carla-eatsss-hook-v2", "talking-taliameals-hook-v2"]) {
+    const sourceSha256 = talkingSources.items.find(item => item.id === referenceId)!.sourceSha256;
+    const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId, sourceSha256 });
+    const preview = getHookKeyframePromptPreview(draft, "talking_head");
+    assert.equal(preview.animationError, null);
+    assert.match(preview.directions, /Opening at t=0/);
+    assert.doesNotMatch(preview.directions, /subtle gestures and a stable composition/);
+    assert.match(preview.animationPrompt!, /Opening at t=0/);
+    assert.match(preview.animationPrompt!, /Follow only the user's own script|user's own spoken message|speak the user's own script/);
+    const withPhoto = getHookKeyframePromptPreview(updateHookKeyframeDraft(draft, { imageAssetIds: ["11111111-1111-4111-8111-111111111111"] }), "talking_head");
+    assert.match(withPhoto.animationPrompt!, /Image 1 controls the scene/);
+    assert.match(withPhoto.animationPrompt!, /Opening at t=0/);
+    assert.equal(getHookKeyframePromptPreview({ ...draft, motionInstructions: "My own movement." }, "talking_head").directions, "My own movement.");
+    const refreshed = adoptCurrentTalkingHeadMotion(generic, referenceId, sourceSha256);
+    assert.match(refreshed, /Opening at t=0/);
+    assert.equal(adoptCurrentTalkingHeadMotion("My own movement.", referenceId, sourceSha256), "My own movement.");
+  }
+  const car = talkingSources.items.find(item => item.id === "talking-kamile-car-what")!;
+  const mismatch = getHookKeyframePromptPreview(createHookKeyframeDraft({
+    ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: car.id, sourceSha256: "0".repeat(64),
+  }), "talking_head");
+  assert.match(mismatch.directions, /subtle gestures and a stable composition/);
+  assert.equal(adoptCurrentTalkingHeadMotion(generic, car.id, "0".repeat(64)), generic);
 });

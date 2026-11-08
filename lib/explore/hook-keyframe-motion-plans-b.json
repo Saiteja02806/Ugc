@@ -1791,7 +1791,7 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.34444433333333335]: Hold furrowed-brow skeptical gaze with hand at chin and lower lip. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0–0.34444433333333335]: Hold furrowed-brow skeptical gaze with hand at chin and lower lip. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
           },
           {
             "phase": "middle",
@@ -1819,7 +1819,7 @@
         "constraints": [
           "Keep the hand low at the lip rather than covering the eyes.",
           "Do not move away to a room or bed view.",
-          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+          "Do not form that word a second time."
         ]
       },
       "review": {
@@ -1850,15 +1850,15 @@
       "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
       "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
       "plan": {
-        "openingState": "The reclining performer wears a secure white hair towel, with wide eyes, raised brows and a dropped open jaw in a silent WHAT shock.",
+        "openingState": "The reclining performer wears a secure white hair towel, with wide eyes, raised brows and a dropped open jaw in a silent open-mouth shock.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.34]: Hold the towel, wide eyes, raised brows and the dropped open jaw in a silent WHAT shock; do not smile. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0–0.34]: Hold the towel, wide eyes, raised brows and the dropped open jaw in a shocked open mouth; do not smile. Stretch one what across the open jaw, and form it only this once: start the W now and keep the AH open and held. Do not land the T in this beat."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.34–0.68]: Keep the jaw open with a small head movement; do not purse the lips or smile yet. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0.34–0.68]: Keep the jaw open with a small head movement; do not purse the lips or smile yet. Keep the same AH held, and land the T only as the smile begins. Do not form that word a second time."
           },
           {
             "phase": "ending",
@@ -1871,7 +1871,7 @@
           "Keep the hands outside the picture.",
           "Do not shift away to the furniture or remove the towel.",
           "Do not start with a purse or a smile.",
-          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+          "Do not form that word a second time."
         ]
       },
       "review": {

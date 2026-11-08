@@ -595,11 +595,11 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     <Button type="button" size="lg" className="h-10 px-4 font-semibold" disabled={output ? locked || generationBusy : saveDisabled} onClick={output ? continueToSchedule : () => void save(true)}>{output ? "Review post" : busy ? "Saving…" : pending ? "Resume & review post" : "Save & review post"}<ArrowRight size={16} aria-hidden="true" /></Button>
     {previewActions}
   </div>;
-  const statusMessage = busy ? saveProgress ?? "Saving your slideshow…" : restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? null : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling.";
-  const feedback = <div className={textStyles.saveFeedback}>
+  const statusMessage = busy ? saveProgress ?? "Saving your slideshow…" : restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? null : output ? "Your slideshow is saved in Library." : !savingEnabled ? null : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling.";
+  const feedback = error || statusMessage ? <div className={textStyles.saveFeedback}>
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {statusMessage ? <p role="status" className="text-xs leading-5 text-muted">{statusMessage}</p> : null}
-  </div>;
+  </div> : null;
   return <>
     <input ref={uploadInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label="Upload slides" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, false); }} />
     <input ref={replaceInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Replace slideshow image" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, true); }} />
@@ -626,7 +626,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     </div> : <div className={textStyles.emptyInspector}><p>Use Add slides in your slideshow to choose images, then select a slide to edit its text.</p></div>}
     {!previewActive && !actionsTarget ? <>{actions}{feedback}</> : null}
   </div>, controlsTarget) : null}{previewActive && resultsTarget ? createPortal(<section aria-label="Slideshow edit preview" className={textStyles.editorPreview}>
-    <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2><p>{previewUrls.length ? `${previewUrls.length} slides · ${active ? "Select a slide to edit" : "Preview your current sequence"}` : "Build your slide sequence"}</p></div></header>
+    <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2></div></header>
     {feedback}
     <div className={textStyles.previewCanvas}>
     {previewUrls.length ? <>{previewUrls[Math.min(previewIndex, previewUrls.length - 1)] ? <div className={textStyles.preview}>

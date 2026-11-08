@@ -206,12 +206,12 @@
 .demoSourceTileIcon { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
 .demoSoundDetails { border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 10px; padding: 12px; background: var(--card); }
 .demoSoundDetails > summary { cursor: pointer; min-height: 24px; font-size: 14px; font-weight: 500; }
-.demoSoundDetails > summary span { float: right; margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.demoSoundDetails > summary > span:not([class]) { float: right; margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
 .demoSoundDetails > summary .summaryControl { float: right; margin-left: 8px; color: inherit; font-size: 14px; font-weight: 500; }
 .demoSoundDetails > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
 .backgroundAudioSwitch { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
-.backgroundAudioTrack { display: flex; align-items: center; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }
-.backgroundAudioThumb { width: 18px; height: 18px; flex: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform 160ms ease; }
+.backgroundAudioTrack { display: flex; align-items: center; justify-content: flex-start; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }
+.backgroundAudioThumb { width: 18px; height: 18px; flex: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transform: translateX(0); transition: transform 160ms ease; }
 .backgroundAudioSwitch[aria-checked="true"] .backgroundAudioTrack { background: var(--foreground); }
 .backgroundAudioSwitch[aria-checked="true"] .backgroundAudioThumb { transform: translateX(20px); }
 .backgroundAudioSwitch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

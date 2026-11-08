@@ -176,10 +176,8 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
       </> : <p id={`${kind}-demo-audio-help`}>Add a demo to choose its {demoAudioWord}.</p>}
     </section>
     <section aria-label="Background music" className={creation.editGroup}>
-      <details className={creation.demoSoundDetails}>
-        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) event.preventDefault(); }}>Background music {connected && options && onOptionsChange ? <button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} className={cn(creation.backgroundAudioSwitch, creation.summaryControl)} onClick={event => { event.preventDefault(); event.stopPropagation(); onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic }); }}>
-          <span className={creation.backgroundAudioTrack} aria-hidden="true"><span className={creation.backgroundAudioThumb} /></span>
-        </button> : <span className={creation.summaryControl}><UnavailableToggle label="Background music" descriptionId={unavailableId} hideLabel /></span>}</summary>
+      <details open className={creation.demoSoundDetails}>
+        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) { event.preventDefault(); return; } event.preventDefault(); const details = event.currentTarget.parentElement; if (details && "open" in details) details.open = true; }}>Background music <FinishingSwitch label="Background music" checked={Boolean(connected && options?.backgroundMusic)} disabled={!connected || !options || !onOptionsChange || editingBusy || Boolean(backgroundMusic?.attachment.loading)} describedBy={unavailableId} onToggle={connected && options && onOptionsChange ? () => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic }) : undefined} /></summary>
         {backgroundMusic ? <div className="mt-3 space-y-3">
         <p className="text-xs text-muted">{backgroundScope === "demo" ? "Plays during the demo only. The opening stays without added music." : "Plays across your video. Turn on to use the default track, or choose your own music."}</p>
         <div className="flex flex-wrap gap-2">
@@ -218,8 +216,8 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
     </section>
 
     <section aria-label="Subtitles" className={creation.editGroup}>
-      <details className={creation.demoSoundDetails}>
-        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) event.preventDefault(); }}>Subtitles {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className={cn("h-7 px-3 text-xs", creation.summaryControl)} onClick={event => { event.preventDefault(); onOptionsChange({ ...options, subtitles: !options.subtitles }); }}>{options.subtitles ? "On" : "Off"}</Button> : <span className={creation.summaryControl}><UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel /></span>}</summary>
+      <details open className={creation.demoSoundDetails}>
+        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) { event.preventDefault(); return; } event.preventDefault(); const details = event.currentTarget.parentElement; if (details && "open" in details) details.open = true; }}>Subtitles <FinishingSwitch label="Auto subtitles" checked={Boolean(connected && options?.subtitles)} disabled={!connected || !options || !onOptionsChange || editingBusy} describedBy={unavailableId} onToggle={connected && options && onOptionsChange ? () => onOptionsChange({ ...options, subtitles: !options.subtitles }) : undefined} /></summary>
         <div className="mt-3 space-y-3">
       {options?.subtitles ? <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
         <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label}</span></summary>
@@ -273,15 +271,12 @@ function demoAudioTiming(demoSeconds: number | null | undefined, audioSeconds: n
   }
 }
 
-/** Disabled controls cannot imply output changes before rendering is connected. */
-function UnavailableToggle({ label, descriptionId, hideLabel = false }: { label: string; descriptionId: string; hideLabel?: boolean }) {
-  return <div className={creation.finishRow}>
-    <span className={hideLabel ? "sr-only" : "text-sm font-medium"}>{label}</span>
-    <div className="flex shrink-0 items-center gap-2">
-      <Button type="button" role="switch" aria-label={label} aria-checked={false} aria-describedby={descriptionId} disabled variant="muted" className="h-6 w-10 rounded-full bg-muted/30 p-0.5">
-        <span className="mr-auto size-5 rounded-full bg-foreground/70" aria-hidden="true" />
-      </Button>
-      <span className="text-xs text-muted">Off</span>
-    </div>
-  </div>;
+/** The knob sits on the left when off and the right when on. A centered knob reads as neither. */
+function FinishingSwitch({ label, checked, disabled = false, describedBy, onToggle }: { label: string; checked: boolean; disabled?: boolean; describedBy: string; onToggle?: () => void }) {
+  return <span className={cn(creation.summaryControl, "inline-flex items-center gap-2")}>
+    <button type="button" role="switch" aria-label={label} aria-checked={checked} aria-describedby={describedBy} disabled={disabled} className={creation.backgroundAudioSwitch} onClick={onToggle ? event => { event.preventDefault(); event.stopPropagation?.(); onToggle(); } : undefined}>
+      <span className={creation.backgroundAudioTrack} aria-hidden="true"><span className={creation.backgroundAudioThumb} /></span>
+    </button>
+    <span className="text-xs text-muted">{checked ? "On" : "Off"}</span>
+  </span>;
 }

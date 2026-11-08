@@ -51,6 +51,30 @@
         "explore-paired-wall_text-7a8441666cf28f6b5bcc37e8",
         "explore-paired-wall_text-c2db42671f78f22cc195fbb3"
       ]
+    },
+    {
+      "id": "explore-20261108-hook-reclassification",
+      "format": "hook",
+      "sequence": 3,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-hook-d426f4a2248708f61298bf7f",
+        "explore-paired-hook-0dd34d729ad756dbd87888cc",
+        "explore-paired-hook-6030a6af486760af6b5d64b1",
+        "explore-paired-hook-573ce74ab0b1421f00e93add"
+      ]
+    },
+    {
+      "id": "explore-20261108-talking-head-kamile",
+      "format": "talking_head",
+      "sequence": 1,
+      "status": "published",
+      "referenceIds": [
+        "talking-kamile-mirror-discovery",
+        "talking-kamile-kitchen-discovery",
+        "talking-kamile-car-what",
+        "talking-kamile-lowlight-what"
+      ]
     }
   ]
 }

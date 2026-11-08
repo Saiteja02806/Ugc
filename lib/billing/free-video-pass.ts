@@ -281,8 +281,20 @@ export async function inspectFreeVideoPassCode(
     .eq("code", code)
     .maybeSingle();
 
-  if (error && isMissingFreeVideoPassTableError(error)) {
-    return inspectFreeVideoPassCodeInFallbackLedger(code, viewerUserId);
+  if (
+    (error && isMissingFreeVideoPassTableError(error)) ||
+    (!error && !data)
+  ) {
+    const fallback = await inspectFreeVideoPassCodeInFallbackLedger(
+      code,
+      viewerUserId,
+    );
+    if (fallback.state !== "invalid") {
+      return fallback;
+    }
+    if (error && isMissingFreeVideoPassTableError(error)) {
+      return fallback;
+    }
   }
 
   if (error) {
@@ -384,8 +396,18 @@ export async function claimFreeVideoPassLink(params: {
     p_user_id: userId,
   });
 
-  if (error && isMissingFreeVideoPassTableError(error)) {
-    return claimFreeVideoPassLinkInFallbackLedger({ code, db, userId });
+  if (
+    error &&
+    (isMissingFreeVideoPassTableError(error) ||
+      (error.message ?? "").includes("free_video_pass_not_found"))
+  ) {
+    try {
+      return await claimFreeVideoPassLinkInFallbackLedger({ code, db, userId });
+    } catch (fbErr) {
+      if (fbErr instanceof FreeVideoPassError && fbErr.status !== 404) {
+        throw fbErr;
+      }
+    }
   }
 
   if (!error && data) {
@@ -457,15 +479,11 @@ export async function getUserFreeVideoPass(
       .limit(1)
       .maybeSingle();
 
-    if (error && isMissingFreeVideoPassTableError(error)) {
-      return await getUserFreeVideoPassFromFallbackLedger(trimmed, db);
+    if (data && !error) {
+      return await reconcileAndFormatPass(data as FreeVideoPassRow, db);
     }
 
-    if (error || !data) {
-      return null;
-    }
-
-    return await reconcileAndFormatPass(data as FreeVideoPassRow, db);
+    return await getUserFreeVideoPassFromFallbackLedger(trimmed, db);
   } catch {
     return null;
   }
@@ -538,7 +556,10 @@ export async function reserveFreeVideoPassCredits(params: {
     .limit(1)
     .maybeSingle();
 
-  if (linkError && isMissingFreeVideoPassTableError(linkError)) {
+  if (
+    (linkError && isMissingFreeVideoPassTableError(linkError)) ||
+    (!linkError && !rawLink)
+  ) {
     return reserveFreeVideoPassCreditsInFallbackLedger({
       amount,
       context,

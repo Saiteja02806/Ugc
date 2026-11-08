@@ -147,12 +147,13 @@ test("compact Change directly uses the full dialog and keeps frame/identity role
   assert.equal(h.selectedFrames.at(-1).assetId, "other-frame");
 });
 
-test("the compact starting-frame tile stays large and has no confusing caption", () => {
+test("the compact starting-frame tile stays readable and has no confusing caption", () => {
   const references = readFileSync(new URL("../components/explore/format-generation-references.tsx", import.meta.url), "utf8");
   const previewCss = readFileSync(new URL("../components/explore/workflow-reference-preview.module.css", import.meta.url), "utf8");
   const layoutCss = readFileSync(new URL("../components/explore/workflow-video-layout.module.css", import.meta.url), "utf8");
   assert.doesNotMatch(references, /Scene & pose/);
-  assert.match(previewCss, /\.startingFrameCard\.startingFrameCard \{[^}]*calc\(360px \* var\(--starting-frame-ratio/);
+  assert.match(previewCss, /\.startingFrameCard\.startingFrameCard \{[^}]*calc\(240px \* var\(--starting-frame-ratio/);
+  assert.doesNotMatch(previewCss, /calc\(360px \* var\(--starting-frame-ratio/);
   assert.match(layoutCss, /\[data-reference-columns="1"\]\:has\(\[data-starting-frame\]\)/);
 });
 

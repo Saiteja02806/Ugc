@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { useAuth } from "@/contexts/auth-context";
 import { freeVideoPassShowsRemainingGeneration } from "@/lib/billing/free-video-pass-badge";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -60,11 +61,27 @@ export function ExploreFreeVideoPassBadge({
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const available = useSyncExternalStore(
+  const subscription = useBillingSubscription();
+  const cookieAvailable = useSyncExternalStore(
     subscribeToFreeVideoPassCookie,
     hasFreeVideoPassActiveCookie,
     getServerFreeVideoPassSnapshot,
   );
+
+  const subShowsRemaining =
+    !subscription.data?.isActive &&
+    freeVideoPassShowsRemainingGeneration(
+      subscription.data?.freeVideoPass,
+      subscription.data?.isActive,
+    );
+
+  const available = cookieAvailable || subShowsRemaining;
+
+  useEffect(() => {
+    if (subShowsRemaining && !cookieAvailable) {
+      syncFreeVideoPassUiCookie(true);
+    }
+  }, [subShowsRemaining, cookieAvailable]);
 
   useEffect(() => {
     const uid = user?.uid;

@@ -23,6 +23,14 @@ const replacements = [
 ];
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 
+test("the Kamile upload leads the Talking Head gallery and is the only New batch", () => {
+  const kamile = ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"];
+  const visible = visibleTalkingHeadReferences(getTalkingHeadReferences());
+  assert.deepEqual(visible.slice(0, kamile.length).map(item => item.id), kamile);
+  assert.deepEqual(visible.filter(item => item.isNew).map(item => item.id), kamile);
+  assert.equal(visible.find(item => item.id === "talking-taliameals-hook-v2").isNew, undefined);
+});
+
 test("the gallery replaces exactly four demo sources with hosted opening-only versions", () => {
   const all = getTalkingHeadReferences();
   const visible = visibleTalkingHeadReferences(all);

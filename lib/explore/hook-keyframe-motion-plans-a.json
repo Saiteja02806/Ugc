@@ -2195,7 +2195,7 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.46]: Maintain the eyeglass-corner grip at screen-left, eyes wide and gaze down toward screen-left, mouth open. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0–0.46]: Maintain the eyeglass-corner grip at screen-left, eyes wide and gaze down toward screen-left, mouth open. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
           },
           {
             "phase": "middle",
@@ -2203,7 +2203,7 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.70–0.85]: Open the mouth again and continue the wide-eyed sideways stare, grip unchanged. Release the rounded lips and lower the jaw into the earlier open shape, with the lower lip relaxing downward. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0.70–0.85]: The one word has already finished. Keep the wide-eyed sideways stare and the eyeglass grip. Let the rounded lips relax and the jaw settle into the earlier open look, with the lower lip easing downward. This is a face shape, not another word."
           },
           {
             "phase": "ending",
@@ -2215,7 +2215,7 @@
         "constraints": [
           "Do not lift the eyeglasses onto the head.",
           "Keep the frame passing continuously in front of the face during removal.",
-          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+          "Do not form that word a second time."
         ]
       },
       "review": {
@@ -2369,32 +2369,36 @@
       "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
       "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
       "plan": {
-        "openingState": "The performer leans close wearing narrow brown sunglasses, with the screen-left hand holding their outer corner, mouth open and brows raised.",
+        "openingState": "Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.59]: Hold the sunglasses at eye level with the screen-left hand, mouth open and brows raised; do not pull them off yet. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0–0.336734693878]: Hold sunglasses over eyes with fingers at temple and partly open mouth. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.59–0.68]: Pull the sunglasses down and off the eyes toward screen-left; keep the eyes widening behind the frames."
+            "action": "PHASE [0.336734693878–0.612244897959]: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly. Progress from the open jaw to forward-rounded lips with a small circular opening; briefly narrow the opening while keeping the sunglass grip."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.68–0.89]: Hold the bare-eyed cheeky pout with high brows and a small head tilt, lips slightly parted; keep the sunglasses below the face."
+            "action": "PHASE [0.612244897959–0.704081632653]: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes. Keep the lips rounded as the sunglasses pass away from the eyes."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.704081632653–0.857142857143]: Look slightly screen-right then toward camera and widen the eyes. The one word has already finished, so keep a surprised face: the jaw rests in a larger open look, then the lips begin to narrow. This is a face shape, not another word."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.89–1]: Open the mouth wide into a final wide-eyed WHAT shock and hold it to the lens. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0.857142857143–1]: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens. Let the lips settle into a smaller partly open shape with the brows still questioning."
           }
         ],
-        "camera": "Maintain the close portrait perspective with subtle natural drift.",
-        "endingState": "The sunglasses are off the eyes and below the face; the performer holds a wide-eyed, open-mouth WHAT shock.",
+        "camera": "Fixed close portrait phone framing against plain beige wall; only small head/phone movement.",
+        "endingState": "Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.",
         "constraints": [
           "Keep the sunglasses off the eyes and off the head.",
-          "Do not smile before the final WHAT shock.",
+          "Do not smile before the final surprised face.",
           "Do not add a screen recording or app UI.",
-          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+          "Do not form that word a second time."
         ]
       },
       "review": {
@@ -2519,7 +2523,7 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.58]: Hold the frame at mouth level with the temple arm between the lips; keep the eyes wide, brows raised and the jaw open around it. Do not remove the stem. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0–0.58]: Hold the frame at mouth level with the temple arm between the lips; keep the eyes wide, brows raised and the jaw open around it. Do not remove the stem. Stretch one what around the stem, and form it only this once: start the W now and keep the AH open and held. Do not land the T while the jaw stays open."
           },
           {
             "phase": "middle",
@@ -2527,16 +2531,16 @@
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.78–1]: Open the jaw wider around the stem into a stunned WHAT reaction; keep the stem in the mouth and hold the stare. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+            "action": "PHASE [0.78–1]: Open the jaw wider around the stem into a stunned open-mouth reaction; keep the stem in the mouth and hold the stare. Keep the same AH held, and land the T only at the end of this hold. Do not form that word a second time."
           }
         ],
         "camera": "Keep the close portrait camera steady.",
-        "endingState": "The stem remains between the lips while the jaw is open in a stunned WHAT stare.",
+        "endingState": "The stem remains between the lips while the jaw is open in a stunned stare.",
         "constraints": [
           "Keep the temple arm in the mouth for the whole clip.",
           "Do not put the sunglasses on the eyes or head.",
           "Do not turn the stem into a drinking prop.",
-          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
+          "Do not form that word a second time."
         ]
       },
       "review": {

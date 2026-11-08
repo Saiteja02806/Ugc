@@ -291,13 +291,13 @@ test("Hook starting-frame duration shows a compact auto-cut hint with duration d
   composer = h.render().composer;
   const hint = duration().props.fieldHint;
   assert.match(hint.props.className, /w-full/);
-  assert.match(hint.props.className, /justify-between/);
-  assert.equal(hint.props.children[0].props.children, "Auto cut at 2.5s");
+  assert.match(hint.props.className, /justify-end/);
+  assert.ok(!JSON.stringify(hint).includes("Auto cut at"));
   const composerSource = readFileSync(new URL("../components/generation/ai-studio-composer.tsx", import.meta.url), "utf8");
   const creationCss = readFileSync(new URL("../components/explore/workflow-creation.module.css", import.meta.url), "utf8");
   assert.match(composerSource, /creation\.fieldHint/);
   assert.match(creationCss, /\.settingField > \.fieldHint\s*\{[^}]*width:\s*100%/);
-  const popover = hint.props.children[1];
+  const popover = Array.isArray(hint.props.children) ? hint.props.children[0] : hint.props.children;
   const trigger = popover.props.children[0];
   const content = popover.props.children[1];
   assert.equal(trigger.type, "PopoverTrigger");

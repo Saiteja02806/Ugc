@@ -1,16 +1,23 @@
-import type { RecreateFormat, RecreateReference } from "./recreate-types.ts";
+import type { RecreateFormat } from "./recreate-types.ts";
+
+export type ReferenceUploadFormat = RecreateFormat | "talking_head";
 
 export type ReferenceUploadBatch = {
-  id: string; format: RecreateFormat; sequence: number;
+  id: string; format: ReferenceUploadFormat; sequence: number;
   status: "staged" | "published"; referenceIds: readonly string[];
 };
 
+type ReferenceUploadItem = {
+  id: string; format: ReferenceUploadFormat; archived?: true;
+  uploadBatchId?: string; uploadBatchSequence?: number; isNew?: true;
+};
+
 /** No wall clock or per-user seen state: a successfully published next batch retires New. */
-export function applyReferenceUploadBatches(items: readonly RecreateReference[], batches: readonly ReferenceUploadBatch[], includeStaged = false): RecreateReference[] {
+export function applyReferenceUploadBatches<T extends ReferenceUploadItem>(items: readonly T[], batches: readonly ReferenceUploadBatch[], includeStaged = false): T[] {
   const visible = new Map(items.filter(item => !item.archived).map(item => [item.id, item.format]));
   const eligible = batches.filter(batch => (batch.status === "published" || includeStaged) && batch.referenceIds.length > 0 &&
     batch.referenceIds.every(id => visible.get(id) === batch.format));
-  const latest = new Map<RecreateFormat, ReferenceUploadBatch>();
+  const latest = new Map<ReferenceUploadFormat, ReferenceUploadBatch>();
   const membership = new Map<string, ReferenceUploadBatch>();
   for (const batch of eligible) {
     if (!Number.isSafeInteger(batch.sequence) || batch.sequence < 1) throw new Error("Invalid reference upload sequence.");

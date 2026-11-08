@@ -47,7 +47,8 @@ function harness(code, exportName) {
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
-  vm.runInNewContext(ts.transpileModule(code, { fileName: "panel.tsx", compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, { exports: exported, require: (name) => {
+  class Element {}
+  vm.runInNewContext(ts.transpileModule(code, { fileName: "panel.tsx", compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, { exports: exported, Element, require: (name) => {
     assert.ok(name in imports, `Unexpected import ${name}`);
     return imports[name];
   }, Error });
@@ -124,7 +125,14 @@ test("unfinished finishing tools remain off, disabled and explained", () => {
     assert.equal(control.props["aria-checked"], false);
     assert.equal(control.props.onClick, undefined);
     assert.equal(control.props["aria-describedby"], "hook-finishing-unavailable");
+    const track = nodes(control).find(node => String(node.props.className).includes("backgroundAudioTrack"));
+    assert.ok(track, "the switch knob lives in the track");
+    assert.ok(nodes(track).some(node => String(node.props.className).includes("backgroundAudioThumb")), "the knob is a separate thumb");
   }
+  assert.match(styles, /\.backgroundAudioThumb \{[^}]*transform: translateX\(0\)/);
+  assert.match(styles, /\[aria-checked="true"\] \.backgroundAudioThumb \{ transform: translateX\(20px\)/);
+  assert.match(styles, /\.demoSoundDetails > summary > span:not\(\[class\]\)/);
+  assert.doesNotMatch(styles, /\.demoSoundDetails > summary span \{/);
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Scheduling"), undefined);
   assert.match(text(tree), /Music and subtitle rendering are not connected in this local preview/);
   assert.match(text(tree), /English · up to 60 seconds total/);
@@ -141,7 +149,13 @@ test("background music has a compact picker, scope, volume, playback and removal
   assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.attachment === demoAudio));
   const musicRegion = nodes(tree).find(n => n.type === "section" && n.props?.["aria-label"] === "Background music");
   const musicContainer = nodes(musicRegion).find(n => n.type === "details" && String(n.props.className).includes("demoSoundDetails"));
-  assert.equal(musicContainer.props.open, undefined, "background music stays closed until the container is opened");
+  assert.equal(musicContainer.props.open, true, "background music is open so upload, library and music options show");
+  const musicSummary = nodes(musicContainer).find(n => n.type === "summary");
+  const closed = { open: false };
+  musicSummary.props.onClick({ target: {}, currentTarget: { parentElement: closed }, preventDefault() {} });
+  assert.equal(closed.open, true, "clicking the closed music container opens it");
+  musicSummary.props.onClick({ target: {}, currentTarget: { parentElement: closed }, preventDefault() {} });
+  assert.equal(closed.open, true, "clicking the open music container does not close it");
   const musicOptions = nodes(tree).find(n => n.type === "details" && n.props?.["aria-label"] === "Background music options");
   assert.ok(musicOptions, "the music options disclosure is present");
   assert.ok(nodes(musicContainer).includes(musicOptions), "music options stay inside the background music container");
@@ -182,7 +196,13 @@ test("connected subtitle controls save real finishing options and Audio selectio
   const music = nodes(tree).find(n => n.props.role === "switch" && n.props["aria-label"] === "Background music");
   assert.equal(music.props["aria-checked"], false); music.props.onClick({ preventDefault() {}, stopPropagation() {} }); assert.equal(changes[3].backgroundMusic, true);
   const subtitleContainer = nodes(nodes(tree).find(n => n.type === "section" && n.props?.["aria-label"] === "Subtitles")).find(n => n.type === "details" && String(n.props.className).includes("demoSoundDetails"));
-  assert.equal(subtitleContainer.props.open, undefined, "subtitles stay closed until the container is opened");
+  assert.equal(subtitleContainer.props.open, true, "subtitles are open so appearance and caption position show");
+  const subtitleSummary = nodes(subtitleContainer).find(n => n.type === "summary");
+  const closedSubtitles = { open: false };
+  subtitleSummary.props.onClick({ target: {}, currentTarget: { parentElement: closedSubtitles }, preventDefault() {} });
+  assert.equal(closedSubtitles.open, true, "clicking the closed subtitles container opens it");
+  subtitleSummary.props.onClick({ target: {}, currentTarget: { parentElement: closedSubtitles }, preventDefault() {} });
+  assert.equal(closedSubtitles.open, true, "clicking the open subtitles container does not close it");
   const picker = nodes(tree).find(n => n.type === "saved-audio-picker"); assert.equal(picker.props.attachment, props.demoAudio); assert.equal(picker.props.ownerId, "owner");
   assert.doesNotMatch(text(tree), /Music and subtitle rendering are not connected in this local preview/);
   assert.match(text(tree), /generate captions and correct their words before preparing your final video/);

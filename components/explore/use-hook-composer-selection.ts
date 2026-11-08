@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { StartingFrameSelection } from "@/lib/explore/uploaded-starting-frame";
 import { fetchUploadedStartingFrame } from "@/lib/explore/format-reference-images";
 import { fetchRecentStartingFrame } from "@/lib/explore/hook-starting-frame-history-client";
+import { adoptCurrentTalkingHeadMotion, adoptCurrentWhatMotion } from "@/lib/explore/hook-keyframe-prompt-preview";
 import { hookComposerSelectionKey, readHookComposerSelection, restoreHookComposerSelection, serializeHookComposerSelection } from "@/lib/explore/hook-composer-selection";
 
 export function useHookComposerSelection(ownerId: string | null, enabled: boolean, namespace = "hook", options: { tabScoped?: boolean; resumeDraftId?: string | null } = {}) {
@@ -31,7 +32,18 @@ export function useHookComposerSelection(ownerId: string | null, enabled: boolea
           const legacy = readHookComposerSelection(legacyRaw, ownerId);
           if (legacy?.draftId === resumeDraftId) { raw = legacyRaw; if (raw !== null) store().setItem(key, raw); }
         }
-        const saved = raw === "" ? null : readHookComposerSelection(raw, ownerId);
+        let saved = raw === "" ? null : readHookComposerSelection(raw, ownerId);
+        if (saved && "referenceId" in saved && saved.referenceId && saved.sourceSha256 && raw) {
+          const motionInstructions = adoptCurrentTalkingHeadMotion(adoptCurrentWhatMotion(saved.motionInstructions, saved.referenceId, saved.sourceSha256), saved.referenceId, saved.sourceSha256);
+          if (motionInstructions !== saved.motionInstructions) {
+            const parsed = JSON.parse(raw) as { motionInstructions?: string };
+            parsed.motionInstructions = motionInstructions;
+            const next = JSON.stringify(parsed);
+            readHookComposerSelection(next, ownerId);
+            store().setItem(key, next);
+            saved = { ...saved, motionInstructions };
+          }
+        }
         const frame = saved?.jobId ? restoreHookComposerSelection(saved, await fetchRecentStartingFrame(saved, ownerId, controller.signal))
           : saved ? { ...await fetchUploadedStartingFrame(saved.assetId, ownerId, controller.signal),
             durationSeconds: saved.durationSeconds, motionInstructions: saved.motionInstructions, generateAudio: saved.generateAudio } : null;

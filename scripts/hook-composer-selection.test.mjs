@@ -27,6 +27,7 @@ function harness({ raw = storage.serializeHookComposerSelection(frame), load = a
   }, require(name) {
     if (name === "react") return react;
     if (name.endsWith("hook-composer-selection")) return storage;
+    if (name.endsWith("hook-keyframe-prompt-preview")) return { adoptCurrentWhatMotion: text => text, adoptCurrentTalkingHeadMotion: text => text };
     if (name.endsWith("hook-starting-frame-history-client")) return { fetchRecentStartingFrame: async (...args) => { calls.push(args); return load(...args); } };
     if (name.endsWith("format-reference-images")) return { fetchUploadedStartingFrame: loadUpload };
     throw new Error(name);

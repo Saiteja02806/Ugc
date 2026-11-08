@@ -1,5 +1,36 @@
 # Explore context and UI decision record
 
+## 2026-11-09 Latest Hook and Talking Head uploads carry New (local)
+- The four reclassified Hook references and the four Kamile Talking Head clips are the latest published upload batches. They sort to the front of those galleries and are the only cards with New. The 23 October Hook refresh loses New. Slideshow and Text on screen batches stay on their own latest sets.
+- Talking Head uses the same batch rule as the other galleries. A reference can belong to only one published batch.
+
+## 2026-11-09 Talking Head Recreate sends the clip's own scene prompt (local)
+- After the starting frame is approved, the video job stores that reference's catalog scene prompt: the opening pose and the timed actions. This replaces the single generic sentence that every Talking Head was storing.
+- The spoken script stays a separate block. Image 1 remains the scene and Image 2 remains the face when identity photos are attached. A prompt the user wrote themselves is kept. A saved frame that still has only the generic sentence is replaced with the current clip prompt on restore. A source-hash mismatch keeps the generic sentence. No provider video was generated.
+
+## 2026-11-09 WHAT prompt used by Recreate names “what” once (local)
+- Recreate reads the current motion plan. Hook 26’s approved opening and its Recreate prompt both use the public beats: one stretched “what” while the sunglasses stay on, then a purse, then the glasses come off. The plan file now follows that same order.
+- The sentence says “form it only this once,” and the word “what” appears once. Hook 24’s later open and Hook 26’s later surprise are face shapes after that word has finished. A saved frame that still has the older automatic wording is replaced with this prompt when Recreate restores it. A prompt the user wrote themselves stays.
+
+## 2026-11-09 WHAT Hooks stretch one “what” (local)
+- The generated chin-hand clip formed “what” twice. The source holds one open “ah”, then the lips close. That is one stretched word.
+- This supersedes the repeated “form that one word” sentence in the 2026-11-08 WHAT entry. Hooks 24, 26, 27, 53 and 54 now say “Stretch one what” once, on the open-mouth hold. Later mouth shapes do not name the word again. Hook 26’s framed preview uses the public beats, and those beats say it once too. Sound on can voice that one supplied word. Sound off stays silent. Gesture timing is unchanged. The two local `notbeen2\what` folders stay unregistered. No provider video was generated.
+
+## 2026-11-09 Approved starting-frame preview is smaller (local)
+- User report: the Hook Video Create starting frame was too large and made the form heavy. The same preview should be smaller wherever that card is used.
+- Decision: this supersedes the 360px height in the 2026-11-08 “Compact starting-frame tile enlarged” entry. The card now caps at 240px height (9:16 is about 135×240; the 275×555 frame is about 119×240). One preview and the Change action stay. The caption stays removed.
+- The card class is shared by Hook, Text on screen, and Talking Head. Phone video does not render this card.
+
+## 2026-11-09 Slideshow main preview is the large slide and the filmstrip is compact (local)
+- The 2026-11-08 size pass had the two sizes reversed. The main preview, the slide with Previous and Next, was capped at 180px. The Your slides cards were 100×125.
+- The main preview is now the large slide: `clamp(260px, 100dvh - 540px, 420px)`. The sequence cards are 72×90 (64×80 under 1024px, 56×70 in the narrow pane). Reorder dots, the missing divider, and the hidden saving sentence stay. Not deployed.
+- Follow-up the same day: the row was still too tall, so the main slide could not grow. The cards are now 52×65 and the preview cap is `clamp(318px, 100dvh - 482px, 480px)`. The reorder chip is 18px so it stays visible on the smaller card. Not deployed.
+- The lines under the Your slideshow title are removed: the slide-count sentence and “Preview · uploads and saving disabled.” Saving, restoring, upload, and the saved-in-Library messages stay. Not deployed.
+
+## 2026-11-08 Slideshow filmstrip is larger and the main preview is shorter (local)
+- On Your Slides, the sequence cards were 64×80, so the slide content was too small to read. The main preview could still grow to 440px and crowd a 14-inch laptop.
+- Follow-up: 144×180 cards and a 300px preview still looked heavy, and the fourth card was cut off. The main preview now caps at 180px (`100dvh - 760px`, floor 140px). The sequence cards are 100×125 (88×110 under 1024px, 80×100 in the narrow pane), larger than the old 64×80 cards and light enough for all six to stay in view. Not deployed.
+
 ## 2026-11-08 Invite free-generation badge stays until the generation is completed (local)
 - The “1 generation left” Free badge on Explore, and the same badge in a workflow header, stays visible while the invite pass is available or reserved. It hides when that generation is completed (`used`) or the account is paid.
 - A reserved generation no longer clears the badge. One empty subscription check no longer suppresses it for the rest of the tab. Starting a second free generation still requires the pass to be available.
@@ -67,7 +98,7 @@
 - Hook model list hides `google_omni` and does not offer the `google_omni_direct` starting-frame option; the API rejects `starting_frame_with_identity` on `exploreFormat: "hook"` unless `workflow` is `talking_head`. The paid default remains Seedance 2.5 when enabled, otherwise Kling 3.0. Other workflows (Text on screen, Talking Head, AI Studio) still list Omni and Kling 3.0 unchanged.
 - Free pass: `FREE_VIDEO_PASS_RESTRICTED_VIDEO_MODELS` and `FREE_VIDEO_PASS_EXCLUDED_VIDEO_MODELS` now include every video model except `kling_3_0`. The UI labels the rest `(Paid plan)`, the fallback is Kling 3.0, and the server returns `402 free_video_pass_model_excluded` for anything else. This supersedes the Seedance/Kling-4-only restriction in the 2026-11-07 free-pass entry. The pass still covers one Kling 3.0 Hook/Text-on-screen video or one complete slideshow batch, with the existing starting-frame preparation allowance.
 - Preserved: ReAPI routing and existing job recovery, starting-frame frame-only behavior for Kling 3.0/FLUX 3, the slideshow pass batch, the Kling 4/Seedance/WAN reference routes, and all other workflow model lists.
-- Hook duration hint (8 November): the long generated/source/hold paragraph is replaced by a compact `Auto cut at 2.8s` line plus a small `i` button aligned to the right edge of the duration field. The click/tap popover explains that the source cuts at 2.8s and the generated clip is cut at the same point to keep the result similar; the remaining hold is trimmed by default. The full explanation is also in the button's accessible label, and the native `title` remains as a fallback. The duration summary in settings remains available. Follow-up screenshot (8 November): the `i` was still beside the label because the hint lived in an inline `small` and the row shrink-wrapped. The hint row is now a full-width block under the duration control so the `i` stays at that control's right edge.
+- Hook duration hint (8 November): user requested removing the visible `Auto cut at 2.8s` text under Duration because it confused users, showing only the `i` info button right-aligned under the duration control. The click/tap popover retains the full explanation (source cuts at the specified time, generated clip cuts at the same point to keep the result similar, and remaining hold is trimmed by default). The full explanation also remains in the button's accessible label and title fallback.
 - FLUX 3 duration finding (8 November): the Hook/starting-frame duration menu intentionally starts at 5 seconds because ReAPI FLUX 3 (`flux-3-video`) accepts only 5–20 seconds and rejects out-of-range integers. 3 and 4 are not generated durations for this model. A 3/4-second final output would require generating 5 seconds and trimming. User decision (8 November): keep the 5-second minimum and do not add 3/4 unless a separate output-trim contract and billing approval are given.
 - Local evidence: Hook/Wall composer 113/113; API admission 48/48; worker ReAPI/job tests 32/32; free-pass 3/3; core workflow contract/source suites 129/129; full Explore suite 1452/1452 with 0 failures; TypeScript and worker build clean; scoped ESLint clean. The isolated background-composition suite passes 4/4. Signed-in hosted acceptance remains open; no paid provider generation was submitted. Deployment is intentionally held by the user.
 

@@ -1391,8 +1391,7 @@ export function VideoGenerationStudioPanel({
         : null
     : null;
   const durationHint = durationInfo ? (
-    <span className="flex w-full items-center justify-between gap-2">
-      <span className="min-w-0 truncate">{startingFrameSourceSeconds! > durationSeconds ? `Source compressed into ${durationSeconds}s` : `Auto cut at ${startingFrameSourceSeconds!.toFixed(1)}s`}</span>
+    <span className="flex w-full items-center justify-end">
       <Popover>
         <PopoverTrigger
           render={<button

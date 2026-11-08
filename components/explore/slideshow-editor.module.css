@@ -49,7 +49,7 @@
 .scrollSlides.scrollSlides { width: 32px; min-width: 32px; height: 32px; min-height: 32px; flex: none; padding: 0; }
 .filmstrip { display: flex; flex: 1; flex-direction: row; align-items: center; min-width: 0; max-height: none; gap: 10px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 20%, transparent) transparent; scroll-snap-type: x proximity; }
 .filmstrip[data-reordering] { scroll-snap-type: none; user-select: none; }
-.thumbnail { position: relative; width: 64px; height: 80px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); scroll-snap-align: start; }
+.thumbnail { position: relative; width: 52px; height: 65px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); scroll-snap-align: start; }
 .thumbnail[data-selected] { border-color: var(--foreground); box-shadow: 0 0 0 1px var(--foreground); }
 .thumbnail[data-dragging] { opacity: .45; }
 .thumbnail[data-drop]::after { position: absolute; top: 0; right: auto; bottom: 0; left: auto; width: 3px; height: auto; border-radius: 2px; background: var(--foreground); content: ""; pointer-events: none; }
@@ -57,15 +57,14 @@
 .thumbnail[data-drop="after"]::after { right: -7px; }
 .thumbnailPreview { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; background: transparent; cursor: pointer; }
 .thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.thumbnailPreview > span:last-child { position: absolute; bottom: 1px; right: 1px; display: grid; min-width: 22px; height: 20px; border-radius: 4px; background: var(--background); place-items: center; font-size: 11px; color: var(--muted); }
+.thumbnailPreview > span:last-child { position: absolute; bottom: 1px; right: 1px; display: grid; min-width: 16px; height: 16px; border-radius: 4px; background: var(--background); place-items: center; font-size: 10px; color: var(--muted); }
 .thumbnail .unavailable { display: grid; height: 100%; place-items: center; font-size: 9px; color: var(--destructive); }
 .thumbnailPreview:focus-visible, .dragHandle:focus-visible, .deleteSlide:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.dragHandle, .deleteSlide { position: absolute; z-index: 1; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 5px; color: var(--foreground); }
+.dragHandle, .deleteSlide { position: absolute; z-index: 1; display: grid; width: 18px; height: 18px; place-items: center; border-radius: 4px; color: var(--foreground); }
 .dragHandle { bottom: 1px; left: 1px; color: #16161a; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 45%), 0 0 0 1px rgb(255 255 255 / 90%); cursor: grab; touch-action: none; user-select: none; }
 .dragHandle:active { cursor: grabbing; }
 .deleteSlide { top: 2px; right: 2px; background: color-mix(in srgb, var(--background) 92%, transparent); cursor: pointer; }
-.dragHandle svg, .deleteSlide svg { width: 14px; height: 14px; pointer-events: none; }
-.dragHandle svg { width: 16px; height: 16px; }
+.dragHandle svg, .deleteSlide svg { width: 12px; height: 12px; pointer-events: none; }
 .dragHandle:hover { color: #16161a; background: #fff; }
 .deleteSlide:hover { color: var(--destructive); background: var(--background); }
 .dragHandle:disabled, .deleteSlide:disabled { cursor: not-allowed; opacity: .4; }
@@ -87,13 +86,13 @@
 .field > :disabled { opacity: .6; }
 :global(.dark) .field > select { color-scheme: dark; }
 .preview { position: relative; max-width: 100%; width: fit-content; }
-.preview > img:first-child { display: block; max-height: clamp(160px, calc(100dvh - 560px), 440px); max-width: 100%; width: auto; height: auto; border-radius: 10px; }
+.preview > img:first-child { display: block; max-height: clamp(318px, calc(100dvh - 482px), 480px); max-width: 100%; width: auto; height: auto; border-radius: 10px; }
 .preview > .overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 @media (max-width: 1023px) {
   .field > select, .field > input { height: 44px; }
   .field > textarea { font-size: 16px; }
-  .preview > img:first-child { max-height: 42dvh; }
-  .thumbnail { width: 56px; height: 70px; }
+  .preview > img:first-child { max-height: min(48dvh, 360px); }
+  .thumbnail { width: 48px; height: 60px; }
   .thumbnail img, .thumbnail .unavailable { height: 100%; }
   .previewNavigation button, .sequenceHeading button, .arrangement button { min-height: 44px; }
   .previewHeading { flex-wrap: wrap; }
@@ -101,7 +100,7 @@
   .saveActions { gap: 8px; }
   .previewHeading button { min-height: 40px; }
 }
-@media (max-height: 520px) { .preview > img:first-child { max-height: 180px; } }
+@media (max-height: 520px) { .preview > img:first-child { max-height: 220px; } }
 @container workflow-video (max-width: 1023px) {
   .editorPreview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px 0; min-height: 0; }
   .previewHeading { grid-column: 1; gap: 8px; }
@@ -109,7 +108,7 @@
   .previewHeading p, .previewNavigation { display: none; }
   .previewHeading button { min-height: 36px; padding-inline: 8px; }
   .previewCanvas { grid-column: 1; grid-row: 3; }
-  .preview > img:first-child { max-height: 24dvh; }
+  .preview > img:first-child { max-height: min(42dvh, 320px); }
   .sequence { grid-column: 1; grid-row: 4; padding: 8px 0 0; border-top: 0; border-left: 0; gap: 6px; }
   .sequenceHeading { gap: 4px; }
   .sequenceHeading > div { flex-wrap: wrap; gap: 4px; }
@@ -119,7 +118,7 @@
   .previewActions button { min-height: 36px; padding-inline: 8px; font-size: 11px; }
   .previewActions .saveActions { width: 100%; margin-left: 0; }
   .filmstrip { max-height: none; gap: 6px; padding-bottom: 2px; }
-  .thumbnail { width: 48px; height: 60px; }
+  .thumbnail { width: 44px; height: 55px; }
   .thumbnail img, .thumbnail .unavailable { height: 100%; }
   .sequenceFooter { gap: 2px 8px; }
   .arrangement { gap: 2px; }

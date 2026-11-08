@@ -76,14 +76,17 @@ test("folder two uses the approved default track while the other pairs preserve 
   }
 });
 
-test("the second Hook batch leads within each platform, retires the first Hook badge and leaves slideshow badges intact", () => {
+test("the latest Hook batch leads within each platform, retires the October refresh badge and leaves slideshow badges intact", () => {
+  const latest = json("../worker/src/lib/explore-hook-wall-reclassification-release.json");
   const refs = getRecreateReferences();
   const hooks = orderReferenceGallery(refs.filter(item => item.format === "hook"), "hook");
-  for (const platform of ["instagram", "tiktok"]) {
-    const expected = release.items.filter(item => item.sourcePlatform === platform).map(item => item.id);
-    assert.deepEqual(hooks.filter(item => item.sourcePlatform === platform).slice(0, expected.length).map(item => item.id), expected);
+  for (const platform of ["instagram", "tiktok", null]) {
+    const expectedIds = latest.items.filter(item => (item.sourcePlatform ?? null) === platform).map(item => item.id);
+    if (!expectedIds.length) continue;
+    assert.deepEqual(hooks.filter(item => (item.sourcePlatform ?? null) === platform).slice(0, expectedIds.length).map(item => item.id), expectedIds);
   }
-  assert.deepEqual(new Set(hooks.filter(item => item.isNew).map(item => item.id)), new Set(release.items.map(item => item.id)));
+  assert.deepEqual(new Set(hooks.filter(item => item.isNew).map(item => item.id)), new Set(latest.items.map(item => item.id)));
+  assert.equal(hooks.find(item => item.id === release.items[0].id).isNew, undefined);
   assert.equal(hooks.find(item => item.id === "explore-paired-hook-17133540b2315e0a3a05bfbd").isNew, undefined);
   assert.equal(refs.filter(item => item.format === "slideshow" && item.isNew).length, 4);
 });

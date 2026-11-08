@@ -31,7 +31,7 @@ test("the slideshow preview fills its pane and the header wraps instead of overf
   assert.match(css, /\.sequence \{[^}]*grid-column: 1/);
   assert.match(css, /\.sequence \{[^}]*grid-row: 4/);
   assert.doesNotMatch(css, /\.sequence \{[^}]*border-top: 1px solid/);
-  assert.match(css, /\.preview > img:first-child \{[^}]*max-height: clamp\(160px, calc\(100dvh - 560px\), 440px\)/);
+  assert.match(css, /\.preview > img:first-child \{[^}]*max-height: clamp\(318px, calc\(100dvh - 482px\), 480px\)/);
   assert.match(css, /\.dragHandle \{[^}]*color: #16161a/);
   assert.match(css, /\.dragHandle \{[^}]*background: #fff/);
   assert.doesNotMatch(readFileSync(new URL("../components/explore/format-slideshow-editor.tsx", import.meta.url), "utf8"), /Slideshow saving is unavailable right now/);
@@ -42,8 +42,8 @@ test("the slideshow preview fills its pane and the header wraps instead of overf
   assert.match(css, /\.filmstrip \{[^}]*flex-direction: row/);
   assert.match(css, /\.filmstrip \{[^}]*overflow-x: auto/);
   assert.match(css, /\.filmstrip \{[^}]*max-height: none/);
-  assert.match(css, /\.thumbnail \{[^}]*width: 64px/);
-  assert.match(css, /\.thumbnail \{[^}]*height: 80px/);
+  assert.match(css, /\.thumbnail \{[^}]*width: 52px/);
+  assert.match(css, /\.thumbnail \{[^}]*height: 65px/);
   assert.match(css, /\.thumbnail img \{[^}]*object-fit: cover/);
   assert.doesNotMatch(css, /\.sequence \.headerActions/);
 });
@@ -328,7 +328,9 @@ test("Create preview shares the edited sequence, text and upload actions without
   let generatedOpened = 0;
   h.props.previewActions = { type: "Button", props: { children: "Generated slides", onClick: () => generatedOpened++ } };
   const preview = nodes(h.render()).find(n => n.props?.["aria-label"] === "Slideshow edit preview");
-  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Edit slides.*Save & review post/s);
+  assert.match(text(preview), /Your slideshow.*Edit slides.*Save & review post/s);
+  assert.doesNotMatch(text(preview), /Preview your current sequence/);
+  assert.doesNotMatch(text(preview), /uploads and saving disabled/);
   const actions = nodes(preview).find(n => n.props?.["aria-label"] === "Slideshow actions");
   assert.deepEqual(Array.from(actions.props.children, text), ["Save slideshow", "Save & review post", "Generated slides"]);
   h.control("Button", "Generated slides").props.onClick();
@@ -866,6 +868,7 @@ test("sample slideshow outputs are editable only in local preview and cannot be 
   h.heading("Sample heading");
   assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Sample heading");
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  assert.doesNotMatch(text(h.render()), /uploads and saving disabled/);
   await h.clickSave("Save slideshow");
   assert.equal(h.requests.length, 0); assert.equal(h.uploads.length, 0);
   const live = await editor({ generated: false, previewImages });

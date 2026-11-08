@@ -2195,7 +2195,7 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.46]: Maintain the eyeglass-corner grip at screen-left, eyes wide and gaze down toward screen-left, mouth open."
+            "action": "PHASE [0–0.46]: Maintain the eyeglass-corner grip at screen-left, eyes wide and gaze down toward screen-left, mouth open. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "middle",
@@ -2203,7 +2203,7 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.70–0.85]: Open the mouth again and continue the wide-eyed sideways stare, grip unchanged. Release the rounded lips and lower the jaw into the earlier open shape, with the lower lip relaxing downward."
+            "action": "PHASE [0.70–0.85]: Open the mouth again and continue the wide-eyed sideways stare, grip unchanged. Release the rounded lips and lower the jaw into the earlier open shape, with the lower lip relaxing downward. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "ending",
@@ -2214,7 +2214,8 @@
         "endingState": "The eyeglasses are removed toward screen-left and the performer is blinking with mouth partly open.",
         "constraints": [
           "Do not lift the eyeglasses onto the head.",
-          "Keep the frame passing continuously in front of the face during removal."
+          "Keep the frame passing continuously in front of the face during removal.",
+          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
         ]
       },
       "review": {
@@ -2368,26 +2369,32 @@
       "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
       "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
       "plan": {
-        "openingState": "The performer leans close wearing narrow brown sunglasses, with the screen-left hand holding their outer corner and lips parted.",
+        "openingState": "The performer leans close wearing narrow brown sunglasses, with the screen-left hand holding their outer corner, mouth open and brows raised.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.297001]: Draw the brows together and round the lips while looking slightly down and to screen-left through the sunglasses."
+            "action": "PHASE [0–0.59]: Hold the sunglasses at eye level with the screen-left hand, mouth open and brows raised; do not pull them off yet. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.297001–0.594002]: Pull the sunglasses forward off the eyes and out toward screen-left, keeping them off the head."
+            "action": "PHASE [0.59–0.68]: Pull the sunglasses down and off the eyes toward screen-left; keep the eyes widening behind the frames."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.68–0.89]: Hold the bare-eyed cheeky pout with high brows and a small head tilt, lips slightly parted; keep the sunglasses below the face."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.594002–1]: Widen the eyes without glasses, open the mouth further, then narrow it slightly while keeping questioning brows toward the lens."
+            "action": "PHASE [0.89–1]: Open the mouth wide into a final wide-eyed WHAT shock and hold it to the lens. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           }
         ],
         "camera": "Maintain the close portrait perspective with subtle natural drift.",
-        "endingState": "The sunglasses are off the eyes and the performer gives a questioning bare-eyed stare with lips partly open.",
+        "endingState": "The sunglasses are off the eyes and below the face; the performer holds a wide-eyed, open-mouth WHAT shock.",
         "constraints": [
-          "Remove and hold the sunglasses, never park them on top of the head.",
-          "Keep the same sunglasses passing in front of the face during removal."
+          "Keep the sunglasses off the eyes and off the head.",
+          "Do not smile before the final WHAT shock.",
+          "Do not add a screen recording or app UI.",
+          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
         ]
       },
       "review": {
@@ -2498,7 +2505,7 @@
           97
         ],
         "frameCount": 98,
-        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the late sunglasses pull and final WHAT shock.",
         "issues": [],
         "sourceFileSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
         "visualQualification": "not_tested"
@@ -2508,26 +2515,28 @@
       "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
       "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
       "plan": {
-        "openingState": "The performer holds eyeglasses low in front of the chest, with a single temple tip resting at the lower lip and the gaze lifted toward screen-left.",
+        "openingState": "The performer holds the sunglasses frame at mouth level with one temple arm between the lips; eyes wide, brows raised and jaw open around the stem.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.51]: Hold the eyeglasses low, one temple tip at the lower lip, eyes wide and gaze upward toward screen-left."
+            "action": "PHASE [0–0.58]: Hold the frame at mouth level with the temple arm between the lips; keep the eyes wide, brows raised and the jaw open around it. Do not remove the stem. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.51–0.82]: Knit the brows and purse the lips as the glasses temple begins moving clear of the lower lip. Round the lips forward into a small opening while lifting the glasses tip just clear of the lower lip."
+            "action": "PHASE [0.58–0.78]: Make small head and mouth movements around the stem; keep it between the lips and the eyes wide."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.82–1]: Move the glasses temple away from the lower lip as the jaw opens into a wide-eyed surprised reaction; keep holding the glasses below the face. Release the lip purse and lower the jaw distinctly, exposing the dark mouth opening while the glasses tip stays below it."
+            "action": "PHASE [0.78–1]: Open the jaw wider around the stem into a stunned WHAT reaction; keep the stem in the mouth and hold the stare. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           }
         ],
         "camera": "Keep the close portrait camera steady.",
-        "endingState": "The mouth is open in surprise and the glasses temple is below the lip.",
+        "endingState": "The stem remains between the lips while the jaw is open in a stunned WHAT stare.",
         "constraints": [
-          "Do not put the eyeglasses onto the eyes or head.",
-          "Do not turn the held eyeglass temple into a drinking prop."
+          "Keep the temple arm in the mouth for the whole clip.",
+          "Do not put the sunglasses on the eyes or head.",
+          "Do not turn the stem into a drinking prop.",
+          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
         ]
       },
       "review": {
@@ -2617,7 +2626,7 @@
           76
         ],
         "frameCount": 77,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the stem-in-mouth position and removal.",
         "issues": [],
         "sourceFileSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
         "visualQualification": "not_tested"

@@ -5,6 +5,7 @@ import { parseSlideshowBusinessContext, slideshowBusinessContextPrompt, type Sli
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
 import { generateOpenRouterGeminiHookKeyframe, generateOpenRouterGeminiImage, performOpenRouterFaceSwap } from "../lib/openrouter-gemini-image.js";
+import { harmonizeStartingFrameImage, STARTING_FRAME_HARMONIZER_GRAIN } from "../lib/image-harmonizer.js";
 import { createDurableImageStageRunner } from "../lib/durable-image-stages.js";
 import { generateCharacterIdentityImage, parseCharacterIdentityPipeline, type CharacterIdentityPipeline } from "../lib/character-image-pipeline.js";
 import { RetryableJobError } from "../retryable-job-error.js";
@@ -64,8 +65,12 @@ type GenerateImageInput = {
   startingFrameTextCleanup?: true;
   startingFrameOutfitPrompt?: string;
   startingFramePipelineVersion?: 2;
+  /** New Seedream, Nano Banana, and GPT Image starting frames. Gemini 3 Pro harmonizes inside its own stages. */
+  startingFrameHarmonizer?: true;
   characterIdentityPipeline?: CharacterIdentityPipeline;
 };
+
+const STARTING_FRAME_POST_HARMONIZER_MODELS = ["nano_banana_2", "nano_banana_2_1", "gpt_image", "gpt_image_2_5", "seedream_5_pro"] as const;
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (!job.input_json || typeof job.input_json !== "object" || Array.isArray(job.input_json)) {
@@ -159,6 +164,11 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     !hookKeyframe || startingFrameOutfitPrompt !== hookKeyframe.customImagePrompt || !startingFrameTextCleanup || model !== "gemini_3_pro" || provider !== "openrouter")) {
     throw new ProviderRequestNotSubmittedError("The starting-frame outfit instructions do not match the saved custom prompt.");
   }
+  const startingFrameHarmonizer = job.input_json.startingFrameHarmonizer;
+  if (startingFrameHarmonizer !== undefined && (startingFrameHarmonizer !== true || !hookKeyframe ||
+    !(STARTING_FRAME_POST_HARMONIZER_MODELS as readonly string[]).includes(model))) {
+    throw new ProviderRequestNotSubmittedError("Starting-frame harmonization applies only to a new Seedream, Nano Banana, or GPT Image starting frame.");
+  }
   const characterIdentityPipeline = job.input_json.characterIdentityPipeline === undefined ? undefined
     : parseCharacterIdentityPipeline(job.input_json.characterIdentityPipeline);
   if (characterIdentityPipeline && (!promptDrivenCharacter || model !== "gemini_3_pro" || job.input_json.provider !== "openrouter" || !referenceImageUrls?.length)) {
@@ -178,6 +188,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     ...(startingFrameTextCleanup === true ? { startingFrameTextCleanup: true as const } : {}),
     ...(startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: startingFrameOutfitPrompt as string } : {}),
     ...(startingFramePipelineVersion === 2 ? { startingFramePipelineVersion: 2 as const } : {}),
+    ...(startingFrameHarmonizer === true ? { startingFrameHarmonizer: true as const } : {}),
     ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
     ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
     ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
@@ -249,6 +260,7 @@ export async function runGenerateImageJob(
     ...(input.startingFrameTextCleanup ? { startingFrameTextCleanup: true } : {}),
     ...(input.startingFrameOutfitPrompt !== undefined ? { startingFrameOutfitPrompt: input.startingFrameOutfitPrompt } : {}),
     ...(input.startingFramePipelineVersion === 2 ? { startingFramePipelineVersion: 2 } : {}),
+    ...(input.startingFrameHarmonizer ? { startingFrameHarmonizer: true } : {}),
     ...(input.characterIdentityPipeline ? { characterIdentityPipeline: input.characterIdentityPipeline } : {}),
   });
   const stagedPipeline = input.model === "gemini_3_pro" && provider === "openrouter" && Boolean(input.hookKeyframe || input.mode === "face_swap" || input.characterIdentityPipeline);
@@ -441,6 +453,10 @@ export async function runGenerateImageJob(
     generatedImageBuffer = await downloadStoredObjectBuffer(savedStagingKey);
   }
 
+  if (input.startingFrameHarmonizer) {
+    generatedImageBuffer = await harmonizeFinishedStartingFrame(job.id, generatedImageBuffer, context);
+  }
+
   if (input.slideshowFaceSwap) {
     // A slide completes only after its durable identity stages, even with the browser closed.
     const urls = await resolveSlideshowFacePhotos(input.slideshowFaceSwap, job.user_id ?? "");
@@ -567,6 +583,22 @@ async function generateDurableImageForJob(
     if (operationSubmitted) throw toProviderPollingRetry(error);
     return persistProviderSubmissionFailure({ error, jobId: job.id, operationKey, store: context.store });
   }
+}
+
+async function harmonizeFinishedStartingFrame(jobId: string, buffer: Buffer, context: WorkerJobContext) {
+  const runStage = createDurableImageStageRunner({
+    jobId,
+    store: context.store,
+    checkpoint: stage => context.checkpoint({ stage, status: "processing" }),
+  });
+  const harmonized = await runStage("harmonize", {
+    image: buffer.toString("base64"),
+    grain: STARTING_FRAME_HARMONIZER_GRAIN,
+  }, async () => ({
+    model: "starting-frame-harmonizer",
+    buffer: (await harmonizeStartingFrameImage(buffer, { grainIntensity: STARTING_FRAME_HARMONIZER_GRAIN })).buffer,
+  }));
+  return harmonized.buffer;
 }
 
 function buildOutput(

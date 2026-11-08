@@ -135,6 +135,8 @@
 }
 .settingField > .referenceDuration { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
 .referenceTimingHint { color: var(--muted); font-size: 11px; line-height: 16px; }
+/* The hint sits under a full-width setting control. An inline small shrink-wraps, which pins the info button to the label instead of the control's right edge. */
+.settingField > .fieldHint { display: block; width: 100%; min-width: 0; max-width: 100%; }
 .settingField > button:hover { box-shadow: inset 0 0 0 1px var(--muted); }
 .settingField > button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .settingField > button > svg { flex-shrink: 0; width: 12px; }
@@ -205,6 +207,7 @@
 .demoSoundDetails { border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 10px; padding: 12px; background: var(--card); }
 .demoSoundDetails > summary { cursor: pointer; min-height: 24px; font-size: 14px; font-weight: 500; }
 .demoSoundDetails > summary span { float: right; margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.demoSoundDetails > summary .summaryControl { float: right; margin-left: 8px; color: inherit; font-size: 14px; font-weight: 500; }
 .demoSoundDetails > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
 .backgroundAudioSwitch { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
 .backgroundAudioTrack { display: flex; align-items: center; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }

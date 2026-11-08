@@ -46,6 +46,7 @@ import {
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { VideoPromptBubble } from "@/components/video/video-result-prompt";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { StartingFrameAnimationReferences } from "@/components/explore/starting-frame-animation-references";
@@ -1384,23 +1385,31 @@ export function VideoGenerationStudioPanel({
     : `${durationSeconds}s`;
   const durationInfo = workflowFormat === "hook" && startingFrameSourceSeconds !== undefined
     ? startingFrameSourceSeconds > durationSeconds + 0.05
-      ? `Generated ${durationSeconds}s. The ${startingFrameSourceSeconds.toFixed(1)}s source action is compressed into it.`
+      ? `The source action is ${startingFrameSourceSeconds.toFixed(1)}s. We compress it into ${durationSeconds}s so the generated clip keeps the same action timeline.`
       : startingFrameSourceSeconds < durationSeconds - 0.05
-        ? `Generated ${durationSeconds}s. The source action ends at ${startingFrameSourceSeconds.toFixed(1)}s; the final ${(durationSeconds - startingFrameSourceSeconds).toFixed(1)}s hold is trimmed by default. Extend the trim to keep the hold.`
+        ? `The source cuts at ${startingFrameSourceSeconds.toFixed(1)}s. We cut the generated clip at the same point to keep the result similar to the source. The remaining hold is trimmed by default; extend the trim to keep it.`
         : null
     : null;
   const durationHint = durationInfo ? (
-    <span className="inline-flex items-center gap-1">
-      <span>{startingFrameSourceSeconds! > durationSeconds ? `Source compressed into ${durationSeconds}s` : `Auto cut at ${startingFrameSourceSeconds!.toFixed(1)}s`}</span>
-      <button
-        type="button"
-        aria-label={`Duration details: ${durationInfo}`}
-        title={durationInfo}
-        data-duration-info
-        className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus"
-      >
-        i
-      </button>
+    <span className="flex w-full items-center justify-between gap-2">
+      <span className="min-w-0 truncate">{startingFrameSourceSeconds! > durationSeconds ? `Source compressed into ${durationSeconds}s` : `Auto cut at ${startingFrameSourceSeconds!.toFixed(1)}s`}</span>
+      <Popover>
+        <PopoverTrigger
+          render={<button
+            type="button"
+            aria-label={`Duration details: ${durationInfo}`}
+            title={durationInfo}
+            data-duration-info
+            className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus"
+          />}
+        >
+          i
+        </PopoverTrigger>
+        <PopoverContent side="top" align="end" className="max-w-[min(18rem,calc(100vw-2rem))] text-xs leading-5">
+          <PopoverTitle className="text-xs font-semibold">Duration details</PopoverTitle>
+          <p>{durationInfo}</p>
+        </PopoverContent>
+      </Popover>
     </span>
   ) : undefined;
   const durationSetting = startingFrame ? <AiStudioSettingSelect ariaLabel="Video duration" fieldLabel="Duration" fieldLayout="classic" size="sm" fieldHint={durationHint}

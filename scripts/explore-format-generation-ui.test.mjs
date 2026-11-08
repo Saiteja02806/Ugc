@@ -290,9 +290,26 @@ test("Hook starting-frame duration shows a compact auto-cut hint with duration d
   duration().props.onChange("4");
   composer = h.render().composer;
   const hint = duration().props.fieldHint;
+  assert.match(hint.props.className, /w-full/);
+  assert.match(hint.props.className, /justify-between/);
   assert.equal(hint.props.children[0].props.children, "Auto cut at 2.5s");
-  assert.equal(hint.props.children[1].props.children, "i");
-  assert.match(hint.props.children[1].props.title, /Generated 4s.*1\.5s hold is trimmed by default/);
+  const composerSource = readFileSync(new URL("../components/generation/ai-studio-composer.tsx", import.meta.url), "utf8");
+  const creationCss = readFileSync(new URL("../components/explore/workflow-creation.module.css", import.meta.url), "utf8");
+  assert.match(composerSource, /creation\.fieldHint/);
+  assert.match(creationCss, /\.settingField > \.fieldHint\s*\{[^}]*width:\s*100%/);
+  const popover = hint.props.children[1];
+  const trigger = popover.props.children[0];
+  const content = popover.props.children[1];
+  assert.equal(trigger.type, "PopoverTrigger");
+  assert.equal(trigger.props.children, "i");
+  const triggerButton = trigger.props.render;
+  assert.equal(triggerButton.type, "button");
+  assert.equal(triggerButton.props["data-duration-info"], true);
+  assert.match(triggerButton.props.title, /source cuts at 2\.5s.*cut the generated clip at the same point.*hold is trimmed by default/);
+  assert.match(triggerButton.props["aria-label"], /Duration details: The source cuts at 2\.5s/);
+  assert.equal(content.type, "PopoverContent");
+  assert.equal(content.props.align, "end");
+  assert.equal(content.props.children[1].props.children, triggerButton.props.title);
   assert.match(composer.props.settingsSummary, /4s generated · 2\.5s delivery/);
 });
 

@@ -1791,7 +1791,7 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.34444433333333335]: Hold furrowed-brow skeptical gaze with hand at chin and lower lip."
+            "action": "PHASE [0–0.34444433333333335]: Hold furrowed-brow skeptical gaze with hand at chin and lower lip. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "middle",
@@ -1818,7 +1818,8 @@
         "endingState": "The same hand remains by the lower lip as a restrained skeptical smile holds in close-up.",
         "constraints": [
           "Keep the hand low at the lip rather than covering the eyes.",
-          "Do not move away to a room or bed view."
+          "Do not move away to a room or bed view.",
+          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
         ]
       },
       "review": {
@@ -1849,30 +1850,28 @@
       "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
       "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
       "plan": {
-        "openingState": "The reclining performer wears a secure white hair towel and looks at the lens with raised, pinched brows, wide eyes and pursed lips.",
+        "openingState": "The reclining performer wears a secure white hair towel, with wide eyes, raised brows and a dropped open jaw in a silent WHAT shock.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.23]: Hold the raised, pinched brows as the pursed lips briefly part, then return toward a purse."
+            "action": "PHASE [0–0.34]: Hold the towel, wide eyes, raised brows and the dropped open jaw in a silent WHAT shock; do not smile. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.23–0.43]: Keep the questioning pursed expression while the selfie view moves steadily closer."
+            "action": "PHASE [0.34–0.68]: Keep the jaw open with a small head movement; do not purse the lips or smile yet. Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.43–0.58]: As the view tightens, part the lips and develop a small disbelieving smile."
-          },
-          {
-            "phase": "ending",
-            "action": "PHASE [0.58–1]: Hold the closer towel-wrapped portrait with the small smile, slight head movement and hands outside the picture."
+            "action": "PHASE [0.68–1]: Let a small delighted smile break through and hold it in the closer selfie view."
           }
         ],
         "camera": "Move from a reclining selfie distance into a tighter face view.",
-        "endingState": "The towel stays secure while the performer holds a small disbelieving smile in close-up.",
+        "endingState": "The towel stays secure while the performer holds a small delighted smile in close-up.",
         "constraints": [
           "Keep the hands outside the picture.",
-          "Do not shift away to the furniture or remove the towel."
+          "Do not shift away to the furniture or remove the towel.",
+          "Do not start with a purse or a smile.",
+          "Silently mouth the word what: the lips and jaw visibly form that one word, and no voice is produced."
         ]
       },
       "review": {
@@ -1893,7 +1892,7 @@
           49
         ],
         "frameCount": 50,
-        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the open-jaw WHAT opening.",
         "issues": [],
         "sourceFileSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
         "visualQualification": "not_tested"

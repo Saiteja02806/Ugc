@@ -4,6 +4,8 @@ import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import curatedFrames from "../lib/hook-curated-frames.json" with { type: "json" };
+import sharp from "sharp";
+import { harmonizeStartingFrameImage } from "../../dist/lib/image-harmonizer.js";
 import { hookKeyframeGenerationInputKey } from "../lib/hook-keyframe-generation-contract.ts";
 
 // Exercise the actual worker with provider/storage stubs; no paid requests occur.
@@ -23,9 +25,11 @@ const openrouterCalls = [];
 let seedreamError;
 let openrouterError;
 const image = Buffer.from("fixture-image");
+let providerBuffer = image;
+const uploaded = [];
 const provider = async (model, prompt, ratio, reference, nativeAspectRatio = false) => {
   received.push({ model, prompt, ratio, reference, nativeAspectRatio });
-  return { buffer: image, model, requestId: "fixture-request" };
+  return { buffer: providerBuffer, model, requestId: "fixture-request" };
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
   SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
@@ -39,7 +43,7 @@ mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedE
     await provider("gemini_3_pro", params.prompt, params.aspectRatio, params.referenceImageUrls ?? params.referenceImageUrl);
     await params.onOperationCreated("fixture-request");
     await params.onOperationSucceeded("fixture-request");
-    return image;
+    return providerBuffer;
   },
 } });
 mock.module(new URL("../../dist/lib/seedream-image.js", import.meta.url), { namedExports: {
@@ -49,31 +53,31 @@ mock.module(new URL("../../dist/lib/seedream-image.js", import.meta.url), { name
     if (!params.providerOperationId) await params.onOperationCreated("saved-seedream-task");
     if (seedreamError) throw seedreamError;
     await params.onOperationSucceeded(params.providerOperationId ?? "saved-seedream-task");
-    return image;
+    return providerBuffer;
   },
 } });
 mock.module(new URL("../../dist/lib/openrouter-seedream-image.js", import.meta.url), { namedExports: {
   generateOpenRouterSeedreamImage: async params => {
     openrouterCalls.push(params);
     if (openrouterError) throw openrouterError;
-    return { buffer: image, model: "bytedance-seed/seedream-5-0-pro", requestId: undefined, costUsd: 0.054 };
+    return { buffer: providerBuffer, model: "bytedance-seed/seedream-5-0-pro", requestId: undefined, costUsd: 0.054 };
   },
 } });
 mock.module(new URL("../../dist/lib/openrouter-gemini-image.js", import.meta.url), { namedExports: {
   generateOpenRouterGeminiImage: async params => {
     openrouterCalls.push(params);
     if (openrouterError) throw openrouterError;
-    return { buffer: image, model: "google/gemini-3-pro-image", requestId: undefined };
+    return { buffer: providerBuffer, model: "google/gemini-3-pro-image", requestId: undefined };
   },
   generateOpenRouterGeminiHookKeyframe: async params => {
     openrouterCalls.push(params);
     if (openrouterError) throw openrouterError;
-    return { buffer: image, model: "google/gemini-3-pro-image", requestId: undefined };
+    return { buffer: providerBuffer, model: "google/gemini-3-pro-image", requestId: undefined };
   },
   performOpenRouterFaceSwap: async params => {
     openrouterCalls.push(params);
     if (openrouterError) throw openrouterError;
-    return { buffer: image, model: "google/gemini-3-pro-image", requestId: "swap-test-id" };
+    return { buffer: providerBuffer, model: "google/gemini-3-pro-image", requestId: "swap-test-id" };
   },
 } });
 mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
@@ -85,7 +89,7 @@ mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedE
 mock.module(new URL("../../dist/lib/storage.js", import.meta.url), { namedExports: {
   getStoredObject: async () => null,
   downloadStoredObjectBuffer: async key => { assert.equal(key, "saved-seedream-source.png"); return image; },
-  uploadBufferToStorage: async ({ key }) => ({ key, url: `https://media.example.test/${key}` }),
+  uploadBufferToStorage: async ({ key, buffer }) => { uploaded.push({ key, buffer: Buffer.from(buffer) }); return { key, url: `https://media.example.test/${key}` }; },
 } });
 const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js");
 const context = {
@@ -815,5 +819,71 @@ test("face swap worker forwards every supporting identity photo and rejects exce
       assert.equal(openrouterCalls.at(-1).supportingIdentityImages.length, 3);
       assert.equal(typeof openrouterCalls.at(-1).runStage, "function");
     }
+  }
+});
+
+function openingReceipt(model, prompt) {
+  const partial = { version: 5, imageModel: model, ownerId: "fixture-user", draftId: "00000000-0000-4000-8000-000000000001",
+    referenceId: "hook", sourceSha256: "a".repeat(64), sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280,
+      sha256: createHash("sha256").update(sceneBytes).digest("hex") }, personImageAssetIds: ["00000000-0000-4000-8000-000000000002"], instructions: "" };
+  partial.preparationInputKey = JSON.stringify({ version: 4, ownerId: partial.ownerId, draftId: partial.draftId, referenceId: partial.referenceId,
+    sourceSha256: partial.sourceSha256, sourceFrame: partial.sourceFrame, imageAssetIds: partial.personImageAssetIds, instructions: "", imageModel: model });
+  return { ...partial, purpose: "hook_starting_frame", promptVersion: 7, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: createHash("sha256").update(prompt).digest("hex") };
+}
+
+function startingFrameJob(model, prompt, harmonizer) {
+  const f = seedreamFixture();
+  const receipt = openingReceipt(model, prompt);
+  const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${receipt.sourceSha256}/${receipt.sourceFrame.sha256}.png`, "https://media.example.test/person.png"];
+  f.imageJob.input_json = { generationId: "fixture-generation", model, ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
+    prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt,
+    ...(harmonizer ? { startingFrameHarmonizer: true } : {}) };
+  return f;
+}
+
+test("new Seedream, Nano Banana and GPT starting frames use the same harmonizer; older jobs and Gemini do not run it twice", async () => {
+  const prompt = "Keep source lighting and clothing.";
+  const previousProvider = providerBuffer;
+  try {
+    const plain = startingFrameJob("seedream_5_pro", prompt, false);
+    await runGenerateImageJob(plain.imageJob, plain.context);
+    assert.equal(plain.events.some(event => event.operationKey === "openrouter-image-harmonize-v1"), false);
+    const plainFingerprint = plain.events.find(event => event.name === "reserve").requestFingerprint;
+
+    providerBuffer = await sharp({ create: { width: 64, height: 96, channels: 3, background: { r: 180, g: 140, b: 120 } } }).png().toBuffer();
+    const expected = await harmonizeStartingFrameImage(providerBuffer);
+    for (const model of ["seedream_5_pro", "nano_banana_2", "nano_banana_2_1", "gpt_image", "gpt_image_2_5"]) {
+      const f = startingFrameJob(model, prompt, true);
+      const providerCalls = received.length + openrouterCalls.length;
+      const start = uploaded.length;
+      await runGenerateImageJob(f.imageJob, f.context);
+      assert.equal(received.length + openrouterCalls.length, providerCalls + 1);
+      assert.equal(f.events.filter(event => event.operationKey === "openrouter-image-harmonize-v1" && event.name === "reserve").length, 1);
+      const finalImage = uploaded.slice(start).find(item => item.key.startsWith("images/generated/"));
+      const actual = await sharp(finalImage.buffer).ensureAlpha().raw().toBuffer();
+      const harmonized = await sharp(expected.buffer).ensureAlpha().raw().toBuffer();
+      assert.deepEqual(actual, harmonized);
+      assert.notEqual(f.events.find(event => event.name === "reserve").requestFingerprint, plainFingerprint);
+    }
+
+    providerBuffer = Buffer.from("not-an-image");
+    const failed = startingFrameJob("seedream_5_pro", prompt, true);
+    const start = uploaded.length;
+    await assert.rejects(runGenerateImageJob(failed.imageJob, failed.context), /harmonization failed/);
+    assert.equal(failed.events.some(event => event.name === "failed" && event.operationKey === "openrouter-image-harmonize-v1"), true);
+    assert.equal(uploaded.slice(start).some(item => item.key.startsWith("images/generated/")), false);
+
+    const gemini = startingFrameJob("gemini_3_pro", prompt, true);
+    gemini.imageJob.input_json.provider = "openrouter";
+    const before = openrouterCalls.length;
+    await assert.rejects(runGenerateImageJob(gemini.imageJob, gemini.context), /Seedream, Nano Banana, or GPT Image/);
+    assert.equal(openrouterCalls.length, before);
+    const slide = job("gpt_image", prompt);
+    delete slide.input_json.characterSource;
+    slide.input_json.exploreFormat = "slideshow";
+    slide.input_json.startingFrameHarmonizer = true;
+    await assert.rejects(runGenerateImageJob(slide, context), /Seedream, Nano Banana, or GPT Image/);
+  } finally {
+    providerBuffer = previousProvider;
   }
 });

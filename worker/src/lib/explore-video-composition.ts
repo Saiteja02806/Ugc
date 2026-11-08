@@ -118,15 +118,18 @@ async function probeAudio(path: string, tools: CompositionTools, signal?: AbortS
   return { audioIndex: audio.index as number, durationMs: durationMs(audio, format, true) };
 }
 
-type AudioInput = { inputIndex: number; audioIndex: number; durationMs: number; playback?: ExploreBackgroundPlayback; volume?: number };
+type AudioInput = { inputIndex: number; audioIndex: number; durationMs: number; playback?: ExploreBackgroundPlayback; volume?: number; startMs?: number; targetDurationMs?: number };
 function backgroundAudioFilter(input: AudioInput, targetDurationMs: number, label: string) {
-  const timing = planExploreBackgroundAudio(input.durationMs, targetDurationMs, input.playback);
+  const target = input.targetDurationMs ?? targetDurationMs;
+  const startMs = input.startMs ?? 0;
+  const timing = planExploreBackgroundAudio(input.durationMs, target, input.playback);
   const fade = timing.fadeDurationMs / 1000;
   const filters = [`[${input.inputIndex}:${input.audioIndex}]aresample=48000`, "aformat=sample_fmts=fltp:channel_layouts=stereo", "asetpts=PTS-STARTPTS"];
   if (timing.repeat) filters.push(`aloop=loop=-1:size=${Math.max(1, Math.round(input.durationMs * 48))}:start=0`);
   filters.push(`atrim=duration=${timing.audibleDurationMs / 1000}`, "asetpts=PTS-STARTPTS", `volume=${input.volume ?? .2}`,
-    `afade=t=in:st=0:d=${fade}`, `afade=t=out:st=${(timing.audibleDurationMs - timing.fadeDurationMs) / 1000}:d=${fade}`,
-    "apad", `atrim=duration=${targetDurationMs / 1000}`, `asetpts=PTS-STARTPTS[${label}]`);
+    `afade=t=in:st=0:d=${fade}`, `afade=t=out:st=${(timing.audibleDurationMs - timing.fadeDurationMs) / 1000}:d=${fade}`);
+  if (startMs > 0) filters.push(`adelay=delays=${Math.round(startMs * 48)}S:all=1`);
+  filters.push("apad", `atrim=duration=${(startMs + target) / 1000}`, `asetpts=PTS-STARTPTS[${label}]`);
   return filters.join(",");
 }
 export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: Omit<AudioInput, "inputIndex">, options: {
@@ -212,6 +215,8 @@ export async function composeExploreVideo(options: {
   backgroundMusicPath?: string;
   /** Repeat only when the selected music is approved as suitable for looping. */
   backgroundMusicPlayback?: ExploreBackgroundPlayback;
+  /** Whole video (default) or demo-only; demo-only starts at the demo segment. */
+  backgroundMusicScope?: "whole" | "demo";
   workDir: string;
   tools: CompositionTools;
   subtitleScope?: { language: unknown };
@@ -238,6 +243,9 @@ export async function composeExploreVideo(options: {
   const demoAudio = options.demoAudioPath ? await probeAudio(options.demoAudioPath, options.tools, options.signal) : undefined;
   const backgroundMusic = options.backgroundMusicPath ? await probeAudio(options.backgroundMusicPath, options.tools, options.signal) : undefined;
   const measuredDurationMs = videos.reduce((sum, video) => sum + video.durationMs, 0);
+  const backgroundMusicScope = options.backgroundMusicScope === "demo" && videos.length > 1 ? "demo" : "whole";
+  const backgroundMusicStartMs = backgroundMusicScope === "demo" ? videos[0].durationMs : 0;
+  const backgroundMusicTargetMs = backgroundMusicScope === "demo" ? videos[1].durationMs : measuredDurationMs;
   // Trim/text follow composition and mixing on the same timeline as the former
   // second encode. A format draft can only edit one clip, never an appended demo.
   if (formatEdit && (options.demoPath || options.subtitleScope)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Format editing requires one video without auto subtitles.");
@@ -245,7 +253,7 @@ export async function composeExploreVideo(options: {
   if (editing && editing.trimEndMs > measuredDurationMs + 50) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "The trim range extends beyond this video.");
   const targetDurationMs = editing ? editing.trimEndMs - editing.trimStartMs : measuredDurationMs;
   const demoAudioTiming = demoAudio ? planExploreBackgroundAudio(demoAudio.durationMs, videos[1].durationMs, options.demoAudioPlayback) : null;
-  const backgroundMusicTiming = backgroundMusic ? planExploreBackgroundAudio(backgroundMusic.durationMs, measuredDurationMs, options.backgroundMusicPlayback) : null;
+  const backgroundMusicTiming = backgroundMusic ? planExploreBackgroundAudio(backgroundMusic.durationMs, backgroundMusicTargetMs, options.backgroundMusicPlayback) : null;
   // Before creating outputs or any later paid transcription. This is the
   // complete sequence duration, not the length of the generated opening alone.
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
@@ -256,7 +264,7 @@ export async function composeExploreVideo(options: {
   if (options.audioOnly) buildExploreCompositionFilter(videos, undefined, { demoFraming, sourceFraming });
   // Validate framing BEFORE any output or later paid transcription is created.
   let filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback, volume: options.demoAudioVolume } : undefined, {
-    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
+    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume, startMs: backgroundMusicStartMs, targetDurationMs: backgroundMusicTargetMs } : undefined,
     subtitleAudio: Boolean(options.subtitleScope) && !options.audioOnly && !options.burnSubtitles, audioOnly: options.audioOnly, demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
   });
   options.signal?.throwIfAborted();

@@ -147,6 +147,15 @@ test("compact Change directly uses the full dialog and keeps frame/identity role
   assert.equal(h.selectedFrames.at(-1).assetId, "other-frame");
 });
 
+test("the compact starting-frame tile stays large and has no confusing caption", () => {
+  const references = readFileSync(new URL("../components/explore/format-generation-references.tsx", import.meta.url), "utf8");
+  const previewCss = readFileSync(new URL("../components/explore/workflow-reference-preview.module.css", import.meta.url), "utf8");
+  const layoutCss = readFileSync(new URL("../components/explore/workflow-video-layout.module.css", import.meta.url), "utf8");
+  assert.doesNotMatch(references, /Scene & pose/);
+  assert.match(previewCss, /\.startingFrameCard\.startingFrameCard \{[^}]*calc\(360px \* var\(--starting-frame-ratio/);
+  assert.match(layoutCss, /\[data-reference-columns="1"\]\:has\(\[data-starting-frame\]\)/);
+});
+
 test("model-specific starting-frame defaults preserve the supported duration contract", () => {
   for (const [model, expected] of [["google_omni", 4], ["wan_3_0", 3], ["seedance_2_5", 4]]) {
     assert.equal(policy.hookStartingFrameDefaultDuration(model), expected);

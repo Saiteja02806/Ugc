@@ -1,8 +1,10 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
+import { freeVideoPassShowsRemainingGeneration } from "@/lib/billing/free-video-pass-badge";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +22,14 @@ export function subscribeToFreeVideoPassCookie(
   onStoreChange: () => void,
 ): () => void {
   if (typeof window === "undefined") return () => {};
-  window.addEventListener(FREE_VIDEO_PASS_UPDATED_EVENT, onStoreChange);
+  const notify = () => onStoreChange();
+  window.addEventListener(FREE_VIDEO_PASS_UPDATED_EVENT, notify);
+  window.addEventListener("pageshow", notify);
+  document.addEventListener("visibilitychange", notify);
   return () => {
-    window.removeEventListener(FREE_VIDEO_PASS_UPDATED_EVENT, onStoreChange);
+    window.removeEventListener(FREE_VIDEO_PASS_UPDATED_EVENT, notify);
+    window.removeEventListener("pageshow", notify);
+    document.removeEventListener("visibilitychange", notify);
   };
 }
 
@@ -52,6 +59,7 @@ export function ExploreFreeVideoPassBadge({
   className?: string;
 }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const available = useSyncExternalStore(
     subscribeToFreeVideoPassCookie,
     hasFreeVideoPassActiveCookie,
@@ -62,52 +70,68 @@ export function ExploreFreeVideoPassBadge({
     const uid = user?.uid;
     if (!uid) return;
 
-    const cookieActive = hasFreeVideoPassActiveCookie();
-    const sessionKey = `ugc_fv_pass_checked:${uid}`;
-    let alreadyChecked = false;
-    try {
-      alreadyChecked = sessionStorage.getItem(sessionKey) === "1";
-    } catch {
-      alreadyChecked = false;
-    }
-
-    if (!cookieActive && alreadyChecked) return;
-
     const controller = new AbortController();
-    void (async () => {
-      try {
-        const token = await getCurrentUserIdToken(uid);
-        if (!token || controller.signal.aborted) return;
-        const response = await fetch("/api/billing/subscription", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        if (!response.ok || controller.signal.aborted) return;
-        const payload = (await response.json()) as {
-          subscription?: {
-            freeVideoPass?: { available?: boolean } | null;
-            isActive?: boolean;
-          };
-        };
-        if (controller.signal.aborted) return;
-        try {
-          sessionStorage.setItem(sessionKey, "1");
-        } catch {
-          // Ignore storage restrictions.
-        }
-        const passAvailable = Boolean(
-          payload.subscription?.freeVideoPass?.available &&
-            !payload.subscription?.isActive,
-        );
-        syncFreeVideoPassUiCookie(passAvailable);
-      } catch {
-        // Keep current state if network request is aborted or unavailable.
-      }
-    })();
+    let disposed = false;
+    let lastRefresh = 0;
 
-    return () => controller.abort();
-  }, [user?.uid]);
+    const refresh = () => {
+      if (disposed || document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastRefresh < 1000) return;
+      lastRefresh = now;
+      void (async () => {
+        try {
+          const token = await getCurrentUserIdToken(uid);
+          if (!token || controller.signal.aborted) return;
+          const response = await fetch("/api/billing/subscription", {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          });
+          if (!response.ok || controller.signal.aborted) return;
+          const payload = (await response.json()) as {
+            subscription?: {
+              freeVideoPass?: { available?: boolean; status?: string } | null;
+              isActive?: boolean;
+            };
+          };
+          if (controller.signal.aborted) return;
+          const show = freeVideoPassShowsRemainingGeneration(
+            payload.subscription?.freeVideoPass,
+            payload.subscription?.isActive,
+          );
+          syncFreeVideoPassUiCookie(show);
+          const cached = queryClient.getQueryData<{
+            freeVideoPass?: { available?: boolean; status?: string } | null;
+            isActive?: boolean;
+          }>(["billing-subscription", uid]);
+          if (
+            show !==
+            freeVideoPassShowsRemainingGeneration(
+              cached?.freeVideoPass,
+              cached?.isActive,
+            )
+          ) {
+            void queryClient.invalidateQueries({
+              queryKey: ["billing-subscription", uid],
+            });
+          }
+        } catch {
+          // Keep the invite cookie until a successful read says the pass is used.
+        }
+      })();
+    };
+
+    refresh();
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      disposed = true;
+      controller.abort();
+      window.removeEventListener("pageshow", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [queryClient, user?.uid]);
 
   if (!available) return null;
 

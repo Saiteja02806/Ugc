@@ -59,6 +59,10 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
   const kind = videoLabel === "Hook" ? "hook" : "phone";
   const demoAudioName = demoSoundDetails ? "Demo voiceover" : "Demo audio";
   const demoAudioWord = demoSoundDetails ? "voiceover" : "audio";
+  const backgroundPreview = useRef<HTMLAudioElement>(null);
+  const backgroundVolume = Math.round((options?.backgroundVolume ?? .2) * 100);
+  const demoAvailable = Boolean(demo.asset);
+  const backgroundScope = options?.backgroundScope === "demo" && demoAvailable ? "demo" : "whole";
   const unavailableId = `${kind}-finishing-unavailable`;
   const subtitleHelpId = `${kind}-subtitle-style-help`;
   const timingHelpId = `${kind}-demo-audio-timing`;
@@ -172,44 +176,52 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
       </> : <p id={`${kind}-demo-audio-help`}>Add a demo to choose its {demoAudioWord}.</p>}
     </section>
     <section aria-label="Background music" className={creation.editGroup}>
-      {connected && options && onOptionsChange ? <div className={creation.finishRow}>
-        <span className="text-sm font-medium">Background music</span>
-        <button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} className={creation.backgroundAudioSwitch} onClick={() => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic })}>
+      <details className={creation.demoSoundDetails}>
+        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) event.preventDefault(); }}>Background music {connected && options && onOptionsChange ? <button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} className={cn(creation.backgroundAudioSwitch, creation.summaryControl)} onClick={event => { event.preventDefault(); event.stopPropagation(); onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic }); }}>
           <span className={creation.backgroundAudioTrack} aria-hidden="true"><span className={creation.backgroundAudioThumb} /></span>
-        </button>
-      </div> : <UnavailableToggle label="Background music" descriptionId={unavailableId} />}
-      {backgroundMusic ? <div className="mt-2 space-y-2">
-        <p className="text-xs text-muted">Plays across your video. Turn on to use the default track, or choose your own music.</p>
+        </button> : <span className={creation.summaryControl}><UnavailableToggle label="Background music" descriptionId={unavailableId} hideLabel /></span>}</summary>
+        {backgroundMusic ? <div className="mt-3 space-y-3">
+        <p className="text-xs text-muted">{backgroundScope === "demo" ? "Plays during the demo only. The opening stays without added music." : "Plays across your video. Turn on to use the default track, or choose your own music."}</p>
         <div className="flex flex-wrap gap-2">
-          <WorkflowFilePicker attachment={backgroundMusic.attachment} kind="audio" label="Upload whole-video background music" buttonLabel={backgroundMusic.source ? "Replace music" : "Upload music"} icon={<Upload className="size-4" aria-hidden="true" />} disabled={!connected || editingBusy} />
+          <WorkflowFilePicker attachment={backgroundMusic.attachment} kind="audio" label="Upload background music" buttonLabel={backgroundMusic.source ? "Replace music" : "Upload music"} icon={<Upload className="size-4" aria-hidden="true" />} disabled={!connected || editingBusy} />
           <WorkflowBackgroundAudioPicker ownerId={ownerId ?? null} attachment={backgroundMusic.attachment} onChoose={backgroundMusic.choose} disabled={editingBusy} localPreview={!connected} />
         </div>
+        {options && onOptionsChange ? <details className={sections.optionalGroup} aria-label="Background music options">
+          <summary>Music options <span className={sections.groupSummary}>{backgroundScope === "demo" ? "Demo only" : "Whole video"} · {`${backgroundVolume}%`}</span></summary>
+          <div className="flex flex-col gap-3">
+            <div>
+              <span className="text-xs font-medium">Plays</span>
+              <div role="group" aria-label="Background music scope" className="mt-1 flex flex-wrap gap-2">
+                <Button type="button" variant={backgroundScope === "whole" ? "muted" : "outline"} className="h-8 text-xs" aria-pressed={backgroundScope === "whole"} onClick={() => onOptionsChange({ ...options, backgroundScope: "whole" })}>Whole video</Button>
+                <Button type="button" variant={backgroundScope === "demo" ? "muted" : "outline"} className="h-8 text-xs" aria-pressed={backgroundScope === "demo"} disabled={!demoAvailable} onClick={() => onOptionsChange({ ...options, backgroundScope: "demo" })}>Demo only</Button>
+              </div>
+              {!demoAvailable ? <p className="mt-1 text-xs leading-5 text-muted">Add a demo to use demo-only music.</p> : null}
+            </div>
+            <label className="block space-y-2 text-xs text-muted">Volume · {backgroundVolume}%
+              <input type="range" aria-label="Background music volume" aria-valuetext={`${backgroundVolume} percent`} min={0} max={100} step={1} value={backgroundVolume} className="w-full accent-primary" onChange={event => { const volume = Number(event.target.value) / 100; if (backgroundPreview.current) backgroundPreview.current.volume = volume; onOptionsChange({ ...options, backgroundVolume: volume }); }} />
+            </label>
+            <label className="flex items-center justify-between gap-2 text-xs text-muted">Playback
+              <select aria-label="Background music playback" disabled={editingBusy || backgroundMusic.attachment.loading} value={backgroundMusic.playback} onChange={event => backgroundMusic.setPlayback(event.target.value as "once" | "repeat")} className="h-8 rounded-lg border border-border bg-card px-2 text-xs"><option value="repeat">Repeat to fit</option><option value="once">Play once</option></select>
+            </label>
+            <p className="text-xs leading-5 text-muted">Changes the music level only. Speech and demo voiceover stay unchanged.</p>
+          </div>
+        </details> : null}
         {backgroundMusic.source ? <>
           <p className="truncate text-xs text-muted" title={backgroundMusic.source.title}>{backgroundMusic.source.title}</p>
-          <audio src={backgroundMusic.source.url} controls preload="metadata" className="h-8 w-full" aria-label="Whole-video music preview" />
-          <div className="flex flex-wrap items-center justify-between gap-2"><label className="text-xs text-muted">Playback <select aria-label="Whole-video music playback" disabled={editingBusy || backgroundMusic.attachment.loading} value={backgroundMusic.playback} onChange={event => backgroundMusic.setPlayback(event.target.value as "once" | "repeat")} className="h-8 rounded-lg border border-border bg-card px-2 text-xs"><option value="repeat">Repeat to fit</option><option value="once">Play once</option></select></label><Button type="button" variant="ghost" size="sm" disabled={editingBusy} onClick={backgroundMusic.attachment.remove}>Remove music</Button></div>
+          <audio ref={backgroundPreview} src={backgroundMusic.source.url} controls preload="metadata" className="h-8 w-full" aria-label="Background music preview" onLoadedMetadata={event => { event.currentTarget.volume = options?.backgroundVolume ?? .2; }} onPlay={event => { event.currentTarget.volume = options?.backgroundVolume ?? .2; }} />
+          <div className="flex flex-wrap items-center justify-between gap-2"><Button type="button" variant="ghost" size="sm" disabled={editingBusy} onClick={backgroundMusic.attachment.remove}>Remove music</Button></div>
         </> : options?.backgroundAssetId ? <Button type="button" variant="ghost" size="sm" disabled={editingBusy} onClick={backgroundMusic.attachment.remove}>Remove unavailable music</Button> : options?.backgroundMusic ? <p className="text-xs text-muted">Default music selected</p> : null}
         {backgroundMusic.attachment.error ? <p role="alert" className="text-xs text-destructive">{backgroundMusic.attachment.error}</p> : null}
         {backgroundMusic.attachment.loading ? <p role="status" className="text-xs text-muted">Loading background music…</p> : null}
       </div> : null}
+      </details>
     </section>
 
     <section aria-label="Subtitles" className={creation.editGroup}>
-      <div className={creation.finishRow}>
-        <div className="flex items-center gap-1">
-          <h3 className="text-sm font-medium">Subtitles</h3>
-          <Popover>
-            <PopoverTrigger render={<Button type="button" variant="ghost" size="icon-sm" aria-label="Subtitle scope" className={creation.helpButton} />}><Info className="size-4" aria-hidden="true" /></PopoverTrigger>
-            <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
-              <PopoverTitle>Auto subtitles</PopoverTitle>
-              <p className="text-sm leading-6 text-muted">{EXPLORE_SUBTITLE_SCOPE_LABEL}. This includes your {videoLabel.toLowerCase()} and demo together. Nothing is trimmed automatically.</p>
-              <p className="text-sm leading-6 text-muted">{connected ? "Turn on subtitles, generate captions and correct their words before preparing your final video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
-            </PopoverContent>
-          </Popover>
-        </div>
-        {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
-      </div>
-      <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
+      <details className={creation.demoSoundDetails}>
+        <summary onClick={event => { if (event.target instanceof Element && event.target.closest("button")) event.preventDefault(); }}>Subtitles {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className={cn("h-7 px-3 text-xs", creation.summaryControl)} onClick={event => { event.preventDefault(); onOptionsChange({ ...options, subtitles: !options.subtitles }); }}>{options.subtitles ? "On" : "Off"}</Button> : <span className={creation.summaryControl}><UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel /></span>}</summary>
+        <div className="mt-3 space-y-3">
+      {options?.subtitles ? <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
         <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label}</span></summary>
         <div className="flex flex-col gap-3">
           <div role="group" aria-label={connected ? "Subtitle style samples" : "Subtitle style samples (local preview only)"} aria-describedby={subtitleHelpId} className={creation.subtitleChoices}>
@@ -227,7 +239,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
             }
           }} />
         </div>
-      </details>
+      </details> : null}
       {options?.subtitles && captions ? <WorkflowCaptionEditor captions={captions} disabled={editingBusy} /> : null}
       {options?.subtitles || !connected ? <div className={creation.captionPosition}>
         <span className="text-xs font-medium">Caption position</span>
@@ -239,9 +251,11 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
             }}>{placement === "bottom" ? "Bottom" : placement === "middle" ? "Middle" : "Top"}</Button>)}
         </div>
       </div> : null}
-      <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
+      <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments. This includes your {videoLabel.toLowerCase()} and demo together. Nothing is trimmed automatically. {connected ? "Turn on subtitles, generate captions and correct their words before preparing your final video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
+        </div>
+      </details>
     </section>
-    <p id={unavailableId} className="sr-only">{connected ? backgroundMusic ? "Background music plays underneath the entire video and keeps the original speech. Choose a library track or upload music. With no custom selection, On uses the approved default track. Off retains your selection; Remove music clears it. Separately selected demo voiceover plays during the demo only." : "Off keeps original sound without adding the default track. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo voiceover plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>
+    <p id={unavailableId} className="sr-only">{connected ? backgroundMusic ? "Background music plays underneath the selected scope and keeps the original speech. Choose whole video or demo only, set its volume, then choose a library track or upload music. With no custom selection, On uses the approved default track. Off retains your selection; Remove music clears it. Separately selected demo voiceover plays during the demo only." : "Off keeps original sound without adding the default track. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo voiceover plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>
   </section>;
 }
 

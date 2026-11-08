@@ -60,15 +60,28 @@ test("missing caption review and conflicting soundtracks cannot reach confirmati
 test("custom whole-video music reaches scheduling without default lookup and stays separate from demo audio", async () => {
   const h = harness(); const musicId = randomUUID(), demoId = randomUUID(), demoAudioId = randomUUID();
   h.props.demo = null; h.props.demoAudio = null; h.props.demoSource = { id: demoId }; h.props.demoAudioAssetId = demoAudioId;
-  h.props.options = { ...h.props.options, backgroundMusic: true, backgroundAssetId: musicId };
+  h.props.options = { ...h.props.options, backgroundMusic: true, backgroundAssetId: musicId, backgroundVolume: .35, backgroundScope: "whole" };
   h.props.backgroundSource = { id: musicId }; h.props.backgroundPlayback = "once";
   const initial = h.render(); const draft = await initial.resolve();
   assert.equal(draft.backgroundAssetId, musicId); assert.equal(draft.backgroundPlayback, "once");
+  assert.equal(draft.backgroundVolume, .35); assert.equal(draft.backgroundScope, "whole");
   assert.equal(draft.demoAudioAssetId, demoAudioId); assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
   h.props.backgroundSource = { id: randomUUID() }; assert.notEqual(h.render().signature, initial.signature);
   await assert.rejects(initial.resolve(), /clips changed/);
   h.props.options.backgroundMusic = false; const muted = await h.render().resolve();
   assert.equal(muted.backgroundAssetId, null); assert.equal(muted.demoAudioAssetId, demoAudioId);
+});
+
+test("demo-only music is snapshotted with its volume and falls back to whole video without a demo", async () => {
+  const h = harness(); const musicId = randomUUID(), demoId = randomUUID();
+  h.props.demo = null; h.props.demoAudio = null; h.props.demoSource = { id: demoId };
+  h.props.options = { ...h.props.options, backgroundMusic: true, backgroundAssetId: musicId, backgroundVolume: .4, backgroundScope: "demo" };
+  h.props.backgroundSource = { id: musicId }; h.props.backgroundPlayback = "repeat";
+  const draft = await h.render().resolve();
+  assert.equal(draft.backgroundScope, "demo"); assert.equal(draft.backgroundVolume, .4); assert.equal(draft.backgroundAssetId, musicId);
+  h.props.demoSource = null; h.props.options.backgroundAssetId = null; h.props.backgroundSource = null;
+  const fallback = await h.render().resolve();
+  assert.equal(fallback.backgroundScope, "whole"); assert.equal(fallback.backgroundVolume, .4);
 });
 
 test("a changed selection while upload is running cannot schedule the stale composition", async () => {

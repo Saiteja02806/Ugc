@@ -86,7 +86,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
   }
 });
 
-test("catalogue preserves nine archival clips and all eleven supplied additions, including full-length previews", () => {
+test("catalogue preserves archival clips and supplied additions, including full-length previews", () => {
   assert.equal(catalogue.items.length, 33);
   assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 14);
   assert.equal(new Set(catalogue.items.map(item => item.id)).size, catalogue.items.length);
@@ -99,6 +99,18 @@ test("catalogue preserves nine archival clips and all eleven supplied additions,
     assert.ok(existsSync(item.posterUrl.startsWith("/") ? "public"+item.posterUrl : localBase+".jpg"));
     assert.match(item.generationPrompt, /user's own spoken message/);
     assert.doesNotMatch(JSON.stringify(item), /fullvideo_ignore|[A-Z]:\\/);
+  }
+});
+
+test("silent-mouth talking-head references describe the muted performance without copying the source claim", () => {
+  for (const id of ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"]) {
+    const item = catalogue.items.find(reference => reference.id === id);
+    assert.ok(item, id);
+    assert.match(item.generationPrompt, /silently mouths/u);
+    assert.match(item.generationPrompt, /no audible voice/u);
+    assert.match(item.generationPrompt, /preserve the visible lip and jaw articulation/u);
+    assert.match(item.generationPrompt, /user's own spoken message/u);
+    assert.doesNotMatch(item.generationPrompt, /Lidl|Aldi/iu, "Brand claims stay in the source caption, not the generation prompt");
   }
 });
 

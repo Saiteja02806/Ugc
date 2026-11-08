@@ -227,6 +227,11 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/ugc-creator-brief-template", title: "UGC creator brief template", description: "The eight fields that prevent an unusable video." },
           { href: "/blog/ai-video-generator-for-mobile-apps", title: "AI video generator for mobile apps", description: "Plan store previews and social video as two tracks." },
           { href: "/blog/tiktok-slideshow-view-data", title: "TikTok slideshow view data", description: "28 verified posts, 234M views, and what the numbers do not prove." },
+          { href: "/blog/revid-alternative-for-saas", title: "Revid alternative for SaaS", description: "Compare a broad video engine with a review-first studio." },
+          { href: "/blog/postjet-alternative-for-saas", title: "Postjet alternative for SaaS", description: "Swipe-approved batches versus one reviewed asset." },
+          { href: "/blog/ai-talking-head-video-generator", title: "AI talking head video generator", description: "A quality checklist before you publish." },
+          { href: "/blog/ai-product-demo-video-generator", title: "AI product demo video generator", description: "Where generated footage stops and proof starts." },
+          { href: "/blog/tiktok-slideshow-maker", title: "TikTok slideshow maker", description: "Build a carousel people actually swipe through." },
         ]}
       />
     </VideoMarketingPage>

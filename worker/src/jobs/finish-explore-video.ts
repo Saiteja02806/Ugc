@@ -168,7 +168,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
         ...(draft.editing ? { editing: draft.editing } : {}),
         ...(draft.composition ? { clipComposition: { ...draft.composition, sourceAudioPath } } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
-      ...(clipBackgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
+      ...(clipBackgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),musicVolume:draft.backgroundVolume ?? .2,backgroundMusicScope:draft.backgroundScope ?? "whole",workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
         await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const duration = Math.ceil(speech.durationMs);

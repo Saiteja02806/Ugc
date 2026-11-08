@@ -34,10 +34,13 @@ export function useTalkingHeadPendingComposition({ owner, kind, source, demo, de
   if (!error && options.subtitles && !captionsReady) error = "Generate and review captions for these clips before scheduling.";
   try {
     const knownDemoAudioId = demoAudioAssetId ?? (demoAudio ? captionDraft?.demoAudioAssetId : null) ?? null;
+    const resolvedDemoAssetId = demoSource?.id ?? (demo ? captionDraft?.demoAssetId : null) ?? null;
+    const backgroundScope = options.backgroundScope === "demo" && !resolvedDemoAssetId ? "whole" : options.backgroundScope ?? "whole";
     if (source) draft = parseExploreFinishDraft({ version: 1, kind, sourceAssetId: source.id,
-      demoAssetId: demoSource?.id ?? (demo ? captionDraft?.demoAssetId : null) ?? null, demoAudioAssetId: knownDemoAudioId, demoAudioPlayback: knownDemoAudioId ? playback : "once",
+      demoAssetId: resolvedDemoAssetId, demoAudioAssetId: knownDemoAudioId, demoAudioPlayback: knownDemoAudioId ? playback : "once",
       backgroundAssetId: options.backgroundMusic ? backgroundSource?.id ?? captionDraft?.backgroundAssetId ?? null : null,
       backgroundPlayback: options.backgroundMusic ? backgroundSource ? backgroundPlayback : captionDraft?.backgroundPlayback ?? "once" : "once",
+      backgroundVolume: options.backgroundVolume ?? .2, backgroundScope,
       subtitles: options.subtitles ? { language: "en", version: 2, style: options.style, placement: options.placement ?? "bottom",
         ...(options.corrections?.length ? { corrections: options.corrections } : {}) } : null,
       ...(composition ? { composition: { ...composition, demoEditing: demoSource || demo && captionDraft?.demoAssetId ? composition.demoEditing : null } } : {}),

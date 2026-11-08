@@ -10,8 +10,8 @@ import { createWorkflowSession, parseWorkflowSession } from "./workflow-session.
 import { workflowGenerationPrompt } from "./workflow-generation-client.ts";
 import { getTalkingHeadScript } from "./talking-head-script-store.ts";
 
-test("all 29 transcripts bind to their exact source versions; hooks exclude reviewed demo openings", () => {
-  assert.equal(transcripts.items.length, 29);
+test("all 33 transcripts bind to their exact source versions; hooks exclude reviewed demo openings", () => {
+  assert.equal(transcripts.items.length, 33);
   for (const row of transcripts.items) {
     assert.equal(manifest.items.find(source => source.id === row.referenceId)?.sourceSha256, row.sourceSha256);
     assert.ok(row.fullText.trim()); assert.ok(row.hookText.trim());
@@ -30,6 +30,18 @@ test("all 29 transcripts bind to their exact source versions; hooks exclude revi
   assert.match(sawyer.fullText, /chatubt/u, "the raw source transcription remains immutable");
   assert.ok(sawyer.corrections.some(note => note.includes("source caption at 4s")));
 });
+test("silent-mouth references use caption-reviewed manual transcripts, not ASR", () => {
+  for (const id of ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"]) {
+    const row = transcripts.items.find(item => item.referenceId === id);
+    assert.ok(row, id);
+    assert.equal(row.provider, "manual");
+    assert.equal(row.model, "on-screen-caption-review");
+    assert.equal(row.review, "cross_checked_draft");
+    assert.match(row.reviewNotes, /No audible speech/u);
+    assert.match(row.reviewNotes, /brand claims/u);
+  }
+});
+
 test("dedicated medium comparison winner and script prompt preserve spoken roles and grounding", () => {
   assert.equal(TALKING_HEAD_SCRIPT_MODEL, "gpt-6.1-terra");
   assert.match(TALKING_HEAD_SCRIPT_SYSTEM, /spoken dialogue/u); assert.match(TALKING_HEAD_SCRIPT_SYSTEM, /untrusted data/u);

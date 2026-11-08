@@ -30,6 +30,8 @@ export type ExploreFinishDraft = {
   demoAudioPlayback: "once" | "repeat";
   backgroundAssetId: string | null;
   backgroundPlayback: "once" | "repeat";
+  backgroundVolume?: number;
+  backgroundScope?: "whole" | "demo";
   demoFraming?: DemoFraming;
   /** Crop/pan the sole clip after its independent trim/text/audio preparation. */
   sourceFraming?: DemoFraming;
@@ -65,13 +67,18 @@ function playback(value: unknown) {
 }
 export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const raw = object(value);
-  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "sourceFraming", "editing", "captionPreview", "composition"];
+  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "backgroundVolume", "backgroundScope", "subtitles", "demoFraming", "sourceFraming", "editing", "captionPreview", "composition"];
   if (Object.keys(raw).some(key => !fields.includes(key)) || raw.version !== 1 || (raw.kind !== "hook" && raw.kind !== "phone")) throw new ExploreFinishError("This finishing draft uses an unsupported format.");
   const sourceAssetId = asset(raw.sourceAssetId, false)!;
   const demoAssetId = asset(raw.demoAssetId);
   const demoAudioAssetId = asset(raw.demoAudioAssetId);
   const backgroundAssetId = asset(raw.backgroundAssetId);
   const demoAudioPlayback = playback(raw.demoAudioPlayback), backgroundPlayback = playback(raw.backgroundPlayback);
+  const backgroundVolume = raw.backgroundVolume === undefined ? undefined : raw.backgroundVolume;
+  if (backgroundVolume !== undefined && (typeof backgroundVolume !== "number" || !Number.isFinite(backgroundVolume) || backgroundVolume < 0 || backgroundVolume > 1)) throw new ExploreFinishError("Choose a background music volume between 0 and 100 percent.");
+  const backgroundScope = raw.backgroundScope === undefined ? undefined : raw.backgroundScope;
+  if (backgroundScope !== undefined && backgroundScope !== "whole" && backgroundScope !== "demo") throw new ExploreFinishError("Choose whole-video or demo-only background music.");
+  if (backgroundScope === "demo" && !demoAssetId) throw new ExploreFinishError("Add a demo before choosing demo-only background music.");
   const composition = raw.composition === undefined ? undefined : parseExploreClipComposition(raw.composition);
   if (composition && (raw.editing !== undefined || !demoAssetId && composition.demoEditing)) throw new ExploreFinishError("Choose one complete clip composition and add a demo before editing it.");
   if (demoAudioAssetId && !demoAssetId) throw new ExploreFinishError("Add a demo before selecting demo audio.");
@@ -99,6 +106,8 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   // Omit the new option entirely on legacy drafts: existing fingerprints and
   // interrupted finishing requests must remain byte-for-byte compatible.
   return { version: 1, kind: raw.kind, sourceAssetId, demoAssetId, demoAudioAssetId, demoAudioPlayback, backgroundAssetId, backgroundPlayback, subtitles,
+    ...(backgroundVolume !== undefined ? { backgroundVolume: backgroundVolume as number } : {}),
+    ...(backgroundScope !== undefined ? { backgroundScope: backgroundScope as "whole" | "demo" } : {}),
     ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}), ...(composition ? { composition } : {}), ...(raw.captionPreview ? { captionPreview: true as const } : {}) };
 }
 

@@ -6,7 +6,7 @@ import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-o
 import { Button } from "@/components/ui/button";
 import styles from "@/components/explore/workflow-sequence-preview.module.css";
 import { WorkflowCaptionOverlay, type SequenceCaptions } from "./workflow-caption-overlay";
-import { createSequencePreviewTimeline, sequencePreviewAudioPosition, sequencePreviewOverlays, sequencePreviewPosition,
+import { createSequencePreviewTimeline, sequencePreviewAudioState, sequencePreviewOverlays, sequencePreviewPosition,
   sequencePreviewProjection, validateSequencePreviewAudio, type SequencePreviewAudio, type SequencePreviewSegment, type SequencePreviewTimeline } from "@/lib/explore/sequence-preview";
 
 export type { SequencePreviewAudio, SequencePreviewSegment } from "@/lib/explore/sequence-preview";
@@ -73,7 +73,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
   function syncSound(audio: HTMLAudioElement | null, track: SequencePreviewAudio | null | undefined, elapsed: number, target: number) {
     if (!audio || !track || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
     if (audio.duration > 600) { fail("Choose preview audio up to 10 minutes long."); return; }
-    const state = sequencePreviewAudioPosition(audio.duration * 1000, track.mixDurationMs ?? target, elapsed + (track.timelineOffsetMs ?? 0), track.playback);
+    const state = sequencePreviewAudioState(audio.duration * 1000, track, elapsed, target);
     audio.volume = track.volume * state.gain; audio.muted = mute.current;
     if (!state.audible) { audio.pause(); return; }
     const seconds = state.positionMs / 1000;

@@ -10,12 +10,17 @@ export type HarmonizerOptions = {
 const FACE_OUTER = { x0: 0.18, x1: 0.82, y0: 0.05, y1: 0.58 };
 const FACE_INNER = { x0: 0.3, x1: 0.7, y0: 0.12, y1: 0.46 };
 const MAX_L_SHIFT = 12;
+const MIN_TEXTURE_SCALE = 0.8;
+const MAX_TEXTURE_SCALE = 1.4;
 const D65 = { x: 0.95047, y: 1, z: 1.08883 };
 
 /**
- * Relights skin in the face region toward the other skin in the photograph,
- * in CIE LAB, then adds Gaussian grain on the L channel.
- * The shift is bounded. A frame without enough skin in both regions keeps its light and only receives grain.
+ * Matches the strength of the face's fine skin grain to the other skin in the
+ * photograph, in CIE LAB, then adds Gaussian grain on the L channel.
+ * The face keeps its own pores and freckles. A darker face can be lifted by a
+ * bounded amount. A brighter face is left alone, so a lit face is not pulled
+ * down toward a hand in shadow. A frame without enough skin in both regions
+ * keeps its light and texture and only receives grain.
  */
 export async function harmonizeStartingFrameImage(
   inputBuffer: Buffer,
@@ -31,6 +36,7 @@ export async function harmonizeStartingFrameImage(
   const source = decoded.data;
   const pixelCount = width * height;
   const lab = new Float32Array(pixelCount * 3);
+  const lightness = new Float32Array(pixelCount);
   for (let i = 0; i < pixelCount; i += 1) {
     const offset = i * 4;
     const [l, a, b] = rgbToLab(source[offset], source[offset + 1], source[offset + 2]);
@@ -38,11 +44,13 @@ export async function harmonizeStartingFrameImage(
     lab[labOffset] = l;
     lab[labOffset + 1] = a;
     lab[labOffset + 2] = b;
+    lightness[i] = l;
   }
 
   const faceHistogram = new Uint32Array(101);
   const referenceHistogram = new Uint32Array(101);
   const faceWeight = new Float32Array(pixelCount);
+  const skin = new Uint8Array(pixelCount);
   let faceCount = 0;
   let referenceCount = 0;
   for (let y = 0; y < height; y += 1) {
@@ -51,6 +59,7 @@ export async function harmonizeStartingFrameImage(
       const index = y * width + x;
       const labOffset = index * 3;
       if (!isSkin(lab[labOffset], lab[labOffset + 1], lab[labOffset + 2])) continue;
+      skin[index] = 1;
       const weight = faceRegionWeight((x + 0.5) / width, ny);
       faceWeight[index] = weight;
       const bin = Math.max(0, Math.min(100, Math.round(lab[labOffset])));
@@ -68,30 +77,120 @@ export async function harmonizeStartingFrameImage(
   let shift = 0;
   if (faceCount >= minimum && referenceCount >= minimum) {
     const gap = medianFromHistogram(referenceHistogram, referenceCount) - medianFromHistogram(faceHistogram, faceCount);
-    const bounded = Math.max(-MAX_L_SHIFT, Math.min(MAX_L_SHIFT, gap * 0.7));
-    if (Math.abs(bounded) >= 1) shift = bounded;
+    // Darkening toward a shadowed hand made the lit face dull and speckled.
+    // Only lift a face that is darker than the other skin.
+    if (gap >= 1) {
+      const bounded = Math.min(MAX_L_SHIFT, gap * 0.7);
+      if (bounded >= 1) shift = bounded;
+    }
   }
+
+  const texture = faceCount >= minimum && referenceCount >= minimum
+    ? referenceSkinTextureScale(lightness, skin, faceWeight, width, height)
+    : null;
 
   const intensity = options.grainIntensity ?? STARTING_FRAME_HARMONIZER_GRAIN;
   const grain = Math.max(0, intensity) * 100;
   const nextGaussian = grain > 0 ? createGaussian(42) : null;
   const output = Buffer.alloc(pixelCount * 4);
-  for (let i = 0; i < pixelCount; i += 1) {
-    const labOffset = i * 3;
-    const weight = faceWeight[i];
-    let l = lab[labOffset] + (weight > 0 ? shift * weight : 0);
-    if (nextGaussian) l += nextGaussian() * grain;
-    l = Math.max(0, Math.min(100, l));
-    const [r, g, b] = labToRgb(l, lab[labOffset + 1], lab[labOffset + 2]);
-    const offset = i * 4;
-    output[offset] = r;
-    output[offset + 1] = g;
-    output[offset + 2] = b;
-    output[offset + 3] = source[offset + 3];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const labOffset = index * 3;
+      const weight = faceWeight[index];
+      let l = lab[labOffset];
+      if (texture && weight > 0 && skin[index]) {
+        l += texture.residual[index] * (texture.scale - 1) * weight;
+      }
+      if (weight > 0 && skin[index]) l += shift * weight;
+      if (nextGaussian) l += nextGaussian() * grain;
+      l = Math.max(0, Math.min(100, l));
+      const [r, g, b] = labToRgb(l, lab[labOffset + 1], lab[labOffset + 2]);
+      const offset = index * 4;
+      output[offset] = r;
+      output[offset + 1] = g;
+      output[offset + 2] = b;
+      output[offset + 3] = source[offset + 3];
+    }
   }
 
   const buffer = await sharp(output, { raw: { width, height, channels: 4 } }).png().toBuffer();
   return { buffer, width, height };
+}
+
+function referenceSkinTextureScale(
+  lightness: Float32Array,
+  skin: Uint8Array,
+  faceWeight: Float32Array,
+  width: number,
+  height: number,
+) {
+  const radius = Math.max(1, Math.min(3, Math.round(Math.min(width, height) / 400)));
+  const blurred = boxBlur(lightness, width, height, radius);
+  const residual = new Float32Array(lightness.length);
+  let faceSum = 0;
+  let faceSquares = 0;
+  let faceSamples = 0;
+  let referenceSum = 0;
+  let referenceSquares = 0;
+  let referenceSamples = 0;
+  for (let index = 0; index < residual.length; index += 1) {
+    const value = lightness[index] - blurred[index];
+    residual[index] = value;
+    if (!skin[index]) continue;
+    const weight = faceWeight[index];
+    if (weight >= 0.999) {
+      faceSum += value;
+      faceSquares += value * value;
+      faceSamples += 1;
+    } else if (weight === 0) {
+      referenceSum += value;
+      referenceSquares += value * value;
+      referenceSamples += 1;
+    }
+  }
+  if (faceSamples < 48 || referenceSamples < 48) return null;
+  const faceDeviation = deviation(faceSum, faceSquares, faceSamples);
+  const referenceDeviation = deviation(referenceSum, referenceSquares, referenceSamples);
+  if (faceDeviation < 0.2 || referenceDeviation < 0.2) return null;
+  const scale = Math.max(MIN_TEXTURE_SCALE, Math.min(MAX_TEXTURE_SCALE, referenceDeviation / faceDeviation));
+  if (Math.abs(scale - 1) < 0.05) return null;
+  return { residual, scale };
+}
+
+function deviation(sum: number, sumSquares: number, count: number) {
+  const mean = sum / count;
+  return Math.sqrt(Math.max(0, sumSquares / count - mean * mean));
+}
+
+function boxBlur(source: Float32Array, width: number, height: number, radius: number) {
+  const horizontal = new Float32Array(source.length);
+  const output = new Float32Array(source.length);
+  const window = radius * 2 + 1;
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    let sum = 0;
+    for (let offset = -radius; offset <= radius; offset += 1) sum += source[row + clampIndex(offset, width)];
+    for (let x = 0; x < width; x += 1) {
+      horizontal[row + x] = sum / window;
+      sum += source[row + clampIndex(x + radius + 1, width)] - source[row + clampIndex(x - radius, width)];
+    }
+  }
+  for (let x = 0; x < width; x += 1) {
+    let sum = 0;
+    for (let offset = -radius; offset <= radius; offset += 1) sum += horizontal[clampIndex(offset, height) * width + x];
+    for (let y = 0; y < height; y += 1) {
+      output[y * width + x] = sum / window;
+      sum += horizontal[clampIndex(y + radius + 1, height) * width + x] - horizontal[clampIndex(y - radius, height) * width + x];
+    }
+  }
+  return output;
+}
+
+function clampIndex(value: number, size: number) {
+  if (value < 0) return 0;
+  if (value >= size) return size - 1;
+  return value;
 }
 
 function faceRegionWeight(nx: number, ny: number) {

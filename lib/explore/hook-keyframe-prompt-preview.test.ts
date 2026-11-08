@@ -160,7 +160,7 @@ test("batch 4 source timing keeps the laptop lift, glasses removal and final exp
 
 test("batch 5 glasses actions retain the source pauses and respect user edits", () => {
  const cases = [
-  ["explore-paired-hook-4ddf4d0f6dc4493f7eb6572f", /2\.1–2\.57s: Move the glasses temple away/],
+  ["explore-paired-hook-4ddf4d0f6dc4493f7eb6572f", /2–2.57s: Open the jaw wider around the stem/],
   ["explore-paired-hook-f24aeb3d18886faf62ca3b8c", /1\.13–1\.32s: Release the glasses/],
  ] as const;
  for (const [referenceId, expected] of cases) {
@@ -203,8 +203,8 @@ test("Hook 54 waits for the source close-up before the smile, preserving user ed
  const source = hookKeyframeMotionCatalog[id];
  const opening = updateHookKeyframeDraft(createHookKeyframeDraft({ ...draft.scope, referenceId: id, sourceSha256: source.sourceSha256 }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } });
  const preview = getHookKeyframePromptPreview(opening, "hook", undefined, undefined, undefined, source.sourceDurationSeconds);
- assert.match(preview.animationPrompt!, /0\.41–0\.76s: Keep the questioning pursed expression/);
- assert.match(preview.animationPrompt!, /0\.76–1\.02s: As the view tightens/);
+  assert.match(preview.animationPrompt!, /0\.6–1\.2s: Keep the jaw open/);
+  assert.match(preview.animationPrompt!, /1\.2–1\.77s: Let a small delighted smile/);
  assert.match(preview.animationPrompt!, /FINAL HOLD 1\.77–3s/);
  assert.equal(getHookKeyframePromptPreview(updateHookKeyframeDraft(opening, { motionInstructions: "My own movement." })).directions, "My own movement.");
 });

@@ -8,6 +8,8 @@ export type SequencePreviewAudio = {
   url: string; volume: number; playback: "once" | "repeat";
   /** Custom opening music is mixed before source trim; its clock includes that trim offset. */
   timelineOffsetMs?: number; mixDurationMs?: number;
+  /** Demo-only music starts at this timeline position instead of the beginning. */
+  startMs?: number;
 };
 /** Edits and framing refer to the supplied original source; omit them for an already prepared clip. */
 export type SequencePreviewSegment = {
@@ -26,8 +28,10 @@ export function validateSequencePreviewAudio(audio: SequencePreviewAudio) {
     throw new Error("Choose playable preview audio and a valid volume.");
   }
   if (audio.timelineOffsetMs !== undefined && (!finite(audio.timelineOffsetMs) || audio.timelineOffsetMs < 0 || audio.timelineOffsetMs > 240000) ||
+      audio.startMs !== undefined && (!finite(audio.startMs) || audio.startMs < 0 || audio.startMs > 240000) ||
       audio.mixDurationMs !== undefined && (!finite(audio.mixDurationMs) || audio.mixDurationMs <= 0 || audio.mixDurationMs > 240000) ||
-      audio.mixDurationMs !== undefined && (audio.timelineOffsetMs ?? 0) >= audio.mixDurationMs) {
+      audio.mixDurationMs !== undefined && (audio.timelineOffsetMs ?? 0) >= audio.mixDurationMs ||
+      audio.mixDurationMs !== undefined && audio.startMs !== undefined && audio.startMs >= audio.mixDurationMs) {
     throw new Error("Choose a valid preview audio timing range.");
   }
   return audio;
@@ -119,6 +123,13 @@ export function sequencePreviewAudioPosition(sourceDurationMs: number, targetDur
   const fade = timing.fadeDurationMs;
   const gain = audible ? Math.max(0, Math.min(1, elapsed / fade, (timing.audibleDurationMs - elapsed) / fade)) : 0;
   return { audible, positionMs: timing.repeat ? elapsed % sourceDurationMs : Math.min(elapsed, sourceDurationMs), gain };
+}
+/** Respect a delayed start while keeping the existing trim-clock offset for opening music. */
+export function sequencePreviewAudioState(sourceDurationMs: number, audio: SequencePreviewAudio, elapsedMs: number, targetDurationMs: number) {
+  const startMs = audio.startMs ?? 0;
+  const endMs = audio.mixDurationMs ?? targetDurationMs;
+  if (elapsedMs < startMs) return { audible: false, positionMs: 0, gain: 0 };
+  return sequencePreviewAudioPosition(sourceDurationMs, Math.max(1, endMs - startMs), elapsedMs - startMs + (audio.timelineOffsetMs ?? 0), audio.playback);
 }
 /** Custom clip music is mixed on the raw timeline before trim. Paired
  * reference music deliberately restarts and fades on the trimmed timeline. */

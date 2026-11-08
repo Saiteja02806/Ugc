@@ -130,30 +130,59 @@ test("unfinished finishing tools remain off, disabled and explained", () => {
   assert.match(text(tree), /English · up to 60 seconds total/);
 });
 
-test("whole-video music has its own compact picker, selection, playback and removal beside demo-only audio", () => {
+test("background music has a compact picker, scope, volume, playback and removal beside demo-only audio", () => {
   const calls = [], demoAudio = makeAttachment("demo-only.mp3", true), attachment = makeAttachment("whole-video.mp3", true);
   attachment.remove = () => calls.push("remove-music");
   const music = { source: { title: "Whole video music", url: "https://audio.test/music.mp3" }, attachment, playback: "repeat", choose() {}, setPlayback: value => calls.push(value) };
-  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio, connected: true, ownerId: "owner", options: { backgroundMusic: true }, onOptionsChange() {}, backgroundMusic: music });
+  const changes = [];
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio, connected: true, ownerId: "owner", options: { backgroundMusic: true, backgroundVolume: .2, backgroundScope: "whole" }, onOptionsChange: value => changes.push(value), backgroundMusic: music });
   const picker = nodes(tree).find(n => n.type === "background-audio-picker"); assert.equal(picker.props.attachment, attachment); assert.equal(picker.props.onChoose, music.choose);
-  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.label === "Upload whole-video background music" && n.props.attachment === attachment));
+  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.label === "Upload background music" && n.props.attachment === attachment));
   assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.attachment === demoAudio));
-  nodes(tree).find(n => n.props?.["aria-label"] === "Whole-video music playback").props.onChange({ target: { value: "once" } });
+  const musicRegion = nodes(tree).find(n => n.type === "section" && n.props?.["aria-label"] === "Background music");
+  const musicContainer = nodes(musicRegion).find(n => n.type === "details" && String(n.props.className).includes("demoSoundDetails"));
+  assert.equal(musicContainer.props.open, undefined, "background music stays closed until the container is opened");
+  const musicOptions = nodes(tree).find(n => n.type === "details" && n.props?.["aria-label"] === "Background music options");
+  assert.ok(musicOptions, "the music options disclosure is present");
+  assert.ok(nodes(musicContainer).includes(musicOptions), "music options stay inside the background music container");
+  assert.match(text(musicOptions), /Music options Whole video · 20%/);
+  const scope = nodes(musicOptions).find(n => n.props?.["aria-label"] === "Background music scope");
+  const demoOnly = nodes(scope).find(n => n.type === "button" && text(n) === "Demo only");
+  demoOnly.props.onClick(); assert.equal(changes.at(-1).backgroundScope, "demo");
+  const volume = nodes(musicOptions).find(n => n.props?.["aria-label"] === "Background music volume");
+  volume.props.onChange({ target: { value: "35" } }); assert.equal(changes.at(-1).backgroundVolume, .35);
+  nodes(tree).find(n => n.props?.["aria-label"] === "Background music playback").props.onChange({ target: { value: "once" } });
   nodes(tree).find(n => n.type === "button" && text(n) === "Remove music").props.onClick();
   assert.deepEqual(calls, ["once", "remove-music"]); assert.match(text(tree), /Plays across your video/);
   assert.ok(nodes(render({ connected: true, options: { backgroundMusic: true, backgroundAssetId: "missing" }, onOptionsChange() {}, backgroundMusic: { ...music, source: null } }).tree).some(n => text(n) === "Remove unavailable music"));
+});
+
+test("demo-only music is disabled without a demo and falls back to whole-video wording", () => {
+  const attachment = makeAttachment("whole-video.mp3", true);
+  const music = { source: { title: "Whole video music", url: "https://audio.test/music.mp3" }, attachment, playback: "repeat", choose() {}, setPlayback() {} };
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", false), connected: true, ownerId: "owner", options: { backgroundMusic: true, backgroundVolume: .3, backgroundScope: "demo" }, onOptionsChange() {}, backgroundMusic: music });
+  const musicOptions = nodes(tree).find(n => n.type === "details" && n.props?.["aria-label"] === "Background music options");
+  const demoOnly = nodes(musicOptions).find(n => n.type === "button" && text(n) === "Demo only");
+  assert.equal(demoOnly.props.disabled, true);
+  assert.match(text(musicOptions), /Music options Whole video · 30%/);
+  assert.match(text(tree), /Add a demo to use demo-only music/);
+  assert.match(text(tree), /Plays across your video/);
 });
 
 test("connected subtitle controls save real finishing options and Audio selection stays on the Demo attachment", () => {
   const changes = [];
   const { props, tree } = render({ connected: true, ownerId: "owner", demo: makeAttachment("demo.mp4", true), options: { subtitles: false, style: "clean", backgroundMusic: false }, onOptionsChange: value => changes.push(value) });
   const toggle = nodes(tree).find(n => n.props.role === "switch" && n.props["aria-label"] === "Auto subtitles");
-  assert.notEqual(toggle.props.disabled, true); toggle.props.onClick(); assert.equal(changes[0].subtitles, true);
-  const bold = nodes(tree).find(n => n.props["data-style"] === "bold-box"); bold.props.onClick(); assert.equal(changes[1].style, "bold-box");
-  const editorial = nodes(tree).find(n => n.props["data-style"] === "editorial");
+  assert.equal(nodes(tree).find(n => n.type === "details" && text(n).startsWith("Subtitle appearance")), undefined);
+  assert.notEqual(toggle.props.disabled, true); toggle.props.onClick({ preventDefault() {} }); assert.equal(changes[0].subtitles, true);
+  const opened = render({ connected: true, ownerId: "owner", demo: makeAttachment("demo.mp4", true), options: changes[0], onOptionsChange: value => changes.push(value) }).tree;
+  const bold = nodes(opened).find(n => n.props["data-style"] === "bold-box"); bold.props.onClick(); assert.equal(changes[1].style, "bold-box");
+  const editorial = nodes(opened).find(n => n.props["data-style"] === "editorial");
   assert.notEqual(editorial.props.disabled, true); editorial.props.onClick(); assert.equal(changes[2].style, "editorial");
   const music = nodes(tree).find(n => n.props.role === "switch" && n.props["aria-label"] === "Background music");
-  assert.equal(music.props["aria-checked"], false); music.props.onClick(); assert.equal(changes[3].backgroundMusic, true);
+  assert.equal(music.props["aria-checked"], false); music.props.onClick({ preventDefault() {}, stopPropagation() {} }); assert.equal(changes[3].backgroundMusic, true);
+  const subtitleContainer = nodes(nodes(tree).find(n => n.type === "section" && n.props?.["aria-label"] === "Subtitles")).find(n => n.type === "details" && String(n.props.className).includes("demoSoundDetails"));
+  assert.equal(subtitleContainer.props.open, undefined, "subtitles stay closed until the container is opened");
   const picker = nodes(tree).find(n => n.type === "saved-audio-picker"); assert.equal(picker.props.attachment, props.demoAudio); assert.equal(picker.props.ownerId, "owner");
   assert.doesNotMatch(text(tree), /Music and subtitle rendering are not connected in this local preview/);
   assert.match(text(tree), /generate captions and correct their words before preparing your final video/);
@@ -161,12 +190,13 @@ test("connected subtitle controls save real finishing options and Audio selectio
 
 test("visual subtitle choices default to Clean and rerender locally without enabling the generator", () => {
   const actual = harness(source, "WorkflowCompositionPanel");
-  const props = render().props;
+  const props = render({ connected: true, options: { subtitles: true }, onOptionsChange() {} }).props;
+  assert.equal(nodes(actual.render(render().props)).find(node => node.type === "details" && text(node).startsWith("Subtitle appearance")), undefined);
   const first = actual.render(props);
-  const appearance = nodes(first).find(node => node.type === "details");
+  const appearance = nodes(first).find(node => node.type === "details" && text(node).startsWith("Subtitle appearance"));
   assert.equal(appearance.props.open, undefined);
   assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean");
-  const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples (local preview only)");
+  const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples");
   assert.equal(group.props.role, "group");
   const choices = nodes(group).filter((node) => node.type === "button");
   assert.deepEqual(choices.map((node) => node.props["data-style"]), Array.from(subtitleStyles.SUBTITLE_STYLES));
@@ -177,12 +207,12 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   assert.deepEqual(nodes(next).filter((node) => node.type === "button" && node.props["data-style"] && node.props["aria-pressed"]).map((node) => node.props["data-style"]), ["active-word"]);
   assert.equal(nodes(next).find((node) => node.type === "select"), undefined);
   assert.match(text(next), /Selecting a style changes your draft only/);
-  assert.equal(nodes(next).find((node) => node.props.role === "switch" && node.props["aria-label"] === "Auto subtitles").props.disabled, true);
+  assert.notEqual(nodes(next).find((node) => node.props.role === "switch" && node.props["aria-label"] === "Auto subtitles").props.disabled, true);
   assert.doesNotMatch(source, /\bfetch\(|localStorage|sessionStorage|setInstructions|onInstructionsChange/);
 });
 
 test("subtitle choices show real rendered posters with draft and timing scope explained", () => {
-  const { tree } = render();
+  const { tree } = render({ connected: true, options: { subtitles: true, style: "clean" }, onOptionsChange() {} });
   const subtitles = nodes(tree).find((node) => node.props["aria-label"] === "Subtitles");
   const help = nodes(subtitles).find((node) => node.props.id === "hook-subtitle-style-help");
   assert.equal(help.props.className, "sr-only");
@@ -197,8 +227,7 @@ test("subtitle choices show real rendered posters with draft and timing scope ex
 test("both workflows expose the English/60-second combined limit without adding subtitle subtext", () => {
   for (const videoLabel of ["Hook", "Phone video"]) {
     const { tree } = render({ videoLabel });
-    const help = nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render.props["aria-label"] === "Subtitle scope");
-    assert.equal(help.props.render.props.type, "button");
+    assert.equal(nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render?.props?.["aria-label"] === "Subtitle scope"), undefined);
     const subtitles = nodes(tree).find((node) => node.props["aria-label"] === "Subtitles");
     assert.match(text(subtitles), /English · up to 60 seconds total/);
     assert.match(text(subtitles), new RegExp(`includes your ${videoLabel.toLowerCase()} and demo together`));

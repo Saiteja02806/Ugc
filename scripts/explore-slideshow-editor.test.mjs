@@ -21,17 +21,31 @@ test("the slideshow preview fills its pane and the header wraps instead of overf
   // left gutter on desktop and overflowing narrower laptop panes.
   assert.match(css, /\.editorPreview \{[^}]*width: 100%/);
   assert.match(css, /\.editorPreview \{[^}]*align-self: stretch/);
+  assert.match(css, /\.editorPreview \{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /\.editorPreview \{[^}]*grid-template-rows: auto auto minmax\(0, 1fr\) auto auto/);
   assert.match(css, /\.previewHeading \{[^}]*flex-wrap: wrap/);
   assert.match(css, /\.previewHeading \{[^}]*align-items: center/);
   assert.match(css, /\.headerActions \{[^}]*min-width: 0/);
   assert.match(css, /\.headerActions \{[^}]*margin-left: auto/);
-  // Stage actions live in a full-width bar under the preview, not inside the rail.
-  assert.match(css, /\.previewActions \{[^}]*grid-column: 1 \/ -1/);
-  assert.match(css, /\.previewActions \{[^}]*grid-row: 4/);
+  // The slide strip is below the preview; stage actions are the last row.
+  assert.match(css, /\.sequence \{[^}]*grid-column: 1/);
+  assert.match(css, /\.sequence \{[^}]*grid-row: 4/);
+  assert.doesNotMatch(css, /\.sequence \{[^}]*border-top: 1px solid/);
+  assert.match(css, /\.preview > img:first-child \{[^}]*max-height: clamp\(160px, calc\(100dvh - 560px\), 440px\)/);
+  assert.match(css, /\.dragHandle \{[^}]*color: #16161a/);
+  assert.match(css, /\.dragHandle \{[^}]*background: #fff/);
+  assert.doesNotMatch(readFileSync(new URL("../components/explore/format-slideshow-editor.tsx", import.meta.url), "utf8"), /Slideshow saving is unavailable right now/);
+  assert.match(css, /\.previewActions \{[^}]*grid-column: 1/);
+  assert.match(css, /\.previewActions \{[^}]*grid-row: 5/);
   assert.match(css, /\.previewActions \{[^}]*flex-wrap: wrap/);
   assert.match(css, /\.previewActions button \{[^}]*white-space: nowrap/);
+  assert.match(css, /\.filmstrip \{[^}]*flex-direction: row/);
+  assert.match(css, /\.filmstrip \{[^}]*overflow-x: auto/);
+  assert.match(css, /\.filmstrip \{[^}]*max-height: none/);
+  assert.match(css, /\.thumbnail \{[^}]*width: 64px/);
+  assert.match(css, /\.thumbnail \{[^}]*height: 80px/);
+  assert.match(css, /\.thumbnail img \{[^}]*object-fit: cover/);
   assert.doesNotMatch(css, /\.sequence \.headerActions/);
-  assert.match(css, /\.filmstrip \{[^}]*max-height: clamp\(244px, 38dvh, 340px\)/);
 });
 
 test("Add slides tiles request thumbnail-sized images instead of full originals", () => {
@@ -518,8 +532,8 @@ test("Upload slides reports active progress beside the preview and saves exactly
   const rail = nodes(h.render()).find(node => node.props?.["aria-label"] === "Choose a slide");
   let scrolled;
   rail.props.ref.current = { scrollBy(value) { scrolled = value; } };
-  h.control("Button", "Scroll slides down").props.onClick(); assert.equal(scrolled.top, 180);
-  h.control("Button", "Scroll slides up").props.onClick(); assert.equal(scrolled.top, -180);
+  h.control("Button", "Scroll slides right").props.onClick(); assert.equal(scrolled.left, 180);
+  h.control("Button", "Scroll slides left").props.onClick(); assert.equal(scrolled.left, -180);
   h.control("button", "Preview slide 4").props.onClick();
   assert.equal(h.control("button", "Preview slide 4").props["aria-pressed"], true);
   await h.clickSave("Save slideshow");

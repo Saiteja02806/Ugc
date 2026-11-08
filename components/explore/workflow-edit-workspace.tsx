@@ -136,7 +136,6 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
     return () => { stopped = true; if (url) URL.revokeObjectURL(url); };
   }, [musicKey, enabled, ownerId]);
   const musicState = music?.key === musicKey ? music : null;
-  const backgroundAudio: SequencePreviewAudio | null = customMusic ? backgroundSource ? { url: backgroundSource.url, volume: .2, playback: backgroundPlayback } : null : referenceAudio ?? musicState?.audio ?? null;
   const sourceUrl = source?.url ?? sourcePreview?.url;
   const demoUrl = demoSource?.url ?? demo?.url;
   const sourceSize = sourceUrl ? sizes[sourceUrl] : null, demoSize = demoUrl ? sizes[demoUrl] : null;
@@ -162,6 +161,12 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   const extraAudioNeedsSavedMix = Boolean(secondary?.addedAudio && secondary?.referenceAudio && extraAudio);
   if (secondary && extraAudio) secondary = secondary.addedAudio ? { ...secondary, referenceAudio: secondary.referenceAudio ?? extraAudio } : { ...secondary, addedAudio: extraAudio };
   const segments = opening ? secondary ? [opening, secondary] : [opening] : [];
+  const openingDurationMs = opening ? (opening.editing ? opening.editing.trimEndMs - opening.editing.trimStartMs : opening.durationSeconds * 1000) : 0;
+  const demoDurationMs = secondary ? (secondary.editing ? secondary.editing.trimEndMs - secondary.editing.trimStartMs : secondary.durationSeconds * 1000) : 0;
+  const backgroundVolume = options?.backgroundVolume ?? .2;
+  const demoOnlyMusic = options?.backgroundScope === "demo" && Boolean(secondary) && openingDurationMs > 0 && demoDurationMs > 0;
+  const musicTiming = demoOnlyMusic ? { startMs: openingDurationMs, mixDurationMs: openingDurationMs + demoDurationMs } : {};
+  const backgroundAudio: SequencePreviewAudio | null = customMusic ? backgroundSource ? { url: backgroundSource.url, volume: backgroundVolume, playback: backgroundPlayback, ...musicTiming } : null : referenceAudio ?? (musicState?.audio ? { ...musicState.audio, volume: backgroundVolume, ...musicTiming } : null);
   const sequenceKey = JSON.stringify([segments, backgroundAudio]);
   const showFinished = !editingPreview && !!finishedVideo && (watched !== sequenceKey || finishedSelected === finishedVideo.id);
   const sizePending = !openingPreview && sourceUrl && (!source?.width || !source?.height) && !sourceSize || !demoPreview && demoUrl && (!demoSource?.width || !demoSource?.height) && !demoSize;

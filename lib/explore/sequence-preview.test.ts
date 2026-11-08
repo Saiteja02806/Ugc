@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSequencePreviewTimeline, sequencePreviewPosition, sequencePreviewOverlays, sequencePreviewAudioPosition, sequencePreviewProjection,
+import { createSequencePreviewTimeline, sequencePreviewPosition, sequencePreviewOverlays, sequencePreviewAudioPosition, sequencePreviewAudioState, sequencePreviewProjection,
   validateSequencePreviewAudio, mapSequencePreviewDemoReference, mapSequencePreviewDemoAudio, formatPreviewAudioPosition, type SequencePreviewSegment } from "./sequence-preview.ts";
 import type { ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 
@@ -66,6 +66,14 @@ test("custom Hook audio preserves the pre-trim source clock and fades at its ori
   assert.equal(sequencePreviewAudioPosition(15000, track.mixDurationMs!, 7900 + track.timelineOffsetMs!, track.playback).gain, .5);
   assert.throws(() => validateSequencePreviewAudio({ ...track, timelineOffsetMs: NaN }), /timing/);
   assert.throws(() => validateSequencePreviewAudio({ ...track, timelineOffsetMs: 10000 }), /timing/);
+});
+test("demo-only preview audio waits for the demo and uses the demo duration", () => {
+  const track = validateSequencePreviewAudio({ url: "blob:music", volume: .35, playback: "once", startMs: 4000, mixDurationMs: 10000 });
+  assert.deepEqual(sequencePreviewAudioState(10000, track, 2000, 10000), { audible: false, positionMs: 0, gain: 0 });
+  assert.deepEqual(sequencePreviewAudioState(10000, track, 4000, 10000), { audible: true, positionMs: 0, gain: 0 });
+  assert.deepEqual(sequencePreviewAudioState(10000, track, 5000, 10000), { audible: true, positionMs: 1000, gain: 1 });
+  assert.equal(sequencePreviewAudioState(10000, track, 9900, 10000).gain, .5);
+  assert.throws(() => validateSequencePreviewAudio({ ...track, startMs: 10000 }), /timing/);
 });
 test("clip preview uses raw custom-audio timing and trimmed paired-reference timing, including fades and repeats", () => {
   const trim = { trimStartMs: 500, trimEndMs: 1500 };

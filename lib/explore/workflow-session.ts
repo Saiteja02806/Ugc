@@ -7,7 +7,7 @@ import { workflowSourceVideoError, type WorkflowVideoMode } from "./workflow-sou
 import { EXPLORE_FINISH_STYLES, isExploreUuid, parseDemoFraming, type DemoFraming, type ExploreFinishStyle } from "../../worker/src/lib/explore-finishing-contract.ts";
 import { parseSubtitleCorrections, type SubtitleCorrection } from "../../worker/src/subtitles/corrections.ts";
 
-export type WorkflowSessionOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; backgroundAssetId?: string | null; backgroundPlayback?: "once" | "repeat"; placement?: "bottom" | "middle" | "top"; corrections?: SubtitleCorrection[] };
+export type WorkflowSessionOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; backgroundAssetId?: string | null; backgroundPlayback?: "once" | "repeat"; backgroundVolume?: number; backgroundScope?: "whole" | "demo"; placement?: "bottom" | "middle" | "top"; corrections?: SubtitleCorrection[] };
 export type WorkflowSession = {
   version: 1; ownerId: string; kind: "hook"; section: "create" | "edit" | "schedule";
   sourceMode: WorkflowVideoMode; sourceAssetId: string | null; generatedAssetId: string | null; generatedSelectionCleared: boolean;
@@ -38,7 +38,7 @@ export function createWorkflowSession(ownerId: string, settings = createWorkflow
   return { version: 1, ownerId, kind: "hook", section: "create", sourceMode: "generate", sourceAssetId: null, generatedAssetId: null, generatedSelectionCleared: false,
     demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", demoFraming: null,
     pendingSource: false, pendingDemo: false, pendingDemoAudio: false, instructions: "", generationSettings: settings, localReferences: false,
-    options: { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" },
+    options: { subtitles: false, style: "clean", backgroundMusic: false, backgroundVolume: .2, backgroundScope: "whole", placement: "bottom" },
     scheduleDraft: { platform: "", caption: "", date: "", time: "", connectionId: "" } };
 }
 export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowSession {
@@ -48,11 +48,13 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
       [value.pendingSource, value.pendingDemo, value.pendingDemoAudio, value.localReferences, value.generatedSelectionCleared].some(field => typeof field !== "boolean") ||
       typeof value.instructions !== "string" || value.instructions.length > 20_000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.instructions) ||
       !object(value.generationSettings) || !fields(value.generationSettings, ["model", "duration", "quantity", "resolution", "aspectRatio"]) ||
-      !object(value.options) || !fields(value.options, ["subtitles", "style", "backgroundMusic", "backgroundAssetId", "backgroundPlayback", "placement", "corrections"]) ||
+      !object(value.options) || !fields(value.options, ["subtitles", "style", "backgroundMusic", "backgroundAssetId", "backgroundPlayback", "backgroundVolume", "backgroundScope", "placement", "corrections"]) ||
       typeof value.options.subtitles !== "boolean" || typeof value.options.backgroundMusic !== "boolean" ||
       !EXPLORE_FINISH_STYLES.includes(value.options.style as ExploreFinishStyle) ||
       value.options.placement !== undefined && !["bottom", "middle", "top"].includes(String(value.options.placement)) ||
-      value.options.backgroundPlayback !== undefined && !["once", "repeat"].includes(String(value.options.backgroundPlayback))) throw invalid();
+      value.options.backgroundPlayback !== undefined && !["once", "repeat"].includes(String(value.options.backgroundPlayback)) ||
+      value.options.backgroundVolume !== undefined && (typeof value.options.backgroundVolume !== "number" || !Number.isFinite(value.options.backgroundVolume) || value.options.backgroundVolume < 0 || value.options.backgroundVolume > 1) ||
+      value.options.backgroundScope !== undefined && value.options.backgroundScope !== "whole" && value.options.backgroundScope !== "demo") throw invalid();
   const scheduleDraft = readFormatScheduleDraft(JSON.stringify({ version: 1, key: "workflow-session", draft: value.scheduleDraft }), "workflow-session");
   if (value.talkingReferenceId !== undefined && value.talkingReferenceId !== null && (typeof value.talkingReferenceId !== "string" || !/^talking-[a-z0-9-]{1,80}$/.test(value.talkingReferenceId))) throw invalid();
   if (value.referenceInstructions !== undefined && (typeof value.referenceInstructions !== "string" || value.referenceInstructions.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.referenceInstructions))) throw invalid();
@@ -72,6 +74,8 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
     backgroundMusic: value.options.backgroundMusic, placement: (value.options.placement ?? "bottom") as WorkflowSessionOptions["placement"],
     ...(value.options.backgroundAssetId !== undefined ? { backgroundAssetId: assetId(value.options.backgroundAssetId) } : {}),
     ...(value.options.backgroundPlayback !== undefined ? { backgroundPlayback: value.options.backgroundPlayback as "once" | "repeat" } : {}),
+    ...(value.options.backgroundVolume !== undefined ? { backgroundVolume: value.options.backgroundVolume as number } : {}),
+    ...(value.options.backgroundScope !== undefined ? { backgroundScope: value.options.backgroundScope as "whole" | "demo" } : {}),
     ...(value.options.corrections !== undefined ? { corrections: parseSubtitleCorrections(value.options.corrections) } : {}) };
   return { version: 1, ownerId, kind: "hook", section: value.section as WorkflowSession["section"], sourceMode: value.sourceMode as WorkflowVideoMode,
     sourceAssetId: assetId(value.sourceAssetId), generatedAssetId: assetId(value.generatedAssetId), generatedSelectionCleared: value.generatedSelectionCleared as boolean, demoAssetId, demoAudioAssetId,

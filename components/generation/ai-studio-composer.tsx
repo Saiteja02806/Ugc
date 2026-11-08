@@ -621,7 +621,7 @@ export function AiStudioSettingSelect<TValue extends string>({
         </div>
       </PopoverContent>
     </Popover>
-    {fieldHint ? <small className="text-xs leading-5 text-muted">{fieldHint}</small> : null}
+    {fieldHint ? <small className={cn(creation.fieldHint, "text-xs leading-5 text-muted")}>{fieldHint}</small> : null}
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { syncFreeVideoPassUiCookie } from "@/components/explore/explore-free-video-pass-badge";
 import { useAuth } from "@/contexts/auth-context";
 import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-state";
+import { freeVideoPassShowsRemainingGeneration } from "@/lib/billing/free-video-pass-badge";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 
@@ -113,19 +115,12 @@ async function fetchBillingSubscription(ownerId: string, signal?: AbortSignal): 
     }
 
     if (typeof document !== "undefined") {
-      const available = Boolean(
-        data.subscription.freeVideoPass?.available && !data.subscription.isActive,
+      syncFreeVideoPassUiCookie(
+        freeVideoPassShowsRemainingGeneration(
+          data.subscription.freeVideoPass,
+          data.subscription.isActive,
+        ),
       );
-      document.cookie = available
-        ? "ugc_free_video_pass_active=1; Path=/; Max-Age=604800; SameSite=Lax"
-        : "ugc_free_video_pass_active=; Path=/; Max-Age=0; SameSite=Lax";
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("ugc:free-video-pass-updated", {
-            detail: { available },
-          }),
-        );
-      }
     }
 
     return data.subscription;

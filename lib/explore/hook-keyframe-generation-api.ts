@@ -159,9 +159,9 @@ async function submitPreparation(user: VerifiedFirebaseUser, input: Awaited<Retu
     await reserveBillingCredits({ amount: creditCost, ...(eligibleKeyframeFormat ? { freeVideoPassContext: { format: eligibleKeyframeFormat, generationKey: key, kind: "starting_frame" as const } } : {}), idempotencyKey: key, jobType: "generate_image", userId: ownerId });
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
-    const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: model === "gemini_3_pro" ? 3 : 1,
+    const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: 3,
       input: { generationId: crypto.randomUUID(), model, ...(local ? { localStartingFrameMode: local.mode } : {}), ...(model === "seedream_5_pro" || model === "gemini_3_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
-        referenceImageUrls, hookKeyframe: receipt, ...(model === "gemini_3_pro" ? { startingFrameTextCleanup: true, startingFramePipelineVersion: 2 } : {}),
+        referenceImageUrls, hookKeyframe: receipt, ...(model === "gemini_3_pro" ? { startingFrameTextCleanup: true, startingFramePipelineVersion: 2 } : { startingFrameHarmonizer: true }),
         ...(model === "gemini_3_pro" && input.customImagePrompt !== undefined ? { startingFrameOutfitPrompt: input.customImagePrompt } : {}),
         exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
     }, { dispatchLocal: local?.dispatch, beforeDispatch: async stored => {

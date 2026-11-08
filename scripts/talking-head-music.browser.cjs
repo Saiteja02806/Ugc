@@ -43,10 +43,20 @@ async function main() {
     browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
     for(const viewport of [{width:1280,height:720},{width:1536,height:864},{width:390,height:844}]){
       await page.setViewportSize(viewport);await page.goto(`http://127.0.0.1:${server.address().port}`);await page.evaluate(()=>localStorage.clear());await page.reload();
-      const group=page.getByRole('region',{name:'Background music',exact:true});await group.getByRole('button',{name:'Audio Library',exact:true}).click();await page.getByRole('button',{name:'Use Calm fixture music',exact:true}).click();
+      const group=page.getByRole('region',{name:'Background music',exact:true});await group.locator('summary').filter({hasText:'Background music'}).click({position:{x:12,y:10}});await group.getByRole('button',{name:'Audio Library',exact:true}).click();await page.getByRole('button',{name:'Use Calm fixture music',exact:true}).click();
       await group.getByText('Calm fixture music.wav',{exact:true}).waitFor();assert.equal(await page.getByLabel('Combined background audio').count(),0);assert.equal(await group.getByRole('switch',{name:'Background music',exact:true}).getAttribute('aria-checked'),'false');await group.getByRole('switch',{name:'Background music',exact:true}).click();await page.getByLabel('Combined background audio').waitFor();
-      assert.equal(await page.getByText('Demo-only.wav',{exact:true}).count(),1);await group.getByLabel('Whole-video music playback').selectOption('once');
-      await page.reload();await group.getByText('Calm fixture music.wav',{exact:true}).waitFor();assert.equal(await group.getByLabel('Whole-video music playback').inputValue(),'once');
+      assert.equal(await page.getByText('Demo-only.wav',{exact:true}).count(),1);
+      const summary=group.locator('summary').filter({hasText:'Music options'});await summary.click();
+      const scope=group.getByRole('group',{name:'Background music scope'});await scope.getByRole('button',{name:'Demo only',exact:true}).click();
+      await group.getByText('Demo only · 20%',{exact:false}).waitFor();
+      const volume=group.getByLabel('Background music volume');await volume.evaluate((element,value)=>{element.value=value;element.dispatchEvent(new Event('input',{bubbles:true}));},'35');
+      await group.getByText('Demo only · 35%',{exact:false}).waitFor();
+      assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('music-options')).backgroundScope),'demo');
+      assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('music-options')).backgroundVolume),.35);
+      await group.getByLabel('Background music playback').selectOption('once');
+      await page.reload();await group.locator('summary').filter({hasText:'Background music'}).click({position:{x:12,y:10}});await group.getByText('Calm fixture music.wav',{exact:true}).waitFor();assert.equal(await group.getByLabel('Background music playback').inputValue(),'once');
+      const restoredSummary=group.locator('summary').filter({hasText:'Music options'});assert.match(await restoredSummary.innerText(),/Demo only · 35%/);await restoredSummary.click();
+      assert.equal(await group.getByLabel('Background music volume').inputValue(),'35');assert.equal(await scope.getByRole('button',{name:'Demo only',exact:true}).getAttribute('aria-pressed'),'true');
       await group.locator('input[type=file]').setInputFiles({name:'reject.wav',mimeType:'audio/wav',buffer:wav});await group.getByRole('alert').getByText('Rejected fixture replacement',{exact:true}).waitFor();assert.equal(await group.getByText('Calm fixture music.wav',{exact:true}).count(),1);
       await group.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(root,`outputs/talking-head-music-${viewport.width}.png`),fullPage:false});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       await group.getByRole('button',{name:'Remove music',exact:true}).click();assert.equal(await page.getByLabel('Combined background audio').count(),0);assert.equal(await page.getByText('Demo-only.wav',{exact:true}).count(),1);

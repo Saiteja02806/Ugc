@@ -23,7 +23,7 @@ Validation completed locally on 8 November 2026:
 - Vercel static cost audit: no package, lockfile, build-script or trigger change; the only configuration edits are content-hashed cover headers and the `.vercelignore` upload reductions.
 - The isolated `explore-background-composition.test.mjs` suite passes 4/4; the concurrent full-suite run is green in the final gate.
 
-Deployment is currently **HELD by the user**. Do not push the release commit, build the worker image or mutate Vercel/GCP until explicit release authorization is given.
+The earlier hold is lifted. On 8 November 2026 the user authorized the website and GCP worker release after the invite free-generation badge fix. MCP stays out of this release.
 
 Remaining pre-deployment checks:
 1. Free-video-pass migration `20261107120000_add_free_video_pass_links.sql` confirmed applied in production. The local Supabase CLI link points at production, but `migration list` could not parse `.env.local`; do not edit that file or apply migrations silently.

@@ -574,10 +574,6 @@ export function FormatGenerationReferences({ startingFrame, startingFramePreview
             </PickerContent>
           </Picker>
           </div>
-          {kind === "image" && displayedFrame ? <div className="mt-1 flex flex-col gap-0.5 text-center">
-            <p className="text-xs text-muted">{imagePresentation === "tile" ? "Scene & pose" : "Starting frame · controls scene and pose"}</p>
-            {personPhotos && selectedImages.length ? <p className="text-xs text-muted">{imagePresentation === "tile" ? `${selectedImages.length} identity ${selectedImages.length === 1 ? "photo" : "photos"}` : `${selectedImages.length} face identity ${selectedImages.length === 1 ? "photo" : "photos"} selected`}</p> : null}
-          </div> : null}
         </div>;
       })}
     </div>

@@ -9,7 +9,7 @@ const frames = JSON.parse(readFileSync("lib/explore/talking-head-frames.json", "
 const full = [["talking-car-story",48.5],["talking-room-explainer",42.027],["talking-discovery",43.838]];
 test("full Talking Head sources preserve duration, source links and archival recovery", () => {
   const visible = visibleTalkingHeadReferences(catalogue.items);
-  assert.equal(visible.length,19);
+  assert.equal(visible.length,23);
   for (const [id,duration] of full) {
     const original = catalogue.items.find(item => item.id === id);
     const replacement = catalogue.items.find(item => item.id === id+"-full");
@@ -43,7 +43,7 @@ test("Talia's repeated opening keeps its originals archived and uses the new hoo
 });
 test("every reference has matching media and exact prepared opening-frame hashes", () => {
   const hash = bytes => createHash("sha256").update(bytes).digest("hex");
-  assert.equal(catalogue.items.length,29);
+  assert.equal(catalogue.items.length,33);
   for (const reference of catalogue.items) {
     const source=sources.items.find(item=>item.id===reference.id);
     const frame=frames.items.find(item=>item.id===reference.id);

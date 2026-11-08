@@ -43,7 +43,7 @@
 .referenceCard > button { aspect-ratio: auto; min-height: 44px; height: 48px; flex-direction: row; gap: 8px; margin-top: 4px; background: var(--background); }
 .preview [data-workflow-sequence] { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .preview [data-workflow-sequence] > svg { transform: rotate(90deg); justify-self: center; }
-.optionalGroup { margin-top: 8px; border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent); padding-top: 8px; }
+.optionalGroup { margin-top: 8px; padding-top: 0; }
 .optionalGroup > summary { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; border-radius: 6px; color: var(--foreground); font-size: 13px; font-weight: 500; cursor: pointer; }
 .optionalGroup > summary::after { content: "+"; color: var(--muted); font-size: 18px; font-weight: 400; }
 .optionalGroup[open] > summary::after { content: "−"; }

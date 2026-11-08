@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { freeVideoPassShowsRemainingGeneration } from "@/lib/billing/free-video-pass-badge";
 import {
   claimFreeVideoPassLink,
   FREE_VIDEO_PASS_COOKIE_NAME,
@@ -64,7 +65,11 @@ export async function GET(request: Request) {
       });
     }
 
-    if (!subscription.isActive && freeVideoPass?.available) {
+    const showRemainingGeneration = freeVideoPassShowsRemainingGeneration(
+      freeVideoPass,
+      subscription.isActive,
+    );
+    if (showRemainingGeneration) {
       response.cookies.set(FREE_VIDEO_PASS_UI_COOKIE_NAME, "1", {
         httpOnly: false,
         maxAge: 60 * 60 * 24 * 7,
@@ -73,10 +78,10 @@ export async function GET(request: Request) {
         secure: process.env.NODE_ENV === "production",
       });
     } else if (
+      subscription.isActive ||
+      freeVideoPass?.status === "used" ||
       shouldClearCookie ||
-      (request.headers.get("cookie") ?? "").includes(
-        `${FREE_VIDEO_PASS_UI_COOKIE_NAME}=`,
-      )
+      !pendingCode
     ) {
       response.cookies.set(FREE_VIDEO_PASS_UI_COOKIE_NAME, "", {
         httpOnly: false,

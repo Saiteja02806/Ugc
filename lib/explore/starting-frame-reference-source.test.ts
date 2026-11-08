@@ -5,6 +5,7 @@ import { getTalkingHeadReferences } from "./talking-head-reference-catalog.ts";
 import { createHookSourceFrameService, resolveStartingFrameSource } from "./hook-source-frame.ts";
 import { getRecreateReferences } from "./recreate-catalog.ts";
 import importedCatalog from "./imported-catalog.json" with { type: "json" };
+import talkingSources from "./talking-head-source-manifest.json" with { type: "json" };
 
 test("every selectable Wall reference resolves to its immutable source, including all published imports", async t => {
   const previousBucket = process.env.GCP_STORAGE_BUCKET;
@@ -37,13 +38,17 @@ test("the source registry covers packaged Talking Head references and keeps reti
   const sources = getAdditionalStartingFrameSources();
   assert.equal(new Set(sources.map(source => source.id)).size, sources.length);
   const talking = getTalkingHeadReferences();
-  assert.equal(talking.length, 25);
+  assert.equal(talking.length, 33);
   assert.equal(talking.find(item => item.id === "talking-websites-explainer")?.sourcePlatform, "instagram");
   assert.equal(talking.find(item => item.id === "talking-sophia-designsthings")?.sourcePlatform, "tiktok");
   for (const reference of talking) {
     const source = await resolveStartingFrameSource(reference.id);
     assert.equal(source.workflow, "talking_head");
-    assert.equal(source.localFile, reference.videoUrl);
+    // Hosted hook trim rows point the catalogue at the immutable GCS object
+    // while the source manifest keeps the packaged identity. Compare both to
+    // their own authority instead of assuming every row is a local path.
+    assert.equal(source.localFile, talkingSources.items.find(item => item.id === reference.id)?.file);
+    if (reference.videoUrl?.startsWith("/")) assert.equal(source.localFile, reference.videoUrl);
     assert.equal(source.videoSha256, reference.sourceSha256);
     assert.match(source.videoSha256, /^[a-f0-9]{64}$/);
   }

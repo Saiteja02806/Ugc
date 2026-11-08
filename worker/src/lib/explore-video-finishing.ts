@@ -101,7 +101,7 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
   // New drafts prepare the exact mixed audio before any video encode. Legacy
   // receipts retain their original speech identity and recovery behavior.
   if (subtitles?.version === 2 && !options.referenceAudioPath && style) {
-    const speech = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume,
+    const speech = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.musicVolume ?? options.editing?.musicVolume,
       workDir: join(dirname(options.workDir), "speech-preview"), subtitleScope: { language: subtitles.language }, audioOnly: true });
     preparedSpeech = speech;
     const fontCheck = singlePassSubtitles ? join(options.workDir, "subtitles") : join(dirname(options.workDir), "caption-font-check");
@@ -123,7 +123,7 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
       subtitleWordCount: preparedTranscript.words.length, subtitleRenderVersion: subtitleStyleDefinition(style).renderVersion };
   }
   const singlePassEditing = options.editing && !options.demoPath && !subtitles ? options.editing : undefined;
-  const composed = singlePassSubtitles ? preparedSpeech! : await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined },
+  const composed = singlePassSubtitles ? preparedSpeech! : await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.musicVolume ?? options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined },
     singlePassEditing ? { editing: singlePassEditing, fontsDir: options.tools.fontsDir } : undefined);
   const edited = options.editing && !singlePassEditing ? { ...composed, ...await renderExploreFormatEdit({ sourcePath: composed.outputPath, width: composed.width, height: composed.height, durationMs: composed.durationMs, editing: options.editing, workDir: options.workDir, tools: options.tools, signal: options.signal }) } : composed;
   // Start the paired track AFTER trim/text, on the complete final timeline.

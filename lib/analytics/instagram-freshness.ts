@@ -1,5 +1,9 @@
 import type { InstagramInsightsRangeDays } from "./instagram";
-import { ANALYTICS_SNAPSHOT_READ_STALE_MS, INSTAGRAM_ANALYTICS_REFRESH_MS } from "./freshness-policy";
+import {
+  ANALYTICS_SNAPSHOT_READ_STALE_MS,
+  INSTAGRAM_ANALYTICS_REFRESH_MS,
+  INSTAGRAM_RECENT_MEDIA_METRICS_REFRESH_MS,
+} from "./freshness-policy";
 
 export const INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS = ANALYTICS_SNAPSHOT_READ_STALE_MS;
 export const INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS = INSTAGRAM_ANALYTICS_REFRESH_MS;
@@ -23,7 +27,7 @@ export function getInstagramContentRefreshIntervalMs(
   const ageMs = Math.max(0, now - publishedTime);
 
   if (ageMs < ONE_DAY_MS) {
-    return INSTAGRAM_ANALYTICS_REFRESH_MS;
+    return INSTAGRAM_RECENT_MEDIA_METRICS_REFRESH_MS;
   }
 
   if (ageMs < SEVEN_DAYS_MS) {
@@ -31,6 +35,24 @@ export function getInstagramContentRefreshIntervalMs(
   }
 
   return ONE_DAY_MS;
+}
+
+/** A visit checks for new posts without re-requesting every post's metrics. */
+export function shouldScanInstagramFeed(params: {
+  feedSyncedAt: string | null;
+  force?: boolean;
+  now?: number;
+  visit?: boolean;
+}) {
+  return (
+    Boolean(params.force) ||
+    Boolean(params.visit) ||
+    isInstagramTimestampStale({
+      maxAgeMs: INSTAGRAM_MEDIA_FEED_REFRESH_MS,
+      now: params.now,
+      timestamp: params.feedSyncedAt,
+    })
+  );
 }
 
 export function isInstagramContentMetricsStale(params: {

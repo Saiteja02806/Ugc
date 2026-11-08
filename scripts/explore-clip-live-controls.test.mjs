@@ -15,6 +15,8 @@ function harness(file, dependencies = {}) {
   const slots = [], effects = [];
   const react = {
     useRef(value) { return slots[cursor++] ??= { current: value }; },
+    useMemo: fn => fn(),
+    useCallback: fn => fn,
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value;
       return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
     useEffect(fn, deps) { const i = cursor++, previous = slots[i];
@@ -321,4 +323,23 @@ test("font controls preserve saved styles and default new text to the reference 
   labelled(tree, "Overlay text").props.onChange({ target: { value: "New hook" } });
   assert.equal(updates.at(-1)[0].font, "tiktoksans"); assert.equal(updates.at(-1)[0].fontWeight, 700);
   assert.equal(updates.at(-1)[0].outlineWidth, 6); assert.equal(updates.at(-1)[0].color, "#ffffff");
+});
+
+test("adding the next text block keeps the last chosen color instead of resetting to white", () => {
+  const h = harness("format-text-overlays-editor");
+  let overlays = [{ value: "Yellow text", width: .8, y: .18, fontSize: 48, color: "#ffcc00", startMs: 0, endMs: 3000 }];
+  const render = () => h.render(() => h.exports.FormatTextOverlaysEditor({ overlays, durationMs: 3000, onChange: next => { overlays = next; }, onSeek() {} }));
+  let tree = render();
+  nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
+  assert.equal(overlays.at(-1).color, "#ffcc00", "A new block inherits the current text color");
+  tree = render();
+  labelled(tree, "Text color").props.onChange({ target: { value: "#ff0000" } });
+  tree = render();
+  nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
+  assert.equal(overlays.at(-1).color, "#ff0000", "The next block keeps the last color the user chose");
+});
+
+test("the wide text style layout only expands the explicit editor variant", () => {
+  const css = readFileSync(new URL("../components/explore/format-video-editor.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.editorRoot\[data-text-style-layout="wide"\] \.controlGrid \{[^}]*minmax\(320px, 420px\)/);
 });

@@ -211,6 +211,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.talkingHeadScript !== undefined && body.talkingHeadScriptReviewed !== true) return NextResponse.json({ ok: false, error: "Review the spoken words and confirm demo narration is excluded before generating." }, { status: 400 });
   const directIdentityFrame = body?.startingFrameMode === "first_frame_with_identity";
   if (directIdentityFrame && (!usesStartingFrame || body?.model !== "google_omni")) return NextResponse.json({ ok: false, error: "Use direct Gemini Omni with an approved starting frame." }, { status: 400 });
+  if (directIdentityFrame && body?.exploreFormat === "hook" && body?.workflow !== "talking_head") return NextResponse.json({ ok: false, error: "The direct Gemini identity route is not available in the Hook video workflow. Choose FLUX 3, Kling, Seedance or WAN." }, { status: 400 });
   const frameVoiceReference = body?.startingFrameMode === "image_voice_reference";
   if (body?.startingFrameMode !== undefined && !directIdentityFrame && (!frameVoiceReference || !usesStartingFrame || usesUploadedFrame ||
     (body.model !== "wan_3_0" && body.model !== "seedance_2_5") || body.generateAudio !== true ||
@@ -445,15 +446,17 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
   let generationPrompt: string;
   let hookSourceTimeline;
+  const maxDurationSeconds = firstFrame ? hookStartingFrameVideoDurations(model).at(-1) : undefined;
   try {
     if (startingFrame?.receipt.version === 5 && startingFrame.workflow === "hook") {
       // A shorter user-selected duration is allowed; the timeline retimes the
       // source action into it (user decision, 2026-11-06).
       const verifiedSourceTimeline = createHookSourceTimeline(startingFrame.receipt,
-        (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds);
+        (startingFrame as typeof startingFrame & { sourceDurationSeconds: number }).sourceDurationSeconds, durationSeconds, maxDurationSeconds);
       if (prompt.includes("PHASE [")) hookSourceTimeline = verifiedSourceTimeline;
     }
     generationPrompt = firstFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame?.workflow ?? uploadedFrameWorkflow, directions: prompt, durationSeconds, generateAudio: generateAudio === true,
+      ...(maxDurationSeconds !== undefined ? { maxDurationSeconds } : {}),
       ...(typeof body?.talkingHeadScript === "string" ? { spokenScript: body.talkingHeadScript } : {}),
       ...(frameVoiceReference ? { voiceReference: true, voiceIdentityPhotoCount: referenceImageUrls.length } : {}),
       ...(personPhotos && referenceImageUrls.length ? { identityPhotoCount: referenceImageUrls.length } : {}),
@@ -462,6 +465,15 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
   }
+
+  const composedPromptLimit = getAIStudioVideoPromptMaxLength({
+    model,
+    provider: firstFrame ? hookStartingFrameVideoProvider(model, body?.startingFrameMode) ?? undefined : "reapi",
+    hasReferenceVideo: Boolean(referenceVideoUrl),
+    referenceVideoMode,
+  });
+  const composedPromptError = getAIStudioPromptLengthError(generationPrompt, composedPromptLimit);
+  if (composedPromptError) return NextResponse.json({ ok: false, error: composedPromptError }, { status: 400 });
 
   if (
     (audioUrlsInput !== undefined && !Array.isArray(audioUrlsInput)) ||
@@ -498,8 +510,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (referenceAudioUrls.length > 1) {
     return NextResponse.json({ error: "Use one audio reference in Vidmake.", ok: false }, { status: 400 });
   }
-  const maxReferences = directIdentityFrame ? 5 : referencePolicy.maxFiles;
-  const maxImages = directIdentityFrame ? 5 : referencePolicy.maxImages;
+  const startingFramePhotoLimit = usesStartingFrame ? hookStartingFrameFaceReferenceLimit(body.model, body.startingFrameMode) : null;
+  const maxReferences = startingFramePhotoLimit ?? (directIdentityFrame ? 5 : referencePolicy.maxFiles);
+  const maxImages = startingFramePhotoLimit ?? (directIdentityFrame ? 5 : referencePolicy.maxImages);
   if (referenceImageUrls.length > maxImages) {
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${maxImages} reference images in Vidmake. Remove an image or choose another model.`, ok: false }, { status: 400 });
   }
@@ -704,7 +717,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
   const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model, body?.startingFrameMode) ?? undefined
-    : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" || model === "kling_3_0" || model === "kling_4_0" ? "reapi" : undefined;
+    : model === "seedance_2_5" || model === "wan_3_0" || model === "google_omni" || model === "kling_3_0" || model === "kling_4_0" || model === "flux_3" ? "reapi" : undefined;
   const providerReferenceImages = frameVoiceReference && startingFrame ? [startingFrame.imageUrl, ...referenceImageUrls] : referenceImageUrls;
   const startingFrameInput = frameVoiceReference && startingFrame ? {
     startingImageReference: { version: 1, mode: "image_voice_reference", assetId: startingFrame.assetId, imageJobId: startingFrame.imageJobId,
@@ -809,6 +822,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
                 format: eligibleFreeVideoFormat,
                 generationKey: baseIdempotencyKey,
                 kind: "generation" as const,
+                model,
                 totalUnits: 1,
               },
             }

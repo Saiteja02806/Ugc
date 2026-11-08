@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-format";
 import { displayScheduleTime } from "@/lib/scheduling/time-display";
@@ -26,25 +27,49 @@ export function TalkingHeadScheduleSummary({ draft, timezone }: { draft: Workflo
   </section>;
 }
 
-/** Both preparation and review reuse the finishing boundary's guarded actions. */
-export function TalkingHeadScheduleActions({ action, preparation, enabled, onBackToEdit }: { action?: WorkflowAction; preparation?: WorkflowAction; enabled: boolean; onBackToEdit: () => void }) {
-  // An enabled schedule action can resume an existing durable request, even
-  // before the current output has reloaded. Keep that recovery path available.
-  const needsPreparation = Boolean(preparation && !action?.busy && (!action || action.disabled));
-  const current = needsPreparation ? preparation : action;
-  const busy = Boolean(current?.busy);
-  const preparing = needsPreparation && Boolean(current?.processing || current?.cancel);
-  const error = current?.error ?? action?.error;
-  const refresh = current?.error || !error ? current?.refresh : action?.refresh;
+/** The Schedule action schedules, and prepares the video first when it is not ready yet. */
+export function TalkingHeadScheduleActions({ action, preparation, outputReady = true, prepareDisabled = false, enabled, help, onBackToEdit }: {
+  action?: WorkflowAction; preparation?: WorkflowAction; outputReady?: boolean; prepareDisabled?: boolean; enabled: boolean; help?: string; onBackToEdit: () => void;
+}) {
+  const prepareThenSchedule = useRef(false);
+  const submitted = useRef(false);
+  const schedulingBusy = Boolean(action?.busy);
+  const preparationBusy = Boolean(preparation?.busy || preparation?.processing);
+  const preparing = preparationBusy;
+  const canPrepare = Boolean(preparation && !preparation.disabled && !prepareDisabled);
+  const busy = schedulingBusy || preparing;
+  const error = action?.error ?? preparation?.error;
+  const message = preparing ? "Preparing your final video. It will be scheduled when ready." : help ?? action?.message;
+  const disabled = !enabled || (outputReady ? !action || action.disabled || schedulingBusy : !canPrepare || preparing);
+  useEffect(() => {
+    if (!prepareThenSchedule.current || submitted.current) return;
+    if (preparation?.error) { prepareThenSchedule.current = false; return; }
+    if (!outputReady || !action || action.disabled || action.busy) return;
+    submitted.current = true;
+    prepareThenSchedule.current = false;
+    action.onAction();
+  }, [outputReady, action, preparation?.error]);
+  function run() {
+    if (outputReady) {
+      prepareThenSchedule.current = false;
+      submitted.current = true;
+      action?.onAction();
+      return;
+    }
+    if (!canPrepare) return;
+    submitted.current = false;
+    prepareThenSchedule.current = true;
+    preparation?.onAction();
+  }
   return <div className={reviewStyles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     <div className={reviewStyles.actionRow}>
       <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button>
       <div className={reviewStyles.reviewAction}>
-        <div className={`${reviewStyles.actionHelp} ${reviewStyles.confirmation}`}><p role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>{action?.completed ? <a href="/scheduling" className={`${reviewStyles.schedulingLink} ${reviewStyles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></a> : null}</div>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Scheduling…" : action?.label ?? (action?.error ? "Try again" : "Schedule post")}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <div className={`${reviewStyles.actionHelp} ${reviewStyles.confirmation}`}><p role="status">{enabled && (action || preparation) ? message : "Preview · scheduling disabled"}</p>{action?.completed ? <a href="/scheduling" className={`${reviewStyles.schedulingLink} ${reviewStyles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></a> : null}</div>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={disabled} aria-busy={busy} onClick={run}>{preparing ? "Preparing video…" : schedulingBusy ? "Scheduling…" : action?.label ?? (error ? "Try again" : "Schedule post")}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {current && needsPreparation && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
+    {preparation?.error && preparation.refresh ? <div className="flex justify-end"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={preparation.refresh}>Refresh status</Button></div> : null}
   </div>;
 }

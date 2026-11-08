@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Creatify and Vidmake?",
-    answer: "Creatify charges credit-based tiers focused on high-volume e-commerce ad generation. Vidmake offers a 7-day free trial with 2 credits, with self-serve founder plans starting at $19 and $49 per month.",
+    answer: "Creatify charges credit-based tiers focused on high-volume e-commerce ad generation. Vidmake offers a 7-day free trial with 20 daily content pieces, with self-serve founder plans starting at $29 and $49 per month.",
   },
 ] as const;
 
@@ -119,7 +119,7 @@ export default function CreatifyAlternativeForSaasPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Free Trial &amp; Plans</th>
                 <td className="p-4 align-top">Credit-based subscription</td>
-                <td className="p-4 align-top">7-day free trial with 2 credits; plans from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; plans from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -181,7 +181,7 @@ export default function CreatifyAlternativeForSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Vidmake offers self-serve plans from $19/mo. Start with a 7-day trial on our{" "}
+                  Vidmake offers self-serve plans from $29/mo. Start with a 7-day trial on our{" "}
                   <ArticleLink href="/pricing">pricing page</ArticleLink>.
                 </>
               ),

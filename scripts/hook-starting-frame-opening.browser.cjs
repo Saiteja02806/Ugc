@@ -86,7 +86,7 @@ async function main() {
           await page.getByRole("button", { name: "Retry opening", exact: true }).click();
         }
         await page.getByRole("heading", { name: "Create your starting frame", exact: true }).waitFor();
-        await page.getByRole("region", { name: "Your photos", exact: true }).waitFor().catch(async error => {
+        await page.getByRole("region", { name: "Face identity photos", exact: true }).waitFor().catch(async error => {
           write("failure.json", JSON.stringify({ attempts, consoleErrors, errors, body: await page.locator("body").innerText() }, null, 2));
           throw error;
         });

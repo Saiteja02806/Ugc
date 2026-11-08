@@ -17,6 +17,8 @@ export async function enqueueAnalyticsSyncJob(params: {
   connectionRevisions?: Record<string, string>;
   operation: AnalyticsSyncOperation;
   userId: string;
+  /** Foreground visit: check new content without forcing every stored post. */
+  visit?: boolean;
 }) {
   const timeBucket = Math.floor(Date.now() / (5 * 60_000));
   const scope = [
@@ -29,6 +31,7 @@ export async function enqueueAnalyticsSyncJob(params: {
     input: {
       ...(params.days ? { days: params.days } : {}),
       ...(params.force ? { force: true } : {}),
+      ...(params.visit ? { visit: true } : {}),
       operation: params.operation,
       ...(params.connectionRevisions ? { connectionRevisions: params.connectionRevisions } : {}),
       userId: params.userId,

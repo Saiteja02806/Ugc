@@ -29,7 +29,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, referencePrompt, referenceDuration = null, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
+function harness(format, { reference = true, referenceUrls, referencePrompt, referenceDuration = null, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
@@ -45,6 +45,7 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, ref
         return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; },
       useRef(value) { const index = cursor++; return states[index] ??= { current: value }; },
       useEffect: callback => { if (completedJob || captureRequests) effects.push(callback); }, useMemo: fn => fn(),
+      useSyncExternalStore: (_subscribe, snapshot) => snapshot(),
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQuery: () => ({ data: undefined }), useQueryClient: () => ({ invalidateQueries: async () => {} }) },
@@ -52,10 +53,11 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, ref
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
     "@/components/explore/use-starting-frame-photos": { useStartingFramePhotos: () => ({ pending: false, error: null, remember() {} }) },
+    "@/components/explore/explore-free-video-pass-badge": { subscribeToFreeVideoPassCookie: () => () => {}, hasFreeVideoPassActiveCookie: () => false, getServerFreeVideoPassSnapshot: () => false },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4, getVideoModelCreditsPerSecond: () => 4 },
-    "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
+    "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {
-      "./generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
+      "./generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     }),
     "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
       id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
@@ -98,7 +100,7 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, ref
 }
 
 test('a visible reference prompt and unchanged user instructions are submitted together', async () => {
-  const h = harness('hook', { captureRequests: true, referencePrompt: 'Lift the glasses. Remove the text.' });
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Lift the glasses. Remove the text.', seedanceEnabled: true, referenceDuration: 7 });
   await h.flushEffects();
   const composer = h.render().composer;
   assert.equal(h.find(composer.props.promptSupplement, 'textarea').props.value, 'Lift the glasses. Remove the text.');
@@ -108,7 +110,7 @@ test('a visible reference prompt and unchanged user instructions are submitted t
 });
 
 test('editing reference instructions changes the actual submitted prompt', async () => {
-  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance' });
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance', seedanceEnabled: true, referenceDuration: 7 });
   await h.flushEffects();
   h.find(h.render().composer.props.promptSupplement, 'textarea').props.onChange({ target: { value: 'My edited performance' } });
   await h.render().composer.props.onSubmit({ preventDefault() {} });
@@ -116,7 +118,7 @@ test('editing reference instructions changes the actual submitted prompt', async
 });
 
 test('removing the reference prompt keeps the video attached and submits only personal instructions', async () => {
-  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance' });
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance', seedanceEnabled: true, referenceDuration: 7 });
   await h.flushEffects();
   h.find(h.render().composer.props.promptSupplement, 'button').props.onClick();
   const composer = h.render().composer;
@@ -140,8 +142,8 @@ test('switching references replaces its suggestion, preserves user text, and rem
 
 for (const format of ["hook", "wall_text"]) {
   test(format + ': decimal reference length is distinct from whole-second billing and both prompt fields reach the request', async () => {
-    const seconds = format === 'hook' ? 3.7 : 6.7;
-    const h = harness(format, { captureRequests: true, referenceDuration: seconds, referencePrompt: 'Keep the reference performance. Remove captions.' });
+    const seconds = format === 'hook' ? 4.7 : 6.7;
+    const h = harness(format, { captureRequests: true, referenceDuration: seconds, referencePrompt: 'Keep the reference performance. Remove captions.', seedanceEnabled: true });
     await h.flushEffects();
     const composer = h.render().composer;
     const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
@@ -154,8 +156,8 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
     assert.equal(h.requests[0].body.prompt, 'Keep the reference performance. Remove captions.\n\nMy requested changes');
   });
-  for (const [seconds, selected] of [[2.8, 3], [3.3, 3], [3.49, 3], [3.5, 4], [3.7, 4], [6.3, 6], [6.7, 7]]) test(`${format}: ${seconds}s source displays its exact duration and bills ${selected}s`, async () => {
-    const h = harness(format, { captureRequests: true, referenceDuration: seconds });
+  for (const [seconds, selected] of [[4.1, 5], [4.3, 5], [4.49, 5], [4.5, 5], [4.7, 5], [6.3, 7], [6.7, 7]]) test(`${format}: ${seconds}s source displays its exact duration and bills ${selected}s`, async () => {
+    const h = harness(format, { captureRequests: true, referenceDuration: seconds, seedanceEnabled: true });
     await h.flushEffects();
     const composer = h.render().composer;
     const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
@@ -178,7 +180,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
   });
   test(format + ': gallery source is requested as actual video input with the prompt and appearance image', async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, referenceDuration: 7, seedanceEnabled: true });
     await h.flushEffects();
     h.render().composer.props.referenceControls.props.onChange({ kind: 'image', asset: { id: 'image', url: 'https://owned.test/image.png', title: 'Image' } }, 'image');
     await h.render().composer.props.onSubmit({ preventDefault() {} });
@@ -190,7 +192,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.prompt, 'My requested changes');
   });
   for (const order of [['image', 'video'], ['video', 'image']]) test(format + ': both selection orders retain both media and send a ten-second edit', async () => {
-    const h = harness(format, { captureRequests: true, reference: false });
+    const h = harness(format, { captureRequests: true, reference: false, seedanceEnabled: true });
     await h.flushEffects();
     const references = {
       image: { kind: 'image', asset: { id: 'identity', url: 'https://owned.test/image.png', title: 'Identity' } },
@@ -201,7 +203,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(composer.props.referenceControls.props.imageSelection.asset.id, 'identity');
     assert.equal(composer.props.referenceControls.props.videoSelection.asset.id, 'source');
     assert.equal(composer.props.estimatedCredits ?? Number(composer.props.accessMessage.match(/(\d+) AI credits/)?.[1]), 40);
-    assert.match(composer.props.settingsSummary, /Google Omni.*10.0s clip/);
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*10.0s clip.*Source shape/);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.referenceImageUrls[0], references.image.asset.url);
     assert.equal(h.requests[0].body.referenceVideoUrl, references.video.asset.url);

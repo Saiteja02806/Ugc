@@ -13,10 +13,9 @@ import {
 import type { InstagramInsightsRangeDays } from "@/lib/analytics/instagram";
 import {
   getInstagramIncrementalFeedStart,
-  INSTAGRAM_MEDIA_FEED_REFRESH_MS,
   isInstagramContentMetricsStale,
   isInstagramThumbnailStale,
-  isInstagramTimestampStale,
+  shouldScanInstagramFeed,
 } from "@/lib/analytics/instagram-freshness";
 import { getUniqueInstagramConnections } from "@/lib/analytics/instagram-insights";
 import {
@@ -67,6 +66,8 @@ export async function listInstagramContentInsightsForOwner(params: {
   days: InstagramInsightsRangeDays;
   force?: boolean;
   userId: string;
+  /** A foreground visit may check for new posts without forcing every post. */
+  visit?: boolean;
 }): Promise<InstagramContentAccount[]> {
   const [connections, previousSnapshot] = await Promise.all([
     listSocialConnections(params.userId),
@@ -87,6 +88,7 @@ export async function listInstagramContentInsightsForOwner(params: {
       loadInstagramContentAccount({
         connection,
         days: params.days,
+        feedForce: params.visit ?? false,
         force: params.force ?? false,
         previousState:
           previousSnapshot.connectionStates.get(connection.id) ?? null,
@@ -114,6 +116,7 @@ export async function listInstagramContentInsightsForOwner(params: {
 async function loadInstagramContentAccount(params: {
   connection: SocialConnection;
   days: InstagramInsightsRangeDays;
+  feedForce: boolean;
   force: boolean;
   previousState: {
     feedSyncedAt: string | null;
@@ -203,10 +206,10 @@ async function loadInstagramContentAccount(params: {
 
   try {
     const shouldScanFeed =
-      params.force ||
-      isInstagramTimestampStale({
-        maxAgeMs: INSTAGRAM_MEDIA_FEED_REFRESH_MS,
-        timestamp: params.previousState?.feedSyncedAt ?? null,
+      shouldScanInstagramFeed({
+        feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
+        force: params.force,
+        visit: params.feedForce,
       });
     let feedSyncedAt = params.previousState?.feedSyncedAt ?? null;
     let feedError: string | null = null;

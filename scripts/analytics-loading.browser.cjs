@@ -11,6 +11,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/analytic
 fs.mkdirSync(out, { recursive: true });
 const write = (name, data) => fs.writeFileSync(path.join(out, name), data);
 write("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+write("css-loader.cjs", `module.exports=function(){return "export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'fixture-' + key : undefined });";};`);
 write("auth.tsx", `import {createContext,useContext,useState} from 'react';const Auth=createContext(null);export function FixtureAuth({children}){const[uid,setUid]=useState('owner-a');window.switchOwner=setUid;return <Auth value={{user:{uid,emailVerified:true,email:'fixture@example.com'}}}>{children}</Auth>};export const useAuth=()=>useContext(Auth);export const getCurrentUserIdToken=async expected=>{if(expected&&window.currentOwner!==expected)throw Error('Owner changed');return 'fixture-token'};`);
 write("link.tsx", `export default function Link({children,...props}){return <a {...props}>{children}</a>}`);
 write("entry.tsx", `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
@@ -27,6 +28,8 @@ let snapshotFails=false;
 let newestOrdering=false;
 let tiktokPilot=false, tiktokPilotComplete=false;
 let postWithoutJob=false;
+let visitDue=false;
+const postBodies=[];
 const held = [];
 const timestamp = () => new Date().toISOString();
 function accounts(platform) {
@@ -50,16 +53,21 @@ function respond(res,url) {
 function release() {holdInstagram=false;holdActivity=false;for(const {res,url} of held.splice(0))respond(res,url);}
 
 async function main(){
-  await new Promise((resolve,reject)=>{const compiler=webpack({mode:"development",devtool:false,context:root,entry:path.join(out,"entry.tsx"),output:{path:out,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],alias:{"@/contexts/auth-context":path.join(out,"auth.tsx"),"@/lib/firebase/auth":path.join(out,"auth.tsx"),"next/link":path.join(out,"link.tsx"),"@":root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,"loader.cjs")} ]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve()));});
-  const server=http.createServer((req,res)=>{
+  await new Promise((resolve,reject)=>{const compiler=webpack({mode:"development",devtool:false,context:root,entry:path.join(out,"entry.tsx"),output:{path:out,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],alias:{"@/contexts/auth-context":path.join(out,"auth.tsx"),"@/lib/firebase/auth":path.join(out,"auth.tsx"),"next/link":path.join(out,"link.tsx"),"@":root}},module:{rules:[{test:/\.css$/,use:path.join(out,"css-loader.cjs")},{test:/\.tsx?$/,use:path.join(out,"loader.cjs")} ]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve()));});
+  const server=http.createServer(async (req,res)=>{
     const url=new URL(req.url,"http://fixture");
     if(url.pathname==="/bundle.js"){res.writeHead(200,{"Content-Type":"text/javascript"});return fs.createReadStream(path.join(out,"bundle.js")).pipe(res);}
     if(!url.pathname.startsWith("/api/")){res.writeHead(200,{"Content-Type":"text/html; charset=utf-8"});return res.end('<meta charset="utf-8"><style>body{font:14px Arial}svg{width:18px;height:18px}button{padding:8px;margin:4px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}</style><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>');}
     if(url.pathname==="/api/social/connections")return json(res,{ok:true,connections:ownerB?[]:["instagram","tiktok","youtube"].map((platform,i)=>({id:id(i+1),platform,platformAccountId:platform+"-account",authorizationRevision,connectedAt:"2026-10-19T00:00:00Z",updatedAt:"2026-10-19T00:00:00Z",platformAccountName:platform==="instagram"?"Instagram Demo":platform==="tiktok"?"TikTok Demo":"YouTube Demo",platformAccountUsername:platform+"demo",status:"connected",scopes:[],profilePictureUrl:null}))});
     if(url.pathname.startsWith("/api/jobs/"))return json(res,{ok:true,job:job()});
     if(req.method==="POST"){
+      const body=await new Promise(resolve=>{let raw="";req.on("data",chunk=>raw+=chunk);req.on("end",()=>{try{resolve(raw?JSON.parse(raw):{})}catch{resolve({})}})});
+      postBodies.push({body,path:url.pathname});
       if(url.pathname.includes("tiktok") && tiktokPilot){tiktokPilotComplete=true;return json(res,{ok:true,data:data(url.pathname),jobId:"tiktok-pilot-job",job:{...job(),id:"tiktok-pilot-job",status:"completed"}});}
       if(postWithoutJob){views=23;needsRefresh=false;return respond(res,url.pathname);}
+      // A foreground visit only starts provider work when the server says it is
+      // due; otherwise it is the same saved-data response with no job.
+      if(body.visit && !visitDue && !postFails)return json(res,{ok:true,data:data(url.pathname),needsRefresh,refreshKey:"visit-fresh"});
       return postFails?json(res,{ok:false,message:"Queue unavailable"},502):json(res,{ok:true,data:data(url.pathname),job:job(),jobId:"job-1"});
     }
     if(snapshotFails&&url.pathname.startsWith("/api/analytics/")&&!url.pathname.includes("/activity"))return json(res,{ok:false,message:"Analytics storage unavailable"},502);
@@ -72,6 +80,7 @@ async function main(){
     browser=await playwright.chromium.launch({channel:"msedge",headless:true});
     const page=await browser.newPage({viewport:{width:1400,height:1000}}), errors=[];
     const advance=async duration=>{await page.clock.runFor(duration);await page.clock.resume()};
+    const waitUntil=async(check,label)=>{for(let i=0;i<80;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,100))}throw new Error(`Timed out waiting for ${label}`)};
     page.setDefaultTimeout(10_000);
     page.on("pageerror",e=>errors.push(e.message));
     const base=`http://127.0.0.1:${server.address().port}`;
@@ -102,11 +111,24 @@ async function main(){
     release();
     await page.getByRole("button",{name:"Instagram: choose analytics account"}).click();await page.keyboard.press("Escape");
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
+    // Opening the screen is a visit: both saved Instagram resources check the
+    // provider without a manual Refresh and without forcing per-post work.
+    await waitUntil(()=>postBodies.filter(entry=>entry.body.visit===true&&entry.path.startsWith("/api/analytics/instagram/")).length>=2,"initial analytics visits");
+    const initialVisits=postBodies.filter(entry=>entry.body.visit===true&&entry.path.startsWith("/api/analytics/instagram/")).slice(0,2);
+    assert.deepEqual(initialVisits.map(entry=>entry.path).sort(),["/api/analytics/instagram/content","/api/analytics/instagram/insights"],"a visit checks both Instagram resources");
+    assert.ok(initialVisits.every(entry=>entry.body.force!==true),"a visit never forces per-post provider work");
+    assert.ok(postBodies.some(entry=>entry.body.visit===true&&entry.path==="/api/analytics/tiktok/videos"),"an opened TikTok panel also checks without a click");
+    assert.ok(postBodies.some(entry=>entry.body.visit===true&&entry.path==="/api/analytics/youtube/channel"),"an opened YouTube panel also checks without a click");
     // A stale observed cache stays rendered while both server reads are held.
+    const visitsBeforeStaleCache=postBodies.filter(entry=>entry.body.visit===true).length;
     holdInstagram=true;await page.evaluate(()=>{for(const query of window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}))if(query.queryKey.length===7)window.client.setQueryData(query.queryKey,query.state.data,{updatedAt:Date.now()-31*60_000});window.showWorkspace(false)});
     await page.getByText("Workspace closed",{exact:true}).waitFor();await page.evaluate(()=>window.showWorkspace(true));
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     assert.equal(await page.getByRole("status",{name:"Loading analytics",exact:true}).count(),0);
+    release();
+    // The fresh mount checks both resources; let those reads settle before the
+    // next baseline is captured.
+    await waitUntil(()=>postBodies.filter(entry=>entry.body.visit===true).length>=visitsBeforeStaleCache+2,"remount visits");
     release();
     await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).every(query=>query.state.fetchStatus==='idle'));
     // A still-mounted tab revalidates stale snapshots on return without hiding
@@ -131,11 +153,10 @@ async function main(){
     await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
     await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
     assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle,"fresh snapshots do not refetch on every focus");
-    // Laptop wake can be a window focus without a visibility transition. A
-    // snapshot read updates metrics and activity but fresh server data needs no
-    // provider sync. Repeated focus/online/pageshow events must coalesce.
+    // A laptop may resume in the same visible tab. The open-screen check must
+    // catch up on its own, and a following focus/pageshow/online burst must not
+    // duplicate that read or start provider synchronization.
     const postsBeforeWake=await page.evaluate(()=>window.postCount);
-    const activityBeforeWake=await page.evaluate(()=>window.calls['/api/analytics/activity']);
     views=13;
     await page.evaluate(()=>{
       for(const q of window.client.getQueryCache().getAll())if(
@@ -143,12 +164,14 @@ async function main(){
         ((q.queryKey[2]==='analytics'&&q.queryKey[3]==='instagram'&&q.queryKey.length===7)||q.queryKey[2]==='analytics-activity'))
           window.client.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-2*60_000});
     });
-    await advance(100);
-    await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('online'))});
+    await advance(61_100);
     await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===13));
-    await page.waitForFunction(before=>window.calls['/api/analytics/activity']>before,activityBeforeWake);
+    await page.waitForFunction(()=>window.client.getQueryCache().getAll().every(q=>q.state.fetchStatus==='idle'));
+    const settledCalls=await page.evaluate(()=>({...window.calls}));
+    await page.evaluate(()=>{window.dispatchEvent(new Event("focus"));window.dispatchEvent(new Event("pageshow"));window.dispatchEvent(new Event("online"))});
+    await advance(200);
     assert.equal(await page.evaluate(()=>window.postCount),postsBeforeWake,"Reading fresh saved data never starts provider synchronization");
-    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle+1,"Wake event burst issues one read per resource");
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),settledCalls['/api/analytics/instagram/content'],"A wake burst adds no duplicate read");
     // New saved values must arrive while the screen remains visible, without
     // reload, navigation, visibility or focus events. Provider sync stays gated.
     const openCalls=await page.evaluate(()=>({...window.calls}));
@@ -218,12 +241,15 @@ async function main(){
     await advance(200);
     await page.getByText("Queue unavailable",{exact:false}).first().waitFor();
     assert.ok(await page.getByText("A saved analytics post",{exact:true}).first().isVisible());
-    // Returning to the screen must not replay an old manual refresh counter.
-    const postsBeforeRemount=await page.evaluate(()=>window.postCount);postFails=false;
+    // Returning to the screen must not replay an old manual refresh counter,
+    // but the new opening is still a visit for each saved resource.
+    const bodiesBeforeRemount=postBodies.length;postFails=false;visitDue=false;
     await page.evaluate(()=>window.showWorkspace(false));await page.getByText("Workspace closed",{exact:true}).waitFor();
     await page.evaluate(()=>window.showWorkspace(true));await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     await advance(200);
-    assert.equal(await page.evaluate(()=>window.postCount),postsBeforeRemount);
+    const remountPosts=postBodies.slice(bodiesBeforeRemount);
+    assert.equal(remountPosts.filter(entry=>entry.body.force===true).length,0,"Returning must not replay an old manual Refresh");
+    assert.equal(remountPosts.filter(entry=>entry.body.visit===true).length,2,"A new visit checks both Instagram resources");
     // A repaired initial storage failure must recover with Refresh, without a reload.
     snapshotFails=true;
     await page.evaluate(()=>window.showWorkspace(false));await page.getByText("Workspace closed",{exact:true}).waitFor();
@@ -283,10 +309,17 @@ async function main(){
     await page.waitForFunction(()=>window.currentOwner==='owner-b');
     await page.getByText("Connect account",{exact:true}).first().waitFor();
     assert.equal(await page.getByText("A saved analytics post",{exact:true}).count(),0);
+    // Zero connected accounts must show a disconnected state, never perpetual
+    // "Loading uploaded-video data" copy.
+    await page.getByRole("button",{name:"YouTube: choose analytics account"}).click();await page.keyboard.press("Escape");
+    await page.getByText("Connect a YouTube account in Settings to load uploaded-video analytics.",{exact:true}).first().waitFor();
+    assert.equal(await page.getByText("Loading uploaded-video data for this connected channel.",{exact:true}).count(),0,"zero-connection YouTube is not left loading");
+    await page.getByRole("button",{name:"TikTok: choose analytics account"}).click();await page.keyboard.press("Escape");
+    await page.getByText("Connect a TikTok account in Settings to load public videos and publishing records.",{exact:true}).first().waitFor();
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={newestZeroViewFirst:true,performanceSortRetained:true,tiktokStaleRefreshReconciled:true,accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,openScreenUpdatesMetricsActivityAndAccounts:true,hiddenAndOfflineReadsPaused:true,noJobRefreshReconciled:true,noJobManualEventConsumed:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,failedCompletionReadRecoversAutomatically:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={newestZeroViewFirst:true,performanceSortRetained:true,tiktokStaleRefreshReconciled:true,accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,openScreenUpdatesMetricsActivityAndAccounts:true,visitChecksProviderWithoutManualRefresh:true,visitNeverForcesPerPostWork:true,remountRunsVisitWithoutReplayingManual:true,zeroConnectionPanelsShowDisconnected:true,hiddenAndOfflineReadsPaused:true,noJobRefreshReconciled:true,noJobManualEventConsumed:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,failedCompletionReadRecoversAutomatically:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

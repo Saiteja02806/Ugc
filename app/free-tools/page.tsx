@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight, Check, Download } from "lucide-react";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { HookVideoBundle } from "@/components/marketing/hook-video-bundle";
+import { JsonLd } from "@/components/marketing/json-ld";
+import { publicOrigin } from "@/lib/marketing/public-origin";
 
 const description = "Free resources for your next short video: 110 natural hook lines in a downloadable PDF, plus the limited Batch 1 Hook Video Library. No signup to download.";
 export const metadata: Metadata = {
@@ -16,6 +18,23 @@ export const metadata: Metadata = {
 
 export default function FreeToolsPage() {
   return <main className="min-h-dvh bg-background text-foreground">
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Free Creator Tools: Hook Text & Video Libraries",
+        description,
+        url: `${publicOrigin}/free-tools`,
+        mainEntity: {
+          "@type": "ItemList",
+          numberOfItems: 2,
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "The Reaction Hook Library", url: `${publicOrigin}/free-hook-lines` },
+            { "@type": "ListItem", position: 2, name: "Hook Video Library", url: `${publicOrigin}/hookvideos` },
+          ],
+        },
+      }}
+    />
     <LandingHeader initialHasSession={false} />
     <section className="mx-auto max-w-[1120px] px-5 pb-16 pt-36 sm:px-8 sm:pb-24 sm:pt-44" aria-labelledby="tools-title">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Free tools from Vidmake</p>

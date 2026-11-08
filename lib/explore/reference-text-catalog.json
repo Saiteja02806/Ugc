@@ -8261,23 +8261,6 @@
       "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
-      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
-      "slideId": null,
-      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
-      "format": "hook",
-      "status": "ready",
-      "blocks": [
-        {
-          "text": "editors,\nare we cooked?",
-          "startMs": 0,
-          "endMs": 2967
-        }
-      ],
-      "extractedAt": "2026-10-15T07:12:10.210Z",
-      "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 88 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
-    },
-    {
       "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
       "slideId": null,
       "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",

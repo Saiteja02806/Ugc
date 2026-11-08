@@ -145,6 +145,7 @@ export async function POST(request: Request) {
       const accounts = await listInstagramContentInsightsForOwner({
         days: days as InstagramInsightsRangeDays,
         force: input.force === true,
+        visit: input.visit === true,
         userId,
       });
 

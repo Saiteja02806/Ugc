@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   claimFreeVideoPassLink,
   FREE_VIDEO_PASS_COOKIE_NAME,
+  FREE_VIDEO_PASS_UI_COOKIE_NAME,
   FreeVideoPassError,
   getUserFreeVideoPass,
   readPendingFreeVideoPassCodeFromRequest,
@@ -56,6 +57,29 @@ export async function GET(request: Request) {
     if (shouldClearCookie) {
       response.cookies.set(FREE_VIDEO_PASS_COOKIE_NAME, "", {
         httpOnly: true,
+        maxAge: 0,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    if (!subscription.isActive && freeVideoPass?.available) {
+      response.cookies.set(FREE_VIDEO_PASS_UI_COOKIE_NAME, "1", {
+        httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    } else if (
+      shouldClearCookie ||
+      (request.headers.get("cookie") ?? "").includes(
+        `${FREE_VIDEO_PASS_UI_COOKIE_NAME}=`,
+      )
+    ) {
+      response.cookies.set(FREE_VIDEO_PASS_UI_COOKIE_NAME, "", {
+        httpOnly: false,
         maxAge: 0,
         path: "/",
         sameSite: "lax",

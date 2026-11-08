@@ -123,6 +123,15 @@ test("local media is detached before cleanup and Creator selection adds no promp
   assert.doesNotMatch(media, /setInstructions/);
 });
 
+test("Talking Head Your videos empty clip uploads use the quiet outline tone", () => {
+  const overview = workspace.slice(workspace.indexOf('id="hook-workflow-preview"'));
+  assert.equal((overview.match(/<WorkflowClipSourceActions tone="neutral"/g) ?? []).length, 2);
+  assert.match(overview, /<WorkflowClipSourceActions tone="neutral" label="hook video"/);
+  assert.match(overview, /<WorkflowClipSourceActions tone="neutral" library="content" label="demo video"/);
+  assert.ok(workspace.includes('demoSourceActions={<WorkflowClipSourceActions tone="neutral" library="content" label="demo video" triggerLabel={demo.asset ? "Change" : undefined}'), "the Edit-tab empty demo upload uses the same quiet tone");
+  assert.ok(workspace.includes('<Link href="/explore/create-hook?drafts=1" className="ml-auto text-sm text-muted'), "Saved drafts is a neutral link, not the blue action color");
+});
+
 test("browser reference state stays local while durable recovery is behind its session hook", () => {
   assert.match(workspace, /const localDemo = useLocalWorkflowMedia\("video"\)/);
   assert.match(workspace, /const localDemoAudio = useLocalWorkflowMedia\("audio"\)/);
@@ -130,4 +139,9 @@ test("browser reference state stays local while durable recovery is behind its s
   assert.match(read("components/explore/use-talking-head-reference.ts"), /useLocalWorkflowMedia\("video"\)/);
   assert.match(workspace, /const recovery = useWorkflowSession\(/);
   assert.doesNotMatch(workspace, /\bfetch\(|localStorage|sessionStorage/);
+});
+
+test("Talking Head Schedule prepares from the Schedule tab when no final output exists", () => {
+  assert.match(workspace, /<TalkingHeadScheduleActions action=\{finish\.schedule\} preparation=\{finish\.output \? undefined : finish\.edit\} outputReady=\{Boolean\(finish\.output\)\} prepareDisabled=\{Boolean\(scheduleAccountError\) \|\| !clips\.source\}/);
+  assert.match(workspace, /const scheduleAccountError = workflowAccountSelectionError\(scheduleDraft\)/);
 });

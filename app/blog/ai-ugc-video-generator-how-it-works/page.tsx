@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     question: "Is there a free way to try it?",
-    answer: "Yes. The seven-day trial needs no credit card and includes two one-time AI Studio credits.",
+    answer: "Yes. The seven-day trial needs no credit card and includes 20 daily content pieces.",
   },
 ] as const;
 
@@ -77,7 +77,7 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
           <li><strong className="font-semibold text-foreground-strong">Optional reference media.</strong> An image or video that sets the visual context, such as a product photo or a short screen recording you&apos;re allowed to use.</li>
           <li><strong className="font-semibold text-foreground-strong">Generation settings.</strong> The model, format and length you choose.</li>
         </ol>
-        <p>It then returns a short video in a native, creator-style format. In Vidmake that happens in <strong className="font-semibold text-foreground-strong">AI Studio</strong>, where you create custom images and videos with the models and settings you pick. Paid plans include monthly credits for this, and the free trial includes two one-time AI Studio credits so you can test it before paying.</p>
+        <p>It then returns a short video in a native, creator-style format. In Vidmake that happens in <strong className="font-semibold text-foreground-strong">AI Studio</strong>, where you create custom images and videos with the models and settings you pick. Paid plans include monthly credits for this, and the free trial includes 20 daily content pieces so you can test it before paying.</p>
         <p>The result isn&apos;t the end of the process. A good workflow treats the generated file as a draft. You watch it, reject anything that&apos;s wrong, edit text and framing, and download only the version you approve.</p>
 
         <ArticleH2>How the workflow runs, step by step</ArticleH2>
@@ -153,7 +153,7 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
 
         <ArticleH2>What it costs to try</ArticleH2>
         <p>
-          Vidmake has a seven-day free trial with no credit card required. It includes daily content concepts and two one-time AI Studio credits. Paid plans start at $19 a month (Starter, 200 credits a month) and $49 a month (Growth, 600 credits a month), with yearly billing at $190 and $490. See the <ArticleLink href="/pricing">pricing page</ArticleLink> for current details.
+          Vidmake has a seven-day free trial with no credit card required. It includes 20 daily content pieces. Paid plans start at $29 a month (Starter, 200 credits a month) and $49 a month (Growth, 600 credits a month), with yearly billing at $299 and $490. See the <ArticleLink href="/pricing">pricing page</ArticleLink> for current details.
         </p>
 
         <FaqList

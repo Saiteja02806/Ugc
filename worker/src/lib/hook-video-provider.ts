@@ -2,12 +2,12 @@ import { assertProviderOperationCanContinue, ProviderRequestNotSubmittedError } 
 import { DEFAULT_HOOK_VIDEO_PROVIDER, type HookVideoProvider } from "./ugc-video-prompt.js";
 
 export function resolveHookVideoProvider(input: {
-  model?: "seedance_2_5" | "google_omni" | "kling_3_0" | "kling_4_0" | "wan_3_0";
+  model?: "seedance_2_5" | "google_omni" | "kling_3_0" | "kling_4_0" | "wan_3_0" | "flux_3";
   provider?: HookVideoProvider;
 }, legacyOperation: { provider_operation_id: string | null; status: string } | null) {
   if (input.provider === "reapi") {
-    if (input.model !== "seedance_2_5" && input.model !== "wan_3_0" && input.model !== "google_omni" && input.model !== "kling_3_0" && input.model !== "kling_4_0") {
-      throw new ProviderRequestNotSubmittedError("ReAPI video generation requires Omni Flash, Seedance 2.5, or WAN 3.0.");
+    if (input.model !== "seedance_2_5" && input.model !== "wan_3_0" && input.model !== "google_omni" && input.model !== "kling_3_0" && input.model !== "kling_4_0" && input.model !== "flux_3") {
+      throw new ProviderRequestNotSubmittedError("ReAPI video generation requires Omni Flash, Kling, Seedance 2.5, WAN 3.0, or FLUX 3.");
     }
     // Newly admitted ReAPI jobs must never migrate an existing paid operation.
     if (legacyOperation) {

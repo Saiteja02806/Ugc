@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     question: "How much does it cost to make AI UGC with Vidmake?",
-    answer: "There's a seven-day free trial with no card, then plans at $19 or $49 a month with monthly credits. See /pricing.",
+    answer: "There's a seven-day free trial with no card, then plans at $29 or $49 a month with monthly credits. See /pricing.",
   },
 ] as const;
 
@@ -267,7 +267,7 @@ export default function AiUgcForTikTokAdsPage() {
               question: faqs[5].question,
               answer: (
                 <>
-                  There&apos;s a seven-day free trial with no card, then plans at $19 or $49 a month with monthly credits. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  There&apos;s a seven-day free trial with no card, then plans at $29 or $49 a month with monthly credits. See <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },

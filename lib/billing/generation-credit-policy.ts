@@ -6,6 +6,7 @@ export const STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND = 2;
 export function getVideoModelCreditsPerSecond(model?: string): number {
   if (model === "kling_3_0") return 1;
   if (model === "kling_4_0") return 2;
+  if (model === "flux_3") return 3;
   return model === "wan_3_0" || model === "google_omni"
     ? STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND
     : DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND;

@@ -54,7 +54,7 @@ export function useWorkflowBackgroundMusic({ ownerId, enabled, options, setOptio
       setOptions(previous => ({ ...previous, backgroundAssetId: result.asset.id, backgroundPlayback: playback, corrections: [] }));
       return true;
     } catch (cause) {
-      if (active.current && request === revision.current) setUpload({ busy: false, error: cause instanceof Error ? cause.message : "Could not select music. Your previous track is kept." });
+      if (active.current && request === revision.current) { const message = cause instanceof Error ? cause.message : ""; setUpload({ busy: false, error: message === "Could not prepare this media upload." ? "Background music upload failed. Try again, or choose a track from the library." : message || "Could not select music. Your previous track is kept." }); }
       return false;
     } finally { if (active.current && request === revision.current) setUpload(previous => ({ ...previous, busy: false })); }
   }

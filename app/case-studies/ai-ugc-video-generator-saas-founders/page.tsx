@@ -35,7 +35,7 @@ export default function FounderVideoCaseStudyPage() {
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
-          articleJsonLd({ path, headline: h1, description, imagePath: `${path}/opengraph-image` }),
+          articleJsonLd({ path, headline: h1, description, imagePath: `${path}/opengraph-image`, datePublished: "2026-10-24" }),
           ...featured.map(videoObjectJsonLd),
         ],
       }}

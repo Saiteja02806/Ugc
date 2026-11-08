@@ -9,7 +9,7 @@ import { selectSocialSnapshot } from "./social-snapshot-policy";
 import { readAccountSnapshots, snapshotRowAccount, type SnapshotOperation } from "./snapshot-store";
 import { getUniqueInstagramConnections } from "./instagram-insights";
 import { getInstagramAnalyticsRangeStart } from "./instagram-freshness";
-import { INSTAGRAM_ANALYTICS_REFRESH_MS, SOCIAL_ANALYTICS_REFRESH_MS } from "./freshness-policy";
+import { INSTAGRAM_ANALYTICS_REFRESH_MS, ANALYTICS_VISIT_RECHECK_MS, SOCIAL_ANALYTICS_REFRESH_MS } from "./freshness-policy";
 
 export async function readAnalyticsSnapshot(params: { userId: string; operation: SnapshotOperation; days?: 7 | 30 | 90 }) {
   const platform = params.operation.startsWith("instagram") ? "instagram" : params.operation === "tiktok_videos" ? "tiktok" : "youtube";
@@ -57,24 +57,36 @@ export async function readAnalyticsSnapshot(params: { userId: string; operation:
   };
 }
 
-export async function refreshAnalyticsSnapshot(params: { userId: string; operation: SnapshotOperation; days?: 7 | 30 | 90; force: boolean }) {
+export async function refreshAnalyticsSnapshot(params: { userId: string; operation: SnapshotOperation; days?: 7 | 30 | 90; force: boolean; visit?: boolean }) {
   const snapshot = await readAnalyticsSnapshot(params);
-  if (!snapshot.connections.length || (!params.force && !snapshot.needsRefresh) ||
-    (params.force && Date.now() - snapshot.lastAttemptAt < 30_000)) return publicSnapshot(snapshot);
+  const lastAttemptAge = Date.now() - snapshot.lastAttemptAt;
+  // A visit asks the server to check the provider on open/return even while the
+  // saved snapshot is inside the background window. A short floor keeps rapid
+  // re-opens from multiplying provider calls.
+  const visitDue = Boolean(params.visit) && !params.force && lastAttemptAge >= ANALYTICS_VISIT_RECHECK_MS;
+  const dispatchDue = params.force ? lastAttemptAge >= 30_000 : (snapshot.needsRefresh || visitDue);
+  if (!snapshot.connections.length || (!dispatchDue && !params.visit && !params.force)) return publicSnapshot(snapshot);
   const scope = `${params.operation}:${params.days ? `${params.days}d` : "current"}`;
   const revisions = Object.fromEntries(snapshot.connections.map(c => [c.id, getConnectionRevision(c)]));
   const refreshStarted = performance.now();
   try {
     const active = await listBackgroundJobsForUser({ userId: params.userId, jobType: "analytics_sync", projectId: scope, activeOnly: true, limit: 10 });
     const activeReadAt = performance.now();
-    const job = active.find(job => {
+    const activeJob = active.find(job => {
       const input = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input : {};
       const expected = input.connectionRevisions;
       return expected && typeof expected === "object" && !Array.isArray(expected) &&
         Object.keys(revisions).length === Object.keys(expected).length &&
         Object.entries(revisions).every(([id, revision]) => expected[id] === revision);
-    }) ?? await enqueueAnalyticsSyncJob({
-      ...params, force: params.force || snapshot.connections.some(c => Boolean(c.authorizationRevision) && !snapshot.data.accounts.some(a => a.connectionId === c.id && a.status === "ready" && a.lastSyncedAt)),
+    });
+    // A visit that arrives while a sync is already running must keep polling it,
+    // even when the visit itself is too soon to start another provider check.
+    if (activeJob) return { ...publicSnapshot(snapshot), job: getPublicBackgroundJob(activeJob), jobId: activeJob.id, refreshing: activeJob.status !== "completed" };
+    if (!dispatchDue) return publicSnapshot(snapshot);
+    const job = await enqueueAnalyticsSyncJob({
+      ...params,
+      force: params.force || snapshot.connections.some(c => Boolean(c.authorizationRevision) && !snapshot.data.accounts.some(a => a.connectionId === c.id && a.status === "ready" && a.lastSyncedAt)),
+      visit: Boolean(params.visit) && !params.force,
       connectionRevisions: revisions,
       idempotencyKey: `${getConnectionsRevision(snapshot.connections)}:${Math.floor(Date.now() / 30_000)}`,
     });

@@ -49,14 +49,16 @@ test("batch 1 recreation previews use the corrected source-specific directions w
   }
 });
 
-test("main/support photos apply only to the image stage; sound applies only to animation", () => {
+test("main/support photos label both stages; sound applies only to animation", () => {
   const d = updateHookKeyframeDraft(draft, { imageAssetIds: ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"], instructions: "Keep the same clothing." });
   const silent = getHookKeyframePromptPreview(d), soundOn = getHookKeyframePromptPreview(updateHookKeyframeDraft(d, { generateAudio: true }));
-  assert.match(silent.imagePrompt!, /^Create one photorealistic original-opening/); assert.match(silent.imagePrompt!, /Image2 and later images/);
-  assert.match(silent.imagePrompt!, /supporting identity photos/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
+  assert.match(silent.imagePrompt!, /^Recreate Image1's original video opening/); assert.match(silent.imagePrompt!, /Image2 is the primary influencer face/);
+  assert.match(silent.imagePrompt!, /supporting views of the SAME person/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
   assert.equal(silent.imagePrompt, soundOn.imagePrompt); assert.equal(silent.directions, soundOn.directions);
   assert.match(soundOn.animationPrompt!, /SOUND SETTING: ON/); assert.doesNotMatch(soundOn.animationPrompt!, /SOUND SETTING: OFF/);
-  assert.doesNotMatch(soundOn.animationPrompt!, /Image 2|Image 3|Keep the same clothing/);
+  assert.doesNotMatch(soundOn.imagePrompt!, /SOUND SETTING/);
+  assert.match(soundOn.animationPrompt!, /Image 2 is the main face identity image/);
+  assert.match(soundOn.animationPrompt!, /Image 3 is an additional face identity image/);
 });
 
 test("explicit motion edits survive auto-fill, remain nonbillable and can be restored to the suggestion", () => {

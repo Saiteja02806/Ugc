@@ -10,7 +10,7 @@ import { ANALYTICS_SNAPSHOT_READ_STALE_MS } from "./freshness-policy";
 export function useInstagramAnalytics(params: {
   owner: string; connections: SocialConnection[]; days: 7 | 30 | 90; enabled: boolean; refreshRequest: number;
 }) {
-  const base = { ...params, revision: getConnectionsRevision(params.connections), platform: "instagram", staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS };
+  const base = { ...params, refreshOnVisit: true, revision: getConnectionsRevision(params.connections), platform: "instagram", staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS };
   const insights = useAnalyticsResource<{ accounts: InstagramInsightsAccount[]; days: number }>({ ...base, url: "/api/analytics/instagram/insights" });
   const content = useAnalyticsResource<{ accounts: InstagramContentAccount[]; days: number }>({ ...base, url: "/api/analytics/instagram/content" });
   return { insights, content };

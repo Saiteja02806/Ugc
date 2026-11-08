@@ -9,7 +9,7 @@ const manifests=['explore-hook-reference-release.json','explore-hook-reference-a
 const active=manifests.flatMap(m=>m.items.filter(i=>audit.items.some(row=>row.id===i.id)));
 const captions=read('../lib/explore/reference-text-catalog.json');
 test('exactly the 18 approved scene trims activate matching source, gallery preview, duration, prompt and text identities',()=>{
- assert.equal(active.length,98);assert.equal(release.items.length,18);
+ assert.equal(active.length,97);assert.equal(release.items.length,18);
  assert.deepEqual(release.items.map(i=>i.ordinal),[1,2,3,4,6,7,20,30,39,40,42,43,53,54,71,78,88,89]);
  for(const row of release.items){
   const current=active.find(i=>i.id===row.id),decision=audit.items.find(i=>i.id===row.id),next=row.replacement;

@@ -51,12 +51,14 @@ exports.run = async ({page, base, renders, schedules, uploads, receipts, clipSav
   await button('schedule').click(); assert.equal(await button('Schedule post').isDisabled(),true); assert.equal(schedules.length,0);
   await button('edit').click(); await button('Edit hook video').click();
   await button('Save edits').click(); await waitSaved(1);
+  assert.equal(clipSaves[0].scope,'talking-head-opening');
   assert.equal(clipSaves[0].content.sourceAssetId,id(1));
   assert.deepEqual([clipSaves[0].content.editing.trimStartMs,clipSaves[0].content.editing.trimEndMs],[1000,4000]);
   assert.equal(clipSaves[0].content.editing.textOverlays[0].value,'Talking head line');
   await button('Back to videos').click(); await button('Edit demo video').click();
   await page.getByLabel('Trim start',{exact:true}).fill('.5'); await page.getByLabel('Trim end',{exact:true}).fill('2.5');
   await page.getByLabel('Overlay text',{exact:true}).fill('Demo step'); await button('Save edits').click(); await waitSaved(2);
+  assert.equal(clipSaves[1].scope,'hook:demo');
   assert.equal(clipSaves[1].content.sourceAssetId,id(2));
   assert.deepEqual([clipSaves[1].content.editing.trimStartMs,clipSaves[1].content.editing.trimEndMs],[500,2500]);
   assert.equal(clipSaves[1].content.editing.textOverlays[0].value,'Demo step');

@@ -79,7 +79,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
       if (request === revision.current) { pending.current = false; onPendingChange(false); }
     }
   }
-  const photoPicker = <FormatGenerationReferences heading="Your photos" inlineImagePicker={!compact} imagePresentation={compact ? "tile" : "person-strip"}
+  const photoPicker = <FormatGenerationReferences heading="Face identity photos" inlineImagePicker={!compact} imagePresentation={compact ? "tile" : "person-strip"}
         startingFramePreview={compact ? frame : undefined} onSelectStartingFrame={compact ? onSelectFrame : undefined}
         onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
         onPrepareStartingFrame={compact ? onPrepareFrame : undefined} imagePurpose="person" imagePickerDisabled={!limit}

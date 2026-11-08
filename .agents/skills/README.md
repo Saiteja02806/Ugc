@@ -26,6 +26,7 @@
 | `ugc-frame-analysis` | Analyzing a source video, identifying action, selecting moments | Timestamped frame/event review; evidence and uncertainty |
 | `ugc-starting-frame` | Choosing first/middle frame or generating influencer initial image | Face clarity, scene fidelity, identity, temporal anchor |
 | `ugc-video-prompt` | Writing or debugging image/video-generation prompts | Multi-stage prompt contracts, action timelines, handling a mid-video anchor |
+| `ugc-source-prompt-completeness` | Checking whether an assembled prompt explains the whole source end to end, including camera movement and the final frame | Timestamped coverage table; camera-vs-subject separation; COMPLETE/PARTIAL/INCOMPLETE verdict |
 | `ugc-scheduling` | Scheduling UI, timepicker, timezone, social publishing pipeline | 24h local time; persisted server-side jobs; idempotency |
 | `ugc-regression-gate` | After ANY code change; before saying done | Screenshots, state matrix, regression tests, evidence-based status |
 

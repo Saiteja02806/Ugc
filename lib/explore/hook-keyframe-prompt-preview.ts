@@ -24,11 +24,11 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
     : openingMotion ? buildSourceMotionDirections(openingMotion)
     : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : creatorDirections ?? "");
   const directions = formatMotionPromptTimes(draft.motionInstructions ?? suggestedDirections);
-  const durationSeconds = format === "hook" ? Number.isFinite(sourceDurationSeconds) && sourceDurationSeconds! > 0 ? Math.max(3, Math.ceil(sourceDurationSeconds! - .001)) : suggestion?.previewDurationSeconds ?? 4 : 4;
+  const durationSeconds = format === "hook" ? Number.isFinite(sourceDurationSeconds) && sourceDurationSeconds! > 0 ? Math.min(30, Math.max(3, Math.ceil(sourceDurationSeconds! - .001))) : suggestion?.previewDurationSeconds ?? 4 : 4;
   let animationPrompt: string | null = null;
   let animationError: string | null = null;
   if (directions) {
-    try { animationPrompt = buildStartingFrameAnimationPrompt({ workflow: format, directions, durationSeconds, generateAudio: draft.generateAudio, removePhysicalText: draft.version === 4,
+    try { animationPrompt = buildStartingFrameAnimationPrompt({ workflow: format, directions, durationSeconds, generateAudio: draft.generateAudio, removePhysicalText: draft.version === 4, identityPhotoCount: draft.imageAssetIds.length, ...(format === "hook" ? { maxDurationSeconds: 30 } : {}),
       ...(draft.version === 4 && format === "hook" && directions.includes("PHASE [") && Number.isFinite(sourceDurationSeconds ?? suggestion?.sourceDurationSeconds)
         ? { actionDurationSeconds: Math.min(sourceDurationSeconds ?? suggestion!.sourceDurationSeconds, durationSeconds) } : {}) }); }
     catch (error) { animationError = error instanceof Error ? error.message : "Review the animation instructions."; }

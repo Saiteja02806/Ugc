@@ -340,6 +340,24 @@ test("Kling 3 uses only ReAPI documented fields and validates before submission"
 });
 
 
+test("FLUX 3 uses ReAPI text-to-video or one approved keyframe and rejects extra references", () => {
+  assert.deepEqual(buildReapiVideoRequest({ ...input, model: "flux_3", durationSeconds: 10, resolution: "1080p", generateAudio: true }), {
+    model: "flux-3-video", prompt: input.prompt, duration: 10, resolution: "fhd", aspect_ratio: "9:16", audio: true, mode: "t2v",
+  });
+  assert.deepEqual(buildReapiVideoRequest({ ...input, model: "flux_3", durationSeconds: 5, startingFrameImageUrl: "https://storage.example.com/approved-frame.png" }), {
+    model: "flux-3-video", prompt: input.prompt, duration: 5, resolution: "hd", aspect_ratio: "9:16", audio: false, mode: "i2v",
+    image_urls: ["https://storage.example.com/approved-frame.png"],
+  });
+  for (const patch of [
+    { durationSeconds: 4 }, { durationSeconds: 21 }, { resolution: "480p" as const },
+    { referenceImageUrls: ["https://storage.example.com/extra.png"] },
+    { referenceAudioUrls: ["https://storage.example.com/voice.mp3"], referenceAudioDurationSeconds: [5] },
+    { referenceVideoUrl: "https://storage.example.com/source.mp4" },
+    { referenceVideoMode: "edit" as const, referenceVideoUrl: "https://storage.example.com/source.mp4" },
+    { startingFrameImageUrl: "http://storage.example.com/frame.png" },
+  ]) assert.throws(() => buildReapiVideoRequest({ ...input, model: "flux_3", durationSeconds: 8, ...patch }), ProviderRequestNotSubmittedError);
+});
+
 test("Kling 4 uses its own schema and rejects unsupported references before charging", () => {
   const base = { ...input, model: "kling_4_0", durationSeconds: 3 } as const;
   assert.deepEqual(buildReapiVideoRequest(base), { model: "kling-4-0", prompt: input.prompt, duration: 3, resolution: "720p", aspect_ratio: "9:16" });

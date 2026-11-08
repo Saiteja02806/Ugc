@@ -30,4 +30,15 @@ Kling 3.0 retains 2,500, and Google Omni video-reference requests through Runway
 retain 1,000. Direct prompts fail before submission if they exceed the selected
 limit; legacy UGC templates retain their existing normalization.
 
+## Kling 3.0 confirmation (8 November 2026)
+
+ReAPI's Kling 3.0 documentation states the prompt is "Up to **2,500
+characters**" and that over-limit prompts return `400`
+([reapi.ai/docs/kling-3-0](https://reapi.ai/docs/kling-3-0), read 8 November
+2026). Kling's own direct API documents a 3,072-character maximum with 2,500
+recommended, but Vidmake uses the ReAPI gateway, whose 2,500 limit is
+authoritative for this route. The app now checks the **composed** Hook prompt
+against 2,500 at admission, before credits; the ReAPI adapter keeps the same
+guard. No paid probe was run.
+
 This needs both the frontend/API and the AI generation worker to be released.

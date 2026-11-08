@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
-import { resolveWorkflowScheduleDraft } from "../lib/explore/workflow-scheduling-draft.ts";
+import { resolveWorkflowScheduleDraft, workflowAccountSelectionError } from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : { type, props };
@@ -150,7 +150,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: () => ({ maxImages: 6 }) },
       "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
-      "@/lib/explore/workflow-scheduling-draft": { resolveWorkflowScheduleDraft, workflowSelectedAccounts: () => [], workflowSelectedAccountIds: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
+      "@/lib/explore/workflow-scheduling-draft": { resolveWorkflowScheduleDraft, workflowAccountSelectionError, workflowSelectedAccounts: () => [], workflowSelectedAccountIds: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };
@@ -249,7 +249,7 @@ test("Content Demo picker uses its own inventory and cache, excluding ordinary c
   const policy = load("lib/explore/workflow-source-video.ts", {});
   const demo = { id: "00000000-0000-4000-8000-000000000001", status: "ready", sourceType: "demo_upload", collection: "video", mimeType: "video/mp4", url: "/demo.mp4", title: "My demo" };
   const mod = load("components/explore/workflow-video-asset-picker.tsx", {
-    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Play: "play-icon", Video: "video-icon" },
     "@tanstack/react-query": { useQuery: input => { query = input; return { data, isPending: !data }; } },
     "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
@@ -278,7 +278,7 @@ test("Generation history lists only ready generations, requires an explicit choi
   const policy = load("lib/explore/workflow-source-video.ts", {});
   const demo = { id: "00000000-0000-4000-8000-000000000001", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/demo.mp4", title: "My demo" };
   const mod = load("components/explore/workflow-video-asset-picker.tsx", {
-    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Play: "play-icon", Video: "video-icon" },
     "@tanstack/react-query": { useQuery: input => { query = input; return { data, isPending: !data }; } },
     "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
@@ -308,7 +308,7 @@ test("Generation history scopes to workflow when specified", async () => {
   const talkingHeadVideo = { id: "th-1", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/th.mp4", title: "Talking head", metadata: { workflow: "talking_head" } };
   const hookVideo = { id: "hook-1", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/hook.mp4", title: "Hook video", metadata: { workflow: "hook" } };
   const mod = load("components/explore/workflow-video-asset-picker.tsx", {
-    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Play: "play-icon", Video: "video-icon" },
     "@tanstack/react-query": { useQuery: input => { query = input; return { data: input.enabled ? [talkingHeadVideo, hookVideo].filter(a => a.metadata?.workflow === input.queryKey[3]) : [], isPending: false }; } },
     "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
@@ -323,6 +323,23 @@ test("Generation history scopes to workflow when specified", async () => {
   rt.unmount();
 });
 
+test("the video picker shows the owned video name and never the generation prompt", () => {
+  const rt = runtime();
+  const owned = { id: "hook-1", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/hook.mp4", title: "Owned hook", durationSeconds: 4, ratio: "9:16", metadata: { workflow: "hook", prompt: "INTERNAL_PROMPT_TOKEN Animate Image 1 into a video." } };
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", {
+    react: rt.react, "react/jsx-runtime": jsx, "lucide-react": { Play: "play-icon", Video: "video-icon" },
+    "@tanstack/react-query": { useQuery: () => ({ data: [owned], isPending: false }) },
+    "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
+    "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(name => [name, name])),
+    "@/lib/explore/workflow-source-video": load("lib/explore/workflow-source-video.ts", {}), "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "token" },
+  }, { requestAnimationFrame: callback => callback(), IntersectionObserver: class { observe() {} disconnect() {} } });
+  const tree = rt.render(() => mod.WorkflowVideoAssetPicker({ open: true, library: "generation_history", ownerId: "owner", onSelect() { return true; }, onOpenChange() {} }));
+  const body = text(tree);
+  assert.match(body, /Owned hook/);
+  assert.doesNotMatch(body, /INTERNAL_PROMPT_TOKEN/);
+  rt.unmount();
+});
+
 test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
   const client = new QueryClient();
@@ -333,7 +350,7 @@ test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/no
     return { ...observer.getCurrentResult(), refetch: () => observer.refetch() };
   };
   const policy = load("lib/explore/workflow-source-video.ts", {});
-  const mod = load("components/explore/workflow-video-asset-picker.tsx", { react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", { react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Play: "play-icon", Video: "video-icon" },
     "@tanstack/react-query": { useQuery }, "@/lib/http/read-deadline": { withReadDeadline },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
     "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },

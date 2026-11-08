@@ -105,6 +105,7 @@ export function TikTokBetaAnalyticsPanel({
   selectedConnectionId?: string;
 }) {
   const { output, error, hasRefreshed, refreshing } = useSocialAnalytics("tiktok", connections, refreshRequest);
+  const hasConnections = connections.length > 0;
   const accounts = useMemo(() => getAccounts(output).filter((account) => connections.some((connection) => connection.id === account.connectionId)), [output, connections]);
   const [metric, setMetric] = useState<TikTokMetric>("views");
   const [selectedContent, setSelectedContent] =
@@ -208,13 +209,13 @@ export function TikTokBetaAnalyticsPanel({
             icon={<TrendingUp />}
             label="Public videos"
             value={hasRefreshed ? formatNumber(videos.length) : "—"}
-            source={hasRefreshed ? "Returned by TikTok" : "Loading analytics"}
+            source={hasConnections ? (hasRefreshed ? "Returned by TikTok" : "Loading analytics") : "Connect an account"}
           />
           <SnapshotMetric
             icon={<EyeOff />}
             label="Private records"
             value={hasRefreshed ? formatNumber(privateRecords.length) : "—"}
-            source={hasRefreshed ? "Metrics unavailable" : "Loading analytics"}
+            source={hasConnections ? (hasRefreshed ? "Metrics unavailable" : "Loading analytics") : "Connect an account"}
           />
         </div>
       </section>
@@ -232,6 +233,7 @@ export function TikTokBetaAnalyticsPanel({
             privateRecords={privateRecords}
             emptyDescription={getEmptyTrendDescription({
               error,
+              hasConnections,
               hasRefreshed,
               visibleAccounts,
             })}
@@ -273,10 +275,13 @@ export function TikTokBetaAnalyticsPanel({
             title={
               hasRefreshed
                 ? "No TikTok content data returned"
-                : "Loading content"
+                : hasConnections
+                  ? "Loading content"
+                  : "No connected account"
             }
             description={getEmptyContentDescription({
               error,
+              hasConnections,
               hasRefreshed,
               visibleAccounts,
             })}
@@ -1293,13 +1298,17 @@ function compareDates(left: string | null, right: string | null) {
 }
 function getEmptyTrendDescription({
   error,
+  hasConnections,
   hasRefreshed,
   visibleAccounts,
 }: {
   error: string | null;
+  hasConnections: boolean;
   hasRefreshed: boolean;
   visibleAccounts: TikTokAccount[];
 }) {
+  if (!hasConnections)
+    return "Connect a TikTok account in Settings to load public-video analytics.";
   if (error)
     return "The last refresh did not complete. Check the connection, then use Refresh above to try again.";
   const providerMessage = visibleAccounts.find(
@@ -1312,13 +1321,17 @@ function getEmptyTrendDescription({
 }
 function getEmptyContentDescription({
   error,
+  hasConnections,
   hasRefreshed,
   visibleAccounts,
 }: {
   error: string | null;
+  hasConnections: boolean;
   hasRefreshed: boolean;
   visibleAccounts: TikTokAccount[];
 }) {
+  if (!hasConnections)
+    return "Connect a TikTok account in Settings to load public videos and publishing records.";
   if (error)
     return "No content records were changed. Resolve the connection issue, then use Refresh above.";
   const providerMessage = visibleAccounts.find(

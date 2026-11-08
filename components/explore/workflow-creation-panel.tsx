@@ -15,7 +15,7 @@ export type WorkflowCreateAction = { disabled: boolean; busy: boolean; message: 
 export type WorkflowSection = "create" | "edit" | "schedule";
 
 /** Panels stay mounted across sections so references, settings and drafts survive. */
-export function WorkflowCreationPanel({ kind, section, children, generation, create, edit, schedule, heading, navigation, actionContent }: { kind: "hook" | "phone"; section: WorkflowSection; children: ReactNode; generation?: WorkflowGenerationView; create?: WorkflowCreateAction; edit?: WorkflowAction; schedule?: WorkflowAction; heading?: ReactNode; navigation?: ReactNode; actionContent?: ReactNode }) {
+export function WorkflowCreationPanel({ kind, section, children, generation, create, edit, schedule, heading, navigation, actionContent, editFooter }: { kind: "hook" | "phone"; section: WorkflowSection; children: ReactNode; generation?: WorkflowGenerationView; create?: WorkflowCreateAction; edit?: WorkflowAction; schedule?: WorkflowAction; heading?: ReactNode; navigation?: ReactNode; actionContent?: ReactNode; editFooter?: ReactNode }) {
   const createAction = section === "create" ? create : undefined;
   const action = section === "edit" ? edit : section === "schedule" ? schedule : undefined;
   const preparing = Boolean(action?.busy || action?.processing);
@@ -34,7 +34,7 @@ export function WorkflowCreationPanel({ kind, section, children, generation, cre
       {children}
     </div>
     {!editToolbar ? <footer data-workflow-action className={creation.actionFooter}>
-      {actionContent ?? <>
+      {section === "edit" && editFooter ? editFooter : actionContent ?? <>
       {createAction ? <Button type="button" disabled={createAction.disabled} aria-busy={createAction.busy} onClick={createAction.onAction} aria-describedby={`${kind}-preview-limits`} className={creation.primaryAction}>{createAction.busy ? "Uploading video…" : kind === "hook" ? "Continue" : "Continue to edit"}</Button> : section === "create" && generation ? <Button type="button" disabled={generation.disabled} aria-busy={generation.busy} aria-label={kind === "hook" ? "Generate talking-head video" : "Generate phone video"} aria-describedby={`${kind}-preview-limits`} className={creation.primaryAction} onClick={generation.onGenerate}>{generation.busy ? "Generating video…" : "Generate video"}</Button>
       : section === "create" ? <Button type="button" disabled aria-label={kind === "hook" ? "Generate talking-head video" : "Generate phone video"} aria-describedby={`${kind}-preview-limits`} title="No generation, upload or credits are used in this layout preview" className={creation.primaryAction}>
         Generate video

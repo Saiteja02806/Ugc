@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "What is the cost of Vidmake?",
-    answer: "Vidmake offers a 7-day free trial with 2 credits and no credit card required, followed by self-serve plans from $19/mo.",
+    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
   },
 ] as const;
 
@@ -59,7 +59,7 @@ export default function ZeroAdSpendSaasGrowthEnginePage() {
     <VideoMarketingPage
       eyebrow="Zero Ad Spend Growth"
       h1={title}
-      lede="When you are bootstrapped, spending $50 on Facebook ads to acquire a $19/month customer is financial suicide. Here is how indie hackers build a compounding $0 ad spend acquisition engine on TikTok, Reels, and Shorts."
+      lede="When you are bootstrapped, spending $50 on Facebook ads to acquire a $29/month customer is financial suicide. Here is how indie hackers build a compounding $0 ad spend acquisition engine on TikTok, Reels, and Shorts."
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [

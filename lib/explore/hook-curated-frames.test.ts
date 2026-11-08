@@ -13,7 +13,7 @@ const ownerId="curated-test",draftId="00000000-0000-4000-8000-000000000001",phot
 test("twenty-one exact selections include the first gallery Hook; Hook 88 stays original and hidden references stay archival",()=>{
   assert.equal(catalog.frames.length,21);assert.equal(new Set(catalog.frames.map(r=>r.referenceId)).size,21);assert.ok(!catalog.frames.some(r=>r.number===88));
   const active=getHookReferenceGalleryItems(),all=getHookReferenceReleaseItems();assert.equal(active.length,106);
-  for(const id of ["explore-paired-hook-917cba028b9bc9cfda3e9f9b","explore-paired-hook-e5870158a2ad1494edc92741","explore-paired-hook-6365d336034633aa5070eb48"]){assert.ok(all.some(r=>r.id===id));assert.ok(!active.some(r=>r.id===id));}
+  for(const id of ["explore-paired-hook-e5870158a2ad1494edc92741","explore-paired-hook-6365d336034633aa5070eb48"]){assert.ok(all.some(r=>r.id===id));assert.ok(!active.some(r=>r.id===id));}
   assert.ok(active.some(r=>r.title==="Hook 88"));
 });
 test("the first gallery Hook adds one clearer binding without changing the original twenty approved selections", async () => {
@@ -92,7 +92,7 @@ test("Hook 100 keeps old approved opening receipts recoverable while new prepara
   assert.match(nextPrompt.directions, /ENDING STATE:/);
   assert.ok(getHookKeyframePromptPreview(restored).animationPrompt, "Legacy frame-zero motion remains available through history");
 });
-test("hidden sources and changed approved source versions fail without decoding an opening fallback", async () => {
+test("hidden or removed sources and changed approved source versions fail without decoding an opening fallback", async () => {
   const sources = getHookReferenceGalleryItems();
   const service = createHookSourceFrameService({ items: () => sources, download: async () => assert.fail("No download for rejected selection") });
   await assert.rejects(service("explore-paired-hook-917cba028b9bc9cfda3e9f9b"), error => error instanceof HookSourceFrameError && error.status === 404);

@@ -478,26 +478,6 @@
     },
     {
       "catalogVersion": 1,
-      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
-      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
-      "displayTitle": "Hook 28",
-      "sourceDurationSeconds": 2.966992,
-      "sourceReviewedFrameCount": 88,
-      "sourceReviewMethod": "all_decoded_frames",
-      "sourceReviewNotes": "All 88 decoded frames inspected sequentially. Foreground performer covers mouth; second person enters behind and adjusts glasses. Identity replacement targets the foreground performer, preserving the colleague. No final cut. Prompt content reviewed; generation quality not tested.",
-      "sourceObservations": "Follow the original performance and timing for the foreground performer only: begin seated at the laptop, looking down toward the screen on screen-right with both hands near the keyboard and a concentrated expression. Pause, open the mouth and lift the hand on screen-left to cover the lips, keeping the other hand down by the laptop. Hold the startled stare as the colleague in gray enters behind on screen-right, leans closer and adjusts their eyeglasses with both hands to look at the same screen. Keep the colleague's appearance unchanged when replacing the foreground performer's identity. Preserve the navy zip-neck top, hair movement, natural hand occlusion, laptop, exposed brick wall, ceiling beam, warm indoor lighting, fixed framing and source duration. Retain both people in their source positions through the ending. Match the source gestures rather than the still pose in the image.",
-      "motionReviewStatus": "needs_motion_review",
-      "riskFlags": [
-        "source_only_instructions",
-        "source_duration_dependency",
-        "image_pose_override",
-        "identity_replacement_in_motion",
-        "hand_or_prop_occlusion",
-        "secondary_person_reveal"
-      ]
-    },
-    {
-      "catalogVersion": 1,
       "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
       "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
       "displayTitle": "Hook 29",

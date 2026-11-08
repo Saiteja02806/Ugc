@@ -1054,15 +1054,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Finish the sip while widening the eyes toward the laptop, then lower the mug until it sits just above the laptop lid."
+            "action": "PHASE [0–0.410849]: Finish the sip while widening the eyes toward the laptop, then lower the mug until it sits just above the laptop lid."
           },
           {
             "phase": "middle",
-            "action": "Hold the wide-eyed stare as a thin trickle falls from the lower lip toward the mug, keeping the mug positioned beneath it."
+            "action": "PHASE [0.410849–0.718986]: Hold the wide-eyed stare as a thin trickle falls from the lower lip toward the mug, keeping the mug positioned beneath it."
           },
           {
             "phase": "ending",
-            "action": "Part the lips into a rounded surprised expression and hold, with the mug low and the other hand still touching the lid."
+            "action": "PHASE [0.718986–1]: Part the lips into a rounded surprised expression and hold, with the mug low and the other hand still touching the lid."
           }
         ],
         "camera": "Keep the low tabletop camera fixed, with the laptop naturally hiding the lower body.",
@@ -1233,23 +1233,23 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Draw both open hands inward and rest them across the upper chest. Open the eyes and glance upward and sideways with a pleading, uneasy expression, keeping the mouth in a restrained worried pout."
+            "action": "PHASE [0–0.138986]: Draw both open hands inward and rest them across the upper chest. Open the eyes and glance upward and sideways with a pleading, uneasy expression, keeping the mouth in a restrained worried pout."
           },
           {
             "phase": "middle",
-            "action": "Lift both hands away from the chest into open palms beside the shoulders and make a small questioning shrug. Look from side to side with subtle head turns, natural blinks, pinched brows and small changes between parted lips and an uneasy closed-mouth smile."
+            "action": "PHASE [0.138986–0.347464]: Lift both hands away from the chest into open palms beside the shoulders and make a small questioning shrug. Look from side to side with subtle head turns, natural blinks, pinched brows and small changes between parted lips and an uneasy closed-mouth smile."
           },
           {
             "phase": "middle",
-            "action": "Bring both hands briefly back to the upper chest, then open the palms beside the shoulders once more. Let the fingers stay relaxed as the worried expression and small upward or sideways glances continue; hold the final open-palmed shrug without rushing or adding another gesture."
+            "action": "PHASE [0.347464–0.65636]: Bring both hands briefly back to the upper chest, then open the palms beside the shoulders once more. Let the fingers stay relaxed as the worried expression and small upward or sideways glances continue; hold the final open-palmed shrug without rushing or adding another gesture."
           },
           {
             "phase": "ending",
-            "action": "About two-thirds of the way through, make one clean cut to a calmer take of the same performer in the same room, with the hands already lowered, the head slightly tilted and the eyes looking directly toward the lens. The cut deliberately resets the pose; do not animate an intermediate hand-lowering motion."
+            "action": "PHASE [0.65636–0.694928]: About two-thirds of the way through, make one clean cut to a calmer take of the same performer in the same room, with the hands already lowered, the head slightly tilted and the eyes looking directly toward the lens. The cut deliberately resets the pose; do not animate an intermediate hand-lowering motion."
           },
           {
             "phase": "ending",
-            "action": "In the calmer take, keep the hands lowered and hold the direct gaze with only a natural blink and very small head adjustments. Gradually soften the neutral, composed mouth into a faint closed-lip smile and hold that quiet expression through the finish."
+            "action": "PHASE [0.694928–1]: In the calmer take, keep the hands lowered and hold the direct gaze with only a natural blink and very small head adjustments. Gradually soften the neutral, composed mouth into a faint closed-lip smile and hold that quiet expression through the finish."
           }
         ],
         "camera": "Keep the portrait viewpoint steady during the expressive gestures. Use a single clean cut into a slightly closer front-facing take, retaining the same pale wall, wooden door, striped shirt, hairstyle and soft room lighting. Keep the calmer take nearly still with gentle natural drift; do not pan or change rooms.",
@@ -1735,15 +1735,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Pan along the cabin wall and rotate the handheld camera inward away from the window."
+            "action": "PHASE [0–0.168521]: Pan along the cabin wall and rotate the handheld camera inward away from the window."
           },
           {
             "phase": "middle",
-            "action": "Reveal the seated performer at arm’s length, smiling toward the lens with white headphones around the neck. Let the performer glance sideways, close the eyes briefly and tilt the head."
+            "action": "PHASE [0.168521–0.758344]: Reveal the seated performer at arm’s length, smiling toward the lens with white headphones around the neck. Let the performer glance sideways, close the eyes briefly and tilt the head."
           },
           {
             "phase": "ending",
-            "action": "Return the gaze toward the lens and finish with a broad toothy smile in the cabin selfie composition."
+            "action": "PHASE [0.758344–1]: Return the gaze toward the lens and finish with a broad toothy smile in the cabin selfie composition."
           }
         ],
         "camera": "Make a continuous inward pan and rotation from the window into an arm-length tilted selfie.",
@@ -1865,15 +1865,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Bring both palms over the lips and widen the eyes toward screen-left, keeping elbows bent."
+            "action": "PHASE [0–0.38652]: Bring both palms over the lips and widen the eyes toward screen-left, keeping elbows bent."
           },
           {
             "phase": "middle",
-            "action": "Briefly close the eyes, slide both hands outward over the cheeks and up to the sides of the head, then open the mouth wider."
+            "action": "PHASE [0.38652–0.618432]: Briefly close the eyes, slide both hands outward over the cheeks and up to the sides of the head, then open the mouth wider."
           },
           {
             "phase": "ending",
-            "action": "Move the hands back through the hair to rest behind the head with elbows spread. Hold the wide-eyed, open-mouth look toward screen-left."
+            "action": "PHASE [0.618432–1]: Move the hands back through the hair to rest behind the head with elbows spread. Hold the wide-eyed, open-mouth look toward screen-left."
           }
         ],
         "camera": "Keep the seated portrait camera fixed.",
@@ -2372,15 +2372,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Draw the brows together and round the lips while looking slightly down and to screen-left through the sunglasses."
+            "action": "PHASE [0–0.297001]: Draw the brows together and round the lips while looking slightly down and to screen-left through the sunglasses."
           },
           {
             "phase": "middle",
-            "action": "Pull the sunglasses forward off the eyes and out toward screen-left, keeping them off the head."
+            "action": "PHASE [0.297001–0.594002]: Pull the sunglasses forward off the eyes and out toward screen-left, keeping them off the head."
           },
           {
             "phase": "ending",
-            "action": "Widen the eyes without glasses, open the mouth further, then narrow it slightly while keeping questioning brows toward the lens."
+            "action": "PHASE [0.594002–1]: Widen the eyes without glasses, open the mouth further, then narrow it slightly while keeping questioning brows toward the lens."
           }
         ],
         "camera": "Maintain the close portrait perspective with subtle natural drift.",
@@ -2624,136 +2624,6 @@
       }
     },
     {
-      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
-      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
-      "plan": {
-        "openingState": "The foreground performer sits at the laptop looking down toward screen-right with a concentrated expression and both hands near the keyboard.",
-        "beats": [
-          {
-            "phase": "opening",
-            "action": "Pause, open the mouth and raise the screen-left hand to cover the lips while keeping the other hand low by the laptop."
-          },
-          {
-            "phase": "middle",
-            "action": "Hold the startled stare as a gray-clothed colleague enters from behind on screen-right, leans forward and touches both eyeglass temples to peer toward the laptop."
-          },
-          {
-            "phase": "ending",
-            "action": "Keep both people looking toward the same screen, with the foreground mouth covered and the colleague behind the shoulder."
-          }
-        ],
-        "camera": "Keep the desk composition fixed while the colleague enters behind the seated performer.",
-        "endingState": "The foreground hand covers the mouth and the colleague peers toward the laptop from behind on screen-right.",
-        "constraints": [
-          "Keep the colleague behind the foreground performer.",
-          "Do not move the foreground performer out of the seated desk position."
-        ]
-      },
-      "review": {
-        "status": "needs_decision",
-        "startingFrameIndex": 0,
-        "supportedDurationsSeconds": [],
-        "method": "canonical_frames_and_prior_notes",
-        "sampledFrameIndices": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22,
-          23,
-          24,
-          25,
-          26,
-          27,
-          28,
-          29,
-          30,
-          31,
-          32,
-          33,
-          34,
-          35,
-          36,
-          37,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45,
-          46,
-          47,
-          48,
-          49,
-          50,
-          51,
-          52,
-          53,
-          54,
-          55,
-          56,
-          57,
-          58,
-          59,
-          60,
-          61,
-          62,
-          63,
-          64,
-          65,
-          66,
-          67,
-          68,
-          69,
-          70,
-          71,
-          72,
-          73,
-          74,
-          75,
-          76,
-          77,
-          78,
-          79,
-          80,
-          81,
-          82,
-          83,
-          84,
-          85,
-          86,
-          87
-        ],
-        "frameCount": 88,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. The unresolved scene/identity decision prevents approval for starting-frame animation. This is a static prompt review only; no edited starting image or generated video has been qualified.",
-        "issues": [
-          "The colleague first appears later behind the performer and is absent from frame0. A single starting image does not specify that colleague’s appearance; keep unavailable pending a reveal strategy."
-        ],
-        "sourceFileSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
-        "visualQualification": "not_tested"
-      }
-    },
-    {
       "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
       "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
       "plan": {
@@ -2827,15 +2697,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Blink briefly and reopen the eyes with knitted brows, maintaining fingertip contact near the lower lip and chin."
+            "action": "PHASE [0–0.346102]: Blink briefly and reopen the eyes with knitted brows, maintaining fingertip contact near the lower lip and chin."
           },
           {
             "phase": "middle",
-            "action": "Widen the eyes progressively and open the mouth further into disbelief while keeping the hand at the chin."
+            "action": "PHASE [0.346102–0.738351]: Widen the eyes progressively and open the mouth further into disbelief while keeping the hand at the chin."
           },
           {
             "phase": "ending",
-            "action": "Hold the startled gaze as the view moves closer to the face, without changing the hand placement."
+            "action": "PHASE [0.738351–1]: Hold the startled gaze as the view moves closer to the face, without changing the hand placement."
           }
         ],
         "camera": "Use a gradual continuous handheld move toward a tighter facial close-up.",

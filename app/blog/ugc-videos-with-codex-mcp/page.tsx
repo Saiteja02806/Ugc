@@ -100,7 +100,7 @@ export default function UgcVideosWithCodexMcpPage() {
         <ArticleH2>What you need</ArticleH2>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $19 a month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+            A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $29 a month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
           </li>
           <li>Codex CLI or the Codex IDE extension.</li>
           <li>

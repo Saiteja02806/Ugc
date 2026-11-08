@@ -17,7 +17,7 @@ type ClipEditingView = {
   source: MediaAsset | null; demoSource: MediaAsset | null; demo: LocalWorkflowMedia | null;
   rawSource: MediaAsset | null; rawDemoSource: MediaAsset | null; openingState: WorkflowClipEditState | null; demoState: WorkflowClipEditState | null;
   demoFraming: DemoFraming | null; error: string | null; editing: boolean; busy: boolean;
-  controls: ReactNode; preview: ReactNode; actions: ReactNode; demoOriginalSound: ReactNode;
+  controls: ReactNode; preview: ReactNode; actions: ReactNode;
   openOpening: (() => void) | undefined; openDemo: (() => void) | undefined;
   closeEditor: () => void;
   openingPreview: FormatOpeningPreview | null; demoPreview: FormatOpeningPreview | null;
@@ -55,7 +55,6 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
   const [resultsTarget, setResultsTarget] = useState<HTMLDivElement | null>(null);
   const [actionsTarget, setActionsTarget] = useState<HTMLDivElement | null>(null);
-  const [demoSoundTarget, setDemoSoundTarget] = useState<HTMLDivElement | null>(null);
   const alive = useRef(true), uploading = useRef(false);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const reportOpening = useCallback((value: WorkflowClipEditState) => reportState(setOpeningState, value), []);
@@ -88,7 +87,7 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
     ?? (draftBusy ? "Wait for your clip edits to finish saving." : null)
     ?? draftError
     ?? (selectedOpeningState?.needsDraftSaving && (selectedOpeningState.needsSaving || selectedOpeningState.savedDraft) ? "Save your talking-head clip edits before preparing the final video." : null)
-    ?? (selectedDemoState?.needsDraftSaving && (selectedDemoState.needsSaving || selectedDemoState.savedDraft) ? "Save your demo clip edits before preparing the final video." : null);
+    ?? (selectedDemoState?.needsDraftSaving && (selectedDemoState.needsSaving || selectedDemoState.savedDraft) ? "Open Edit demo video and save your changes, then try again." : null);
 
   async function openDemo() {
     const media = demo.asset;
@@ -120,7 +119,6 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       controls: <div hidden={!editing} ref={setControlsTarget} className={sections.clipControls} />,
       preview: <div hidden={!editing} ref={setResultsTarget} className={sections.clipPreview} />,
       actions: <div ref={setActionsTarget} />,
-      demoOriginalSound: <div ref={setDemoSoundTarget} hidden={!demoVideo} />,
       openOpening: openingKey ? () => setRequested({ target: "opening", key: openingKey }) : undefined,
       openDemo: demo.asset || ownedDemo ? () => { void openDemo(); } : undefined,
       openingPreview: openingPreview?.segment.id === openingKey ? openingPreview : null,
@@ -129,6 +127,6 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
     {opening ? <FormatVideoEditor key={`opening:${openingKey}`} format="hook" video={opening} active={editing && target === "opening"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
       prepareInSequence showSoundControls={false} remixReferences={availableReferences} draftScope={draftId ? `talking-head-opening:${draftId}` : "talking-head-opening"} videoLabel="Hook video" continueLabel="Back to videos" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
     {demoVideo ? <FormatVideoEditor key={`demo:${demoVideo.mediaAssetId ?? demoVideo.id}`} format="hook" video={demoVideo} active={editing && target === "demo"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      prepareInSequence showSoundControls={false} remixReferences={availableReferences} originalSoundTarget={demoSoundTarget} draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
+      prepareInSequence showSoundControls={false} remixReferences={availableReferences} draftScope="hook:demo" videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
   </>;
 }

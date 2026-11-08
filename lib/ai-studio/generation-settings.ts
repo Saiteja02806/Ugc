@@ -13,7 +13,7 @@ export function isAIStudioGenerationQuantity(value: unknown): value is AIStudioG
 }
 export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as const;
 export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"] as const;
-export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "kling_4_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;
+export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "kling_4_0", "google_omni", "seedance_2_5", "wan_3_0", "flux_3"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
 // Kling 3.0's configured route accepts every whole second from 3 through 15.
 const KLING_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
@@ -22,6 +22,7 @@ const KLING_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as c
 const SEEDANCE_VIDEO_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] as const;
 const WAN_VIDEO_DURATIONS = [2, 3, ...SEEDANCE_VIDEO_DURATIONS] as const;
 const OMNI_VIDEO_DURATIONS = [4, 6, 8, 10] as const;
+const FLUX_VIDEO_DURATIONS = SEEDANCE_VIDEO_DURATIONS.filter(value => value >= 5 && value <= 20);
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
 
 
@@ -51,10 +52,25 @@ const AI_STUDIO_VIDEO_RESOLUTIONS_BY_MODEL: Record<
   kling_4_0: ["720p", "1080p"],
   seedance_2_5: ["480p", "720p"],
   wan_3_0: ["480p", "720p", "1080p"],
+  flux_3: ["720p", "1080p"],
 };
 
+export const FREE_VIDEO_PASS_RESTRICTED_VIDEO_MODELS: readonly AIStudioVideoModel[] = [
+  "kling_4_0",
+  "google_omni",
+  "seedance_2_5",
+  "wan_3_0",
+  "flux_3",
+] as const;
+
+export function isFreeVideoPassVideoModelAllowed(
+  model: AIStudioVideoModel,
+): boolean {
+  return !FREE_VIDEO_PASS_RESTRICTED_VIDEO_MODELS.includes(model);
+}
+
 export function getAIStudioVideoModelLabel(model: AIStudioVideoModel) {
-  return { kling_4_0: "Kling 4.0", kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5", wan_3_0: "WAN 3.0" }[model];
+  return { kling_4_0: "Kling 4.0", kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5", wan_3_0: "WAN 3.0", flux_3: "FLUX 3" }[model];
 }
 
 export function getDefaultAIStudioVideoModel(
@@ -78,6 +94,7 @@ export function getAIStudioVideoDurations(model: AIStudioVideoModel): readonly A
   if (model === "seedance_2_5") return SEEDANCE_VIDEO_DURATIONS;
   if (model === "kling_3_0") return KLING_VIDEO_DURATIONS;
   if (model === "google_omni") return OMNI_VIDEO_DURATIONS;
+  if (model === "flux_3") return FLUX_VIDEO_DURATIONS;
   return AI_STUDIO_VIDEO_DURATIONS.filter((duration) => duration <= 10);
 }
 

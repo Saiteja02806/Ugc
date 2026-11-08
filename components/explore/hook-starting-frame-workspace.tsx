@@ -560,7 +560,6 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     </label>
     {promptLimitError ? <p role="alert" className="text-destructive">{promptLimitError}</p> : null}
     <div hidden>
-    <p className="text-xs text-muted">Image 1 supplies the scene. Image 2 and later photos supply the influencer’s identity.</p>
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="outline" disabled={busy || creatingImage || Boolean(retainedFrame)} onClick={() => { setDraft(current => updateHookKeyframeDraft(current, { customImagePrompt: undefined })); setSaved(false); }}>Use application prompt</Button>
       <Button type="button" variant="outline" disabled={busy || creatingImage} onClick={() => savePromptPreference(savedPrompt?.useDefault ?? false)}>Save my prompt</Button>
@@ -651,11 +650,12 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       {presentation !== "recreation" ? generatedPreview : null}
       </div>
       <div className={styles.controls} data-recreation-step={presentation === "recreation" ? "person" : undefined}>
-      <section className={styles.person} aria-label="Your photos">
-        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Your photos</h2><p>Choose photos of the same person.</p></div><UserRound aria-hidden="true" /></div>
+      <section className={styles.person} aria-label="Face identity photo selection">
+        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Face identity photos</h2><p>Choose photos of the same person.</p></div><UserRound aria-hidden="true" /></div>
+        <p className="text-xs leading-5 text-muted">Image 1 supplies the scene. Image 2 and later photos are face identity images of the influencer.</p>
         {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); rememberPhotos([]); setRestoreError(null); setSourceRestored(true); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
         <div className={styles.photos} data-unified-face-picker data-selected-face-photos={images.length}>
-          <FormatGenerationReferences inlineImagePicker imagePresentation="person-strip" selection={null} imageSelections={images} imagePurpose="person" heading="Person photos"
+          <FormatGenerationReferences inlineImagePicker imagePresentation="person-strip" selection={null} imageSelections={images} imagePurpose="person" heading="Face identity photos"
             influencerLibrary={{ images: historyImages, loading: history.isPending, error: history.error, selectionError: error,
               onRetry: () => void history.refetch(), hasMore: history.hasNextPage, loadingMore: history.isFetchingNextPage,
               onLoadMore: () => void history.fetchNextPage(), onSelect: selectInfluencer }}

@@ -116,6 +116,7 @@ test("quick starts preserve destinations, duration and preview query parameters 
     "@/contexts/auth-context": { useAuth: () => ({ user: currentUser }) },
     "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
+    "@/components/explore/explore-free-video-pass-badge": { ExploreFreeVideoPassBadge: "free-video-pass-badge" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
     "@/components/explore/explore-link-indicator": indicatorImport,
     "@/lib/explore/workflows": workflows,
@@ -511,4 +512,66 @@ test("hover-only gallery previews never start a watchdog or play without interes
   windowHandlers.get("focus")(); windowHandlers.get("online")(); videoHandlers.get("error")();
   assert.equal(source, null); assert.equal(plays, 0); assert.equal(timers.size, 0); assert.equal(intervals, 0);
   cleanup();
+});
+
+test("all visible continuous Explore covers play automatically, and hover does not release the others", () => {
+  const handlers = new Map(), pageHandlers = [], observers = [], effects = [], sources = [null, null], plays = [0, 0];
+  const makeVideo = index => {
+    const video = {
+      preload: "none", paused: true, error: null, currentTime: 0, readyState: 4,
+      closest: () => ({ matches: () => false,
+        addEventListener: (name, fn) => handlers.set(`${index}:${name}`, fn),
+        removeEventListener: name => handlers.delete(`${index}:${name}`) }),
+      get src() { return sources[index]; },
+      set src(value) { sources[index] = value; },
+      hasAttribute: () => sources[index] !== null,
+      removeAttribute() { sources[index] = null; },
+      load() {},
+      pause() { video.paused = true; },
+      play: async () => { plays[index]++; video.paused = false; },
+      addEventListener() {}, removeEventListener() {},
+    };
+    return video;
+  };
+  const videos = [makeVideo(0), makeVideo(1)];
+  let refIndex = 0;
+  const page = { visibilityState: "visible", activeElement: null,
+    addEventListener: (name, fn) => { if (name === "visibilitychange") pageHandlers.push(fn); },
+    removeEventListener() {} };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: {
+      useRef: () => ({ current: videos[refIndex++] }),
+      useEffect: fn => { effects.push(fn); },
+    },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} },
+    navigator: {}, document: page,
+    IntersectionObserver: class { constructor(fn) { observers.push(fn); } observe() {} disconnect() {} },
+    setTimeout() { throw Error("Continuous covers must not wait on a timer"); }, clearTimeout() {},
+    setInterval: () => 1, clearInterval() {},
+  });
+  useCoverPlayback("/first.mp4", "a", true, true);
+  useCoverPlayback("/second.mp4", "a", true, true);
+  const cleanups = effects.map(fn => fn());
+  assert.equal(observers.length, 2);
+  assert.equal(sources[0], null); assert.equal(sources[1], null);
+  observers[0]([{ isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(sources[0], "/first.mp4");
+  assert.equal(plays[0], 1);
+  observers[1]([{ isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(sources[0], "/first.mp4");
+  assert.equal(sources[1], "/second.mp4", "every visible cover keeps its own media pipeline");
+  assert.equal(plays[1], 1);
+  handlers.get("1:pointerenter")({ pointerType: "mouse" });
+  assert.equal(sources[0], "/first.mp4", "hover must not release another visible cover");
+  assert.equal(sources[1], "/second.mp4");
+  assert.equal(videos[0].paused, false); assert.equal(videos[1].paused, false);
+  handlers.get("1:pointerleave")();
+  assert.equal(sources[0], "/first.mp4"); assert.equal(sources[1], "/second.mp4");
+  page.visibilityState = "hidden"; for (const listener of pageHandlers) listener();
+  assert.equal(sources[0], null); assert.equal(sources[1], null);
+  page.visibilityState = "visible"; for (const listener of pageHandlers) listener();
+  assert.equal(sources[0], "/first.mp4"); assert.equal(sources[1], "/second.mp4");
+  for (const cleanup of cleanups) cleanup();
+  assert.equal(sources[0], null); assert.equal(sources[1], null);
 });

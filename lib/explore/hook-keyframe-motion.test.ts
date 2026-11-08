@@ -48,7 +48,7 @@ test("every active canonical reference has an exact source-bound motion review r
   const active = getHookReferenceGalleryItems();
   assert.equal(active.length, 106);
   assert.ok(!active.some(row => row.id === "explore-paired-hook-e683292d4cd22b2a8b5a9cd8"));
-  assert.equal(Object.keys(hookKeyframeMotionCatalog).length, 107);
+  assert.equal(Object.keys(hookKeyframeMotionCatalog).length, 106);
   for (const hook of active) {
     const entry = hookKeyframeMotionCatalog[hook.id];
     const legacy = referenceVideoPrompts[hook.id];
@@ -106,7 +106,6 @@ test("window reveal, cuts, secondary people and partial faces have explicit revi
     ["explore-paired-hook-e683292d4cd22b2a8b5a9cd8", "no_person_in_opening_frame"],
     ["explore-paired-hook-43cc1dae0a6cfcb03e0a9333", "multiple_takes"],
     ["explore-paired-hook-d7a0b28cd22cc29d618a5a6d", "jump_cut"],
-    ["explore-paired-hook-917cba028b9bc9cfda3e9f9b", "secondary_person_reveal"],
     ["explore-paired-hook-775bf4f0fc41f253d04663e2", "camera_reveals_unseen_scene"],
     ["explore-paired-hook-607bfccda5e91e0d8731fa94", "partial_face_crop"],
     ["explore-paired-hook-e5870158a2ad1494edc92741", "partial_face_crop"],
@@ -203,4 +202,13 @@ test("source-speed candidate keeps source event times, complete ending and remai
   assert.match(prompt,/0–1\.22s/);assert.match(prompt,/1\.22–2\.43s/);assert.match(prompt,/FINAL HOLD 2\.43–3s/);
   assert.match(prompt,/physical logos, readable text/);assert.doesNotMatch(prompt,/Preserve text physically/);
   const old=buildHookAnimationPrompt({directions,durationSeconds:3,generateAudio:false});assert.match(old,/1\.5–3s/);assert.doesNotMatch(old,/FINAL HOLD/);
+});
+
+test("Hook animation labels the first identity photo as the main face identity", () => {
+  const one = buildHookAnimationPrompt({ directions: "Look at the camera.", durationSeconds: 4, generateAudio: false, identityPhotoCount: 1 });
+  assert.match(one, /Image 2 is the main face identity image/);
+  assert.doesNotMatch(one, /additional face identity image/);
+  const two = buildHookAnimationPrompt({ directions: "Look at the camera.", durationSeconds: 4, generateAudio: false, identityPhotoCount: 2 });
+  assert.match(two, /Image 2 is the main face identity image/);
+  assert.match(two, /Image 3 is an additional face identity image/);
 });

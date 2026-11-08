@@ -18,17 +18,22 @@
 .textFooter p, .imageActions p, .emptyInspector p { color: var(--muted); font-size: 12px; line-height: 20px; }
 .textFooter button { padding-inline: 0; font-size: 12px; }
 .imageActions, .emptyInspector { display: grid; gap: 12px; padding-bottom: 12px; }
-.editorPreview { display: grid; grid-template-columns: minmax(0, 1fr) 136px; grid-template-rows: auto auto minmax(0, 1fr); width: 100%; align-self: stretch; min-width: 0; min-height: 100%; gap: 12px 20px; }
+.editorPreview { display: grid; grid-template-columns: minmax(0, 1fr) 200px; grid-template-rows: auto auto minmax(0, 1fr) auto; width: 100%; align-self: stretch; min-width: 0; min-height: 100%; gap: 12px 20px; }
 .editorPreview > .previewHeading { grid-column: 1 / -1; }
 .previewHeading button { flex: none; min-height: 36px; font-size: 12px; }
 .headerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; margin-left: auto; }
+/* Stage actions sit in a full-width bar directly under the preview, so the
+   primary action is always visible and never squeezed into the slide rail. */
+.previewActions { grid-column: 1 / -1; grid-row: 4; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px 12px; min-width: 0; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
+.previewActions button { min-height: 36px; font-size: 12px; white-space: nowrap; }
+.previewActions .saveActions { margin-left: auto; }
 .arrangement > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .saveFeedback { display: grid; gap: 6px; grid-column: 1 / -1; }
 .previewCanvas { grid-column: 1; grid-row: 3; display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .previewNavigation { display: flex; align-items: center; gap: 12px; }
 .previewNavigation button { min-height: 32px; font-size: 12px; }
 .previewNavigation > span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.sequence { grid-column: 2; grid-row: 3; display: grid; align-self: start; align-content: start; min-width: 0; gap: 8px; padding-left: 12px; border-left: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
+.sequence { grid-column: 2; grid-row: 3; display: flex; flex-direction: column; align-self: stretch; min-width: 0; min-height: 0; max-height: 100%; gap: 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-left: 12px; border-left: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .sequenceHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .sequenceHeading > div { display: flex; align-items: center; gap: 8px; }
 .sequenceHeading h3 { font-size: 13px; font-weight: 600; }
@@ -97,11 +102,14 @@
   .previewHeading button { min-height: 36px; padding-inline: 8px; }
   .previewCanvas { grid-column: 1; grid-row: 3; }
   .preview > img:first-child { max-height: 24dvh; }
-  .sequence { grid-column: 2; grid-row: 3; align-content: start; padding: 0; border: 0; gap: 6px; }
+  .sequence { grid-column: 2; grid-row: 3; padding: 0; border: 0; gap: 6px; }
   .sequenceHeading { gap: 4px; }
   .sequenceHeading > div { flex-wrap: wrap; gap: 4px; }
   .sequenceHeading button, .arrangement button { min-height: 36px; padding-inline: 6px; font-size: 11px; }
   .sequenceHeading h3 { font-size: 12px; }
+  .previewActions { padding-top: 8px; gap: 6px 8px; }
+  .previewActions button { min-height: 36px; padding-inline: 8px; font-size: 11px; }
+  .previewActions .saveActions { width: 100%; margin-left: 0; }
   .filmstrip { max-height: clamp(208px, 32dvh, 280px); gap: 6px; padding-bottom: 2px; }
   .thumbnail { width: 64px; height: 64px; }
   .thumbnail img, .thumbnail .unavailable { height: 100%; }

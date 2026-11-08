@@ -6,6 +6,7 @@ import {
   getInstagramIncrementalFeedStart,
   isInstagramContentMetricsStale,
   isInstagramThumbnailStale,
+  shouldScanInstagramFeed,
   INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS,
   INSTAGRAM_MEDIA_FEED_REFRESH_MS,
   INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS,
@@ -40,11 +41,36 @@ test("recent Instagram posts use the fifteen-minute visit refresh window; older 
 
 test("browser reads are independent of the bounded provider synchronization window", () => {
   assert.equal(INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS, 60_000);
-  assert.equal(INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS, 15 * 60_000);
-  assert.equal(INSTAGRAM_MEDIA_FEED_REFRESH_MS, 15 * 60_000);
+  assert.equal(INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS, 5 * 60_000);
+  assert.equal(INSTAGRAM_MEDIA_FEED_REFRESH_MS, 5 * 60_000);
   const publishedAt = new Date(now - hour).toISOString();
   assert.equal(isInstagramContentMetricsStale({ publishedAt, now, metricsSyncedAt: new Date(now - 14 * 60_000).toISOString() }), false);
   assert.equal(isInstagramContentMetricsStale({ publishedAt, now, metricsSyncedAt: new Date(now - 15 * 60_000).toISOString() }), true);
+});
+
+test("a foreground visit scans for new Instagram posts without re-reading every metric", () => {
+  assert.equal(
+    shouldScanInstagramFeed({
+      feedSyncedAt: new Date(now - 60_000).toISOString(),
+      now,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldScanInstagramFeed({
+      feedSyncedAt: new Date(now - 60_000).toISOString(),
+      now,
+      visit: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldScanInstagramFeed({
+      feedSyncedAt: new Date(now - 6 * 60_000).toISOString(),
+      now,
+    }),
+    true,
+  );
 });
 
 test("treats missing or expired per-post metrics as stale", () => {

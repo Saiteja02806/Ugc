@@ -252,7 +252,7 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.deepEqual(job.input.referenceImageUrls, []);
     const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
     // Omni's direct identity route is opt-in, so plain Omni refuses photos before any job.
-    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /Gemini Omni route|face photos/);
+    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) })), /Identity photos can't be attached|face photos/);
     const count = jobs.size;
     // ReAPI models carry the approved frame as Image 1 of a reference job and
     // the identity photos behind it, so Generate stays usable with both inputs.
@@ -261,7 +261,8 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.equal(wanJob.input.model, "wan_3_0");
     assert.equal(wanJob.input.startingFrameImageUrl, frame.url);
     assert.deepEqual(wanJob.input.referenceImageUrls, ["https://storage.example.com/1.png", "https://storage.example.com/2.png"]);
-    assert.match(wanJob.input.hookIdea, /Images 2 through 3 are supporting facial identity/);
+    assert.match(wanJob.input.hookIdea, /Image 2 is the main face identity image/);
+    assert.match(wanJob.input.hookIdea, /Image 3 is an additional face identity image/);
     assert.equal(jobs.size, count + 1);
     // Kling 3.0 has no reference mode: the approved frame animates alone and the
     // unused photos are not uploaded.
@@ -316,7 +317,7 @@ test("Talking Head image plus owned voice reaches real admission in reference mo
       assert.equal(job.input.startingImageReference.sourceFrameIndex,0);assert.equal(job.input.generateAudio,true);assert.equal(job.input.provider,"reapi");
       assert.match(job.input.hookIdea,/Audio 1 is a voice reference/);assert.match(job.input.hookIdea,/My product saves time/);assert.match(job.input.hookIdea,/not a strict first-frame input/);
       assert.equal(job.input.personReference,undefined);
-      if(withFace)assert.match(job.input.hookIdea,/Images 2 through 2 are supporting facial identity/);
+      if(withFace)assert.match(job.input.hookIdea,/Image 2 is the main face identity image/);
     }
     const base={prompt:'Say "My product saves time."',model:"wan_3_0",durationSeconds:4,quantity:1,resolution:"720p",aspectRatio:"9:16",generateAudio:true,exploreFormat:"hook",startingFrameMode:"image_voice_reference",startingFrameAssetId:frame.assetId,startingFrameJobId:frame.jobId,referenceId:frame.referenceId,referenceAudioUrls:["https://storage.example.com/audio.media"],referenceAudioAssetIds:[audioId]};
     for(const change of [{model:"google_omni"},{generateAudio:false},{startingFrameMode:"unknown"},{referenceAudioUrls:[]},{referenceAudioAssetIds:[]},{referenceId:"different-reference"}]){
@@ -358,7 +359,7 @@ test("direct Gemini opt-in freezes ordered owned identity references through rea
     ownedAssets.delete(photos[0].assetId);
     await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate(input), /own ready/);
     assert.equal(jobs.size, 0); assert.equal(reservations.size, 0);
-    await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate({...input, startingFrameMode: undefined}), /Gemini Omni route/);
+    await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate({...input, startingFrameMode: undefined}), /Identity photos can't be attached/);
     await assert.rejects(client({ uploadImage: async image => ({ url: image.url }) }).generate({...input, settings: {...input.settings, model: "wan_3_0"}}), /direct Gemini Omni/);
   } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });

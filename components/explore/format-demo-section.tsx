@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FolderOpen, Upload, Video, X } from "lucide-react";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { WorkflowFilePicker } from "@/components/explore/hook-workflow-media-controls";
@@ -252,15 +252,15 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const setupBusy = editingBusy || audio.loading || backgroundAudio.loading || uploadingAudio || uploadingBackground;
     const duration = preview?.duration ?? naturalDuration;
     const width = naturalSize?.width ?? demo?.width ?? 1080, height = naturalSize?.height ?? demo?.height ?? 1920;
-    const exportEditing = prepareFormatEditForExport(draft.editing);
-    const overlays = formatTextOverlays(exportEditing);
-    const textLayouts = overlays.map(text => formatTextLayout(text, width, height));
-    const textMayBeCropped = draft.framing && overlays.some((text, index) => {
+    const exportEditing = useMemo(() => prepareFormatEditForExport(draft.editing), [draft.editing]);
+    const overlays = useMemo(() => formatTextOverlays(exportEditing), [exportEditing]);
+    const textLayouts = useMemo(() => overlays.map(text => formatTextLayout(text, width, height)), [overlays, width, height]);
+    const textMayBeCropped = useMemo(() => draft.framing && overlays.some((text, index) => {
         const layout = textLayouts[index], halfWidth = (text.x === undefined ? text.width : layout.textWidth / width) / 2;
         return draft.framing!.points.some(([, x, y]) =>
             layout.x / width - halfWidth < x || layout.x / width + halfWidth > x + draft.framing!.width ||
             layout.y / height < y || (layout.y + layout.lines.length * layout.lineHeight) / height > y + draft.framing!.height);
-    });
+    }), [draft.framing, overlays, textLayouts, width, height]);
     let validation: string | null = null;
     try {
         parseExploreFormatEdit(exportEditing);
@@ -512,7 +512,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       {selection.busy ? <p role="status" className="text-xs text-muted">Uploading demo… You can edit or choose another video.</p> : null}
       {problems}
     </div>;
-    const editingControls = <div className={editorStyles.editorRoot}>
+    const editingControls = <div className={editorStyles.editorRoot} data-text-style-layout="wide">
       <div data-clip-tools-heading="clip" className={editorStyles.editorHeader}><h2 className="text-sm font-semibold">Edit demo video</h2><span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span></div>
       {preview ? <fieldset disabled={editingBusy} className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`}>
         <details className={`${styles.demoOptions} ${editorStyles.trimSection}`} aria-label="Demo trim" data-editor-section="trim" open><summary>Trim <span>{Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s selected</span></summary><section className={editorStyles.trimBody} aria-label="Trim">

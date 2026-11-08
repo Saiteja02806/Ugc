@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: "How much does Vidmake cost compared with a creator?",
-    answer: "Vidmake has a seven-day free trial, then plans at $19 or $49 a month with monthly credits. Creator rates vary widely by creator and usage rights, so get quotes for your own brief.",
+    answer: "Vidmake has a seven-day free trial, then plans at $29 or $49 a month with monthly credits. Creator rates vary widely by creator and usage rights, so get quotes for your own brief.",
   },
   {
     question: "Can I use AI UGC videos in paid ads?",
@@ -34,7 +34,7 @@ const faqs = [
 ] as const;
 
 const comparisonRows = [
-  ["Cost model", "Per video or per package, set by each creator; usage rights may cost extra", "Subscription with credits: free trial, then $19 or $49 a month"],
+  ["Cost model", "Per video or per package, set by each creator; usage rights may cost extra", "Subscription with credits: free trial, then $29 or $49 a month"],
   ["Turnaround", "Depends on finding a creator, shipping product, filming and revisions", "A draft in one sitting, once your brief is ready"],
   ["Authenticity", "A real person with a real experience", "Generated footage; can't stand in for a real customer"],
   ["Physical products", "Strong: can show the product in hand", "Weaker: real use is hard to fake honestly"],
@@ -117,8 +117,8 @@ export default function UgcPilotVsHiringCreatorsPage() {
         <ArticleH3>Vidmake</ArticleH3>
         <p>Vidmake&apos;s pricing comes from its public plans:</p>
         <ul className="list-disc space-y-2 pl-5">
-          <li><strong className="font-semibold text-foreground-strong">Free trial:</strong> seven days, no credit card, daily content concepts and two one-time AI Studio credits.</li>
-          <li><strong className="font-semibold text-foreground-strong">Starter:</strong> $19 a month or $190 a year, with 200 credits a month.</li>
+          <li><strong className="font-semibold text-foreground-strong">Free trial:</strong> seven days, no credit card, with 20 daily content pieces.</li>
+          <li><strong className="font-semibold text-foreground-strong">Starter:</strong> $29 a month or $299 a year, with 200 credits a month.</li>
           <li><strong className="font-semibold text-foreground-strong">Growth:</strong> $49 a month or $490 a year, with 600 credits a month and more daily concepts.</li>
         </ul>
         <p>

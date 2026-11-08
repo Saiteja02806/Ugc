@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Selected-photo chips use the public thumbnail helper; signed/private URLs bypass /_next/image. */
 import Image from "next/image";
 import { Check, Plus, UserRound, Video, X } from "lucide-react";
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
@@ -24,6 +25,7 @@ import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy"
 import { hookStartingFrameVideoDurations, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
 import type { AIStudioVideoDuration } from "@/lib/ai-studio/generation-settings";
 import { cn } from "@/lib/utils";
+import { imagePickerThumbnailUrl } from "@/lib/media/image-picker";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import sections from "@/components/explore/workflow-section-layout.module.css";
@@ -175,7 +177,7 @@ function TalkingHeadCreatorPicker({ creator, imageReferences, ownerId, tile = fa
       <div className={photoPicker.body}>
       <aside hidden className={photoPicker.selection} aria-label="Selected reference images">
         <div className={photoPicker.selectionHeading}><h3>Your photos</h3><p>Choose clear photos of the same person.</p></div>
-        {images.length ? <div className={photoPicker.selectedGrid}>{images.map(image => <div className={photoPicker.selectedPhoto} key={image.url}><div className={photoPicker.selectedVisual}><Image src={image.url} alt={`Selected reference: ${image.name}`} width={128} height={160} unoptimized /><Button type="button" variant="ghost" size="icon-sm" className={photoPicker.removePhoto} aria-label={`Remove selected image: ${image.name}`} disabled={creator.loading} onClick={imageReferences ? () => imageReferences.removeImage(image.url) : creator.remove}><X className="size-3.5" aria-hidden="true" /></Button></div></div>)}</div> : <div className={photoPicker.emptySelection}><UserRound aria-hidden="true" /><strong>Start with a clear face</strong><span>Upload a photo or choose one from the library.</span></div>}
+        {images.length ? <div className={photoPicker.selectedGrid}>{images.map(image => <div className={photoPicker.selectedPhoto} key={image.url}><div className={photoPicker.selectedVisual}><img src={imagePickerThumbnailUrl(image.url)} alt={`Selected reference: ${image.name}`} width={128} height={160} /><Button type="button" variant="ghost" size="icon-sm" className={photoPicker.removePhoto} aria-label={`Remove selected image: ${image.name}`} disabled={creator.loading} onClick={imageReferences ? () => imageReferences.removeImage(image.url) : creator.remove}><X className="size-3.5" aria-hidden="true" /></Button></div></div>)}</div> : <div className={photoPicker.emptySelection}><UserRound aria-hidden="true" /><strong>Start with a clear face</strong><span>Upload a photo or choose one from the library.</span></div>}
       </aside>
       <div className={photoPicker.library}>
       <TalkingHeadPhotoLibrary key={`${ownerId}:${librarySection}:${libraryRevision}`} ownerId={ownerId} section={librarySection} onSectionChange={setLibrarySection}

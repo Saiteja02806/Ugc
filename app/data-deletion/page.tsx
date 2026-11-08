@@ -96,8 +96,8 @@ export default async function DataDeletionPage({
           <p>
             Meta can send platform-initiated Instagram data deletion requests
             to{" "}
-            <a href="https://www.getugcpilot.com/api/meta/data-deletion">
-              https://www.getugcpilot.com/api/meta/data-deletion
+            <a href="https://vidmake.io/api/meta/data-deletion">
+              https://vidmake.io/api/meta/data-deletion
             </a>
             . The endpoint validates the request and returns a confirmation code
             and status URL for the associated deletion request.

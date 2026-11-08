@@ -63,6 +63,10 @@
   .editorRoot[data-remix-priority="true"] .trimBody { grid-template-columns: minmax(0, 1fr); }
   .editorRoot[data-remix-priority="true"] .trimTimingFields { grid-column: 1; grid-row: 1; }
   .editorRoot[data-remix-priority="true"] .trimBody > :global([aria-label="Clip trim timeline"]) { grid-column: 1; grid-row: 2; }
+  /* Hook demo/opening editors widen the style column into the middle; the
+     Talking Head editor keeps the compact inspector unless it opts in. */
+  .editorRoot[data-text-style-layout="wide"] .controlGrid { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); }
+  .editorRoot[data-text-style-layout="wide"][data-remix-priority="true"] .controlGrid { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); }
 }
 @media (max-width: 479px) {
   .trimSection, .textControlSection, .remixControlSection, .stylePanel { padding: 12px; }

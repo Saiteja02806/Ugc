@@ -12,10 +12,11 @@ const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com", "reapiflexible
 export const REAPI_SEEDANCE_MODEL = "doubao-seedance-2.5-face";
 export const REAPI_WAN_MODEL = "wan3.0-video";
 export const REAPI_OMNI_MODEL = "gemini-omni-1-1";
+export const REAPI_FLUX_MODEL = "flux-3-video";
 const OMNI_DURATIONS = new Set([4, 6, 8, 10]);
 
 type ReapiVideoInput = {
-  model: "seedance_2_5" | "wan_3_0" | "google_omni" | "kling_3_0" | "kling_4_0";
+  model: "seedance_2_5" | "wan_3_0" | "google_omni" | "kling_3_0" | "kling_4_0" | "flux_3";
   prompt: string;
   aspectRatio: "9:16" | "16:9";
   durationSeconds: number;
@@ -88,6 +89,31 @@ export function buildReapiVideoRequest(input: ReapiVideoInput): ReapiVideoReques
     return { model: "kling-3-0", prompt: input.prompt.trim(), duration: input.durationSeconds, mode: "std", sound: input.generateAudio ?? false, aspect_ratio: input.aspectRatio, ...(images.length ? { image_urls: images } : {}) };
   }
   if (input.model === "google_omni") return buildReapiOmniVideoRequest(input);
+  if (input.model === "flux_3") {
+    const prompt = input.prompt.trim();
+    if (!prompt || prompt.length > 10_000) throw new ProviderRequestNotSubmittedError("Add a FLUX 3 prompt of 1–10000 characters.");
+    if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < 5 || input.durationSeconds > 20) {
+      throw new ProviderRequestNotSubmittedError("FLUX 3 durations must be whole seconds from 5 to 20.");
+    }
+    if (!["720p", "1080p"].includes(input.resolution) || !["9:16", "16:9"].includes(input.aspectRatio)) {
+      throw new ProviderRequestNotSubmittedError("FLUX 3 supports 720p or 1080p and a 9:16 or 16:9 frame.");
+    }
+    if (input.referenceImageUrl || input.referenceImageUrls?.length || input.referenceVideoUrl || input.referenceAudioUrls?.length || input.referenceVideoMode) {
+      throw new ProviderRequestNotSubmittedError("FLUX 3 animates one approved starting frame or a text prompt and does not accept extra image, video, or audio references.");
+    }
+    const images = input.startingFrameImageUrl ? [input.startingFrameImageUrl] : [];
+    if (images.some(url => !isHttpsUrl(url))) throw new ProviderRequestNotSubmittedError("FLUX 3 requires a public HTTPS starting frame.");
+    return {
+      model: REAPI_FLUX_MODEL,
+      prompt,
+      duration: input.durationSeconds,
+      resolution: input.resolution === "1080p" ? "fhd" : "hd",
+      aspect_ratio: input.aspectRatio,
+      audio: input.generateAudio ?? false,
+      mode: images.length ? "i2v" : "t2v",
+      ...(images.length ? { image_urls: images } : {}),
+    };
+  }
   const seedance = input.model === "seedance_2_5";
   const startingFrame = input.startingFrameImageUrl !== undefined;
   const editing = input.referenceVideoMode === "edit";

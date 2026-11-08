@@ -14,7 +14,7 @@
 .form [data-schedule-date-time] { width: 100%; max-width: 480px; gap: 14px; }
 .form [data-schedule-date-time] input { height: 44px; padding-inline: 12px; background: var(--background); font-size: 14px; font-variant-numeric: tabular-nums; }
 .form > p:last-child { margin-top: -12px; }
-.summary { display: grid; gap: 5px; min-width: 0; padding: 16px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.summary { position: relative; display: grid; gap: 5px; min-width: 0; padding: 16px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .summary h3 { margin: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
 .summary p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
 .summary p.summaryDestination { color: var(--foreground); font-size: 14px; font-weight: 550; }

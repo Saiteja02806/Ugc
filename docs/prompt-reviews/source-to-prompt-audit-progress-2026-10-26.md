@@ -12,6 +12,10 @@ Hash/count/chronology/compiler checks PASS. Hook45/80/86 long-source3s retiming 
 
 Earlier sections below are historical, not current counts.
 
+## 7 November 2026 structural follow-up (audit finding, not a rewrite)
+
+A structural review of the 107 reviewed Hook motion plans found 83 with contiguous `PHASE [0–1]` intervals and 24 with ordered opening/middle/ending prose but no `PHASE` markers. All 107 carry a non-empty camera clause, opening state and ending state. For the 24, `retimeSourceMotionDirections` returns early, so contiguity, duration remap and the final hold are not machine-checked; 21 of those 24 are statically reviewed, and Hook 15 (8.63s→8s) and Hook 85 (6.1s→4s) have a source longer than the output. This does not prove any action is missing; it means timing coverage for those plans rests on the manual review, not on the compiler contract. The reusable check is now `ugc-source-prompt-completeness`, which requires the per-interval table, camera-vs-subject separation and a COMPLETE/PARTIAL/INCOMPLETE verdict. No prompt rewrite, runtime assignment or generation was performed.
+
 ## Latest continuation — 60 of 116 reviewed
 
 Added13source-to-prompt reviews:12public middle references plus1private middle reference. Coverage:1325decoded frame thumbnails in49native sheets,27targeted full-resolution checks. Every decoded thumbnail inspected through the ending; not every frame inspected at original resolution. Public12retain materially covered action sequences; private1gets an evidenced ending-framing correction.

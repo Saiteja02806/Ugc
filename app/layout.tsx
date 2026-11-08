@@ -35,6 +35,11 @@ const geistSans = localFont({
   display: "swap",
   variable: "--font-geist-sans",
   declarations: [{ prop: "font-family", value: "geistSans" }],
+  // The deployed CSS currently references this face with an older next/font
+  // deployment query, so the preload cannot be reused and the browser fetches
+  // the same font twice. The CSS still loads the face. Restore preload after a
+  // clean deployment proves the preload and CSS URLs share one ?dpl value.
+  preload: false,
 });
 
 // Register italic in the same family, but let actual italic text request it.

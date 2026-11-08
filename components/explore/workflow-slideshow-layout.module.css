@@ -7,7 +7,11 @@
 .workspace.workspace[data-stage="edit"] aside > footer { padding: 16px 22px; }
 .workspace.workspace[data-stage="edit"] [aria-label="Slideshow edit preview"] { min-height: 100%; }
 .workspace.workspace[data-format="slideshow"][data-stage="schedule"] [aria-label="Workflow preview"] { padding: 20px; }
-.workspace.workspace[data-format="slideshow"][data-stage="schedule"] .layout [aria-label="Saved slideshow preview"] { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.workspace.workspace[data-format="slideshow"][data-stage="schedule"] .layout [aria-label="Saved slideshow preview"] { min-height: 0; }
+/* The scheduled preview is a fixed screen: its rows share the pane height instead
+   of scrolling. Very short windows keep the document-scrolling fallback. */
+@media (min-height: 521px) { .workspace.workspace[data-format="slideshow"][data-stage="schedule"] .layout [aria-label="Saved slideshow preview"] { overflow: hidden; } }
+@media (max-height: 520px) { .workspace.workspace[data-format="slideshow"][data-stage="schedule"] .layout [aria-label="Saved slideshow preview"] { overflow-y: auto; scrollbar-gutter: stable; } }
 .workspace [aria-label="Saved slideshow preview"]:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; border-radius: 8px; }
 @container workflow-video (max-width: 1023px) {
   .workspace.workspace[data-stage] .layout { grid-template-columns: minmax(0, 1fr); }

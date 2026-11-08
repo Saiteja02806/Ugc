@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Billo and Vidmake?",
-    answer: "Billo states that videos start at $99; format, length and optional extras affect the total. Approved videos include use in your ads and owned channels; creator-handle partnership ads are a separate service. Vidmake offers a 7-day free trial with 2 credits, followed by monthly self-serve subscriptions starting at $19 and $49.",
+    answer: "Billo states that videos start at $99; format, length and optional extras affect the total. Approved videos include use in your ads and owned channels; creator-handle partnership ads are a separate service. Vidmake offers a 7-day free trial with 20 daily content pieces, followed by monthly self-serve subscriptions starting at $29 and $49.",
   },
   {
     question: "Does Vidmake support Claude or Codex MCP automation?",
@@ -168,7 +168,7 @@ export default function BilloAlternativeForSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Plans start from $19/mo with a 7-day free trial. See{" "}
+                  Plans start from $29/mo with a 7-day free trial. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),

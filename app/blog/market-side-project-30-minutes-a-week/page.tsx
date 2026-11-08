@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How much does Vidmake cost for a side project?",
-    answer: "Vidmake offers a 7-day free trial with 2 credits and no credit card required, followed by self-serve plans from $19/mo.",
+    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
   },
 ] as const;
 

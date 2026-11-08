@@ -37,7 +37,7 @@ const faqs = [
   },
   {
     question: "How much does AI UGC for SaaS cost compared to hiring creators?",
-    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. Vidmake offers a 7-day trial with credits, and plans starting at $19 to $49 per month with generation credits; each experiment uses the credits required by its model.",
+    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. Vidmake offers a 7-day trial with credits, and plans starting at $29 to $49 per month with generation credits; each experiment uses the credits required by its model.",
   },
 ] as const;
 
@@ -191,7 +191,7 @@ export default function AiContentCreationToolsPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  There is a seven-day free trial with no credit card and two one-time AI Studio credits, followed by plans starting at $19 or $49 per month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  There is a seven-day free trial with no credit card and 20 daily content pieces, followed by plans starting at $29 or $49 per month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },
@@ -223,6 +223,10 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/overcoming-founder-camera-anxiety", title: "Overcoming founder camera anxiety", description: "Make founder content without being on camera." },
           { href: "/blog/product-hunt-launch-video-strategy", title: "Product Hunt launch video strategy", description: "Plan the video assets for a launch." },
           { href: "/blog/zero-ad-spend-saas-growth-engine", title: "Zero-ad-spend SaaS growth engine", description: "Grow without paid ads using short-form content." },
+          { href: "/blog/ai-ugc-video-generator-free-trial", title: "AI UGC video generator free trial", description: "A five-test checklist for using a trial properly." },
+          { href: "/blog/ugc-creator-brief-template", title: "UGC creator brief template", description: "The eight fields that prevent an unusable video." },
+          { href: "/blog/ai-video-generator-for-mobile-apps", title: "AI video generator for mobile apps", description: "Plan store previews and social video as two tracks." },
+          { href: "/blog/tiktok-slideshow-view-data", title: "TikTok slideshow view data", description: "28 verified posts, 234M views, and what the numbers do not prove." },
         ]}
       />
     </VideoMarketingPage>

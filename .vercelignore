@@ -41,6 +41,13 @@ public/explore/covers/sources/
 public/explore/covers/*contact-sheet.png
 public/explore/covers/preview.html
 
+# Explicit release hold: do not upload the Vidmake intro review videos or the
+# Remotion authoring tree that produces them.
+remotion/
+public/explore/covers/vidmake-launch*
+public/explore/covers/vidmake-intro*
+vidmake-intro*
+
 # Do not upload plaintext private pilot source material.
 lib/explore/creator-accounts.json
 lib/explore/creator-account-reviews.json

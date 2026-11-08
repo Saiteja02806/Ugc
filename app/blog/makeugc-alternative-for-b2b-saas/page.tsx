@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does Vidmake pricing work?",
-    answer: "Vidmake offers a 7-day free trial with 2 one-time credits and no credit card required, followed by self-serve plans starting at $19 and $49 per month.",
+    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans starting at $29 and $49 per month.",
   },
 ] as const;
 
@@ -119,7 +119,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Free Trial &amp; Plans</th>
                 <td className="p-4 align-top">Paid plans per video</td>
-                <td className="p-4 align-top">7-day free trial with 2 credits; plans from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; plans from $29/mo</td>
               </tr>
             </tbody>
           </table>

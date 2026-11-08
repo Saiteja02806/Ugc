@@ -180,7 +180,7 @@ export function hookMotionPlanDirections(plan: HookMotionPlan): string {
 }
 
 /** Prompt construction only, never evidence of catalog review or paid admission. */
-export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; identityPhotoCount?: number }) {
+export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; identityPhotoCount?: number; maxDurationSeconds?: number }) {
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) {
     throw new Error("Describe the animation within 6,000 characters.");
@@ -188,7 +188,7 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
   if (absentInputOrEditCommand.test(input.directions)) {
     throw new Error("Describe visible actions directly. Keep face replacement, source-video references, duration and sound settings out of the action instructions.");
   }
-  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") {
+  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > (input.maxDurationSeconds ?? 15) || typeof input.generateAudio !== "boolean") {
     throw new Error("Choose a supported animation duration and sound setting.");
   }
   const sound = input.generateAudio
@@ -199,8 +199,14 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
       ? `Animate Image 1, the approved starting image, into a ${input.durationSeconds}-second video. Image 1 supplies the person's appearance and the complete opening composition.`
       : `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
-    ...(input.identityPhotoCount && input.identityPhotoCount > 0 ? [`Images 2 through ${input.identityPhotoCount + 1} are supporting facial identity references for that same person only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the supporting photos' scenes, outfits or poses, and do not add another person.`] : []),
-    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds, input.actionDurationSeconds),
+    ...(input.identityPhotoCount && input.identityPhotoCount > 0 ? [
+      input.identityPhotoCount === 1
+        ? "Image 2 is the main face identity image for the person in Image 1. Use it for facial features and proportions only; do not copy its clothing, lighting, background or pose. Image 1 controls the opening composition, pose, clothing, lighting and background; do not add another person."
+        : input.identityPhotoCount === 2
+          ? "Image 2 is the main face identity image for the person in Image 1. Image 3 is an additional face identity image of the same person; use it for identity only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the identity photos' scenes, outfits or poses, and do not add another person."
+          : `Image 2 is the main face identity image for the person in Image 1. Images 3 through ${input.identityPhotoCount + 1} are additional face identity images of the same person; use them for identity only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the identity photos' scenes, outfits or poses, and do not add another person.`,
+    ] : []),
+    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds, input.actionDurationSeconds, input.maxDurationSeconds),
     input.removePhysicalText ? "Keep the approved scene free of captions, physical logos, readable text, labels, signage and watermarks. Keep the underlying clothing, props and surfaces intact; do not regenerate removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     sound,
   ].join("\n\n");

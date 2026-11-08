@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between HeyGen and Vidmake?",
-    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. Vidmake offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month.",
+    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. Vidmake offers a 7-day free trial with 20 daily content pieces, followed by self-serve plans starting at $29 and $49 per month.",
   },
 ] as const;
 
@@ -119,7 +119,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Pricing Structure</th>
                 <td className="p-4 align-top">Credit per minute; enterprise custom pricing</td>
-                <td className="p-4 align-top">7-day free trial with 2 credits; self-serve from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; self-serve from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -181,7 +181,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Vidmake offers self-serve monthly plans from $19/mo. Explore{" "}
+                  Vidmake offers self-serve monthly plans from $29/mo. Explore{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),

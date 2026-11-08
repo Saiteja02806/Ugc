@@ -3,7 +3,7 @@ import { hookStartingFrameFaceReferenceLimit, hookStartingFrameFaceReferenceRout
 type StartingFrameIdentity = { assetId: string; jobId?: string; referenceId?: string; url: string };
 type FacePhoto = { asset: { id: string; url: string } };
 
-export const UNSUPPORTED_STARTING_FRAME_PHOTOS = "Identity photos need the Gemini Omni route with your starting frame. Remove the photos to use another model. Your selections are kept.";
+export const UNSUPPORTED_STARTING_FRAME_PHOTOS = "Identity photos can't be attached with this starting-frame model. Use the starting frame only, or choose a model that supports identity references. Your selections are kept.";
 
 /** Client readiness only; the API independently verifies ownership and roles. */
 export function startingFrameFaceReferenceError(model: unknown, frame: StartingFrameIdentity, photos: readonly FacePhoto[], mode?: "first_frame_with_identity") {

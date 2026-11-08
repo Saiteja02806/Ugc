@@ -130,6 +130,11 @@ export const seoPageContent = {
         href: "/guides/readable-video-text",
       },
       {
+        title: "TikTok slideshow view data",
+        description: "28 verified slideshows, 234M views, and what the numbers do and do not show.",
+        href: "/blog/tiktok-slideshow-view-data",
+      },
+      {
         title: "AI UGC video generator",
         description: "Create short-form video alongside your carousel workflow.",
         href: "/ai-ugc-video-generator",

@@ -439,6 +439,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   className,
   fieldLabel,
   fieldLayout,
+  fieldHint,
   disabled = false,
   icon,
   onChange,
@@ -450,6 +451,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   className?: string;
   fieldLabel?: string;
   fieldLayout?: "classic";
+  fieldHint?: ReactNode;
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
@@ -618,7 +620,9 @@ export function AiStudioSettingSelect<TValue extends string>({
           })}
         </div>
       </PopoverContent>
-    </Popover></div>
+    </Popover>
+    {fieldHint ? <small className="text-xs leading-5 text-muted">{fieldHint}</small> : null}
+    </div>
   );
 }
 

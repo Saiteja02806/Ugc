@@ -407,9 +407,12 @@ export function ImageGenerationStudioPanel({
     ? "Not enough credits for generation and the selected face swaps. Add credits or clear Face Swap."
     : null;
   const faceSwapOutputCount = faceSwap?.influencer ? new Set(faceSwap.slideIds).size : 0;
+  const faceSwapCreditLine = faceSwapOutputCount > 0
+    ? `Face swap · ${faceSwapOutputCount * creditCost} AI credit${faceSwapOutputCount * creditCost === 1 ? "" : "s"}${quantity > 1 ? " · Version 1 only" : ""}`
+    : null;
   const composerMessage = faceSwap?.open
     ? faceSwap.eligibleCount
-      ? `Face swap · ${faceSwapOutputCount * creditCost} AI credit${faceSwapOutputCount * creditCost === 1 ? "" : "s"}${quantity > 1 ? " · Version 1 only" : ""}`
+      ? faceSwapCreditLine ?? "Choose at least one slide for face swap."
       : "Choose a slideshow reference. Its slides can receive this face."
     : generationLocked
     ? accessMessage
@@ -417,7 +420,11 @@ export function ImageGenerationStudioPanel({
       ? "Covered by your 1 free generation pass (1 complete slideshow)."
     : hasInsufficientCredits && !faceSwapCredits
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
-      : `This generation uses ${requiredCredits} AI credit${requiredCredits === 1 ? "" : "s"}.`;
+      : faceSwap?.stale
+        ? "Face swap is kept, but its slides belong to the previous reference. Choose slides for this reference."
+        : faceSwapCredits > 0
+          ? `This generation uses ${totalRequiredCredits} AI credits · ${faceSwapCredits} for face swap${quantity > 1 ? " · Version 1 only" : ""}.`
+          : `This generation uses ${requiredCredits} AI credit${requiredCredits === 1 ? "" : "s"}.`;
   const isGenerating =
     isSubmitting ||
     activeJobQueries.some((query) => query.isPending) ||
@@ -1076,6 +1083,7 @@ export function ImageGenerationStudioPanel({
     createdAt: string;
     prompt: string;
     asset: AIStudioImageResult | null;
+    stage?: string | null;
   };
   const imageRows: ImageDisplayRow[] = [];
   const renderedImageIds = new Set<string>();
@@ -1089,7 +1097,7 @@ export function ImageGenerationStudioPanel({
       const slot = asset?.slideshowGeneration ?? job?.slideshowGeneration ?? (metadataOwnerId ? getImageJobSlideshowSlot(metadataOwnerId, jobId) : undefined);
       if (asset) {
         renderedImageIds.add(asset.id);
-        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: slot });
+        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: slot, stage: job?.stage });
       } else if (
         query?.isPending ||
         job?.jobType === "image_generation" && (
@@ -1104,6 +1112,7 @@ export function ImageGenerationStudioPanel({
           prompt: submittedPrompts[jobId] ?? (metadataOwnerId ? getImageJobPrompt(metadataOwnerId, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
           asset: null,
           slideshowGeneration: slot,
+          stage: job?.stage,
         });
       }
     }
@@ -1373,7 +1382,9 @@ export function ImageGenerationStudioPanel({
                 tabIndex={0}
                 aria-label={`Slides in version ${group.slot.versionIndex}`}
               >
-                {group.rows.map(row => (
+                {group.rows.map(row => {
+                  const applyingFaceSwap = row.stage === "image_identity" || row.stage === "image_harmonize";
+                  return (
                   <div key={row.key} className="w-[min(200px,60vw)] shrink-0 rounded-xl border border-border/70 bg-card-muted/30 p-2.5 transition-colors hover:border-border-strong">
                     <div className="mb-2 flex items-center justify-between px-0.5 text-xs font-semibold">
                       <span className="text-foreground/90">Slide {row.slideshowGeneration!.slideIndex}</span>
@@ -1382,7 +1393,7 @@ export function ImageGenerationStudioPanel({
                           <Check className="size-3" aria-hidden="true" /> Ready
                         </span>
                       ) : (
-                        <span className="text-[10px] text-amber-400 font-medium">Generating</span>
+                        <span className="text-[10px] text-amber-400 font-medium">{applyingFaceSwap ? "Applying face swap…" : "Generating"}</span>
                       )}
                     </div>
                     <ImageGenerationCard
@@ -1400,7 +1411,8 @@ export function ImageGenerationStudioPanel({
                       isSwappingFace={row.asset ? swappingAssetIds.includes(row.asset.id) : false}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="mt-3 w-full">
                 <ImagePromptBubble
@@ -1416,6 +1428,7 @@ export function ImageGenerationStudioPanel({
             {row.slideshowGeneration ? (
               <p className="mb-2 text-xs font-semibold text-muted">
                 Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}
+                {row.stage === "image_identity" || row.stage === "image_harmonize" ? " · Applying face swap…" : ""}
               </p>
             ) : null}
             <ImageGenerationCard

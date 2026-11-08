@@ -15,6 +15,7 @@ const exported = {};
 const imports = {
     "@/components/scheduling/use-device-time-format": { useDeviceTimeFormat: () => false },
     "@/lib/scheduling/time-display": timeDisplay,
+  "react": { useEffect() {}, useRef: initial => ({ current: initial }), useState: initial => [initial, () => {}] },
   "react/jsx-runtime": { jsx: element, jsxs: element },
   "lucide-react": { ArrowLeft: "arrow-left", ArrowRight: "arrow-right" },
   "@/components/ui/button": { Button: "button" },
@@ -48,89 +49,45 @@ test("invalid or unfinished schedule details produce guidance instead of a misle
   }
 });
 
-test("in-card Review forwards the existing guarded controller and Back returns to editing", () => {
-  let reviewed = 0, refreshed = 0, returned = 0;
-  const action = { busy: false, disabled: false, message: "Ready to review", error: "Connection lost", onAction() { reviewed++; }, refresh() { refreshed++; } };
+test("the Schedule action always schedules and never swaps to preparation", () => {
+  let scheduled = 0, returned = 0;
+  const action = { busy: false, disabled: false, message: "Choose your accounts and time, then click Schedule post.", error: null, onAction() { scheduled++; }, refresh() {} };
   const tree = exported.TalkingHeadScheduleActions({ action, enabled: true, onBackToEdit() { returned++; } });
   const buttons = nodes(tree).filter(node => node.type === "button");
-  const review = buttons.find(button => text(button) === "Try again");
-  assert.equal(review.props.disabled, false);
-  assert.equal(review.props.onClick, action.onAction);
-  review.props.onClick(); assert.equal(reviewed, 1);
+  assert.equal(buttons.some(button => text(button) === "Prepare final video"), false, "Schedule no longer offers a preparation action");
+  const schedule = buttons.find(button => text(button) === "Schedule post");
+  assert.equal(schedule.props.disabled, false);
+  schedule.props.onClick(); assert.equal(scheduled, 1);
   buttons.find(button => text(button) === "Back to Edit").props.onClick(); assert.equal(returned, 1);
-  assert.equal(buttons.find(button => text(button) === "Refresh status"), undefined); assert.equal(refreshed, 0);
-  assert.match(text(nodes(tree).find(node => node.props?.role === "alert")), /Connection lost/);
+  assert.match(text(tree), /Choose your accounts and time/);
+  const helped = exported.TalkingHeadScheduleActions({ action, enabled: true, help: "Choose Schedule video in Demo to prepare your video.", onBackToEdit() {} });
+  assert.match(text(helped), /Choose Schedule video in Demo/);
 });
 
-test("Schedule offers explicit preparation without calling either controller during render", () => {
+test("Post now prepares the video first when no finished output exists", () => {
   let prepared = 0, scheduled = 0;
-  const action = { busy: false, disabled: true, message: "Wait for the saved final file", error: null, onAction() { scheduled++; }, refresh() {} };
-  const preparation = { busy: false, disabled: false, message: "Prepare your publishing file while keeping these settings.", error: null, onAction() { prepared++; }, refresh() {} };
-  const tree = exported.TalkingHeadScheduleActions({ action, preparation, enabled: true, onBackToEdit() {} });
-  assert.equal(prepared, 0, "Mounting the Schedule controls must not submit a render");
-  assert.equal(scheduled, 0, "Mounting the Schedule controls must not publish");
-  const button = nodes(tree).find(node => node.type === "button" && text(node) === "Prepare final video");
-  assert.equal(button.props.disabled, false);
-  assert.equal(button.props.onClick, preparation.onAction);
+  const action = { busy: false, disabled: true, label: "Post now", message: "Choose your accounts and time, then click Post now.", error: null, onAction() { scheduled++; }, refresh() {} };
+  const preparation = { busy: false, disabled: false, message: "Apply edits", error: null, onAction() { prepared++; }, refresh() {} };
+  const tree = exported.TalkingHeadScheduleActions({ action, preparation, outputReady: false, enabled: true, help: "Choose your accounts and time, then click Post now.", onBackToEdit() {} });
+  const button = nodes(tree).find(node => node.type === "button" && text(node) === "Post now");
+  assert.equal(button.props.disabled, false, "Post now is available without a finished output");
   button.props.onClick();
   assert.equal(prepared, 1);
   assert.equal(scheduled, 0);
-  assert.match(text(tree), /Prepare your publishing file/);
-  assert.equal(nodes(tree).some(node => node.type === "button" && text(node) === "Schedule post"), false);
 });
 
-test("preparation retains disabled, busy and pending guards and exposes its existing recovery actions", () => {
-  const action = { disabled: true, busy: false, error: null, message: "Wait for the file" };
-  for (const props of [
-    { enabled: false, preparation: { busy: false, disabled: false } },
-    { enabled: true, preparation: { busy: false, disabled: true } },
-    { enabled: true, preparation: { busy: true, disabled: false } },
-  ]) {
-    const tree = exported.TalkingHeadScheduleActions({ action, ...props, onBackToEdit() {} });
-    const button = nodes(tree).find(node => node.type === "button" && ["Prepare final video", "Preparing video…"].includes(text(node)));
-    assert.equal(button.props.disabled, true);
-    if (!props.enabled) assert.match(text(tree), /Preview · scheduling disabled/);
-  }
-  let refreshed = 0, cancelled = 0;
-  const preparation = { busy: false, disabled: true, error: null, message: "Waiting for the video processor", refresh() { refreshed++; }, cancel() { cancelled++; } };
-  const tree = exported.TalkingHeadScheduleActions({ action, preparation, enabled: true, onBackToEdit() {} });
-  const buttons = nodes(tree).filter(node => node.type === "button");
-  const prepare = buttons.find(button => text(button) === "Preparing video…");
-  assert.equal(prepare.props.disabled, true);
-  assert.equal(prepare.props["aria-busy"], true);
-  assert.match(text(tree), /Waiting for the video processor/);
-  buttons.find(button => text(button) === "Refresh status").props.onClick();
-  buttons.find(button => text(button) === "Cancel preparation").props.onClick();
-  assert.equal(refreshed, 1);
-  assert.equal(cancelled, 1);
+test("Post now stays disabled with the missing-account reason before preparing", () => {
+  const tree = exported.TalkingHeadScheduleActions({ action: { busy: false, disabled: true, label: "Post now", message: "Choose an account", error: null, onAction() {} }, preparation: { busy: false, disabled: false, onAction() {} }, outputReady: false, prepareDisabled: true, enabled: true, help: "Choose at least one connected account for Instagram, or deselect Instagram above.", onBackToEdit() {} });
+  const button = nodes(tree).find(node => node.type === "button" && text(node) === "Post now");
+  assert.equal(button.props.disabled, true);
+  assert.match(text(tree), /Choose at least one connected account for Instagram/);
 });
 
-test("failed preparation displays the error and forwards explicit retry, while saved-request resume keeps scheduling", () => {
-  const preparation = { busy: false, disabled: false, message: "Finishing failed", error: "The selected demo could not load", onAction() {}, refresh() {} };
-  const blockedSchedule = { busy: false, disabled: true, message: "Wait for the file", error: null, onAction() {}, refresh() {} };
-  const failed = exported.TalkingHeadScheduleActions({ action: blockedSchedule, preparation, enabled: true, onBackToEdit() {} });
-  assert.equal(nodes(failed).find(node => node.type === "button" && text(node) === "Retry final video").props.onClick, preparation.onAction);
-  assert.match(text(nodes(failed).find(node => node.props?.role === "alert")), /selected demo could not load/);
-  const resumable = { ...blockedSchedule, disabled: false, label: "Try again", message: "Scheduling was interrupted. Try again to finish scheduling your post." };
-  const resumed = exported.TalkingHeadScheduleActions({ action: resumable, preparation, enabled: true, onBackToEdit() {} });
-  assert.equal(nodes(resumed).find(node => node.type === "button" && text(node) === "Try again").props.onClick, resumable.onAction);
-  assert.doesNotMatch(text(resumed), /saved request|Confirm the same/);
-  assert.equal(nodes(resumed).some(node => node.type === "button" && text(node) === "Retry final video"), false);
-  const sending = { ...resumable, disabled: true, busy: true };
-  const busyResume = exported.TalkingHeadScheduleActions({ action: sending, preparation, enabled: true, onBackToEdit() {} });
-  const checking = nodes(busyResume).find(node => node.type === "button" && text(node) === "Scheduling…");
-  assert.equal(checking.props.onClick, sending.onAction);
-  assert.equal(checking.props.disabled, true, "A saved schedule submission cannot expose a concurrent preparation action");
-  const blockedReceipt = { ...blockedSchedule, error: "The saved schedule needs review" };
-  const recovering = exported.TalkingHeadScheduleActions({ action: blockedReceipt, preparation: { ...preparation, error: null }, enabled: true, onBackToEdit() {} });
-  assert.equal(nodes(recovering).find(node => node.type === "button" && text(node) === "Refresh status").props.onClick, blockedReceipt.refresh, "Scheduling recovery errors retain their own refresh controller");
-});
-
-test("local preview, controller guards and busy requests retain disabled Review behavior", () => {
+test("Schedule keeps disabled, busy and preview guards on the scheduling action", () => {
   for (const props of [
     { enabled: false },
     { enabled: true },
-    { enabled: true, action: { disabled: true, busy: false, message: "Wait for the final file" } },
+    { enabled: true, action: { disabled: true, busy: false, message: "Prepare your video in Demo first" } },
     { enabled: true, action: { disabled: false, busy: true, message: "Checking" } },
   ]) {
     const tree = exported.TalkingHeadScheduleActions({ ...props, onBackToEdit() {} });
@@ -141,13 +98,16 @@ test("local preview, controller guards and busy requests retain disabled Review 
   }
 });
 
-test("completed media recovery remains visibly preparing while its owned file loads", () => {
-  const tree = exported.TalkingHeadScheduleActions({ enabled: true, onBackToEdit() {},
-    action: { busy: false, disabled: true, message: "Wait for the final file" },
-    preparation: { busy: false, processing: true, disabled: true, message: "Loading your finished video…", refresh() {} } });
-  const preparing = nodes(tree).find(node => node.type === "button" && text(node) === "Preparing video…");
-  assert.ok(preparing); assert.equal(preparing.props.disabled, true); assert.equal(preparing.props["aria-busy"], true);
-  assert.match(text(tree), /Loading your finished video/);
+test("Schedule shows the scheduling error and keeps the saved-request resume label", () => {
+  const failed = exported.TalkingHeadScheduleActions({ enabled: true, onBackToEdit() {}, action: { busy: false, disabled: true, message: "Wait for the file", error: "Could not verify the saved scheduling request.", onAction() {}, refresh() {} } });
+  assert.match(text(nodes(failed).find(node => node.props?.role === "alert")), /Could not verify/);
+  let resumedCalls = 0;
+  const resumable = { busy: false, disabled: false, label: "Try again", message: "Scheduling was interrupted. Try again to finish scheduling your post.", error: null, onAction() { resumedCalls++; } };
+  const resumed = exported.TalkingHeadScheduleActions({ action: resumable, enabled: true, onBackToEdit() {} });
+  const resumeButton = nodes(resumed).find(node => node.type === "button" && text(node) === "Try again");
+  resumeButton.props.onClick(); assert.equal(resumedCalls, 1);
+  assert.doesNotMatch(text(resumed), /saved request|Confirm the same/);
+  assert.equal(nodes(resumed).some(node => node.type === "button" && text(node) === "Prepare final video"), false);
 });
 
 test("a confirmed schedule shows the repeat action and Scheduling link with no recovery controls", () => {

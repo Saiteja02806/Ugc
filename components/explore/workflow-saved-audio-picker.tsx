@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,12 @@ import { isLibraryMusic, MUSIC_LIBRARY_MAX_BYTES } from "@/lib/media/music-libra
 import type { MediaAsset } from "@/lib/media/types";
 
 /** Only explicitly selected, owned, ready commercial audio becomes an attachment. */
-export function WorkflowSavedAudioPicker(props: { ownerId: string | null; attachment: WorkflowAttachment; disabled?: boolean; buttonLabel?: string; localPreview?: boolean }) {
+export function WorkflowSavedAudioPicker(props: { ownerId: string | null; attachment: WorkflowAttachment; disabled?: boolean; buttonLabel?: string; localPreview?: boolean; icon?: ReactNode; voiceoverOnly?: boolean }) {
   // A new account gets a fresh library and cancels the previous account's work.
   return <SavedAudioLibrary key={`${props.ownerId}:${props.localPreview === true}`} {...props} />;
 }
 
-function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel = "Choose saved audio", localPreview = false }: { ownerId: string | null; attachment: WorkflowAttachment; disabled?: boolean; buttonLabel?: string; localPreview?: boolean }) {
+function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel = "Choose saved audio", localPreview = false, icon, voiceoverOnly = false }: { ownerId: string | null; attachment: WorkflowAttachment; disabled?: boolean; buttonLabel?: string; localPreview?: boolean; icon?: ReactNode; voiceoverOnly?: boolean }) {
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const active = useRef(true);
   const selecting = useRef(false);
@@ -44,7 +44,7 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
     }, signal),
   });
   const assets = library.data ?? [];
-  const music = useQuery({ queryKey: ["explore-saved-media-audio", ownerId], enabled: open && !!ownerId && !localPreview, staleTime: 0,
+  const music = useQuery({ queryKey: ["explore-saved-media-audio", ownerId], enabled: open && !!ownerId && !localPreview && !voiceoverOnly, staleTime: 0,
     queryFn: async ({ signal }) => (await imageLibraryRequest<{ assets: MediaAsset[] }>(ownerId!, "/api/media?collection=audio&sourceTypes=upload", { signal })).assets.filter(isLibraryMusic) });
   const loaded = library.data !== undefined;
   const loading = library.isPending && !loaded;
@@ -94,16 +94,16 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
     } catch (cause) { if (active.current) setError(cause instanceof Error ? cause.message : "Could not choose this music. Your previous track is kept."); }
     finally { selecting.current = false; if (active.current) setBusy(false); }
   }
-  return <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className={secondary.action} />}>{buttonLabel}</PopoverTrigger>
-    <PopoverContent align="start" className="w-72 max-w-[calc(100vw-32px)] p-3"><PopoverTitle>Audio library</PopoverTitle>
-      {!localPreview && ownerId ? <MediaLibraryButton label="Add music to library" initialTab="music" disabled={busy || attachment.loading} className="mb-2" /> : null}
-      {localPreview ? <p className="text-xs leading-5 text-muted">Saved tracks appear here when you sign in to the app. This local preview doesn&apos;t load your account library.</p> : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to choose audio from your library.</p> : <>
-        {music.isPending ? <p role="status" className="text-xs text-muted">Loading library music…</p> : music.isError ? <p role="alert" className="text-xs text-destructive">Could not load library music. <button type="button" onClick={() => void music.refetch()}>Retry</button></p> : music.data?.length ? <div className="mb-2 max-h-48 overflow-auto"><p className="text-xs font-medium">Your music</p>{music.data.map(asset => <Button type="button" key={asset.id} variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto w-full justify-start whitespace-normal text-left text-xs" onClick={() => void selectMusic(asset)}>{asset.title}</Button>)}</div> : null}
-        {loading ? <p role="status" className="text-xs text-muted">Loading your audio…</p> : assets.length ? <div className={`${quietScrollbar.surface} max-h-64 space-y-1 overflow-auto`}>{assets.map(a => <Button key={a.id} type="button" variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto min-h-9 w-full justify-start whitespace-normal break-words px-2 py-2 text-left text-xs" onClick={() => { void select(a); }}>{a.name}</Button>)}</div> : !loadError ? <>
-          <p className="text-xs leading-5 text-muted">No saved tracks yet. Create audio or upload a track in Audio generation to use it here.</p>
+  return <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className={secondary.action} />}>{icon}{buttonLabel}</PopoverTrigger>
+    <PopoverContent align="start" className="w-72 max-w-[calc(100vw-32px)] p-3"><PopoverTitle>{voiceoverOnly ? "Saved voiceovers" : "Audio library"}</PopoverTitle>
+      {!voiceoverOnly && !localPreview && ownerId ? <MediaLibraryButton label="Add music to library" initialTab="music" disabled={busy || attachment.loading} className="mb-2" /> : null}
+      {localPreview ? <p className="text-xs leading-5 text-muted">{voiceoverOnly ? "Saved voiceovers appear here when you sign in to the app. This local preview doesn&apos;t load your account library." : "Saved tracks appear here when you sign in to the app. This local preview doesn&apos;t load your account library."}</p> : !ownerId ? <p className="text-xs leading-5 text-muted">{voiceoverOnly ? "Sign in to choose a saved voiceover." : "Sign in to choose audio from your library."}</p> : <>
+        {!voiceoverOnly ? (music.isPending ? <p role="status" className="text-xs text-muted">Loading library music…</p> : music.isError ? <p role="alert" className="text-xs text-destructive">Could not load library music. <button type="button" onClick={() => void music.refetch()}>Retry</button></p> : music.data?.length ? <div className="mb-2 max-h-48 overflow-auto"><p className="text-xs font-medium">Your music</p>{music.data.map(asset => <Button type="button" key={asset.id} variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto w-full justify-start whitespace-normal text-left text-xs" onClick={() => void selectMusic(asset)}>{asset.title}</Button>)}</div> : null) : null}
+        {loading ? <p role="status" className="text-xs text-muted">{voiceoverOnly ? "Loading your voiceovers…" : "Loading your audio…"}</p> : assets.length ? <div className={`${quietScrollbar.surface} max-h-64 space-y-1 overflow-auto`}>{assets.map(a => <Button key={a.id} type="button" variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto min-h-9 w-full justify-start whitespace-normal break-words px-2 py-2 text-left text-xs" onClick={() => { void select(a); }}>{a.name}</Button>)}</div> : !loadError ? <>
+          <p className="text-xs leading-5 text-muted">{voiceoverOnly ? "No saved voiceovers yet. Create a voiceover in Audio generation to use it here." : "No saved tracks yet. Create audio or upload a track in Audio generation to use it here."}</p>
           <Link href="/audio-generation" className="text-xs text-primary underline-offset-4 hover:underline focus-visible:underline">Open Audio generation</Link>
         </> : null}
-        {loaded ? <p className="text-xs leading-5 text-muted">Ready tracks only. Test audio and private voice references stay out of this library.</p> : null}
+        {loaded ? <p className="text-xs leading-5 text-muted">{voiceoverOnly ? "Ready voiceovers only. Test audio and private voice references stay out of this library." : "Ready tracks only. Test audio and private voice references stay out of this library."}</p> : null}
         {loaded ? <Button type="button" variant="ghost" size="sm" disabled={busy || library.isFetching} onClick={() => void library.refetch()}>{library.isFetching ? "Refreshing audio…" : "Refresh library"}</Button> : null}
         {error || attachment.error || loadError ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error ?? attachment.error ?? loadError}</p>{loadError ? <Button type="button" variant="outline" size="sm" disabled={busy || library.isFetching} onClick={() => void library.refetch()}>Retry loading audio</Button> : null}</div> : null}
       </>}

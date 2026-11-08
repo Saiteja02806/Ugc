@@ -59,7 +59,7 @@ type GenerateHookVideoBaseInput = {
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0";
+  model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0" | "flux_3";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -515,7 +515,7 @@ async function generateProviderBuffer(
   params: {
     aspectRatio: HookVideoAspectRatio;
     durationSeconds: number;
-    model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0";
+    model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "kling_4_0" | "wan_3_0" | "flux_3";
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
@@ -534,7 +534,7 @@ async function generateProviderBuffer(
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
   if (provider === "reapi") {
-    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0" && params.model !== "google_omni" && params.model !== "kling_3_0" && params.model !== "kling_4_0") throw new ProviderRequestNotSubmittedError("Choose Omni Flash, Seedance 2.5, or WAN 3.0 for ReAPI.");
+    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0" && params.model !== "google_omni" && params.model !== "kling_3_0" && params.model !== "kling_4_0" && params.model !== "flux_3") throw new ProviderRequestNotSubmittedError("Choose Omni Flash, Kling, Seedance 2.5, WAN 3.0, or FLUX 3 for ReAPI.");
     return generateReapiVideoBuffer({ ...params, model: params.model, onOperationSucceeded });
   }
   if (provider === "openrouter") {
@@ -615,6 +615,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     job.input_json.model === "wan_3_0" ? "wan_3_0" :
     job.input_json.model === "kling_4_0" ? "kling_4_0" :
     job.input_json.model === "kling_3_0" ? "kling_3_0" :
+    job.input_json.model === "flux_3" ? "flux_3" :
     job.input_json.model === "seedance_2_5"
       ? "seedance_2_5"
       : job.input_json.model === "google_omni"
@@ -708,7 +709,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     });
     if (job.input_json.hookSourceTimeline !== undefined) {
       if (job.input_json.exploreFormat !== "hook" || !receipt) throw new ProviderRequestNotSubmittedError("Original-opening trim is only valid for Hook videos.");
-      try { Object.assign(sharedInput, { hookSourceTimeline: parseHookSourceTimeline(job.input_json.hookSourceTimeline, receipt, sharedInput.durationSeconds) }); }
+      try { Object.assign(sharedInput, { hookSourceTimeline: parseHookSourceTimeline(job.input_json.hookSourceTimeline, receipt, sharedInput.durationSeconds, hookStartingFrameVideoDurations(model).at(-1)) }); }
       catch { throw new ProviderRequestNotSubmittedError("This original-opening action timeline could not be verified. No new video was submitted."); }
     }
   }
@@ -749,6 +750,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
   if (input.model === "wan_3_0" && (provider === "openrouter" || provider === "runway" || provider === "reapi")) return input.durationSeconds;
   if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter" || provider === "reapi")) return input.durationSeconds;
+  if (input.model === "flux_3" && provider === "reapi") return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
     : input.durationSeconds;
@@ -759,6 +761,13 @@ function getGenerationDurationSeconds(value: Json | undefined, model: GenerateHo
     if (value === undefined) return 5;
     if (typeof value !== "number" || !Number.isInteger(value) || value < 2 || value > 30) {
       throw new ProviderRequestNotSubmittedError("WAN 3.0 duration must be between 2 and 30 seconds.");
+    }
+    return value;
+  }
+  if (model === "flux_3") {
+    if (value === undefined) return 5;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 5 || value > 20) {
+      throw new ProviderRequestNotSubmittedError("FLUX 3 duration must be between 5 and 20 seconds.");
     }
     return value;
   }

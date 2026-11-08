@@ -196,6 +196,24 @@
 .editAudioButton > svg { width: 16px; height: 16px; }
 .demoSourceCards { display: flex; flex-wrap: wrap; gap: 12px; }
 .demoSourceCards > .editUploadButton { width: 128px; height: 128px; min-height: 128px; aspect-ratio: 1; border-radius: 10px; }
+.demoSourceTiles { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.demoSourceTile { display: flex; width: 100%; min-height: 116px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 12px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 10px; background: var(--card-muted); color: var(--foreground); font-size: 13px; font-weight: 500; text-align: center; cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease; }
+.demoSourceTile:hover { border-color: var(--muted); }
+.demoSourceTile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.demoSourceTile:disabled { cursor: default; opacity: .6; }
+.demoSourceTileIcon { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.demoSoundDetails { border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 10px; padding: 12px; background: var(--card); }
+.demoSoundDetails > summary { cursor: pointer; min-height: 24px; font-size: 14px; font-weight: 500; }
+.demoSoundDetails > summary span { float: right; margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.demoSoundDetails > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
+.backgroundAudioSwitch { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
+.backgroundAudioTrack { display: flex; align-items: center; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }
+.backgroundAudioThumb { width: 18px; height: 18px; flex: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform 160ms ease; }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioTrack { background: var(--foreground); }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioThumb { transform: translateX(20px); }
+.backgroundAudioSwitch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.backgroundAudioSwitch:disabled { opacity: .55; cursor: default; }
+@container workflow-form (min-width: 350px) { .demoSourceTiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .iconWell { display: flex; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 50%; background: var(--card); color: var(--foreground); }
 .demoAudioDetails { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
 .helpButton { width: 36px; height: 36px; flex-shrink: 0; color: var(--muted); }

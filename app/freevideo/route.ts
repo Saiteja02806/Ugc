@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   FREE_VIDEO_PASS_COOKIE_NAME,
+  FREE_VIDEO_PASS_UI_COOKIE_NAME,
   normalizeFreeVideoPassCode,
 } from "@/lib/billing/free-video-pass";
 
@@ -23,6 +24,13 @@ export async function GET(request: Request) {
   if (code) {
     response.cookies.set(FREE_VIDEO_PASS_COOKIE_NAME, code, {
       httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    response.cookies.set(FREE_VIDEO_PASS_UI_COOKIE_NAME, "1", {
+      httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
       sameSite: "lax",

@@ -70,8 +70,8 @@ test("workflow and Studio video generation default to enabled Seedance and retai
   const source=read("components/video/video-generation-workspace.tsx"),ast=ts.createSourceFile("video.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let initializer;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==="[model, setModel]")initializer=node.initializer.getText(ast);ts.forEachChild(node,visit)}visit(ast);
   assert.ok(initializer);const code=ts.transpileModule("exports.model = "+initializer+";",{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-  for (const workflowFormat of ["hook","wall_text",undefined]) {const exported={};vm.runInNewContext(code,{exports:exported,workflow:workflowFormat ? {format:workflowFormat} : undefined,workflowFormat,searchParams:new URLSearchParams(),useState:initial=>[initial()],...generation});assert.equal(exported.model[0],"seedance_2_5")}
-  const explicit={};vm.runInNewContext(code,{exports:explicit,workflow:undefined,searchParams:new URLSearchParams("model=google_omni"),useState:initial=>[initial()],...generation});assert.equal(explicit.model[0],"google_omni");
+  for (const workflowFormat of ["hook","wall_text",undefined]) {const exported={};vm.runInNewContext(code,{exports:exported,workflow:workflowFormat ? {format:workflowFormat} : undefined,workflowFormat,searchParams:new URLSearchParams(),freeVideoPassAvailable:false,creditsRemaining:1000,hasFreeVideoPassActiveCookie:()=>false,useState:initial=>[initial()],...generation});assert.equal(exported.model[0],"seedance_2_5")}
+  const explicit={};vm.runInNewContext(code,{exports:explicit,workflow:undefined,searchParams:new URLSearchParams("model=google_omni"),freeVideoPassAvailable:false,creditsRemaining:1000,hasFreeVideoPassActiveCookie:()=>false,useState:initial=>[initial()],...generation});assert.equal(explicit.model[0],"google_omni");
 });
 test("the real settings hook starts with Kling/10 seconds and preserves manual changes on rerender", () => {
   const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": generation });

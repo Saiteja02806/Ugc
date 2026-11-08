@@ -6,26 +6,30 @@ export type VideoReferencePolicyOptions = { allowOmniVideo?: boolean; hasTimedRe
 export function getVideoReferencePolicy(model: AIStudioVideoModel, options: VideoReferencePolicyOptions = {}) {
   const timed = model === "seedance_2_5" || model === "wan_3_0";
   const omniVideo = model === "google_omni" && options.allowOmniVideo === true;
+  // FLUX 3 image_urls are ordered keyframes, not identity references. The app's
+  // separate approved starting frame is the only image sent to FLUX 3.
+  const keyframeOnly = model === "flux_3";
   // Image capacity is independent of the one video / one audio supported by
   // this application. A source clip must not consume a face-photo slot.
   // ReAPI Omni Flash accepts no image, one image, or three images.
-  const maxImages = model === "seedance_2_5" ? 30 : (model === "kling_3_0" || model === "kling_4_0") ? 2 : model === "google_omni" ? 3 : 10;
+  const maxImages = keyframeOnly ? 0 : model === "seedance_2_5" ? 30 : (model === "kling_3_0" || model === "kling_4_0") ? 2 : model === "google_omni" ? 3 : 10;
   return {
-    allowedKinds: ["image", ...(timed || omniVideo ? ["video"] : []), ...(timed ? ["audio"] : [])] as ("image" | "video" | "audio")[],
+    allowedKinds: (keyframeOnly ? [] : ["image", ...(timed || omniVideo ? ["video"] : []), ...(timed ? ["audio"] : [])]) as ("image" | "video" | "audio")[],
     maxImages,
     maxFiles: maxImages + (timed ? 2 : omniVideo ? 1 : 0),
     maxImageBytes: (model === "wan_3_0" && options.hasTimedReferences ? 16 : 20) * 1024 ** 2,
-    maxVideoDuration: model === "wan_3_0" ? 15 : omniVideo ? 10 : 30,
-    maxAudioDuration: model === "wan_3_0" ? 15 : 30,
+    maxVideoDuration: keyframeOnly ? 0 : model === "wan_3_0" ? 15 : omniVideo ? 10 : 30,
+    maxAudioDuration: keyframeOnly ? 0 : model === "wan_3_0" ? 15 : 30,
     // Product policy: require more voice context than Seedance's 2s provider minimum.
     minAudioDuration: model === "seedance_2_5" ? 5 : model === "wan_3_0" ? 1 : 0,
-    maxVideoBytes: (model === "wan_3_0" || omniVideo ? 32 : model === "seedance_2_5" ? 200 : 250) * 1024 ** 2,
-    maxAudioBytes: (timed ? 15 : 25) * 1024 ** 2,
+    maxVideoBytes: keyframeOnly ? 0 : (model === "wan_3_0" || omniVideo ? 32 : model === "seedance_2_5" ? 200 : 250) * 1024 ** 2,
+    maxAudioBytes: keyframeOnly ? 0 : (timed ? 15 : 25) * 1024 ** 2,
   };
 }
 
 export function getVideoReferenceTypeError(model: AIStudioVideoModel, hasVideo: boolean, hasAudio: boolean, options: VideoReferencePolicyOptions = {}) {
   const policy = getVideoReferencePolicy(model, options);
+  if (model === "flux_3" && (hasVideo || hasAudio)) return "FLUX 3 animates one approved starting frame or a text prompt and does not accept extra image, video, or audio references.";
   if ((hasAudio && !policy.allowedKinds.includes("audio")) || (hasVideo && !policy.allowedKinds.includes("video"))) {
     return "Choose Seedance 2.5 or WAN 3.0 to use audio or video references, or remove the unsupported reference.";
   }

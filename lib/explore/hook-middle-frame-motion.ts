@@ -83,9 +83,9 @@ export function buildSourceMotionDirections(entry: MiddleFrameMotionEntry): stri
 
 /** Normalized authoring boundaries are mapped only at submission/preview duration.
  * Words remain exactly as edited; ordinary manual/legacy prose is untouched. */
-export function retimeSourceMotionDirections(directions: string, durationSeconds: number, actionDurationSeconds?: number): string {
+export function retimeSourceMotionDirections(directions: string, durationSeconds: number, actionDurationSeconds?: number, maxDurationSeconds = 15): string {
   if (!directions.includes("PHASE [")) return directions;
-  if (!Number.isSafeInteger(durationSeconds) || durationSeconds < 3 || durationSeconds > 15) throw new Error("Choose a supported animation duration.");
+  if (!Number.isSafeInteger(durationSeconds) || durationSeconds < 3 || durationSeconds > maxDurationSeconds) throw new Error("Choose a supported animation duration.");
   if (actionDurationSeconds !== undefined && (!Number.isFinite(actionDurationSeconds) || actionDurationSeconds < 1 || actionDurationSeconds > durationSeconds)) throw new Error("Review the original-opening action duration.");
   const pattern = /PHASE \[(\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)\]/g;
   const matches = [...directions.matchAll(pattern)];

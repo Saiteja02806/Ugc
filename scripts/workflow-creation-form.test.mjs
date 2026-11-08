@@ -63,6 +63,7 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/lib/ai-studio/generation-settings": backend,
     "@/lib/ai-studio/video-reference-policy": referencePolicy,
     "@/lib/explore/workflow-generation-settings": workflow,
+    "@/lib/media/image-picker": { imagePickerThumbnailUrl: url => url },
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
@@ -218,7 +219,7 @@ test("disabled Seedance is neither offered nor used as the default", () => {
   const all = nodes(harness().render());
   const model = all.find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.equal(model.props.value, "kling_3_0");
-  assert.deepEqual(Array.from(model.props.options, (option) => option.value), ["kling_3_0", "kling_4_0", "google_omni"]);
+  assert.deepEqual(Array.from(model.props.options, (option) => option.value), ["kling_3_0", "kling_4_0", "google_omni", "flux_3"]);
   assert.equal(model.props.options.find(option => option.value === "google_omni").label, "Omni Flash 1.1");
   const enabled = nodes(harness({ seedanceEnabled: true }).render()).find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.equal(enabled.props.value, "seedance_2_5");

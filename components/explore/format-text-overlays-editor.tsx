@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import tools from "./format-video-editor.module.css";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   wallText?: boolean; fullDuration?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
+  const resolvedColor = useRef<string | null>(overlays.at(-1)?.color ?? null);
   const newText = { value: "", width: .8, y: .18, fontSize: 48, ...REFERENCE_FORMAT_TEXT_STYLE };
   const editable = overlays.length ? overlays : [{ ...newText, startMs: 0, endMs: durationMs }];
   const index = Math.min(selected, editable.length - 1);
@@ -22,6 +23,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   const weight = resolveExploreTextWeight(text.font, text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700));
   const automaticTiming = wallText || fullDuration;
   function changeText(value: ExploreFormatText) {
+    if (typeof value.color === "string") resolvedColor.current = value.color;
     const next = automaticTiming ? { ...value, startMs: 0, endMs: durationMs } : value;
     onChange(editable.map((overlay, i) => i === index ? next : overlay));
     // Keep the selected text visible while editing, including paused playback.
@@ -33,7 +35,8 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   function add() {
     const previousEnd = editable.at(-1)?.endMs ?? 0;
     const startMs = wallText ? 0 : Math.min(Math.max(0, Math.round(timeMs), previousEnd), Math.max(0, durationMs - 1000));
-    onChange([...editable, { ...newText, startMs, endMs: durationMs }]);
+    const color = resolvedColor.current ?? text.color ?? REFERENCE_FORMAT_TEXT_STYLE.color;
+    onChange([...editable, { ...newText, color, startMs, endMs: durationMs }]);
     setSelected(editable.length); onSeek(startMs);
   }
   const styleControls = <details className={`${styles.clipTextStyle} ${tools.stylePanel}`} open><summary className="cursor-pointer text-sm font-medium">Text style</summary><div className={`mt-3 ${styles.clipTextStyleFields}`}>

@@ -92,6 +92,7 @@ export function YouTubeBetaAnalyticsPanel({
   selectedConnectionId?: string;
 }) {
   const { output, error, hasRefreshed, refreshing } = useSocialAnalytics("youtube", connections, refreshRequest);
+  const hasConnections = connections.length > 0;
   const accounts = useMemo(() => getAccounts(output).filter((account) => connections.some((connection) => connection.id === account.connectionId)), [output, connections]);
   const [metric, setMetric] = useState<YouTubeMetric>("views");
   const [selectedContent, setSelectedContent] =
@@ -206,6 +207,7 @@ export function YouTubeBetaAnalyticsPanel({
           <PublishDateTrend
             emptyDescription={getEmptyTrendDescription({
               error,
+              hasConnections,
               hasRefreshed,
               visibleAccounts,
             })}
@@ -248,13 +250,16 @@ export function YouTubeBetaAnalyticsPanel({
           <ContentEmptyState
             description={getEmptyContentDescription({
               error,
+              hasConnections,
               hasRefreshed,
               visibleAccounts,
             })}
             title={
               hasRefreshed
                 ? "No uploaded video data returned"
-                : "Loading content"
+                : hasConnections
+                  ? "Loading content"
+                  : "No connected account"
             }
           />
         )}
@@ -1134,13 +1139,17 @@ function compareVideos(
 
 function getEmptyTrendDescription({
   error,
+  hasConnections,
   hasRefreshed,
   visibleAccounts,
 }: {
   error: string | null;
+  hasConnections: boolean;
   hasRefreshed: boolean;
   visibleAccounts: YouTubeAccount[];
 }) {
+  if (!hasConnections)
+    return "Connect a YouTube account in Settings to load channel analytics.";
   if (error)
     return "The last refresh did not complete. Check the connection, then use Refresh above to try again.";
   const providerMessage = visibleAccounts.find(
@@ -1154,13 +1163,17 @@ function getEmptyTrendDescription({
 
 function getEmptyContentDescription({
   error,
+  hasConnections,
   hasRefreshed,
   visibleAccounts,
 }: {
   error: string | null;
+  hasConnections: boolean;
   hasRefreshed: boolean;
   visibleAccounts: YouTubeAccount[];
 }) {
+  if (!hasConnections)
+    return "Connect a YouTube account in Settings to load uploaded-video analytics.";
   if (error)
     return "No content records were changed. Resolve the connection issue, then use Refresh above.";
   const providerMessage = visibleAccounts.find(

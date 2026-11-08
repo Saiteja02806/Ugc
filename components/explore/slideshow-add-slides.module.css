@@ -1,4 +1,8 @@
 .dialog { display: flex; width: min(760px, calc(100vw - 24px)); max-width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); flex-direction: column; gap: 16px; overflow: hidden; }
+/* The image-library shortcut is a compact secondary action, not a full-width bar. */
+.libraryRow { display: flex; justify-content: flex-end; margin-top: -6px; }
+.libraryButton { width: auto; min-height: 32px; height: 32px; padding-inline: 10px; font-size: 12px; white-space: nowrap; }
+@media (max-width: 540px) { .libraryRow { justify-content: flex-start; } }
 .sources { display: flex; flex: none; gap: 4px; border-bottom: 1px solid var(--border); }
 .sources button { flex: 1; min-height: 44px; padding: 8px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; }
 .sources button[aria-pressed="true"] { border-bottom-color: var(--foreground); color: var(--foreground); }

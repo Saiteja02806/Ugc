@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "What should a bootstrapped SaaS founder budget for AI video tools?",
-    answer: "A lean SaaS team can typically run a complete short-form video routine for $19 to $49 per month on Vidmake, compared to $2,000+ per month when hiring human creators.",
+    answer: "A lean SaaS team can typically run a complete short-form video routine for $29 to $49 per month on Vidmake, compared to $2,000+ per month when hiring human creators.",
   },
   {
     question: "Can I automate AI UGC generation inside Claude or Codex?",
@@ -98,7 +98,7 @@ export default function BestAiUgcToolsForSaasPage() {
                 <td className="p-4 align-top">SaaS founders, tech tools &amp; digital products</td>
                 <td className="p-4 align-top">Native hook-to-screen cutaway guidance</td>
                 <td className="p-4 align-top">Yes (Included <ArticleLink href="/instagram-carousel-maker">Carousel Maker</ArticleLink>)</td>
-                <td className="p-4 align-top">7-day free trial; plans from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial; plans from $29/mo</td>
               </tr>
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">2. Arcads</th>

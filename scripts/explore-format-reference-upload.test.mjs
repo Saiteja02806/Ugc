@@ -162,7 +162,7 @@ test("compact face strip shows all photos without roles and opens the photo choo
   assert.match(previews[1].props.name, /^Photo 2:/);
   assert.match(previews[2].props.name, /^Photo 3:/);
   const trigger = h.all(tree, node => node.type === "DialogTrigger")[0];
-  assert.equal(trigger.props.render.props["aria-label"], "Change photos");
+  assert.equal(trigger.props.render.props["aria-label"], "Change identity photos");
   h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
   const opened = h.render(options);
   assert.equal(h.all(opened, node => node.type === "Dialog")[0].props.open, true);
@@ -603,11 +603,11 @@ test("approved-frame Change labels and selected checks distinguish face photos f
     onChange: photo => { selected = photo ? [...selected, photo] : []; } });
   let tree = render();
   const trigger = h.all(tree, n => n.type === "DialogTrigger")[0];
-  assert.equal(trigger.props.render.props["aria-label"], "Change starting frame or person photos");
+  assert.equal(trigger.props.render.props["aria-label"], "Change starting frame or face identity photos");
   h.all(tree, n => n.type === "Dialog")[0].props.onOpenChange(true);
   tree = render();
-  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose person photos");
-  assert.match(h.all(tree, n => n.type === "DialogDescription")[0].props.children, /face reference photos[\s\S]*starting frame stays selected/);
+  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose face identity photos");
+  assert.match(h.all(tree, n => n.type === "DialogDescription")[0].props.children, /face identity photos[\s\S]*starting frame stays selected/);
   const buttons = () => h.all(render(), n => n.type === "Button" && n.props["aria-label"] === "Use your image my-reference.png");
   assert.deepEqual(buttons().map(n => n.props["aria-pressed"]), [true, true, true, true, true, false]);
   assert.equal(buttons()[5].props.disabled, true, "Adding is disabled at the five-photo cap");
@@ -627,6 +627,37 @@ test("approved-frame Change labels and selected checks distinguish face photos f
   h.all(render(), n => n.type === "Button" && n.props.children === "Done")[0].props.onClick();
   h.all(render(), n => n.type === "Dialog")[0].props.onOpenChange(true);
   assert.equal(selected.length, 0); assert.equal(cleared, 0);
+});
+
+test("library photo selection applies before revalidation and keeps Done usable", async () => {
+  let release;
+  const h = harness(async () => assert.fail("No upload"), { images: [savedImage("face-fast")], fetchSaved: () => new Promise(resolve => { release = () => resolve(savedImage("face-fast")); }) });
+  let selected = [];
+  const options = () => ({ imageSelections: selected, imagePurpose: "person", videoInputEnabled: false, maxImages: 5, onImagesChange: next => { selected = next; } });
+  let tree = h.render(options());
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
+  h.render(options());
+  const tile = () => h.all(h.render(options()), node => node.type === "Button" && node.props["aria-label"] === "Use your image my-reference.png")[0];
+  const done = () => h.all(h.render(options()), node => node.type === "Button" && node.props.children === "Done")[0];
+  await tile().props.onClick();
+  assert.deepEqual(selected.map(photo => photo.asset.id), ["face-fast"], "The photo appears before the owned-asset revalidation resolves");
+  assert.equal(done().props.disabled, false, "Done never waits for the revalidation");
+  release(); await flush();
+  assert.deepEqual(selected.map(photo => photo.asset.id), ["face-fast"], "Successful revalidation keeps the selection");
+});
+
+test("a failed background revalidation removes the optimistic photo and reports the error", async () => {
+  const h = harness(async () => assert.fail("No upload"), { images: [savedImage("face-stale")], fetchSaved: async () => { throw new Error("This saved image is unavailable."); } });
+  let selected = [];
+  const options = () => ({ imageSelections: selected, imagePurpose: "person", videoInputEnabled: false, maxImages: 5, onImagesChange: next => { selected = next; } });
+  let tree = h.render(options());
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
+  h.render(options());
+  await h.all(h.render(options()), node => node.type === "Button" && node.props["aria-label"] === "Use your image my-reference.png")[0].props.onClick();
+  assert.deepEqual(selected.map(photo => photo.asset.id), ["face-stale"]);
+  await flush();
+  assert.deepEqual(selected, [], "A rejected asset is removed again");
+  assert.ok(h.errors.includes("This saved image is unavailable."), "The reason is surfaced to the workflow");
 });
 
 test("uploading more person photos appends to the approved-frame selection and preserves the scene", async () => {
@@ -662,7 +693,7 @@ test("Starting frames marks the approved scene separately from selected person p
   assert.deepEqual(frames.map(n => n.props["aria-pressed"]), [true, false]);
   assert.equal(photos.length, 1); assert.equal(photos[0].asset.id, "person-photo");
   sourceTabs.props.onValueChange("user"); tree = render();
-  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose person photos");
+  assert.equal(h.all(tree, n => n.type === "DialogTitle")[0].props.children, "Choose face identity photos");
   assert.equal(h.all(tree, n => n.type === "Button" && n.props["aria-label"] === "Use your image my-reference.png")[0].props["aria-pressed"], true);
   assert.ok(h.all(tree, n => n.props?.role === "status").some(n => n.props.children === "1 of 5 images selected"));
 });
@@ -672,8 +703,8 @@ test("a photo-only Change action does not promise an unavailable starting-frame 
   const tree = h.render({ startingFramePreview: { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 },
     imagePurpose: "person", videoInputEnabled: false, imageSelections: [], onImagesChange() {} });
   const trigger = h.all(tree, n => n.type === "DialogTrigger")[0].props.render;
-  assert.equal(trigger.props["aria-label"], "Change person photos");
-  assert.equal(trigger.props.title, "Manage your person photos");
+  assert.equal(trigger.props["aria-label"], "Change face identity photos");
+  assert.equal(trigger.props.title, "Manage your face identity photos");
   assert.equal(h.all(tree, n => n.type === "TabsTab" && n.props.value === "starting").length, 0);
 });
 

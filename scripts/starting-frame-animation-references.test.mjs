@@ -89,7 +89,7 @@ test("scene history and optional faces have independent selectors and removals",
   assert.equal(first.faces.onSelectStartingFrame, undefined);
   assert.equal(first.faces.startingFrame, undefined);
   assert.equal(first.faces.inlineImagePicker, true);
-  assert.equal(first.faces.heading, "Your photos");
+  assert.equal(first.faces.heading, "Face identity photos");
   assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), true);
   assert.equal(h.changes.length, 1);
   const photos = [photo("face-a")], nextFrame = { ...frame, assetId: "other-frame" };
@@ -158,12 +158,14 @@ test("model-specific starting-frame defaults preserve the supported duration con
 });
 
 
-test("measured Hook source duration selects full source length within provider limits",()=>{
- for(const model of ["wan_3_0","seedance_2_5"]){
-  assert.equal(policy.hookStartingFrameSourceDuration(model,4),4);assert.equal(policy.hookStartingFrameSourceDuration(model,5),5);assert.equal(policy.hookStartingFrameSourceDuration(model,4.3),5);
+test("measured Hook source duration selects the nearest supported duration",()=>{
+ for(const model of ["wan_3_0","seedance_2_5","kling_4_0"]){
+  assert.equal(policy.hookStartingFrameSourceDuration(model,4),4);assert.equal(policy.hookStartingFrameSourceDuration(model,4.1),4);assert.equal(policy.hookStartingFrameSourceDuration(model,4.3),4);assert.equal(policy.hookStartingFrameSourceDuration(model,4.6),5);assert.equal(policy.hookStartingFrameSourceDuration(model,5),5);
  }
  assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4),4);
- assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4.3),6);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4.1),4);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4.3),4);
+ assert.equal(policy.hookStartingFrameSourceDuration("google_omni",4.6),6);
  assert.equal(policy.hookStartingFrameSourceDuration("google_omni",5),6);
  assert.equal(policy.hookStartingFrameSourceDuration("google_omni",2.3),4);
  assert.equal(policy.hookStartingFrameSourceDuration("seedance_2_5",2.3),4);

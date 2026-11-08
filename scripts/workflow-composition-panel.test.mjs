@@ -21,7 +21,7 @@ function harness(code, exportName) {
     "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     "@/components/video/video-results.module.css": { default: {} },
     react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; }, useRef(initial) { return slots[cursor++] ??= {current:initial}; } },
-    "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "Info", "Play", "Plus", "Video", "Volume2"].map((name) => [name, name])),
+    "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "FolderOpen", "Info", "Play", "Plus", "Upload", "Video", "Volume2"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { RemoveMediaButton: "remove", WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player", formatMediaSeconds: (seconds) => `${seconds}s` },
     "@/components/video/video-generation-placeholder": { VideoGenerationPlaceholder: "generation-placeholder" },
     "@/components/video/video-result-prompt": { VideoPromptBubble: "video-prompt" },
@@ -99,7 +99,10 @@ test("the actual Edit video section offers optional demo without dummy result ti
   assert.doesNotMatch(text(tree), /Demo upload Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
-  assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
+  const demoAudioPicker = nodes(tree).find((node) => node.type === "picker" && node.props.label === "Upload demo audio");
+  assert.ok(demoAudioPicker, "the demo audio upload stays available");
+  assert.equal(demoAudioPicker.props.disabled, true, "audio needs a demo first");
+  assert.equal(nodes(tree).some((node) => node.type === "button" && node.props["aria-label"] === "Select demo audio"), false);
 });
 
 test("demo controls are opt-in, tied only to the attached demo, and preserve its aspect target", () => {
@@ -137,7 +140,7 @@ test("whole-video music has its own compact picker, selection, playback and remo
   assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.attachment === demoAudio));
   nodes(tree).find(n => n.props?.["aria-label"] === "Whole-video music playback").props.onChange({ target: { value: "once" } });
   nodes(tree).find(n => n.type === "button" && text(n) === "Remove music").props.onClick();
-  assert.deepEqual(calls, ["once", "remove-music"]); assert.match(text(tree), /Entire video/);
+  assert.deepEqual(calls, ["once", "remove-music"]); assert.match(text(tree), /Plays across your video/);
   assert.ok(nodes(render({ connected: true, options: { backgroundMusic: true, backgroundAssetId: "missing" }, onOptionsChange() {}, backgroundMusic: { ...music, source: null } }).tree).some(n => text(n) === "Remove unavailable music"));
 });
 
@@ -293,11 +296,10 @@ test("actual attachment pickers receive only their own media state", () => {
   const { props, tree } = render({ demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
   const pickers = nodes(tree).filter((node) => node.type === "picker");
   assert.equal(pickers.find((node) => node.props.label === "Replace demo").props.attachment, props.demo);
-  assert.equal(pickers.find((node) => node.props.label === "Replace demo audio").props.attachment, props.demoAudio);
+  assert.equal(pickers.find((node) => node.props.label === "Upload demo audio").props.attachment, props.demoAudio);
   const ref = audioRender({ audio: makeAttachment("hook.wav", true) });
   assert.equal(nodes(ref.tree).find((node) => node.type === "picker").props.attachment.asset, ref.props.audio.asset);
-  assert.match(text(tree), /Added audio belongs to the demo only—not your hook or its generation voice reference/);
-});
+  assert.match(text(tree), /Added audio belongs to the demo only—not your hook or its generation voice reference/);});
 
 test("Create audio keeps the recording as AI guidance without an unimplemented exact-recording mode", () => {
   const changes = [];
@@ -365,15 +367,14 @@ test("stacked demo and audio controls keep their attachment ownership across sta
   const grid = nodes(empty).find((node) => node.props.className === "editMediaGrid");
   assert.deepEqual(nodes(grid).filter((node) => node.type === "section").map((node) => node.props["aria-label"]), ["Demo upload", "Demo audio attachment"]);
   assert.equal(nodes(grid).find((node) => node.type === "picker").props.className, "editUploadButton");
-  const unavailable = nodes(grid).find((node) => node.type === "button");
-  assert.equal(unavailable.props.disabled, true);
-  assert.equal(unavailable.props.className, "editUploadButton editAudioButton");
-  assert.equal(unavailable.props["aria-describedby"], "hook-demo-audio-help");
+  const audioPicker = nodes(grid).find((node) => node.type === "picker" && node.props.label === "Upload demo audio");
+  assert.equal(audioPicker.props.disabled, true);
+  assert.equal(nodes(grid).some((node) => node.type === "button" && node.props["aria-label"] === "Select demo audio"), false);
   const { props, tree } = render({ demo: makeAttachment("demo.mp4", true), demoAudio: { ...makeAttachment("demo.wav"), loading: true } });
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Demo audio attachment").props["aria-busy"], true);
   const preview = nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render.props["aria-label"] === "Preview demo");
   assert.equal(preview.props.render.props.className, "demoPreviewAction");
-  assert.equal(nodes(tree).find((node) => node.type === "picker" && node.props.label === "Select demo audio").props.attachment, props.demoAudio);
+  assert.equal(nodes(tree).find((node) => node.type === "picker" && node.props.label === "Upload demo audio").props.attachment, props.demoAudio);
   assert.match(styles, /\.editMediaGrid[^}]*display: flex[^}]*flex-direction: column/);
   assert.match(styles, /\.editUploadButton\s*\{[^}]*height: 160px[^}]*min-height: 144px/);
   assert.match(styles, /\.editUploadButton\.editAudioButton[^}]*min-height: 34px[^}]*flex-direction: row/);
@@ -544,4 +545,32 @@ test("generation drafts use only their own voice reference and never the demo or
     assert.equal(drafts[0].get("audioReference"), `${audioName}.asset`);
     assert.ok([...drafts[0].values()].every((expression) => !/\bdemo(?:Audio)?\b/.test(expression)));
   }
+});
+
+test("the Talking Head demo card uses Hook-style source tiles and a demo sound disclosure", () => {
+  const { tree } = render({ videoLabel: "Talking head", demoSourceTiles: true, demoSoundDetails: true, onChooseSavedDemo() {} });
+  assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Upload demo"));
+  assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Saved demos"));
+  const summary = nodes(tree).find(node => node.type === "summary" && text(node).includes("Demo voiceover"));
+  assert.ok(summary, "the demo sound controls sit inside one disclosure");
+  assert.equal(nodes(tree).some(node => node.type === "demo-controls"), false);
+});
+
+test("legacy demo framing remains resettable without the crop control", () => {
+  const onDemoFramingChange = () => {};
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoSourceTiles: true, demoSoundDetails: true, demoFraming: { x: 0.1, y: 0.1, width: 0.8, height: 0.8 }, onDemoFramingChange });
+  assert.equal(nodes(tree).some(node => node.type === "demo-controls"), false);
+  assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Reset demo framing"));
+});
+
+test("the demo sound disclosure keeps the demo-only audio upload and saved audio", () => {
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true), demoSourceTiles: true, demoSoundDetails: true, connected: true, ownerId: "owner" });
+  const disclosure = nodes(tree).find(node => node.type === "details" && node.props?.["aria-label"] === "Demo voiceover");
+  assert.ok(disclosure, "the demo sound controls are grouped in one disclosure");
+  assert.ok(nodes(disclosure).some(node => node.type === "picker" && node.props.label === "Upload demo voiceover"), "the demo-only upload stays available");
+  const saved = nodes(disclosure).find(node => node.type === "saved-audio-picker");
+  assert.equal(saved.props.voiceoverOnly, true);
+  assert.equal(saved.props.buttonLabel, "Choose saved voiceover");
+  assert.ok(text(disclosure).includes("demo.wav"));
+  assert.match(text(tree), /The demo voiceover plays during the demo only/);
 });

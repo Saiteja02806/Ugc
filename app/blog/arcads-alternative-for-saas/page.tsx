@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Arcads and Vidmake?",
-    answer: "Arcads requires higher monthly entry plans typically geared toward established e-commerce ad spenders. Vidmake offers a 7-day free trial with 2 credits and self-serve plans starting at $19 and $49 per month with no annual lock-in.",
+    answer: "Arcads requires higher monthly entry plans typically geared toward established e-commerce ad spenders. Vidmake offers a 7-day free trial with 20 daily content pieces and self-serve plans starting at $29 and $49 per month with no annual lock-in.",
   },
   {
     question: "Can I automate video generation in Vidmake with an AI coding assistant?",
@@ -119,7 +119,7 @@ export default function ArcadsAlternativeForSaasPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Starting Pricing &amp; Free Trial</th>
                 <td className="p-4 align-top">Higher entry plans geared for ad spenders</td>
-                <td className="p-4 align-top">7-day free trial; plans from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial; plans from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -172,7 +172,7 @@ export default function ArcadsAlternativeForSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Vidmake offers self-serve plans from $19/mo with no long-term contracts. See{" "}
+                  Vidmake offers self-serve plans from $29/mo with no long-term contracts. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),

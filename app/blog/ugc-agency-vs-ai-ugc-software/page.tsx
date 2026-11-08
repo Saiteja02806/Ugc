@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does Vidmake pricing compare to an agency retainer?",
-    answer: "Vidmake offers a 7-day free trial with 2 credits, followed by self-serve plans starting at $19 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
+    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces, followed by self-serve plans starting at $29 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
   },
 ] as const;
 
@@ -94,7 +94,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Monthly Cost</th>
                 <td className="p-4 align-top">$3,500 – $8,000 / month retainer</td>
-                <td className="p-4 align-top">$19 or $49 / month self-serve</td>
+                <td className="p-4 align-top">$29 or $49 / month self-serve</td>
               </tr>
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Monthly Video Output</th>

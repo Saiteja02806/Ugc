@@ -22,6 +22,8 @@ export type RecreateGenerationView = {
     onInfluencerChange: (influencer: import("./slideshow-face-choice").SlideshowFaceChoiceValue | null) => void;
     slides?: { id: string; url: string; number: number; eligible: boolean }[];
     eligibleCount: number;
+    /** The kept face no longer has slide marks for the current reference. */
+    stale?: boolean;
   };
   referenceTitle?: string;
   styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null; generationPrompt?: string };

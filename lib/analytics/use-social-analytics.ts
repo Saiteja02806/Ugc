@@ -11,7 +11,7 @@ export function useSocialAnalytics(platform: "youtube" | "tiktok", connections: 
   const query = useAnalyticsResource<{ accounts: unknown[] }>({
     owner: user?.uid ?? "", platform, revision: getConnectionsRevision(connections),
     url: platform === "youtube" ? "/api/analytics/youtube/channel" : "/api/analytics/tiktok/videos",
-    enabled: connections.length > 0, refreshRequest, staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS,
+    enabled: connections.length > 0, refreshOnVisit: true, refreshRequest, staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS,
   });
   return { ...query, hasRefreshed: Boolean(query.output?.accounts.length) || (!query.refreshing && !query.loading && Boolean(query.output)) };
 }

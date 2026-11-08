@@ -25,7 +25,7 @@ test("saving a snapshot keeps Hook trim and text controls interactive while dupl
   let cursor = 0; const slots = [];
   const react = {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {},
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
   };
   const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "/ready.mp4", width: 1080, height: 1920, durationSeconds: 5, metadata: {} };
   const mod = load("components/explore/format-video-editor.tsx", {
@@ -51,7 +51,7 @@ test("correcting a failed remix restores saving without clearing an unrelated au
     let cursor = 0, saves = 0, showSound = audioError === "Audio upload failed"; const slots = [];
     const react = {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
+      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useMemo: fn => fn(), useEffect() {},
     };
     const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "https://media.test/video.mp4", width: 1080, height: 1920, durationSeconds: 5, metadata: {} };
     const mod = load("components/explore/format-video-editor.tsx", {
@@ -115,7 +115,7 @@ test("Schedule's opening snapshot waits for owned source and audio settings and 
   const react = {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn,
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(),
     useEffect(fn) { effects.push(fn); },
   };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
@@ -142,7 +142,7 @@ test("paired editor restores the saved volume before automatic save, locks its e
   const react = {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {},
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
   };
   const asset = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "https://media.example/mixed.mp4", durationSeconds: 8,
     metadata: { referenceAudioPreview: { referenceId: "paired", title: "My exact MP3", audioUrl: "https://media.example/exact.mp3", cleanVideoUrl: "https://media.example/clean.mp4", volume: .35 } } };
@@ -176,7 +176,7 @@ test("clip draft readiness is independent of an earlier publishing render receip
   const audio = { loading: false, error: null };
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect: fn => effects.push(fn) };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
     "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
@@ -204,7 +204,7 @@ test("pending and failed soundtrack replacements block draft saves, rendering an
   const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect: fn => effects.push(fn) };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
@@ -235,7 +235,7 @@ for (const format of ["hook", "wall_text"]) test(`${format}: Save edits saves th
   const slots = [], source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
@@ -263,6 +263,63 @@ for (const format of ["hook", "wall_text"]) test(`${format}: Save edits saves th
   assert.equal(focusedButtons.find(node => node.props.onClick === back).props.children.at(-1), format === "wall_text" ? "Back to Create" : "Back to videos");
   focusedButtons.find(node => node.props.onClick === back).props.onClick();
   assert.equal(backCalls, 1); assert.equal(renderCalls, 1, "Returning to videos does not render or advance a stage");
+});
+
+test("clip editor saving a shared demo draft preserves the Demo section's crop and whole-video music", () => {
+  let cursor = 0, draftInput;
+  const slots = [], source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInput = input; return { loaded: true, dirty: true, saved: null, save() {}, reload() {} }; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ output: null, action: { disabled: false, busy: false, onAction() {} } }) },
+  });
+  const render = () => { cursor = 0; return mod.FormatVideoEditor({ format: "hook", video: { ...source, mediaAssetId: source.id, title: "Demo", ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, draftScope: "hook:demo", onDirty() {}, onSaved() {}, onContinue() {} }); };
+  render();
+  const framing = { version: 1, width: .8, height: .8, points: [[0, 0, 0], [1000, .1, .1]] };
+  const workflowMusic = { enabled: true, assetId: "00000000-0000-4000-8000-000000000009", playback: "repeat" };
+  draftInput.onRestore({ version: 1, sourceAssetId: source.id,
+    editing: { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null },
+    backgroundAssetId: null, backgroundPlayback: "once", framing, workflowMusic }, true);
+  render();
+  assert.equal(draftInput.scope, "hook:demo");
+  assert.deepEqual(draftInput.content.framing, framing, "The clip editor cannot strip the demo crop owned by the Demo section");
+  assert.deepEqual(draftInput.content.workflowMusic, workflowMusic, "The clip editor cannot strip whole-video music owned by the Demo section");
+});
+
+test("local clip edits still keep the Demo-owned crop and music of a shared draft", () => {
+  let cursor = 0, draftInput;
+  const slots = [], source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const stored = { editing: { version: 1, format: "hook", trimStartMs: 1000, trimEndMs: 4000, originalVolume: 1, musicVolume: .2, text: null } };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInput = input; return { loaded: true, dirty: true, saved: null, save() {}, reload() {} }; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ output: null, action: { disabled: false, busy: false, onAction() {} } }) },
+  }, { window: {}, localStorage: { getItem: () => JSON.stringify(stored), setItem() {}, removeItem() {} } });
+  const render = () => { cursor = 0; return mod.FormatVideoEditor({ format: "hook", video: { ...source, mediaAssetId: source.id, title: "Demo", ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, draftScope: "hook:demo", onDirty() {}, onSaved() {}, onContinue() {} }); };
+  render();
+  const framing = { version: 1, width: .8, height: .8, points: [[0, 0, 0], [1000, .1, .1]] };
+  const workflowMusic = { enabled: true, assetId: "00000000-0000-4000-8000-000000000009", playback: "repeat" };
+  draftInput.onRestore({ version: 1, sourceAssetId: source.id,
+    editing: { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null },
+    backgroundAssetId: null, backgroundPlayback: "once", framing, workflowMusic }, false);
+  render();
+  assert.equal(nodes(render()).find(n => n.props?.["aria-label"] === "Trim start").props.value, 1, "The newer local clip trim still wins");
+  assert.deepEqual(draftInput.content.framing, framing);
+  assert.deepEqual(draftInput.content.workflowMusic, workflowMusic);
 });
 
 test("overview shows editable reference text immediately and keeps manual entry outside the remix box", () => {
@@ -396,7 +453,7 @@ test(`single Hook text ${recovery}: full trim coverage only with explicit openin
   const stored = { ...editing, trimStartMs: 0, trimEndMs: 3000, textOverlays: [original] };
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
     "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
     "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
@@ -456,7 +513,7 @@ for (const recovery of ["local", "server", "metadata"]) test(`Wall ${recovery} r
   const storedEditing = { ...editing, format: "wall_text", textOverlays: [{ value: "Saved wall", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 1000, endMs: 4000 }] };
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
     "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
     "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
@@ -480,7 +537,7 @@ test("returning to Wall Edit starts with text tasks while retaining authored edi
   let cursor = 0; const slots = [], effects = [];
   const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
     return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect: fn => effects.push(fn) };
   const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
     "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
     "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
@@ -504,7 +561,7 @@ for (const format of ["hook", "wall_text"]) {
     const react = {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
         return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {},
+      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
     };
     const mod = load("components/explore/format-video-editor.tsx", {
       react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
@@ -565,7 +622,7 @@ for (const format of ["hook", "wall_text"]) {
     const react = {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
         return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {},
+      useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(), useEffect() {},
     };
     const mod = load("components/explore/format-video-editor.tsx", {
       react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
@@ -599,7 +656,7 @@ test("paired clip preview updates edge fades every playback frame and stops audi
   const react = {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
-    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn,
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useMemo: fn => fn(),
     useEffect(fn) { effects.push(fn); },
   };
   const asset = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/mixed.mp4", durationSeconds: 2,
@@ -691,7 +748,7 @@ for (const format of ["hook", "wall_text"]) test(`${format}: reference-first edi
   const original = { id: "original-reference", format, videoUrl: "/original.mp4" };
   const current = { id: "new-gallery-selection", format, videoUrl: "/different.mp4" };
   const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "/generated.mp4", durationSeconds: 5, width: 720, height: 1280, metadata: { remixTextSource: { format, referenceId: original.id, sourceUrl: original.videoUrl } } };
-  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useCallback: fn => fn, useEffect() {} };
+  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
   const mod = load("components/explore/format-video-editor.tsx", { react,
     "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "@tanstack/react-query": { useQuery: options => options.queryKey[0] === "explore-edit-source" ? { data: source } : {} },
@@ -758,7 +815,7 @@ test("shared editor source and soundtrack reads bound auth waits and cancel befo
   const queries = [], reads = [];
   let releaseToken;
   const editing = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null };
-  const react = { useId: () => "save-status", useState: initial => [typeof initial === "function" ? initial() : initial, () => {}], useRef: initial => ({ current: initial }), useCallback: fn => fn, useEffect() {} };
+  const react = { useId: () => "save-status", useState: initial => [typeof initial === "function" ? initial() : initial, () => {}], useRef: initial => ({ current: initial }), useCallback: fn => fn, useMemo: fn => fn(), useEffect() {} };
   const mod = load("components/explore/format-video-editor.tsx", {
     react,
     "@tanstack/react-query": { useQuery: options => { queries.push(options); return {}; } },

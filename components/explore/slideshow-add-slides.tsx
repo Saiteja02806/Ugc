@@ -3,12 +3,13 @@
 /* eslint-disable @next/next/no-img-element */
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ImagePlus, Upload } from "lucide-react";
+import { Check, ImagePlus, Images, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { getAIStudioImageResults, type AIStudioImageResult } from "@/lib/ai-studio/media-results";
+import { imagePickerThumbnailUrl, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
 import { slideshowGenerationGroups } from "@/lib/explore/slideshow-generation-groups";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import type { MediaAsset } from "@/lib/media/types";
@@ -27,7 +28,7 @@ export function SlideshowAddSlides({ owner, reference, existing, slideCount, dis
   const remaining = Math.max(0, 10 - slideCount);
   const library = useQuery<AIStudioImageResult[]>({
     queryKey: ["slideshow-add-generated", owner], enabled: source === "generated" && !!owner && !localPreview,
-    retry: false, staleTime: 0, refetchOnWindowFocus: false,
+    retry: false, staleTime: REFERENCE_IMAGE_STALE_MS, refetchOnWindowFocus: false,
     queryFn: ({ signal }) => withReadDeadline(async bounded => {
       const token = await getCurrentUserIdToken(owner ?? undefined);
       if (!token) throw new Error("Sign in to choose your generated images.");
@@ -59,13 +60,13 @@ export function SlideshowAddSlides({ owner, reference, existing, slideCount, dis
     finally { working.current = false; setBusy(false); }
   }
   function tiles(items: typeof candidates) { return <div className={styles.grid}>{items.map(item => <button key={item.id} type="button" className={styles.tile} aria-label={item.used ? `${item.label}, already added` : `Select ${item.label.toLowerCase()}`} aria-pressed={selected.includes(item.id)} disabled={busy || disabled || item.used} onClick={() => toggle(item.id)}>
-    <img src={item.url} alt="" width={160} height={200} loading="lazy" />
+    <img src={imagePickerThumbnailUrl(item.url)} alt="" width={160} height={200} loading="lazy" decoding="async" />
     <span className={styles.check} aria-hidden="true">{selected.includes(item.id) || item.used ? <Check className="size-3.5" /> : null}</span>
     <span className={styles.caption}>{item.label}<small>{item.used ? "Already added" : selected.includes(item.id) ? "Selected" : ""}</small></span>
   </button>)}</div>; }
   return <Dialog open onOpenChange={open => { if (!open && !working.current) onClose(); }}><DialogContent className={styles.dialog} showCloseButton={!busy}>
     <DialogHeader><DialogTitle>Add slides</DialogTitle><DialogDescription>Choose images to add to your slideshow. Your existing slides and edits stay in place.</DialogDescription></DialogHeader>
-    {onLibrary ? <Button type="button" variant="outline" disabled={busy || disabled || localPreview || !owner || !remaining} onClick={onLibrary}>Choose from image library</Button> : null}
+    {onLibrary ? <div className={styles.libraryRow}><Button type="button" size="sm" variant="outline" className={styles.libraryButton} disabled={busy || disabled || localPreview || !owner || !remaining} onClick={onLibrary}><Images className="size-3.5" aria-hidden="true" />Choose from image library</Button></div> : null}
     <div className={styles.sources} role="group" aria-label="Slide sources">{([["generated", "Generated images"], ["reference", "Original reference"], ["upload", "Upload slides"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={source === value} disabled={busy || disabled || value === "upload" && (localPreview || !owner || !remaining)} onClick={() => { if (busy || disabled) return; if (value === "upload") { if (!localPreview && owner && remaining) onUpload(); } else changeSource(value); }}>{label}</button>)}</div>
     <div className={styles.body}>
       {source === "upload" ? <div className={styles.empty}><Upload aria-hidden="true" /><p>Add JPG, PNG or WebP images. Uploads automatically fit 4:5, keeping the full image visible with a blurred background where needed.</p><Button type="button" variant="outline" disabled={disabled || localPreview || !owner || !remaining} onClick={onUpload}>Choose images</Button></div>

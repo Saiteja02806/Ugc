@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Synthesia and Vidmake?",
-    answer: "Synthesia offers self-serve plans with monthly or annual billing, alongside enterprise plans. Compare the current included usage and features for your workflow. Vidmake offers a 7-day free trial with 2 credits and monthly self-serve plans starting at $19 and $49.",
+    answer: "Synthesia offers self-serve plans with monthly or annual billing, alongside enterprise plans. Compare the current included usage and features for your workflow. Vidmake offers a 7-day free trial with 20 daily content pieces and monthly self-serve plans starting at $29 and $49.",
   },
   {
     question: "Does Synthesia integrate with AI coding agents like Claude and Codex?",
@@ -125,7 +125,7 @@ export default function SynthesiaVsAiUgcSaasPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Pricing &amp; Accessibility</th>
                 <td className="p-4 align-top">Monthly, annual and enterprise options</td>
-                <td className="p-4 align-top">7-day free trial with 2 credits; self-serve from $19/mo</td>
+                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; self-serve from $29/mo</td>
               </tr>
             </tbody>
           </table>

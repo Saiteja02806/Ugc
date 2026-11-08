@@ -46,7 +46,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, slideshowSources, slideshowSlideCount, slideshowFaceSwap, generationResponse, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null, startingFrameRequired = false, sourceInstructions = "The source creator looks toward the camera and smiles.", allowInstructionsAlone = true } = {}) {
+function harness(format, { reference = true, referenceUrls, slideshowSources, slideshowSlideCount, slideshowFaceSwap, generationResponse, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null, startingFrameRequired = false, sourceInstructions = "The source creator looks toward the camera and smiles.", allowInstructionsAlone = true, freeVideoPassAvailable = false, creditsRemaining = 1000 } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   let responseQuestions = null;
@@ -73,12 +73,15 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
           else if (jobs.length) effects.push(callback);
         }
       }, useMemo: fn => fn(), useCallback: fn => fn,
+      // Read-through stub for the concurrent free-pass cookie subscription.
+      useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQuery: () => ({ data: undefined, isPending: false, isFetching: false, isError: false }), useQueryClient: () => ({ invalidateQueries: async () => {} }) },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: fixtureUser }) },
+    "@/components/explore/explore-free-video-pass-badge": { subscribeToFreeVideoPassCookie: () => () => {}, hasFreeVideoPassActiveCookie: () => false, getServerFreeVideoPassSnapshot: () => false },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4, getVideoModelCreditsPerSecond: () => 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": load("lib/ai-studio/generation-settings.ts") }),
@@ -119,7 +122,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
       : { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
   } });
   const Panel = format === "slideshow" ? panelModule.ImageGenerationStudioPanel : panelModule.VideoGenerationStudioPanel;
-  const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
+  const props = { active: true, accessState: access, creditsRemaining, freeVideoPassAvailable, creditCost: 1, recreateView: {
     referenceImageUrls: referenceUrls,
     slideshowSources,
     slideshowSlideCount,
@@ -194,7 +197,8 @@ test("short Seedance editing and unsupported WAN editing cannot submit until the
 
 test("Hook and Wall default to Sound off and submit the explicitly toggled choice with or without a source", async () => {
   for (const format of ["hook", "wall_text"]) for (const reference of [false, true]) for (const enabled of [false, true]) {
-    const h = harness(format, { reference, captureRequests: true });
+    const h = harness(format, { reference, captureRequests: true, seedanceEnabled: true });
+    if (reference) h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7);
     let composer = h.render().composer;
     assert.equal(composer.props.promptAction.props.role, "switch");
     assert.equal(composer.props.promptAction.props["aria-checked"], false);
@@ -276,7 +280,20 @@ test("a replacement clears stale face URLs and unsupported model submission keep
   assert.equal(h.requests[0].body.startingFrameAssetId, replacement.assetId);
 });
 
-test("WAN at five seconds keeps Generate enabled with extra identity photos and submits them after the approved frame", async () => {
+test("Hook starting-frame duration shows generated length, source-timed delivery and the trimmed final hold", () => {
+  const h = harness("hook", { reference: false, captureRequests: true, seedanceEnabled: true });
+  const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
+    url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 8, sourceDurationSeconds: 2.5,
+    motionInstructions: "Hold the reaction and lower the hand.", generateAudio: false };
+  let composer = h.selectStartingFrame(frame).composer;
+  const duration = () => composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration");
+  duration().props.onChange("4");
+  composer = h.render().composer;
+  assert.match(String(duration().props.fieldHint), /Generated 4s · 2\.5s source-timed delivery · 1\.5s final hold trimmed by default/);
+  assert.match(composer.props.settingsSummary, /4s generated · 2\.5s delivery/);
+});
+
+test("WAN with a 4.1-second source keeps Generate enabled with extra identity photos and submits them after the approved frame", async () => {
   const h = harness("hook", { reference: false, captureRequests: true, wanEnabled: true });
   const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
     url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 5, sourceDurationSeconds: 4.1,
@@ -292,7 +309,7 @@ test("WAN at five seconds keeps Generate enabled with extra identity photos and 
   assert.equal(h.requests.length, 1);
   const body = h.requests[0].body;
   assert.equal(body.model, "wan_3_0");
-  assert.equal(body.durationSeconds, 5);
+  assert.equal(body.durationSeconds, 4);
   assert.equal(body.startingFrameAssetId, frame.assetId);
   assert.deepEqual(body.referenceImageUrls, ["https://owned.test/face.png"]);
   assert.equal(body.imageReferencePurpose, "person");
@@ -301,7 +318,7 @@ test("WAN at five seconds keeps Generate enabled with extra identity photos and 
 test("approved starting frames retain model choices and submit each model with the same owned image", async () => {
   const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
     url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Look up and smile.", generateAudio: false };
-  for (const model of ["seedance_2_5", "wan_3_0", "google_omni"]) {
+  for (const model of ["seedance_2_5", "wan_3_0", "flux_3"]) {
     const h = harness("hook", { reference: false, captureRequests: true, seedanceEnabled: true, wanEnabled: true });
     h.selectStartingFrame(frame);
     const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
@@ -309,8 +326,8 @@ test("approved starting frames retain model choices and submit each model with t
     setting("Video model").props.onChange(model);
     assert.equal(setting("Video model").props.value, model);
     const duration = setting("Video duration");
-    assert.equal(duration.props.value, model === "wan_3_0" ? "3" : "4", "Model switch uses a supported initial duration");
-    const seconds = model === "google_omni" ? 10 : 15;
+    assert.equal(duration.props.value, model === "wan_3_0" ? "3" : model === "flux_3" ? "5" : "4", "Model switch uses a supported initial duration");
+    const seconds = model === "flux_3" ? 10 : 15;
     const switched = h.selectStartingFrame({ ...frame, jobId: "another-job" }).composer;
     assert.equal(setting("Video model").props.value, model, "Changing frames retains the selected model");
     assert.equal(switched.props.referenceControls.props.frame.assetId, frame.assetId);
@@ -513,6 +530,18 @@ for (const state of ["completed", "queued", "failed"]) test(`slideshow groups a 
   }
 });
 
+test("a marked face-swap slide reports the identity stage instead of generic generation", async () => {
+  const slot = slideshowBatch.slideshowGenerationSlot("batch", 1, 1, 0);
+  const jobs = [{ id: "slide-face", jobType: "image_generation", exploreFormat: "slideshow", status: "processing", stage: "image_identity", createdAt: "2026-10-16T10:00:00Z", updatedAt: "2026-10-16T10:01:00Z", slideshowGeneration: slot, output: null }];
+  const h = harness("slideshow", { completedJobs: jobs });
+  await h.flushEffects(); h.render();
+  const strings = [];
+  const walk = value => { if (typeof value === "string") { strings.push(value); return; } if (!value || typeof value !== "object") return; for (const child of [value.props?.children].flat(Infinity)) walk(child); };
+  walk(h.render().output);
+  assert.ok(strings.some(value => /Applying face swap/.test(value)), JSON.stringify(strings.filter(value => /Generat|face swap/.test(value))));
+  assert.equal(strings.some(value => value === "Generating"), false, "the identity stage replaces the generic label");
+});
+
 test("slideshow pending cards restore prompt and ratio from the same owner/scope key used by admission", async () => {
   const jobId = "00000000-0000-4000-8000-000000000002";
   const metadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${jobId}`;
@@ -655,9 +684,10 @@ for (const format of ["hook", "wall_text"]) {
     }
   });
   test(`${format}: a gallery video becomes an explicit source input and never becomes an image attachment`, async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true });
     assert.equal(h.composer.props.referenceControls.props.styleVideo.url, "https://example.test/style.mp4");
-    await h.composer.props.onSubmit({preventDefault() {}});
+    h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7);
+    await h.render().composer.props.onSubmit({preventDefault() {}});
     assert.equal(h.requests[0].body.avatarImageUrl,null);
     assert.equal(h.requests[0].body.referenceVideoUrl,null);
     assert.equal(h.requests[0].body.referenceVideoAssetId,null);
@@ -666,7 +696,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceId,`${format}-fixture`);
   });
   test(`${format}: gallery metadata displays seconds before generation and preserves the video request`, async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true });
     const durationText = () => h.render().composer.props.settings.props.children
       .find(node => node?.type === "div" && node.props.children[1]?.type === "output").props.children[1].props.children[1].props.children;
     assert.equal(durationText(), "Reading…");
@@ -696,7 +726,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.ok(h.render().composer.props.settings.props.children.some(node => node?.type === "WorkflowDurationControl"));
   });
   test(`${format}: Recreate replaces an earlier upload, preserves the appearance image and sends the clicked gallery ID`, async () => {
-    const h = harness(format, { captureRequests: true, reference: false });
+    const h = harness(format, { captureRequests: true, reference: false, seedanceEnabled: true });
     const image = { kind: "image", asset: { id: "appearance", url: "https://owned-media.test/person.png", title: "Appearance" } };
     const upload = { kind: "video", asset: { id: "earlier-upload", url: "https://owned-media.test/old.mp4", durationSeconds: 4, title: "Earlier upload" } };
     h.render().composer.props.referenceControls.props.onChange(image, "image");
@@ -738,7 +768,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(setting("Video duration").props.value, 5);
   });
   test(`${format}: failed replacement blocks generation using the previous reference until an explicit new selection`, async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true });
     h.composer.props.referenceControls.props.onErrorChange("Upload failed");
     let composer = h.render().composer;
     assert.equal(composer.props.generateDisabled, true);
@@ -751,33 +781,35 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceId, `${format}-replacement`);
   });
   test(`${format}: pending reference uploads cannot change models and Recreate keeps compatible quality`, () => {
-    const h = harness(format, { reference: false, wanEnabled: true });
+    const h = harness(format, { reference: false, wanEnabled: true, seedanceEnabled: true });
     const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    setting("Video model").props.onChange("wan_3_0");
     setting("Video quality").props.onChange("1080p");
     h.render().composer.props.referenceControls.props.onPendingChange(true);
     assert.equal(setting("Video model").props.disabled, true);
-    setting("Video model").props.onChange("wan_3_0");
-    assert.equal(setting("Video model").props.value, "google_omni");
+    setting("Video model").props.onChange("kling_3_0");
+    assert.equal(setting("Video model").props.value, "wan_3_0");
     h.render().composer.props.referenceControls.props.onPendingChange(false);
     h.selectGallery({ id: `${format}-quality`, url: "https://example.test/quality.mp4", name: "Quality", duration: 6 });
     assert.equal(setting("Video quality").props.value, "1080p");
   });
   test(`${format}: plus appends multiple images in the same reference container and submits every selected image`, async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true });
     const images = Array.from({ length: 3 }, (_, index) => ({ kind: "image", asset: { id: `image-${index}`, url: `https://owned-media.test/image-${index}.png`, title: `Image ${index}` } }));
     for (const image of images) h.render().composer.props.referenceControls.props.onChange(image, "image");
     let controls = h.render().composer.props.referenceControls.props;
-    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 3);
+    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 30);
     controls.onImagesChange(images.filter(image => image.asset.id !== "image-1"));
     controls = h.render().composer.props.referenceControls.props;
     assert.equal(controls.imageSelections.length, 2); assert.ok(controls.styleVideo);
+    h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7);
     await h.render().composer.props.onSubmit({ preventDefault() {} });
     assert.deepEqual(h.requests[0].body.referenceImageUrls, [images[0].asset.url, images[2].asset.url]);
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
     assert.equal(h.requests[0].body.imageReferencePurpose, "person");
   });
   for (const purpose of ["person", "general"]) test(`${format}: ${purpose} image roles and main selection survive request submission`, async () => {
-    const h = harness(format, { captureRequests: true, reference: false });
+    const h = harness(format, { captureRequests: true, reference: false, seedanceEnabled: true });
     const images = ["main", "left", "right"].map(id => ({ kind: "image", asset: { id, url: `https://owned-media.test/${id}.png`, title: id } }));
     const controls = () => h.render().composer.props.referenceControls.props;
     controls().onImagesChange([images[2], images[0], images[1]]);
@@ -790,18 +822,18 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceVideoUrl, null, "Image-only generation must remain supported");
   });
   test(`${format}: custom video is sent as owned generation input in the real generation request`, async () => {
-    const h = harness(format, { captureRequests: true });
-    h.composer.props.referenceControls.props.onChange({ kind: "video", asset: { url: "https://owned-media.test/clip.mp4", id: "reference-video-id", durationSeconds: 2.8, ratio: "16:9", title: "My clip" } });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true });
+    h.composer.props.referenceControls.props.onChange({ kind: "video", asset: { url: "https://owned-media.test/clip.mp4", id: "reference-video-id", durationSeconds: 4.2, ratio: "16:9", title: "My clip" } });
     const { composer } = h.render();
-    assert.match(composer.props.settingsSummary, /Google Omni.*2.8s clip.*16:9/);
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*4.2s clip.*Source shape/);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 1);
     assert.equal(h.requests[0].url, "/api/ai-studio/videos/generate");
     assert.equal(h.requests[0].body.avatarImageUrl, null);
     assert.equal(h.requests[0].body.referenceVideoUrl, "https://owned-media.test/clip.mp4");
-    assert.equal(h.requests[0].body.referenceVideoDurationSeconds, 2.8);
+    assert.equal(h.requests[0].body.referenceVideoDurationSeconds, 4.2);
     assert.equal(h.requests[0].body.referenceVideoAssetId, "reference-video-id");
-    assert.equal(h.requests[0].body.durationSeconds, 3);
+    assert.equal(h.requests[0].body.durationSeconds, 5);
     assert.equal(h.requests[0].body.referenceVideoMode, "edit");
     assert.equal(h.requests[0].body.useGalleryVideoReference, false);
     assert.equal(h.requests[0].body.exploreFormat, format);
@@ -809,7 +841,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.deepEqual(h.events, ["show-results", "waiting-for-auth"]);
   });
   test(`${format}: custom image replaces the default and generation waits for upload completion`, async () => {
-    const h = harness(format, { captureRequests: true });
+    const h = harness(format, { captureRequests: true, seedanceEnabled: true, reference: false });
     h.composer.props.referenceControls.props.onPendingChange(true);
     let composer = h.render().composer;
     assert.equal(composer.props.generateDisabled, true);
@@ -821,11 +853,11 @@ for (const format of ["hook", "wall_text"]) {
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.avatarImageUrl, "https://owned-media.test/image.png");
     assert.equal(h.requests[0].body.referenceVideoUrl, null);
-    assert.equal(h.requests[0].body.useGalleryVideoReference, true);
+    assert.equal(h.requests[0].body.useGalleryVideoReference, undefined);
   });
 
   for (const order of [["image", "video"], ["video", "image"]]) test(`${format}: both reference selection orders retain and submit the image and video`, async () => {
-    const h = harness(format, { captureRequests: true, reference: false });
+    const h = harness(format, { captureRequests: true, reference: false, seedanceEnabled: true });
     const references = {
       image: { kind: "image", asset: { id: "identity", url: "https://owned-media.test/identity.png", title: "Identity" } },
       video: { kind: "video", asset: { id: "source", url: "https://owned-media.test/source.mp4", durationSeconds: 6.25, ratio: "9:16", title: "Source" } },
@@ -834,7 +866,7 @@ for (const format of ["hook", "wall_text"]) {
     const composer = h.render().composer;
     assert.equal(composer.props.referenceControls.props.imageSelection.asset.id, "identity");
     assert.equal(composer.props.referenceControls.props.videoSelection.asset.id, "source");
-    assert.equal(composer.props.estimatedCredits, 24);
+    assert.equal(composer.props.estimatedCredits, 28);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.referenceImageUrls[0], references.image.asset.url);
     assert.equal(h.requests[0].body.referenceVideoUrl, references.video.asset.url);
@@ -977,7 +1009,7 @@ test("Studio retains the complete mixed reference set across model changes and g
 
 for (const format of ["hook", "wall_text", "slideshow"]) {
   test(`${format} switches to results synchronously before authentication or a generation request`, () => {
-    const h = harness(format);
+    const h = harness(format, { seedanceEnabled: true, reference: format === "slideshow" });
     assert.ok(h.composer); assert.ok(h.output);
     assert.equal(h.composer.props.layout, "workflow");
     assert.equal(h.composer.props.portalTarget, h.controls);
@@ -1102,16 +1134,16 @@ test("another tab's running Hook job does not lock a fresh composer or take its 
 });
 
 
-test("4s and 5s Hook sources initialize the shortest supported duration covering the full source",()=>{
- for(const model of ["google_omni", "seedance_2_5", "wan_3_0"]) for(const seconds of [4,5,4.3]){
+test("Hook sources round to the nearest supported duration",()=>{
+ const supported = model => model === "google_omni" ? [4,6,8,10] : model === "seedance_2_5" ? Array.from({length:27},(_,index)=>index+4) : Array.from({length:28},(_,index)=>index+3);
+ for(const model of ["google_omni", "kling_4_0", "seedance_2_5", "wan_3_0"]) for(const seconds of [4,4.1,4.3,4.6,5]){
  const h=harness("hook",{reference:false, seedanceEnabled:true, wanEnabled:true});
  h.render().composer.props.settings.props.children.find(node=>node?.props?.ariaLabel==="Video model").props.onChange(model);
  const composer=h.selectStartingFrame({ownerId:"test-owner",draftId:"source-length",referenceId:"hook-fixture",assetId:"frame",jobId:"job",url:"https://owned.test/frame.png",width:720,height:1280,durationSeconds:4,sourceDurationSeconds:seconds,motionInstructions:"OPENING: PHASE [0–1]: Preserve source motion.",generateAudio:false}).composer;
  const duration=composer.props.settings.props.children.find(node=>node?.props?.ariaLabel==="Video duration");
- const expected=model==="google_omni" ? (seconds===4 ? 4 : 6) : Math.ceil(seconds);
+ const expected=supported(model).find(value=>value>=Math.round(seconds));
  assert.equal(Number(duration.props.value),expected,`${model}: source ${seconds}s`);
- assert.ok(expected>=seconds);
- assert.ok(!duration.props.options.some(option=>Number(option.value)>=seconds && Number(option.value)<expected));
+ assert.ok(duration.props.options.some(option=>Number(option.value)===expected),`${model}: ${expected}s is selectable`);
  }
 });
 
@@ -1158,6 +1190,18 @@ test("dedicated face selection remains frozen in the submitted slideshow request
   assert.equal(request.referenceImageAssetIds, undefined);
 });
 
+test("face swap credits stay visible after the chooser closes", () => {
+  const face = { open: false, influencer: { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/face.png" }, slideIds: ["slide-1"], onOpenChange() {} };
+  const h = harness("slideshow", { slideshowFaceSwap: face, slideshowSlideCount: 1 });
+  assert.match(String(h.render().composer.props.accessMessage), /This generation uses 2 AI credits · 1 for face swap/, "the kept swap is part of the quote after Done");
+});
+
+test("a kept face swap with obsolete slide marks explains what to do", () => {
+  const face = { open: false, influencer: { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/face.png" }, slideIds: [], stale: true, onOpenChange() {} };
+  const h = harness("slideshow", { slideshowFaceSwap: face, slideshowSlideCount: 2 });
+  assert.match(String(h.render().composer.props.accessMessage), /slides belong to the previous reference/, "the user is told why the kept face will not be applied");
+});
+
 test("the actual client acknowledgement cannot schedule a duplicate browser swap for a worker-managed face job", async () => {
   const face = { open: false, influencer: { id: "11111111-1111-4111-8111-111111111111", url: "https://owned.test/face.png" }, slideIds: ["slide-1"], onOpenChange() {} };
   const generationId = "00000000-0000-4000-8000-000000000002", jobId = "00000000-0000-4000-8000-000000000003";
@@ -1192,7 +1236,7 @@ test("old missing-face clarification disappears when the dedicated selection or 
 
 
 test("Hook and Text on screen use direct Gemini with Omni and retain ordered face photos", async () => {
-  for (const format of ["hook", "wall_text"]) {
+  for (const format of ["wall_text"]) {
     const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
     const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-15", sourceSha256: "a".repeat(64), assetId: "scene", jobId: "scene-job", url: "https://owned.test/scene.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Raise the same hand.", generateAudio: false };
     let composer = h.selectStartingFrame(frame).composer;
@@ -1223,6 +1267,16 @@ test("Hook and Text on screen use direct Gemini with Omni and retain ordered fac
   }
 });
 
+test("Hook hides the direct Gemini Omni starting-frame route", () => {
+  const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
+  const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-15", sourceSha256: "a".repeat(64), assetId: "scene", jobId: "scene-job", url: "https://owned.test/scene.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Raise the same hand.", generateAudio: false };
+  h.selectStartingFrame(frame);
+  const picker = h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+  assert.equal(picker.props.options.some(option => option.value === "google_omni_direct"), false);
+  assert.equal(picker.props.options.some(option => option.value === "google_omni"), false);
+  assert.equal(picker.props.options.some(option => option.value === "flux_3"), true);
+});
+
 test("Hook and Wall of Text submit the approved starting frame with either Kling model", async () => {
   for (const format of ["hook", "wall_text"]) for (const model of ["kling_3_0", "kling_4_0"]) {
     const h = harness(format, { reference: false, captureRequests: true });
@@ -1237,4 +1291,44 @@ test("Hook and Wall of Text submit the approved starting frame with either Kling
     assert.equal(h.requests[0].body.model, model);
     assert.equal(h.requests[0].body.startingFrameAssetId, frame.assetId);
   }
+});
+
+test("the clip editor header inherits the card surface instead of painting a dark band", () => {
+  const css = readFileSync(new URL("../components/explore/format-workspace.module.css", import.meta.url), "utf8");
+  const baseRule = css.match(/(?:^|\n)\.clipStageHeader\s*\{([^}]*)\}/u)?.[1] ?? "";
+  assert.ok(baseRule, "clipStageHeader base rule exists");
+  assert.doesNotMatch(baseRule, /(?:^|;)\s*background(?:-color)?\s*:/u, "the header must not paint its own background over the editor card");
+});
+
+test("Free Video Pass allows only Kling 3.0 in the Hook workflow", () => {
+  const h = harness("hook", { seedanceEnabled: true, wanEnabled: true, reference: false, freeVideoPassAvailable: true, creditsRemaining: 0 });
+  const selector = h.composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+  assert.ok(selector, "Video model selector renders for the free pass");
+  const option = value => selector.props.options.find(item => item.value === value);
+  assert.equal(option("google_omni"), undefined, "Omni Flash is hidden in the Hook workflow");
+  assert.equal(option("kling_3_0").disabled, false, "Kling 3.0 is the free-pass model");
+  assert.equal(selector.props.value, "kling_3_0", "The free pass defaults to Kling 3.0");
+  for (const [value, label] of [["flux_3", "FLUX 3 (Paid plan)"], ["seedance_2_5", "Seedance 2.5 (Paid plan)"], ["kling_4_0", "Kling 4.0 (Paid plan)"], ["wan_3_0", "WAN 3.0 (Paid plan)"]]) {
+    assert.equal(option(value).label, label);
+    assert.equal(option(value).disabled, true, `${value} is blocked on the free pass`);
+  }
+  h.composer.props.onPromptChange("My requested changes");
+  assert.equal(h.render().composer.props.generateDisabled, false, "Kling 3.0 is not blocked by the paid balance");
+});
+
+test("Hook offers FLUX 3 and hides Omni Flash", () => {
+  const h = harness("hook", { seedanceEnabled: true, wanEnabled: true });
+  const selector = h.composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
+  assert.ok(selector);
+  assert.equal(selector.props.value, "seedance_2_5", "Paid Hook keeps the existing Seedance default when enabled");
+  assert.equal(selector.props.options.some(option => option.value === "google_omni"), false, "Omni Flash is hidden in Hook");
+  assert.equal(selector.props.options.find(option => option.value === "flux_3").disabled, false);
+  assert.equal(selector.props.options.find(option => option.value === "kling_3_0").disabled, false);
+});
+
+test("Free Video Pass keeps one complete slideshow generation enabled", () => {
+  const h = harness("slideshow", { reference: true, slideshowSlideCount: 2, freeVideoPassAvailable: true, creditsRemaining: 0 });
+  assert.equal(h.composer.props.generateDisabled, false, "One complete slideshow can start on the pass");
+  assert.equal(h.composer.props.generateLabel, "Generate 2 slides");
+  assert.match(h.composer.props.accessMessage ?? "", /Covered by your 1 free generation pass/);
 });

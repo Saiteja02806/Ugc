@@ -15,7 +15,7 @@ export function createAnalyticsRoute(operation: SnapshotOperation) {
       if (days !== undefined && ![7, 30, 90].includes(days)) return json({ ok: false, message: "Choose a supported analytics date range." }, 400);
       const params = { operation, userId, days: days as 7 | 30 | 90 | undefined };
       const authMs = performance.now() - started;
-      const result = refresh ? await refreshAnalyticsSnapshot({ ...params, force: body?.force === true }) : publicSnapshot(await readAnalyticsSnapshot(params));
+      const result = refresh ? await refreshAnalyticsSnapshot({ ...params, force: body?.force === true, visit: body?.visit === true }) : publicSnapshot(await readAnalyticsSnapshot(params));
       const durationMs = performance.now() - started;
       console.info("analytics_request_timing", { operation, mode: refresh ? "refresh" : "snapshot", authMs: Math.round(authMs), durationMs: Math.round(durationMs) });
       return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store", "Server-Timing": `auth;dur=${authMs.toFixed(1)},analytics;dur=${(durationMs-authMs).toFixed(1)}` } });

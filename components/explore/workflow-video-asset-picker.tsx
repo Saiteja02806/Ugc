@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
-import { Video } from "lucide-react";
+import { Play, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,7 +63,7 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search by prompt or keywords…"
+          placeholder="Search your videos…"
           aria-label="Search generation history"
           className="h-9 w-full rounded-lg border border-border bg-card px-3 pl-8 text-xs text-foreground placeholder:text-muted focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
         />
@@ -76,16 +75,13 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
       : !visibleAssets.length ? <p className="text-sm text-muted">{query ? "No matching generations found." : surface === "content" ? "No ready demos yet. Upload a video on the Demo screen, then choose it here." : surface === "generation_history" ? "No completed generations yet. Generate a video in Create to get started." : "No ready videos yet. Upload a video in Create to get started."}</p>
       : <div className="grid gap-2">{visibleAssets.map(asset => {
         const problem = workflowSourceVideoError(asset);
-        const prompt = typeof asset.metadata?.prompt === "string" && asset.metadata.prompt.trim()
-          ? asset.metadata.prompt.trim()
-          : null;
-        const displayTitle = prompt ?? asset.title;
+        const displayTitle = asset.title?.trim() || (surface === "content" ? "Demo video" : surface === "generation_history" ? "Generated video" : "Video");
         const modelLabel = typeof asset.metadata?.model === "string" ? asset.metadata.model : null;
         const formattedDate = asset.createdAt ? new Date(asset.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
         const isSelected = asset.id === selectedId;
 
         return <Button key={asset.id} type="button" variant="outline" aria-pressed={isSelected} disabled={!!problem} title={problem ?? displayTitle}
-          className={`h-auto min-h-24 w-full min-w-0 justify-start gap-3.5 overflow-hidden rounded-xl border border-border/70 bg-card/60 p-3 text-left transition-colors hover:border-border hover:bg-card-muted/60 whitespace-normal ${
+          className={`h-auto min-h-36 w-full min-w-0 justify-start gap-3.5 overflow-hidden rounded-xl border border-border/70 bg-card/60 p-3 text-left transition-colors hover:border-border hover:bg-card-muted/60 whitespace-normal ${
             isSelected ? "border-white ring-1 ring-white/40" : ""
           }`}
           onClick={() => { if (onSelect(asset)) onOpenChange(false); }}>
@@ -113,7 +109,8 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
 /** Only visible rows load footage; an absent poster should not hide identity. */
 function VideoAssetThumbnail({ asset }: { asset: MediaAsset }) {
   const host = useRef<HTMLSpanElement>(null);
-  const [visible, setVisible] = useState(false), [posterFailed, setPosterFailed] = useState(false), [failed, setFailed] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false), [failed, setFailed] = useState(false);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -127,14 +124,16 @@ function VideoAssetThumbnail({ asset }: { asset: MediaAsset }) {
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  return <span ref={host} data-video-asset-thumbnail className="relative flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/40" aria-hidden="true">
+  return <span ref={host} data-video-asset-thumbnail className="relative flex h-36 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/40" aria-hidden="true">
     <Video className="absolute size-5 text-muted" />
-    {visible && asset.thumbnailUrl && !posterFailed ? <Image src={asset.thumbnailUrl} alt="" width={56} height={80} unoptimized onError={() => setPosterFailed(true)} className="relative size-full object-cover" />
-      : visible && !failed ? <video src={asset.url} muted playsInline preload="metadata" tabIndex={-1} disablePictureInPicture disableRemotePlayback onContextMenu={event => event.preventDefault()}
-        onLoadedMetadata={event => { const player = event.currentTarget; if (Number.isFinite(player.duration) && player.duration > 0) player.currentTime = Math.min(.01, player.duration / 2); }}
-        onError={() => setFailed(true)} className="relative size-full object-cover" /> : null}
+    {visible && !failed ? <video ref={video} src={asset.url} poster={asset.thumbnailUrl ?? undefined} muted playsInline preload="metadata" tabIndex={-1} disablePictureInPicture disableRemotePlayback
+      onLoadedMetadata={event => { const player = event.currentTarget; if (Number.isFinite(player.duration) && player.duration > 0) player.currentTime = Math.min(.01, player.duration / 2); }}
+      onPointerEnter={() => { void video.current?.play().catch(() => {}); }}
+      onPointerLeave={() => { const player = video.current; if (player) { player.pause(); if (Number.isFinite(player.duration) && player.duration > 0) player.currentTime = Math.min(.01, player.duration / 2); } }}
+      onError={() => setFailed(true)} onContextMenu={event => event.preventDefault()} className="relative size-full object-cover" /> : null}
+    {visible && !failed ? <span className="pointer-events-none absolute inset-0 flex items-center justify-center"><span className="rounded-full bg-black/55 p-1.5 text-white"><Play className="size-3.5 fill-current" /></span></span> : null}
     {asset.durationSeconds ? (
-      <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-white">
+      <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/75 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-white">
         {Math.round(asset.durationSeconds)}s
       </span>
     ) : null}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { VolumeX } from "lucide-react";
 
 import { TrendingAiHookBundle } from "@/components/trending/trending-ai-hook-bundle";
+import { JsonLd } from "@/components/marketing/json-ld";
 import bundle from "@/lib/trending/ai-hook-bundle.json";
 import { publicOrigin } from "@/lib/marketing/public-pages";
 
@@ -26,7 +27,21 @@ export const metadata: Metadata = {
 
 export default function HookVideosPage() {
   return (
-    <TrendingAiHookBundle
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: title,
+          description,
+          url: new URL(path, publicOrigin).href,
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: bundle.videos.length,
+          },
+        }}
+      />
+      <TrendingAiHookBundle
       intro={
         <>
           <p className="mb-3 text-sm font-medium text-primary">The Trending collection</p>
@@ -44,5 +59,6 @@ export default function HookVideosPage() {
         </>
       }
     />
+    </>
   );
 }

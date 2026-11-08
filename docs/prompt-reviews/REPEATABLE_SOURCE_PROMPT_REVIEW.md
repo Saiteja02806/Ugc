@@ -2,6 +2,12 @@
 
 Saved 26 October 2026. This guide records the process used in the 116-reference Hook audit and the next acceptance steps. It does not claim that all revised prompts were activated or tested by generating videos.
 
+**Skill entry point (7 November 2026):** this process is now also packaged as
+`.agents/skills/ugc-source-prompt-completeness/SKILL.md` for a single-prompt
+end-to-end completeness audit (coverage table, camera-vs-subject separation,
+COMPLETE/PARTIAL/INCOMPLETE verdict). The guide below remains the full
+multi-reference audit record.
+
 ## Why we did this
 
 Hook 01's earlier prompt described a reach and closer framing but did not clearly explain the change to handheld movement, continued offscreen grip, irregular shake and final edge crop. The revised camera wording produced a visibly better ending with the same approved image, model and duration. It was an improved partial pass: timing, scale and camera path still differed. One improved sample does not prove repeatability or that wording alone caused every difference.

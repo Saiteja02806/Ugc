@@ -15,7 +15,7 @@ export function getVideoPromptCharacterLimit({
   referenceVideoMode,
   provider,
 }: {
-  model?: "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0" | "kling_4_0";
+  model?: "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0" | "kling_4_0" | "flux_3";
   hasReferenceVideo?: boolean;
   referenceVideoMode?: "edit";
   provider?: string;
@@ -30,6 +30,6 @@ export function getVideoPromptCharacterLimit({
 
   if (model === "kling_4_0") return KLING_4_VIDEO_PROMPT_MAX_LENGTH;
   if (model === "kling_3_0") return 2_500;
-  if (model === "seedance_2_5" || model === "wan_3_0") return 10_000;
+  if (model === "seedance_2_5" || model === "wan_3_0" || model === "flux_3") return 10_000;
   return LEGACY_VIDEO_PROMPT_MAX_LENGTH;
 }

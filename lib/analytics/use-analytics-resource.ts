@@ -27,16 +27,24 @@ function expired(job: PublicBackgroundJob | undefined) {
 export function useAnalyticsResource<T>(params: {
   owner: string; platform: string; revision: string; url: string;
   days?: 7 | 30 | 90; enabled: boolean; refreshRequest: number; staleTime: number;
+  /** Ask once per opening for a provider check without forcing every post. */
+  refreshOnVisit?: boolean;
 }) {
   const client = useQueryClient();
   const visible = useSyncExternalStore(subscribeVisibility, isVisible, () => true);
   const [consumerId] = useState(() => crypto.randomUUID());
+  const refreshOnVisit = params.refreshOnVisit ?? true;
   const { owner, platform, url, days, revision, refreshRequest } = params;
   const key = useMemo(() => ["account", owner, "analytics", platform, url, days ?? 0, revision], [owner, platform, url, days, revision]);
   const active = Boolean(owner && params.enabled);
   const scope = JSON.stringify(key);
   const [manual, setManual] = useState<{ request: number; scope: string | null }>({ request: refreshRequest, scope: null });
   const previousRequest = useRef(refreshRequest);
+  // A visit is a one-shot provider check per opening/resume. It is separate from
+  // a manual Refresh so the server can keep per-post provider work age-based.
+  const [visit, setVisit] = useState<{ counter: number; scope: string | null }>({ counter: 0, scope: null });
+  const visitedScope = useRef<string | null>(null);
+  const hiddenAt = useRef<number | null>(null);
   // A counter is an event for the currently visible resource. Do not replay a
   // previous Refresh click after remounting or changing range/authorization.
   useEffect(() => {
@@ -48,7 +56,32 @@ export function useAnalyticsResource<T>(params: {
     // Commit the request event before changing the external query observer.
     setManual({ request: refreshRequest, scope: active ? scope : null });
   }, [refreshRequest, active, scope, client, key]);
+  useEffect(() => {
+    if (!visible) {
+      hiddenAt.current = Date.now();
+      return;
+    }
+    const away = hiddenAt.current === null ? 0 : Date.now() - hiddenAt.current;
+    hiddenAt.current = null;
+    // A quick tab switch is not a new visit; only a real return re-checks.
+    if (away >= ANALYTICS_SNAPSHOT_READ_STALE_MS) visitedScope.current = null;
+  }, [visible]);
+  useEffect(() => {
+    if (!refreshOnVisit || !active || !visible || visitedScope.current === scope) return;
+    visitedScope.current = scope;
+    // A manual Refresh is already the strongest request; do not replace it.
+    if (manual.scope === scope) return;
+    let cancelled = false;
+    // Activate the one-shot after this commit so the saved-data read starts
+    // without a cascading render inside the effect body.
+    void Promise.resolve().then(() => {
+      if (!cancelled) setVisit(current => ({ counter: current.counter + 1, scope }));
+    });
+    return () => { cancelled = true; };
+  }, [active, manual.scope, refreshOnVisit, scope, visible]);
   const force = manual.request === refreshRequest && manual.scope === scope;
+  const visiting = visit.scope === scope;
+  const manualActive = force || visiting;
   const snapshot = useQuery({
     queryKey: key, enabled: active && visible, staleTime: params.staleTime, gcTime: 30 * 60_000,
     // TanStack revalidates only stale snapshots when the tab becomes visible.
@@ -57,18 +90,22 @@ export function useAnalyticsResource<T>(params: {
     queryFn: ({ signal }) => analyticsRequest<Snapshot<T>>(`${url}${days ? `?days=${days}` : ""}`, owner, signal),
   });
   useAnalyticsWake(snapshot, active, params.staleTime, true);
-  const refreshKey = useMemo(() => [...key, "refresh", force ? `manual:${consumerId}:${refreshRequest}` : snapshot.data?.refreshKey ?? "initial"], [key, force, refreshRequest, consumerId, snapshot.data?.refreshKey]);
+  const refreshKey = useMemo(() => [...key, "refresh",
+    force ? `manual:${consumerId}:${refreshRequest}` : visiting ? `visit:${consumerId}:${visit.counter}` : snapshot.data?.refreshKey ?? "initial"],
+  [key, force, visiting, refreshRequest, consumerId, visit.counter, snapshot.data?.refreshKey]);
   const refresh = useQuery({
     queryKey: refreshKey,
-    enabled: active && visible && Boolean(snapshot.data && (snapshot.data.needsRefresh || force)),
+    enabled: active && visible && Boolean(snapshot.data && (snapshot.data.needsRefresh || manualActive)),
     // Automatic attempts may retry on a later visit after a queue failure.
     // Manual Refresh clicks remain events and must never replay on focus.
     staleTime: force ? Infinity : ANALYTICS_SNAPSHOT_READ_STALE_MS,
     gcTime: 30 * 60_000, retry: false,
     refetchOnWindowFocus: !force, refetchOnReconnect: !force, refetchOnMount: !force,
-    queryFn: ({ signal }) => analyticsRequest<Start<T>>(url, owner, signal, { ...(days ? { days } : {}), force }),
+    // A visit asks the server for saved data plus a provider check. It never
+    // bypasses the server's per-post staleness policy.
+    queryFn: ({ signal }) => analyticsRequest<Start<T>>(url, owner, signal, { ...(days ? { days } : {}), force, ...(visiting && !force ? { visit: true } : {}) }),
   });
-  useAnalyticsWake(refresh, active && !force && Boolean(snapshot.data?.needsRefresh));
+  useAnalyticsWake(refresh, active && !force && (Boolean(snapshot.data?.needsRefresh) || visiting));
   const jobId = refresh.data?.jobId;
   const initialJob = refresh.data?.job;
   const jobKey = useMemo(() => ["account", owner, "analytics-job", jobId], [owner, jobId]);
@@ -91,18 +128,20 @@ export function useAnalyticsResource<T>(params: {
   const jobStatus = currentJob?.status;
   const refreshSettledAt = Math.max(refresh.dataUpdatedAt, refresh.errorUpdatedAt);
   useEffect(() => {
-    if (!force || !refreshSettledAt ||
+    if (!manualActive || !refreshSettledAt ||
         (currentJob && !terminal.has(currentJob.status) && !expired(currentJob))) return;
-    // Consume the manual event only after the next authoritative GET succeeds.
-    // Cache events preserve ordering even when two responses finish in one ms.
+    // Consume the manual/visit event only after the next authoritative GET
+    // succeeds. Cache events preserve ordering even when two responses finish
+    // in one millisecond.
     return client.getQueryCache().subscribe(event => {
       if (event.type === "updated" && event.action.type === "success" &&
           JSON.stringify(event.query.queryKey) === scope &&
           (!refresh.isError || Date.now() - refresh.errorUpdatedAt >= ANALYTICS_SNAPSHOT_READ_STALE_MS)) {
         setManual(current => current.scope === scope ? { ...current, scope: null } : current);
+        setVisit(current => current.scope === scope ? { ...current, scope: null } : current);
       }
     });
-  }, [client, force, refreshSettledAt, refresh.isError, refresh.errorUpdatedAt, currentJob, scope]);
+  }, [client, manualActive, refreshSettledAt, refresh.isError, refresh.errorUpdatedAt, currentJob, scope]);
   // A refresh can finish without a job (another sync already saved fresh data,
   // or a manual request hit the cooldown). Reconcile that result as well as job
   // completion; otherwise the old GET remains displayed and manual mode sticks.

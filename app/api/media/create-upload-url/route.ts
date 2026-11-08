@@ -90,6 +90,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+    const signingMisconfigured = error instanceof Error && /client_email|SigningError/i.test(error.message);
 
     if (status >= 500) {
       console.error("Could not prepare media upload:", error);
@@ -101,9 +102,11 @@ export async function POST(request: Request) {
         error:
           error instanceof FirebaseAuthRequestError
             ? error.message
-            : "Could not prepare this media upload.",
+            : signingMisconfigured
+              ? "Media uploads are not configured on this server. Add the GCS service-account credentials, or choose an existing library asset."
+              : "Could not prepare this media upload.",
       },
-      { status },
+      { status: signingMisconfigured ? 503 : status },
     );
   }
 }

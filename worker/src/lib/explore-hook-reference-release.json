@@ -4,7 +4,6 @@
   "activation": "active",
   "excludedReferenceIds": [
     "explore-paired-hook-114ce0aeebb28251ce298e14",
-    "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
     "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
     "explore-paired-hook-9ee299bb7c8ab66ad9387bbf"
   ],
@@ -550,26 +549,6 @@
       "sourceFolder": "New folder (27)",
       "previewSha256": "efb7918e022bdf7da3c9eb073bbb32d402a440bac2740f8b584f71f98df8f6fd",
       "previewStorageKey": "explore/paired-references/v1/efb7918e022bdf7da3c9eb073bbb32d402a440bac2740f8b584f71f98df8f6fd.mp4"
-    },
-    {
-      "id": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
-      "format": "hook",
-      "title": "Hook 28",
-      "instagramUrl": "https://www.instagram.com/reel/DbnOykUNrMb/",
-      "videoStorageKey": "explore/paired-references/v1/51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389.mp4",
-      "audioStorageKey": "explore/paired-references/v1/bd052ae3d8b94c5a41337a8f1dd250e270d5e011dcecb2492b22a9236faca5f2.mp3",
-      "posterStorageKey": "explore/paired-references/v1/5f7fbf5418504e23bca46e1061ebf2b78165258e8fc0b6d1b0f37f7ff37aab45.webp",
-      "videoSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
-      "audioSha256": "bd052ae3d8b94c5a41337a8f1dd250e270d5e011dcecb2492b22a9236faca5f2",
-      "posterSha256": "5f7fbf5418504e23bca46e1061ebf2b78165258e8fc0b6d1b0f37f7ff37aab45",
-      "durationSeconds": 2.966992,
-      "audioDurationSeconds": 14.236688,
-      "width": 720,
-      "height": 1280,
-      "audioTitle": "ReelAudio-25666.mp3",
-      "sourceFolder": "New folder (28)",
-      "previewSha256": "37c57479188dc8e8bed053d774e7a45fee6bac08c6a32b6ef0e9bb33b51a231e",
-      "previewStorageKey": "explore/paired-references/v1/37c57479188dc8e8bed053d774e7a45fee6bac08c6a32b6ef0e9bb33b51a231e.mp4"
     },
     {
       "id": "explore-paired-hook-761c394a83c7b4c06e35e262",

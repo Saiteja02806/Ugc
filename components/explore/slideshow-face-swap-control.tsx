@@ -5,6 +5,7 @@ import { Check, ScanFace } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { imagePickerThumbnailUrl } from "@/lib/media/image-picker";
 import type { RecreateGenerationView } from "./recreate-generation-view";
 import { SlideshowFaceChoice, type SlideshowFaceChoiceValue } from "./slideshow-face-choice";
 
@@ -44,13 +45,13 @@ export function SlideshowFaceSwapControl({ value, ownerId, disabled }: {
           {step === "photos" ? <section aria-label="Face reference photos" className="space-y-2"><h3 className="text-sm font-semibold">1. Choose your face photos</h3>
             <SlideshowFaceChoice key={ownerId} ownerId={ownerId} selected={face} disabled={disabled} onSelect={setFace} onBusyChange={setUploading} />
           </section> : <section aria-label="Face swap slides" className="space-y-2">
-            <div className="flex items-center gap-3 rounded-lg border border-border p-2">{face ? <img src={face.url} alt="Selected primary face" width={40} height={40} className="size-10 rounded object-cover" /> : null}<p className="text-xs text-muted">{photoCount} face photo{photoCount === 1 ? "" : "s"} selected. Use Back to change them.</p></div>
+            <div className="flex items-center gap-3 rounded-lg border border-border p-2">{face ? <img src={imagePickerThumbnailUrl(face.url)} alt="Selected primary face" width={40} height={40} className="size-10 rounded object-cover" /> : null}<p className="text-xs text-muted">{photoCount} face photo{photoCount === 1 ? "" : "s"} selected. Use Back to change them.</p></div>
             <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">2. Select slide numbers</h3><Button type="button" variant="outline" size="sm" disabled={disabled || uploading || !eligible.length} onClick={() => setSlideIds(validIds.length === eligible.length ? [] : eligible.map(slide => slide.id))}>{eligible.length && validIds.length === eligible.length ? "Clear slides" : "Select all"}</Button></div>
             <p className="text-xs text-muted">Select Slide 1 for a first-image-only swap. Unmarked slides keep normal generation. Dimmed slides are not selected for generation in Create.</p>
             <div role="group" aria-label="Select slides for face swap" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
               {value.slides?.map(slide => <button key={slide.id} type="button" aria-label={`Face swap for source slide ${slide.number}`} aria-pressed={validIds.includes(slide.id)} disabled={disabled || uploading || !slide.eligible} onClick={() => setSlideIds(current => current.includes(slide.id) ? current.filter(id => id !== slide.id) : [...current, slide.id])}
                 className="relative overflow-hidden rounded-lg border border-border p-1 text-xs aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary disabled:opacity-40">
-                <img src={slide.url} alt="" width={80} height={100} className="aspect-[4/5] w-full rounded object-cover" />
+                <img src={imagePickerThumbnailUrl(slide.url)} alt="" width={80} height={100} loading="lazy" decoding="async" className="aspect-[4/5] w-full rounded object-cover" />
                 <span className="flex min-h-7 items-center justify-center gap-1">Slide {slide.number}{validIds.includes(slide.id) ? <Check className="size-3" aria-hidden="true" /> : null}</span><span className="block text-[10px] text-muted">{!slide.eligible ? "Not generating" : validIds.includes(slide.id) ? "Face swap" : "No face swap"}</span>
               </button>)}
             </div>

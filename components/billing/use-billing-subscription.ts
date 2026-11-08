@@ -112,6 +112,22 @@ async function fetchBillingSubscription(ownerId: string, signal?: AbortSignal): 
       throw new Error(data?.error || "Could not load billing details.");
     }
 
+    if (typeof document !== "undefined") {
+      const available = Boolean(
+        data.subscription.freeVideoPass?.available && !data.subscription.isActive,
+      );
+      document.cookie = available
+        ? "ugc_free_video_pass_active=1; Path=/; Max-Age=604800; SameSite=Lax"
+        : "ugc_free_video_pass_active=; Path=/; Max-Age=0; SameSite=Lax";
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("ugc:free-video-pass-updated", {
+            detail: { available },
+          }),
+        );
+      }
+    }
+
     return data.subscription;
   }, signal);
 }

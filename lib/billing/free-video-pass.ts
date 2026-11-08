@@ -7,6 +7,23 @@ export const FREE_VIDEO_PASS_ALLOWED_FORMATS = [
   "slideshow",
 ] as const;
 
+export const FREE_VIDEO_PASS_EXCLUDED_VIDEO_MODELS = [
+  "kling_4_0",
+  "google_omni",
+  "seedance_2_5",
+  "wan_3_0",
+  "flux_3",
+] as const;
+
+export function isFreeVideoPassAllowedVideoModel(
+  model: string | null | undefined,
+): boolean {
+  if (!model) return false;
+  return !(FREE_VIDEO_PASS_EXCLUDED_VIDEO_MODELS as readonly string[]).includes(
+    model,
+  );
+}
+
 export type FreeVideoPassAllowedFormat =
   (typeof FREE_VIDEO_PASS_ALLOWED_FORMATS)[number];
 
@@ -37,6 +54,7 @@ export type FreeVideoPassReservationContext =
       format: FreeVideoPassAllowedFormat;
       generationKey: string;
       kind: "generation";
+      model?: string | null;
       totalUnits?: number;
     }
   | {
@@ -113,6 +131,7 @@ export class FreeVideoPassError extends Error {
 let serviceClient: SupabaseClient | null = null;
 
 export const FREE_VIDEO_PASS_COOKIE_NAME = "ugc_pending_free_video_code";
+export const FREE_VIDEO_PASS_UI_COOKIE_NAME = "ugc_free_video_pass_active";
 
 export function readPendingFreeVideoPassCodeFromRequest(
   request: Request,
@@ -472,6 +491,17 @@ export async function reserveFreeVideoPassCredits(params: {
       "Your free video pass covers 1 Hook Video, 1 Text-on-Screen Video, or 1 Slideshow (Talking Head is not included).",
       402,
       "free_video_pass_format_excluded",
+    );
+  }
+  if (
+    context.kind === "generation" &&
+    context.model &&
+    !isFreeVideoPassAllowedVideoModel(context.model)
+  ) {
+    throw new FreeVideoPassError(
+      "Only Kling 3.0 is included on the free generation pass. Choose Kling 3.0 or upgrade your plan to use another video model.",
+      402,
+      "free_video_pass_model_excluded",
     );
   }
 

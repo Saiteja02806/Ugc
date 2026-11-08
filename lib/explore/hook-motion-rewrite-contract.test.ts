@@ -4,9 +4,9 @@ import { parseHookMotionRewrite } from "./hook-motion-rewrite-contract.ts";
 import { buildHookAnimationPrompt, getHookKeyframeMotionPrompt, getHookKeyframeMotionReviewDraft,
   hookKeyframeMotionCatalog, hookKeyframeMotionRewrites, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
 
-test("all 107 rewrites bind to the exact canonical video and reviewed first-to-last frame evidence", () => {
+test("all 106 rewrites bind to the exact canonical video and reviewed first-to-last frame evidence", () => {
   const sources = Object.values(hookKeyframeMotionCatalog);
-  assert.equal(Object.keys(hookKeyframeMotionRewrites).length, 107);
+  assert.equal(Object.keys(hookKeyframeMotionRewrites).length, 106);
   let reviewed = 0, decisions = 0;
   for (const source of sources) {
     const rewrite = hookKeyframeMotionRewrites[source.referenceId];
@@ -28,13 +28,13 @@ test("all 107 rewrites bind to the exact canonical video and reviewed first-to-l
     if (rewrite.review.status === "static_reviewed") { reviewed++; assert.deepEqual(rewrite.review.supportedDurationsSeconds, [durationSeconds]); }
     else { decisions++; assert.equal(draft.requiresDecision, true); assert.ok(rewrite.review.issues.length); assert.deepEqual(rewrite.review.supportedDurationsSeconds, []); }
   }
-  assert.equal(reviewed, 104); assert.equal(decisions, 3);
+  assert.equal(reviewed, 104); assert.equal(decisions, 2);
 });
 
 test("unresolved historical sequences retain their source-bound decisions", () => {
   const actual = Object.values(hookKeyframeMotionRewrites).filter(item => item.review.status === "needs_decision")
     .map(item => hookKeyframeMotionCatalog[item.referenceId].displayTitle).sort();
-  assert.deepEqual(actual, ["Hook 19", "Hook 28", "Hook 84"]);
+  assert.deepEqual(actual, ["Hook 19", "Hook 84"]);
   const window = hookKeyframeMotionRewrites["explore-paired-hook-e683292d4cd22b2a8b5a9cd8"];
   assert.match(window.review.issues.join(" "), /no performer|no face/);
   const repeat = hookKeyframeMotionRewrites["explore-paired-hook-b7c86d6729a69666ddf46ed5"];

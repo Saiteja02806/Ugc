@@ -6,6 +6,7 @@ import { WorkspaceLink as Link } from "@/components/layout/workspace-navigation-
 import { useAuth } from "@/contexts/auth-context";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
+import { ExploreFreeVideoPassBadge } from "@/components/explore/explore-free-video-pass-badge";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";
 import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
@@ -24,6 +25,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
         <header className={styles.header}>
           <h1 className={`${styles.heading} text-3xl font-semibold tracking-[-0.04em] text-foreground-strong`}>Explore</h1>
           <div className={`${styles.headerActions} flex shrink-0 items-center gap-2`}>
+            <ExploreFreeVideoPassBadge />
             <span className={styles.mcpComingSoon}>
               <span>MCP</span>
               <span className={styles.comingSoonLabel}>Coming soon</span>

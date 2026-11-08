@@ -341,6 +341,9 @@ export function SchedulingWorkspace() {
   const [cancellingScheduleId, setCancellingScheduleId] = useState<string | null>(
     null,
   );
+  const [cancelScheduleError, setCancelScheduleError] = useState<string | null>(
+    null,
+  );
   const [schedulingFinalDraftId, setSchedulingFinalDraftId] = useState<
     string | null
   >(null);
@@ -1263,6 +1266,7 @@ export function SchedulingWorkspace() {
 
     const scheduleId = schedulePendingCancellation.id;
     setCancellingScheduleId(scheduleId);
+    setCancelScheduleError(null);
     setActionNotice(null);
 
     try {
@@ -1276,6 +1280,7 @@ export function SchedulingWorkspace() {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
         method: "DELETE",
+        signal: AbortSignal.timeout(20_000),
       });
       const data = (await response.json()) as ScheduleMutationResponse;
 
@@ -1288,9 +1293,18 @@ export function SchedulingWorkspace() {
       storeServerSchedule(data.schedule);
       setSchedulePendingCancellation(null);
       setActionNotice("Schedule cancelled. No future platform publish will run.");
+      void loadSchedules({ force: true }).catch(() => undefined);
     } catch (error) {
-      setActionNotice(getErrorMessage(error, "Could not cancel this schedule."));
-      setSchedulePendingCancellation(null);
+      // Keep the dialog open so the reason is visible where the user acted.
+      // The refresh shows the post's true state (publishing/published or
+      // cancelled) instead of leaving a stale Scheduled card that invites
+      // repeated, identical attempts.
+      const message =
+        error instanceof DOMException && error.name === "TimeoutError"
+          ? "Cancelling took too long, so the result is not confirmed. The list is refreshing; check the post before trying again."
+          : getErrorMessage(error, "Could not cancel this schedule.");
+      setCancelScheduleError(message);
+      void loadSchedules({ force: true }).catch(() => undefined);
     } finally {
       setCancellingScheduleId(null);
     }
@@ -1558,7 +1572,11 @@ export function SchedulingWorkspace() {
         <CancelScheduleDialog
           draft={schedulePendingCancellation}
           cancelling={cancellingScheduleId === schedulePendingCancellation.id}
-          onClose={() => setSchedulePendingCancellation(null)}
+          error={cancelScheduleError}
+          onClose={() => {
+            setSchedulePendingCancellation(null);
+            setCancelScheduleError(null);
+          }}
           onConfirm={() => void handleConfirmScheduleCancellation()}
         />
       ) : null}
@@ -2328,11 +2346,13 @@ function ScheduleDraftActions({
 function CancelScheduleDialog({
   cancelling,
   draft,
+  error,
   onClose,
   onConfirm,
 }: {
   cancelling: boolean;
   draft: ScheduleDraft;
+  error: string | null;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -2381,6 +2401,12 @@ function CancelScheduleDialog({
               {draft.mediaTitle || "This post"} will not publish at{" "}
               {getDraftTimeLabel(draft)}.
             </p>
+            {hasScheduleTimePassed(draft) ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-error">
+                This scheduled time has passed. If publishing has already
+                started, this post can no longer be cancelled.
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -2392,6 +2418,15 @@ function CancelScheduleDialog({
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="mt-4 rounded-control border border-error/30 bg-error/10 px-3 py-2 text-sm font-semibold leading-5 text-error"
+          >
+            {error}
+          </p>
+        ) : null}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
@@ -3935,6 +3970,14 @@ function getDraftTimeLabel(draft: ScheduleDraft) {
   }
 
   return `${draft.scheduledDate}, ${draft.scheduledTime} ${draft.timezone}`;
+}
+
+function hasScheduleTimePassed(draft: ScheduleDraft) {
+  const scheduledFor = draft.plannedScheduledFor
+    ? Date.parse(draft.plannedScheduledFor)
+    : Number.NaN;
+
+  return Number.isFinite(scheduledFor) && scheduledFor <= Date.now();
 }
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {

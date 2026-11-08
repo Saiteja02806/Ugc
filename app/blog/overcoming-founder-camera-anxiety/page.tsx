@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "Can I try this workflow for free?",
-    answer: "Yes. Vidmake offers a 7-day free trial with 2 credits and no credit card required, followed by self-serve plans from $19/mo.",
+    answer: "Yes. Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
   },
 ] as const;
 

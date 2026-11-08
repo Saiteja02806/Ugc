@@ -16,6 +16,12 @@ A later literal first-frame image remains continuation unless the user selects
 another supported reconstruction route. The audit procedures below support the
 evidence; keep the final provider prompt concise.
 
+Use [ugc-source-prompt-completeness](../ugc-source-prompt-completeness/SKILL.md)
+when the task is to verify that an existing assembled prompt covers the entire
+source video end to end, including camera movement, transitions, holds, cuts and
+the final frame. It produces the timestamped gap table and the completeness
+verdict; this skill remains the authority for writing the replacement prompt.
+
 ## Why this skill exists
 
 A wrong prompt can ruin the entire Recreate flow even when the generated starting image looks correct. The image prompt and motion prompt are coupled. Do not improve facial visibility by silently discarding chronology, hand gestures, camera motion or the real source reference timeline.

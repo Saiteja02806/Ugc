@@ -366,6 +366,28 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   assert.equal(view().referenceImageUrls.length, 0);
 });
 
+test("changing the slideshow reference keeps the chosen face but flags obsolete slide marks", () => {
+  const refs = ["first", "second"].map(id => ({ id, format: "slideshow", title: id, slides: Array.from({ length: 6 }, (_, index) => ({ id: `${id}-${index}`, url: `https://storage.test/${id}-${index}.png` })) }));
+  const h = harness("slideshow", "refId=first", { catalogue: refs });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  const view = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView;
+  view().contextBanner.props.onSelectionChange(["first-1"]);
+  view().slideshowFaceSwap.onInfluencerChange({ id: "face-1", url: "https://owned.test/face.png", title: "Person" });
+  view().slideshowFaceSwap.onSlideIdsChange(["first-1"]);
+  assert.deepEqual(Array.from(view().slideshowFaceSwap.slideIds), ["first-1"]);
+  assert.equal(view().slideshowFaceSwap.stale, false);
+
+  nodes(h.render()).find(n => n.type === "ReferenceCard" && n.props.reference.id === "second").props.onRecreate();
+  assert.equal(view().slideshowFaceSwap.influencer.id, "face-1", "the chosen face is kept");
+  assert.deepEqual(Array.from(view().slideshowFaceSwap.slideIds), [], "old deck marks do not carry over");
+  assert.equal(view().slideshowFaceSwap.stale, true, "the composer must explain why nothing will be swapped");
+
+  view().contextBanner.props.onSelectionChange(["second-1"]);
+  view().slideshowFaceSwap.onSlideIdsChange(["second-1"]);
+  assert.deepEqual(Array.from(view().slideshowFaceSwap.slideIds), ["second-1"]);
+  assert.equal(view().slideshowFaceSwap.stale, false, "re-marking the new deck clears the flag");
+});
+
 test("video references mix both platforms before scroll expansion and retain single-platform filtering", () => {
   for (const format of ["hook", "wall_text"]) {
     const items = ["instagram", "tiktok"].flatMap(sourcePlatform => Array.from({ length: 16 }, (_, i) => ({

@@ -513,6 +513,14 @@ test("the actual preview boundaries cannot mount auth, job or billing hooks", ()
   assert.equal(locked.results.length, 0);
 });
 
+test("Talking Head has no free-pass generation path and stays blocked without credits", () => {
+  const actual = connectedHarness({ billing: { data: { userId: "owner-a", creditsRemaining: 0, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false } });
+  const view = actual.render(draft());
+  assert.equal(view.disabled, true, "A pass-only account cannot start a Talking Head video");
+  assert.match(view.message, /AI credits/);
+  assert.equal(actual.calls.filter(call => call.method === "POST").length, 0);
+});
+
 function connectedHarness(overrides = {}) {
   const state = {
     account: "owner-a", access: "pro", urlJob: null,

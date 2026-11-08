@@ -8,8 +8,8 @@ import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicato
 import styles from "@/components/explore/explore-workspace.module.css";
 import { cn } from "@/lib/utils";
 
-const CHARACTER_COVER = "/explore/covers/ai-character-promo-1fa7b02dc144.mp4";
-const CHARACTER_POSTER = "/explore/covers/ai-character-promo-opening-54eb209f7a68.webp";
+const CHARACTER_COVER = "/explore/covers/ai-character-promo-c59ea3f200cf.mp4";
+const CHARACTER_POSTER = "/explore/covers/ai-character-promo-opening-a2c2586bb623.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {
   const videoRef = useCoverPlayback(CHARACTER_COVER, "a", true, true);

@@ -17,6 +17,21 @@ const landingPreviewPaths = [
   ...Object.values(landingPreviews.videos).flatMap((asset) => [asset.src, asset.poster]),
   ...Object.values(landingPreviews.slideshows).flatMap((asset) => asset.slides.map((slide) => slide.src)),
 ];
+// Only the active, content-hashed Explore cover files. Legacy cover names stay
+// mutable so an in-place replacement is never cached for a year.
+const exploreCoverPaths = [
+  "/explore/covers/talking-head-demo-promo-a4aa6e943cf2.mp4",
+  "/explore/covers/talking-head-demo-promo-opening-c51c9e41d21c.webp",
+  "/explore/covers/hook-video-promo-31c869823edc.mp4",
+  "/explore/covers/hook-video-promo-opening-5ac8b093365d.webp",
+  "/explore/covers/wall-of-text-promo-e3d92b47d085.mp4",
+  "/explore/covers/wall-of-text-promo-opening-fe608c4b40a0.webp",
+  "/explore/covers/slideshow-promo-19a41bb41632.mp4",
+  "/explore/covers/slideshow-promo-opening-5fdb2507fcf3.webp",
+  "/explore/covers/ai-character-promo-c59ea3f200cf.mp4",
+  "/explore/covers/ai-character-promo-opening-a2c2586bb623.webp",
+];
+const immutablePreviewPaths = [...new Set([...landingPreviewPaths, ...exploreCoverPaths])];
 
 const firebaseAuthHelperDomain =
   process.env.NEXT_PUBLIC_FIREBASE_AUTH_HELPER_DOMAIN ??
@@ -113,7 +128,7 @@ const nextConfig: NextConfig = {
   async headers() {
     // Only these content-hashed files are immutable. Existing mutable public
     // media keeps its current policy and URLs.
-    return landingPreviewPaths.map((src) => ({
+    return immutablePreviewPaths.map((src) => ({
       source: src,
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     }));

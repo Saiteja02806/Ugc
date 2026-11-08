@@ -123,7 +123,7 @@ function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled
   return <Popover open={open} onOpenChange={next => { if (!next) stopPreview(); else setError(null); setOpen(next); }}>
     <PopoverTrigger render={<Button type="button" variant="outline" disabled={busy} className={secondary.action} />}>Audio Library</PopoverTrigger>
     <PopoverContent align="start" className="w-[25rem] max-w-[calc(100vw-32px)] space-y-3 p-4">
-      <PopoverTitle>Background audio library</PopoverTitle>
+      <PopoverTitle>Background music library</PopoverTitle>
       {localPreview ? <p className="text-xs leading-5 text-muted">Sign in to the app to browse background music. This local preview doesn&apos;t load the library.</p>
         : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to browse background music.</p> : <>
           <p className="text-xs leading-5 text-muted">Choose background music for your video. Preview a track before adding it.</p>

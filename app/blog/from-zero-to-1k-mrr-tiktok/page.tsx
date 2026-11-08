@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "What does it cost to run this organic strategy?",
-    answer: "Organic posting on TikTok and Reels is free. Vidmake offers a 7-day free trial with 2 credits and monthly self-serve plans starting at $19 and $49 with no lock-in contracts.",
+    answer: "Organic posting on TikTok and Reels is free. Vidmake offers a 7-day free trial with 20 daily content pieces and monthly self-serve plans starting at $29 and $49 with no lock-in contracts.",
   },
 ] as const;
 

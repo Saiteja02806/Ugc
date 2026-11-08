@@ -9,15 +9,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Look upward and sideways, blink slowly and let the trembling smile soften into a sad pout."
+            "action": "PHASE [0–0.357143]: Look upward and sideways, blink slowly and let the trembling smile soften into a sad pout."
           },
           {
             "phase": "middle",
-            "action": "Slide the fingertips from the lips across the cheek, briefly close the eyes and reopen them looking upward."
+            "action": "PHASE [0.357143–0.642857]: Slide the fingertips from the lips across the cheek, briefly close the eyes and reopen them looking upward."
           },
           {
             "phase": "ending",
-            "action": "Gently dab beneath the eye with the same fingertips and hold the small sad expression."
+            "action": "PHASE [0.642857–1]: Gently dab beneath the eye with the same fingertips and hold the small sad expression."
           }
         ],
         "camera": "Keep the tight handheld close-up with gentle natural drift.",
@@ -229,15 +229,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Slide the sunglasses down the bridge of the nose to reveal very wide eyes, then pull them forward off the face."
+            "action": "PHASE [0–0.448718]: Slide the sunglasses down the bridge of the nose to reveal very wide eyes, then pull them forward off the face."
           },
           {
             "phase": "middle",
-            "action": "Hold the sunglasses below the chin in the same hand, then lower them out of view while keeping the eyes wide and mouth open."
+            "action": "PHASE [0.448718–0.705128]: Hold the sunglasses below the chin in the same hand, then lower them out of view while keeping the eyes wide and mouth open."
           },
           {
             "phase": "ending",
-            "action": "Glance slightly sideways, move closer to the lens and bring the same now-empty hand to the forehead as the lips briefly purse."
+            "action": "PHASE [0.705128–1]: Glance slightly sideways, move closer to the lens and bring the same now-empty hand to the forehead as the lips briefly purse."
           }
         ],
         "camera": "Move the close handheld viewpoint slightly closer near the ending.",
@@ -1120,15 +1120,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Hold the covered-mouth pose with small eye and head movements, then close the eyes."
+            "action": "PHASE [0–0.625]: Hold the covered-mouth pose with small eye and head movements, then close the eyes."
           },
           {
             "phase": "middle",
-            "action": "Lower the hand away from the mouth and loosely lift it beside the temple, revealing a tight closed-lip smile."
+            "action": "PHASE [0.625–0.833333]: Lower the hand away from the mouth and loosely lift it beside the temple, revealing a tight closed-lip smile."
           },
           {
             "phase": "ending",
-            "action": "Reopen the eyes and retain the slightly pained, amused smile as the hand leaves the picture and the viewpoint shifts briefly."
+            "action": "PHASE [0.833333–1]: Reopen the eyes and retain the slightly pained, amused smile as the hand leaves the picture and the viewpoint shifts briefly."
           }
         ],
         "camera": "Maintain the close handheld selfie with a brief small shift near the ending.",
@@ -1170,15 +1170,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Bring the glasses down and back onto the nose while keeping fingertips at their upper outer corner."
+            "action": "PHASE [0–0.63253]: Bring the glasses down and back onto the nose while keeping fingertips at their upper outer corner."
           },
           {
             "phase": "middle",
-            "action": "Open the eyes toward the lens, knit the brows and maintain the rounded open-mouth incredulous expression."
+            "action": "PHASE [0.63253–0.813253]: Open the eyes toward the lens, knit the brows and maintain the rounded open-mouth incredulous expression."
           },
           {
             "phase": "ending",
-            "action": "Blink briefly and make a small head movement, keeping the glasses on and fingertips touching their corner."
+            "action": "PHASE [0.813253–1]: Blink briefly and make a small head movement, keeping the glasses on and fingertips touching their corner."
           }
         ],
         "camera": "Maintain the tilted close composition with gentle natural drift.",
@@ -1541,15 +1541,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Slowly bring the eyes and face toward the lens while keeping the fingertip on the lower lip."
+            "action": "PHASE [0–0.446429]: Slowly bring the eyes and face toward the lens while keeping the fingertip on the lower lip."
           },
           {
             "phase": "middle",
-            "action": "Widen the eyes and maintain the inward-raised brows and open-mouth incredulous expression."
+            "action": "PHASE [0.446429–0.714286]: Widen the eyes and maintain the inward-raised brows and open-mouth incredulous expression."
           },
           {
             "phase": "ending",
-            "action": "Hold the stare toward the lens with small head adjustments and the same fingertip still at the lower lip."
+            "action": "PHASE [0.714286–1]: Hold the stare toward the lens with small head adjustments and the same fingertip still at the lower lip."
           }
         ],
         "camera": "Maintain the close selfie angle with only subtle movement.",
@@ -1741,15 +1741,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Close the mouth into a tight smile, briefly close the eyes and bring the gaze toward the lens."
+            "action": "PHASE [0–0.288462]: Close the mouth into a tight smile, briefly close the eyes and bring the gaze toward the lens."
           },
           {
             "phase": "middle",
-            "action": "Lift both hands away from the temples and bring the palms inward toward the middle of the face."
+            "action": "PHASE [0.288462–0.432692]: Lift both hands away from the temples and bring the palms inward toward the middle of the face."
           },
           {
             "phase": "ending",
-            "action": "Cover the nose and mouth with the fingertips meeting at the bridge of the nose, then hold the overwhelmed amused pose with small eye closures and sideways glances."
+            "action": "PHASE [0.432692–1]: Cover the nose and mouth with the fingertips meeting at the bridge of the nose, then hold the overwhelmed amused pose with small eye closures and sideways glances."
           }
         ],
         "camera": "Keep the seated tabletop framing steady.",
@@ -2689,15 +2689,15 @@
         "beats": [
           {
             "phase": "opening",
-            "action": "Keep the startled expression while moving the viewpoint back and down toward a wider tabletop composition."
+            "action": "PHASE [0–0.576923]: Keep the startled expression while moving the viewpoint back and down toward a wider tabletop composition."
           },
           {
             "phase": "middle",
-            "action": "Let the viewpoint settle as the open laptop and pen become visible, then withdraw the extended arm and lower that hand toward the laptop trackpad."
+            "action": "PHASE [0.576923–0.741758]: Let the viewpoint settle as the open laptop and pen become visible, then withdraw the extended arm and lower that hand toward the laptop trackpad."
           },
           {
             "phase": "ending",
-            "action": "Hold the wide-eyed open-mouth reaction with small eye movements and a late blink, with the hand resting near the trackpad."
+            "action": "PHASE [0.741758–1]: Hold the wide-eyed open-mouth reaction with small eye movements and a late blink, with the hand resting near the trackpad."
           }
         ],
         "camera": "Retreat and lower the viewpoint into a wider table view before settling.",

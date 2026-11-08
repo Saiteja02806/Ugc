@@ -25,7 +25,23 @@ test("the slideshow preview fills its pane and the header wraps instead of overf
   assert.match(css, /\.previewHeading \{[^}]*align-items: center/);
   assert.match(css, /\.headerActions \{[^}]*min-width: 0/);
   assert.match(css, /\.headerActions \{[^}]*margin-left: auto/);
+  // Stage actions live in a full-width bar under the preview, not inside the rail.
+  assert.match(css, /\.previewActions \{[^}]*grid-column: 1 \/ -1/);
+  assert.match(css, /\.previewActions \{[^}]*grid-row: 4/);
+  assert.match(css, /\.previewActions \{[^}]*flex-wrap: wrap/);
+  assert.match(css, /\.previewActions button \{[^}]*white-space: nowrap/);
+  assert.doesNotMatch(css, /\.sequence \.headerActions/);
   assert.match(css, /\.filmstrip \{[^}]*max-height: clamp\(244px, 38dvh, 340px\)/);
+});
+
+test("Add slides tiles request thumbnail-sized images instead of full originals", () => {
+  const source = readFileSync(new URL("../components/explore/slideshow-add-slides.tsx", import.meta.url), "utf8");
+  assert.match(source, /import \{[^}]*imagePickerThumbnailUrl[^}]*\} from "@\/lib\/media\/image-picker"/);
+  assert.match(source, /src=\{imagePickerThumbnailUrl\(item\.url\)\}/);
+  assert.doesNotMatch(source, /src=\{item\.url\}/);
+  assert.match(source, /staleTime: REFERENCE_IMAGE_STALE_MS/);
+  assert.match(source, /loading="lazy"/);
+  assert.match(source, /decoding="async"/);
 });
 
 function load(file, imports = {}, globals = {}) {
@@ -587,17 +603,17 @@ test("simplified toolbar retains library background replacement, text and save i
   assert.deepEqual(h.requests.at(-1).editorDraft.slides.map(slide => slide.mediaAssetId), [id(808), id(202)]);
   assert.equal(h.requests.at(-1).editorDraft.slides[0].design.heading, "Keep my words");
 });
-test("the preview header exposes review and save-only directly throughout recovery", async () => {
+test("the preview rail exposes review and save-only directly throughout recovery", async () => {
   let continued = 0;
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
   const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Review post", "Saving…"].includes(text(node)));
   const assertAction = label => {
     assert.equal(primary().length, 1); assert.equal(text(primary()[0]), label);
     const preview = nodes(h.render()).find(node => node.props?.["aria-label"] === "Slideshow edit preview");
-    const header = nodes(preview).find(node => node.type === "header");
-    assert.equal(nodes(header).filter(node => node.type === "Button" && text(node) === label).length, 1);
+    assert.equal(nodes(preview).filter(node => node.type === "Button" && text(node) === label).length, 1);
     assert.equal(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
-    const actions = nodes(header).find(node => node.props?.["aria-label"] === "Slideshow actions");
+    const actions = nodes(preview).find(node => node.props?.["aria-label"] === "Slideshow actions");
+    assert.ok(actions, "The slides actions remain directly exposed in the preview rail");
     assert.ok(actions.props.children.some(node => node?.type === "Button" && text(node) === label));
     assert.equal(nodes(actions).some(node => node.type === "details"), false);
   };

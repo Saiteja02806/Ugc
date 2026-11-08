@@ -84,7 +84,7 @@ export default function UgcAdsWithClaudeMcpPage() {
 
         <ArticleH2>What you need</ArticleH2>
         <ul className="list-disc space-y-2 pl-5">
-          <li>A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $19 a month.</li>
+          <li>A Vidmake account. The seven-day free trial needs no credit card; paid plans start at $29 a month.</li>
           <li>Claude on the web or desktop (or Claude Code).</li>
           <li>
             The hosted server URL: <ArticleCode>https://vidmake.io/mcp</ArticleCode>

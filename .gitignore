@@ -82,6 +82,16 @@ __pycache__/
 /design/explore-hook-motion/Auto-Save/*.aep
 /design/explore-phone-motion/Auto-Save/*.aep
 
+# Local Vidmake intro review exports must never enter a release commit.
+/vidmake-intro*.mp4
+**/vidmake-intro*.mp4
+
+# Local Remotion review selections and the held intro-video source clips.
+/part1-male-selections/
+/part2-female-selections/
+/remotion/public/explore/covers/sources/vidmake/*.mp4
+/remotion/public/explore/covers/sources/vidmake/*.mp3
+
 # debug
 npm-debug.log*
 yarn-debug.log*

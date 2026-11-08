@@ -249,7 +249,7 @@ test("source-only local preview cannot submit an image or create a fake generati
 
 test("opening preparation shows the actual frame and separate inputs without automatically submitting generation", async () => {
   const h = harness(); h.render(); await h.settle(); const tree = h.render();
-  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Source frame/); assert.match(text(tree), /Your photos/);
+  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Source frame/); assert.match(text(tree), /Face identity photos/);
   assert.equal(nodes(tree).some(node => node.props?.role === "switch"), false);
   assert.doesNotMatch(text(tree), /Video settings|Review animation instructions/);
   assert.equal(button(tree, "Generate starting image").props.disabled, true);
@@ -672,7 +672,7 @@ test("Recreate reserves source, person and result columns before generation with
   const person = nodes(tree).find(node => node.props?.["data-recreation-step"] === "person");
   const result = nodes(tree).find(node => node.props?.["data-recreation-step"] === "result");
   assert.ok(source && person && result);
-  assert.match(text(source), /1 Source frame/); assert.match(text(person), /2 Your photos/); assert.match(text(result), /3 Your starting frame/);
+  assert.match(text(source), /1 Source frame/); assert.match(text(person), /2 Face identity photos/); assert.match(text(result), /3 Your starting frame/);
   assert.match(text(result), /will appear here/);
   assert.equal(button(tree, "Use selected frame"), undefined);
   assert.ok(button(tree, "Generate starting image"));
@@ -950,9 +950,9 @@ test("starting image prompt is collapsed by default with the full editor and pre
  assert.ok(nodes(disclosure).some(n=>n.type==="textarea"&&n.props.name==="starting-image-prompt"));
  assert.ok(text(disclosure).includes("Save my prompt"));
  assert.ok(text(disclosure).includes("Use as my default in this browser"));
+ assert.ok(text(tree).includes("Image 1 supplies the scene."), "the image-role caption is visible in the face identity section");
  const hiddenPreferences=nodes(disclosure).find(n=>n.type==="div"&&n.props.hidden===true);
  assert.ok(hiddenPreferences,"prompt preferences stay hidden even when the disclosure opens");
- assert.ok(text(hiddenPreferences).includes("Image 1 supplies the scene."));
  assert.ok(text(hiddenPreferences).includes("Use application prompt"));
  assert.ok(text(hiddenPreferences).includes("Save my prompt"));
  assert.ok(text(hiddenPreferences).includes("Use as my default in this browser"));

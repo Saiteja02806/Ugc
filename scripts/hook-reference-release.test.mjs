@@ -38,7 +38,7 @@ test("the active Hook gallery retains reviewed source links and respects silent 
   const octoberReady = validateHookAdditionRelease(octoberBatch, textCatalog);
   const refreshReady = validateHookAdditionRelease(octoberRefresh, textCatalog);
   const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible, ...reclassified.items];
-  assert.equal(ready.eligible.length, 42); assert.equal(release.items.length, 46);
+  assert.equal(ready.eligible.length, 42); assert.equal(release.items.length, 45);
   assert.equal(additionReady.eligible.length, 31); assert.equal(additions.items.length, 31);
   assert.equal(batchReady.eligible.length, 20);
   assert.equal(octoberReady.eligible.length, 1);

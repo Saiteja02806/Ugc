@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Download } from "lucide-react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { JsonLd } from "@/components/marketing/json-ld";
 import { ConnectAiPanel } from "@/components/mcp-onboarding/connect-ai-panel";
+import { publicOrigin } from "@/lib/marketing/public-origin";
 import styles from "./connect-ai.module.css";
 
 const connectTitle = "Connect your AI";
@@ -32,6 +34,27 @@ export default function ConnectAiPage() {
     <main
       className={`instagram-theme ${styles.page} min-h-screen bg-background text-foreground`}
     >
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebPage",
+              name: connectTitle,
+              description: connectDescription,
+              url: `${publicOrigin}/connect-ai`,
+              isPartOf: { "@type": "WebSite", name: "Vidmake", url: publicOrigin },
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Vidmake", item: publicOrigin },
+                { "@type": "ListItem", position: 2, name: connectTitle, item: `${publicOrigin}/connect-ai` },
+              ],
+            },
+          ],
+        }}
+      />
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link href="/" className="flex items-center gap-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">

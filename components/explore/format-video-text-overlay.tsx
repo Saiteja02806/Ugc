@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTextLayout, formatTextLineRuns, formatInlineSymbolPaths, positionFormatText, type ExploreFormatText } from "@/worker/src/lib/explore-format-edit";
 import { exploreEmojiUrl } from "@/worker/src/lib/explore-emoji";
@@ -12,7 +12,8 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
   text: ExploreFormatText; width: number; height: number; label: string;
   onChange?: (text: ExploreFormatText) => void; onMoveStart?: () => void;
 }) {
-  const layout = formatTextLayout(text, width, height), background = layout.background;
+  const layout = useMemo(() => formatTextLayout(text, width, height), [text, width, height]);
+  const background = layout.background;
   const drag = useRef<{ id: number; clientX: number; clientY: number; x: number; y: number; width: number; height: number } | null>(null);
   function move(event: ReactPointerEvent<SVGRectElement>) {
     const start = drag.current;
@@ -27,13 +28,15 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
   const hitPadding = width * .025;
-  const renderLetters = (value: string, x: number, y: number, anchor: "start" | "middle" = "start", pathX = x) => {
-    const paths = referenceCaptionPaths(value, text.font, layout.fontWeight, text.preset, layout.fontSize, pathX, y);
-    return paths ? paths.map((d, index) => <path key={index} d={d} />) : <text x={x} y={y} textAnchor={anchor}>{value}</text>;
-  };
-  return <svg aria-label={label} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full">
-    {background ? <rect x={background.x} y={background.y} width={background.width} height={background.height} fill={"color" in background ? background.color : "#000000"} fillOpacity={background.opacity} /> : null}
-    <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : layout.outlineWidth} strokeLinejoin={background ? undefined : layout.outlineJoin} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
+  // Text layout and per-glyph SVG paths are content-derived. Keep the painted
+  // layer stable across playback time updates and unrelated parent renders;
+  // only an actual text/style change invalidates it.
+  const paintedText = useMemo(() => {
+    const renderLetters = (value: string, x: number, y: number, anchor: "start" | "middle" = "start", pathX = x) => {
+      const paths = referenceCaptionPaths(value, text.font, layout.fontWeight, text.preset, layout.fontSize, pathX, y);
+      return paths ? paths.map((d, index) => <path key={index} d={d} />) : <text x={x} y={y} textAnchor={anchor}>{value}</text>;
+    };
+    return <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : layout.outlineWidth} strokeLinejoin={background ? undefined : layout.outlineJoin} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
       {layout.lines.map((line, index) => {
         const y = layout.y + index * layout.lineHeight + layout.fontSize;
         const runs = formatTextLineRuns(line, text, layout);
@@ -45,8 +48,11 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
           : referenceLinePaths ? <g key={index}>{referenceLinePaths.map((d, i) => <path key={i} d={d} />)}</g>
           : <text key={index} x={text.align === "left" ? layout.x - layout.textWidth / 2 : layout.x} y={y} textAnchor={text.align === "left" ? "start" : undefined}>{line}</text>;
       })}
-
-    </g>
+    </g>;
+  }, [background, layout, text]);
+  return <svg aria-label={label} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full">
+    {background ? <rect x={background.x} y={background.y} width={background.width} height={background.height} fill={"color" in background ? background.color : "#000000"} fillOpacity={background.opacity} /> : null}
+    {paintedText}
     {onChange && text.value.trim() ? <rect data-text-handle role="button" tabIndex={0} aria-label={`Move ${label}`} aria-roledescription="draggable text"
       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
       x={layout.x - layout.textWidth / 2 - hitPadding} y={height * text.y - hitPadding}

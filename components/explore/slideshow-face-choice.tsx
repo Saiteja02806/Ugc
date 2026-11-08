@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { fetchFormatReferenceImages } from "@/lib/explore/format-reference-images";
 import { fetchInfluencerPhotoLibrary } from "@/lib/characters/photo-library-client";
 import { mergeCharacterHistoryPages } from "@/lib/characters/history";
+import { imagePickerThumbnailUrl } from "@/lib/media/image-picker";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +125,7 @@ export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect, onB
         const selectedIndex = selectedPhotos.findIndex(photo => photo.id === face.id);
         const pressed = selectedIndex >= 0;
         return <button key={face.id} type="button" role="option" aria-selected={pressed} aria-label={face.title} title={face.title} disabled={disabled || uploading || !pressed && selectedPhotos.length >= MAX_SLIDESHOW_FACE_PHOTOS} onClick={() => toggle(face)} className={cn("relative aspect-square w-full overflow-hidden rounded-lg border bg-background focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50", pressed ? "border-primary ring-2 ring-primary" : "border-border")}>
-          <img src={face.url} alt="" width={80} height={80} className="size-full object-cover" />
+          <img src={imagePickerThumbnailUrl(face.url)} alt="" width={80} height={80} loading="lazy" decoding="async" className="size-full object-cover" />
           {pressed ? <span className="absolute inset-x-0 bottom-0 bg-background/90 text-[10px] leading-5">{selectedIndex === 0 ? "Primary" : `Photo ${selectedIndex + 1}`}</span> : null}
         </button>;
       })}

@@ -33,6 +33,7 @@ function component(file, name, dependencies) {
 function dialog({ eligible = [1, 2, 3, 4, 5, 6], face = null, ids = [] } = {}) {
   const mod = component("components/explore/slideshow-face-swap-control.tsx", "SlideshowFaceSwapControl", {
     "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogTitle", "DialogTrigger"].map(name => [name, name])),
+    "@/lib/media/image-picker": { imagePickerThumbnailUrl: url => url },
     "./slideshow-face-choice": { SlideshowFaceChoice: "FaceChoice" },
   });
   const commits = [];
@@ -120,6 +121,7 @@ function photos({ selected = null, upload = async file => ({ asset: { id: file.n
     "@/lib/explore/format-reference-images": { fetchFormatReferenceImages() {} },
     "@/lib/characters/photo-library-client": { fetchInfluencerPhotoLibrary() {} },
     "@/lib/characters/history": { mergeCharacterHistoryPages: () => [] },
+    "@/lib/media/image-picker": { imagePickerThumbnailUrl: url => url },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: upload },
     "@/lib/utils": { cn: (...args) => args.join(" ") },
   });

@@ -203,6 +203,34 @@
       "file": "/explore/talking-head-references/v1/talking-taliameals-hook-v2.mp4",
       "width": 720,
       "height": 1280
+    },
+    {
+      "id": "talking-kamile-mirror-discovery",
+      "file": "/explore/talking-head-references/v1/talking-kamile-mirror-discovery.mp4",
+      "sourceSha256": "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-kamile-kitchen-discovery",
+      "file": "/explore/talking-head-references/v1/talking-kamile-kitchen-discovery.mp4",
+      "sourceSha256": "c84230c6fb851792a8b210a43836dc2bb40718f3c7754673ea3f4ceaad151a5c",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-kamile-car-what",
+      "file": "/explore/talking-head-references/v1/talking-kamile-car-what.mp4",
+      "sourceSha256": "1845b89a8b940dcffb7243548a344b33f2307452fa5b8ac8fb08f02c6db3d8c8",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-kamile-lowlight-what",
+      "file": "/explore/talking-head-references/v1/talking-kamile-lowlight-what.mp4",
+      "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
+      "width": 576,
+      "height": 1024
     }
   ]
 }

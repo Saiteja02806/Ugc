@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-11-04",
+  "reviewedAt": "2026-11-08T13:37:32.403Z",
   "policy": "explicit-hook-selection-with-source-and-asr-evidence",
   "timingPrecision": "Approximate speech boundary; not frame-accurate alignment or rewritten-word timing",
   "items": [
@@ -380,6 +380,58 @@
       "notes": "No way is complete spoken reaction; grocery demo afterward is visual/music, not spoken overlay. Opening-only derivative, cut before the first demo frame. Original transcript retained separately. No new ASR was performed. User reviewed the displayed trimmed clip and approved it on 6 November 2026. Earlier review warning is resolved by this manual acceptance.",
       "independentModel": "gpt-transcribe",
       "independentText": "No way."
+    },
+    {
+      "referenceId": "talking-kamile-mirror-discovery",
+      "sourceSha256": "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
+      "transcriptSha256": "46a6462ae90858b0b9555d9a9cec0d6b451028c49aa3ed8fa5f2a7f9a90f2961",
+      "hookStartMs": 0,
+      "hookEndMs": 2433,
+      "hookText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+      "status": "cross_checked_draft",
+      "method": "Manual on-screen caption read; no audible speech and no ASR. Source frames inspected for visible silent mouthing.",
+      "notes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "independentModel": "manual-caption",
+      "independentText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??"
+    },
+    {
+      "referenceId": "talking-kamile-kitchen-discovery",
+      "sourceSha256": "c84230c6fb851792a8b210a43836dc2bb40718f3c7754673ea3f4ceaad151a5c",
+      "transcriptSha256": "20b974ee2a5cf5c9598da7ca06121082378b4d9b32aee9cf178cc5e7bd8d1167",
+      "hookStartMs": 0,
+      "hookEndMs": 4334,
+      "hookText": "been shopping at Aldi for 8 years and NOW I FIND THIS",
+      "status": "cross_checked_draft",
+      "method": "Manual on-screen caption read; no audible speech and no ASR. Source frames inspected for visible silent mouthing.",
+      "notes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "independentModel": "manual-caption",
+      "independentText": "been shopping at Aldi for 8 years and NOW I FIND THIS"
+    },
+    {
+      "referenceId": "talking-kamile-car-what",
+      "sourceSha256": "1845b89a8b940dcffb7243548a344b33f2307452fa5b8ac8fb08f02c6db3d8c8",
+      "transcriptSha256": "bcb9045cd98da382de63b02a22e23a8fe8ef33b8f98d3570ab26d8c133b53d00",
+      "hookStartMs": 0,
+      "hookEndMs": 2730,
+      "hookText": "I'm sorry but LIDL WHATTTTT?????",
+      "status": "cross_checked_draft",
+      "method": "Manual on-screen caption read; no audible speech and no ASR. Source frames inspected for visible silent mouthing.",
+      "notes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "independentModel": "manual-caption",
+      "independentText": "I'm sorry but LIDL WHATTTTT?????"
+    },
+    {
+      "referenceId": "talking-kamile-lowlight-what",
+      "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
+      "transcriptSha256": "d415fdd007e7d1cd0732b28bfc355b91e9ca97b4d2b004c5f7c608f385d5defe",
+      "hookStartMs": 0,
+      "hookEndMs": 2300,
+      "hookText": "LIDL ARE YOU KIDDING ME???!?!?!",
+      "status": "cross_checked_draft",
+      "method": "Manual on-screen caption read; no audible speech and no ASR. Source frames inspected for visible silent mouthing.",
+      "notes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "independentModel": "manual-caption",
+      "independentText": "LIDL ARE YOU KIDDING ME???!?!?!"
     }
   ]
 }

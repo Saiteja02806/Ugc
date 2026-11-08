@@ -261,6 +261,42 @@
       "durationSeconds": 1.566016,
       "generationPrompt": "Opening at t=0: a handheld indoor selfie, long straight dark hair, light camisole, pendant necklace and wall art behind the head. 0.00-0.27s: speak with lifted inner brows and an open mouth while raising an open palm toward the lens from screen-left. 0.27-0.83s: hold the spread fingers near the camera, close the eyes briefly and make a small side-to-side hand movement during the emphatic reaction. 0.83-1.17s: lower the hand and lean toward the camera. 1.17-1.567s: the phone tilts back slightly so more ceiling appears and the face moves lower and closer, continuing the final mouth movement. End on the face. Keep the source lighting, room, clothing, framing and visible props, with natural handheld drift. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. If generation lasts longer than this source hook, finish the described action by the source endpoint and hold its final composition. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
       "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118"
+    },
+    {
+      "id": "talking-kamile-mirror-discovery",
+      "title": "Mirror discovery reaction",
+      "videoUrl": "/explore/talking-head-references/v1/talking-kamile-mirror-discovery.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-kamile-mirror-discovery.jpg",
+      "durationSeconds": 2.433,
+      "generationPrompt": "A close vertical selfie in a bright bathroom, with a round mirror and grey wall behind her. She wears a white top and hoop earrings, keeps one hand at her temple, and silently mouths a surprised discovery reaction with wide eyes, raised eyebrows and an emphatic open mouth. The source has no audible voice: preserve the visible lip and jaw articulation and the hand-to-temple gesture at the same timing; do not replace the mouth performance with a closed or motionless mouth. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7661748122833407254"
+    },
+    {
+      "id": "talking-kamile-kitchen-discovery",
+      "title": "Kitchen discovery reaction",
+      "videoUrl": "/explore/talking-head-references/v1/talking-kamile-kitchen-discovery.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-kamile-kitchen-discovery.jpg",
+      "durationSeconds": 4.334,
+      "generationPrompt": "A close vertical selfie in a bright kitchen or laundry room, with a washing machine and window blinds behind her. She wears a white halter top with sunglasses pushed up on her head and silently mouths a surprised store-discovery reaction with a small head shake. The source has no audible voice: preserve the visible lip and jaw articulation at the same timing; do not replace the mouth performance with a closed or motionless mouth. The source ends on a brief phone insert; keep the reference talking-head only and do not recreate the phone, price screen or app UI. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7665993957603675414"
+    },
+    {
+      "id": "talking-kamile-car-what",
+      "title": "Car what reaction",
+      "videoUrl": "/explore/talking-head-references/v1/talking-kamile-car-what.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-kamile-car-what.jpg",
+      "durationSeconds": 2.73,
+      "generationPrompt": "A close vertical selfie in a parked car, with black leather seats and curtains behind her. She wears a beige hoodie, presses her fingers to her temple, and silently mouths an incredulous 'what?' reaction with widening eyes, raised eyebrows and a small head tilt. The source has no audible voice: preserve the visible lip and jaw articulation and the hand-to-temple gesture at the same timing; do not replace the mouth performance with a closed or motionless mouth. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7699540151675915553"
+    },
+    {
+      "id": "talking-kamile-lowlight-what",
+      "title": "Low-light what reaction",
+      "videoUrl": "/explore/talking-head-references/v1/talking-kamile-lowlight-what.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-kamile-lowlight-what.jpg",
+      "durationSeconds": 2.3,
+      "generationPrompt": "A close vertical selfie in a dim room with a warm brown wall behind her. She wears a black top, holds her fingers to her temple, and silently mouths a pained 'are you kidding me?' reaction with narrowed eyes, a furrowed brow and a slow disbelieving head tilt. The source has no audible voice: preserve the visible lip and jaw articulation and the hand-to-temple gesture at the same timing; do not replace the mouth performance with a closed or motionless mouth. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7698810635085384983"
     }
   ]
 }

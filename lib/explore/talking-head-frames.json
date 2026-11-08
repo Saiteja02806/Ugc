@@ -291,6 +291,46 @@
       "height": 1280,
       "frameIndex": 0,
       "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-kamile-mirror-discovery",
+      "sourceSha256": "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
+      "frameSha256": "3d4338e6aa3a80f40ea10a72210cf75b3c20d02426d961422f80ed322581e0e1",
+      "path": "/explore/talking-head-frames/v1/talking-kamile-mirror-discovery.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-kamile-kitchen-discovery",
+      "sourceSha256": "c84230c6fb851792a8b210a43836dc2bb40718f3c7754673ea3f4ceaad151a5c",
+      "frameSha256": "ceb8e38b54291f0b88f0e38d2c5045baa2f22594dc6a95389f4f985a1ba54486",
+      "path": "/explore/talking-head-frames/v1/talking-kamile-kitchen-discovery.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-kamile-car-what",
+      "sourceSha256": "1845b89a8b940dcffb7243548a344b33f2307452fa5b8ac8fb08f02c6db3d8c8",
+      "frameSha256": "a8876e4bcd51628f102b77f127c56241e5927ca4707ff042d0a6bad3ffc7df2e",
+      "path": "/explore/talking-head-frames/v1/talking-kamile-car-what.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-kamile-lowlight-what",
+      "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
+      "frameSha256": "c3a0cd1adc117f06e497e1721e3bce1c82f5d1fbac980ae38019415fed38caae",
+      "path": "/explore/talking-head-frames/v1/talking-kamile-lowlight-what.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
     }
   ]
 }

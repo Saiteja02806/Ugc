@@ -280,7 +280,7 @@ test("a replacement clears stale face URLs and unsupported model submission keep
   assert.equal(h.requests[0].body.startingFrameAssetId, replacement.assetId);
 });
 
-test("Hook starting-frame duration shows generated length, source-timed delivery and the trimmed final hold", () => {
+test("Hook starting-frame duration shows a compact auto-cut hint with duration details", () => {
   const h = harness("hook", { reference: false, captureRequests: true, seedanceEnabled: true });
   const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
     url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 8, sourceDurationSeconds: 2.5,
@@ -289,7 +289,10 @@ test("Hook starting-frame duration shows generated length, source-timed delivery
   const duration = () => composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration");
   duration().props.onChange("4");
   composer = h.render().composer;
-  assert.match(String(duration().props.fieldHint), /Generated 4s · 2\.5s source-timed delivery · 1\.5s final hold trimmed by default/);
+  const hint = duration().props.fieldHint;
+  assert.equal(hint.props.children[0].props.children, "Auto cut at 2.5s");
+  assert.equal(hint.props.children[1].props.children, "i");
+  assert.match(hint.props.children[1].props.title, /Generated 4s.*1\.5s hold is trimmed by default/);
   assert.match(composer.props.settingsSummary, /4s generated · 2\.5s delivery/);
 });
 

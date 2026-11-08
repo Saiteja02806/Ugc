@@ -1646,6 +1646,112 @@
           "endMs": 1040
         }
       ]
+    },
+    {
+      "referenceId": "talking-kamile-mirror-discovery",
+      "sourceSha256": "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
+      "durationMs": 2433,
+      "provider": "manual",
+      "model": "on-screen-caption-review",
+      "extractedAt": "2026-11-08T13:37:32.403Z",
+      "transcriptSha256": "46a6462ae90858b0b9555d9a9cec0d6b451028c49aa3ed8fa5f2a7f9a90f2961",
+      "fullText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+      "hookText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+      "hookStartMs": 0,
+      "hookEndMs": 2433,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "a61fa1dcf4f28280125cbe76eab8415a5726c89ded0140ca91deef1528be8a81",
+      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 12,
+      "segments": [
+        {
+          "text": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+          "startMs": 0,
+          "endMs": 2433
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-kamile-kitchen-discovery",
+      "sourceSha256": "c84230c6fb851792a8b210a43836dc2bb40718f3c7754673ea3f4ceaad151a5c",
+      "durationMs": 4334,
+      "provider": "manual",
+      "model": "on-screen-caption-review",
+      "extractedAt": "2026-11-08T13:37:32.403Z",
+      "transcriptSha256": "20b974ee2a5cf5c9598da7ca06121082378b4d9b32aee9cf178cc5e7bd8d1167",
+      "fullText": "been shopping at Aldi for 8 years and NOW I FIND THIS",
+      "hookText": "been shopping at Aldi for 8 years and NOW I FIND THIS",
+      "hookStartMs": 0,
+      "hookEndMs": 4334,
+      "review": "cross_checked_draft",
+      "corrections": [
+        "Source caption begins mid-sentence because the clip is trimmed; no leading word is visible."
+      ],
+      "selectionSha256": "297ae836e7fee671db8d0c340dce41355eab058e4953305d881f6b775b7d1a98",
+      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 12,
+      "segments": [
+        {
+          "text": "been shopping at Aldi for 8 years and NOW I FIND THIS",
+          "startMs": 0,
+          "endMs": 4334
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-kamile-car-what",
+      "sourceSha256": "1845b89a8b940dcffb7243548a344b33f2307452fa5b8ac8fb08f02c6db3d8c8",
+      "durationMs": 2730,
+      "provider": "manual",
+      "model": "on-screen-caption-review",
+      "extractedAt": "2026-11-08T13:37:32.403Z",
+      "transcriptSha256": "bcb9045cd98da382de63b02a22e23a8fe8ef33b8f98d3570ab26d8c133b53d00",
+      "fullText": "I'm sorry but LIDL WHATTTTT?????",
+      "hookText": "I'm sorry but LIDL WHATTTTT?????",
+      "hookStartMs": 0,
+      "hookEndMs": 2730,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "b7f48bcce29fa22012b74b423141043f872b9bc43d00617ba713a4fb38503f71",
+      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 5,
+      "segments": [
+        {
+          "text": "I'm sorry but LIDL WHATTTTT?????",
+          "startMs": 0,
+          "endMs": 2730
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-kamile-lowlight-what",
+      "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
+      "durationMs": 2300,
+      "provider": "manual",
+      "model": "on-screen-caption-review",
+      "extractedAt": "2026-11-08T13:37:32.403Z",
+      "transcriptSha256": "d415fdd007e7d1cd0732b28bfc355b91e9ca97b4d2b004c5f7c608f385d5defe",
+      "fullText": "LIDL ARE YOU KIDDING ME???!?!?!",
+      "hookText": "LIDL ARE YOU KIDDING ME???!?!?!",
+      "hookStartMs": 0,
+      "hookEndMs": 2300,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "9e9d0ef5583d2b275e6e01d57eb0b0d941022eb1b724e6c1569a0d5ec9f44fdd",
+      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "wordTimingWarnings": 0,
+      "hookWordCount": 5,
+      "segments": [
+        {
+          "text": "LIDL ARE YOU KIDDING ME???!?!?!",
+          "startMs": 0,
+          "endMs": 2300
+        }
+      ]
     }
   ]
 }

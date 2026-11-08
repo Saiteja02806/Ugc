@@ -1382,13 +1382,27 @@ export function VideoGenerationStudioPanel({
   const durationSummary = workflowFormat === "hook" && startingFrameSourceSeconds !== undefined
     ? `${durationSeconds}s generated · ${startingFrameDeliveredSeconds!.toFixed(1)}s ${startingFrameSourceSeconds > durationSeconds ? "compressed" : "delivery"}`
     : `${durationSeconds}s`;
-  const durationHint = workflowFormat === "hook" && startingFrameSourceSeconds !== undefined
+  const durationInfo = workflowFormat === "hook" && startingFrameSourceSeconds !== undefined
     ? startingFrameSourceSeconds > durationSeconds + 0.05
-      ? `Generated ${durationSeconds}s · ${startingFrameSourceSeconds.toFixed(1)}s source action compressed into it.`
+      ? `Generated ${durationSeconds}s. The ${startingFrameSourceSeconds.toFixed(1)}s source action is compressed into it.`
       : startingFrameSourceSeconds < durationSeconds - 0.05
-        ? `Generated ${durationSeconds}s · ${startingFrameSourceSeconds.toFixed(1)}s source-timed delivery · ${(durationSeconds - startingFrameSourceSeconds).toFixed(1)}s final hold trimmed by default. Extend the trim to keep the hold.`
-        : undefined
-    : undefined;
+        ? `Generated ${durationSeconds}s. The source action ends at ${startingFrameSourceSeconds.toFixed(1)}s; the final ${(durationSeconds - startingFrameSourceSeconds).toFixed(1)}s hold is trimmed by default. Extend the trim to keep the hold.`
+        : null
+    : null;
+  const durationHint = durationInfo ? (
+    <span className="inline-flex items-center gap-1">
+      <span>{startingFrameSourceSeconds! > durationSeconds ? `Source compressed into ${durationSeconds}s` : `Auto cut at ${startingFrameSourceSeconds!.toFixed(1)}s`}</span>
+      <button
+        type="button"
+        aria-label={`Duration details: ${durationInfo}`}
+        title={durationInfo}
+        data-duration-info
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus"
+      >
+        i
+      </button>
+    </span>
+  ) : undefined;
   const durationSetting = startingFrame ? <AiStudioSettingSelect ariaLabel="Video duration" fieldLabel="Duration" fieldLayout="classic" size="sm" fieldHint={durationHint}
     disabled={generationLocked && !recreateView?.preview || isGenerating} icon={<Clock3 className="size-3.5" aria-hidden="true" />}
     options={hookStartingFrameVideoDurations(model).map(seconds => ({ value: String(seconds), label: `${seconds} sec · ${seconds * creditsPerSecond} credits`, triggerLabel: `${seconds} sec` }))}

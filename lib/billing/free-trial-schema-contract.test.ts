@@ -29,6 +29,27 @@ const freeTrialAccess = readFileSync(
   new URL("./free-trial.ts", import.meta.url),
   "utf8",
 );
+const noGrantMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20261112120000_stop_granting_free_trial.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+test("new accounts no longer receive a free trial (paid-only, 2026-11-12)", () => {
+  // The onboarding trigger is kept but the function body must not insert an
+  // entitlement row for new accounts.
+  assert.match(
+    noGrantMigration,
+    /create or replace function public\.grant_free_trial_on_onboarding_completion\(\)/,
+  );
+  assert.doesNotMatch(noGrantMigration, /insert into public\.free_trial_entitlements/i);
+  assert.match(
+    noGrantMigration,
+    /as \$function\$\s*begin\s*return new;\s*end;\s*\$function\$;/,
+  );
+});
 
 test("free trial migration initializes new users and expires existing profiles", () => {
   assert.match(migration, /create table if not exists public\.free_trial_entitlements/);

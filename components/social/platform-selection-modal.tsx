@@ -13,9 +13,10 @@ import {
   ChevronRight,
   Clock3,
   ExternalLink,
-  LoaderCircle,
   Plus,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
@@ -931,7 +932,7 @@ export function PlatformSelectionModal({
 
           {submitting ? (
             <Alert className="border-success/20 bg-success/5 text-success">
-              <LoaderCircle className="animate-spin" />
+              <BlocksSpinner  />
               <AlertTitle>Scheduling post</AlertTitle>
               <AlertDescription className="text-success">
                 Saving the exact account settings and creating the calendar
@@ -1228,9 +1229,9 @@ function AccountsStep({
                       disabled={loading || Boolean(connectingPlatform)}
                     >
                       {status === "connecting" ? (
-                        <LoaderCircle
+                        <BlocksSpinner
                           data-icon="inline-start"
-                          className="animate-spin"
+                          
                         />
                       ) : (
                         <ExternalLink data-icon="inline-start" />
@@ -1260,9 +1261,9 @@ function AccountsStep({
               >
                 {connectingIntent === "add" &&
                 connectingPlatform === definition.platform ? (
-                  <LoaderCircle
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : (
@@ -1301,9 +1302,9 @@ function AccountsStep({
                   }
                 >
                   {connectingPlatform === definition.platform ? (
-                    <LoaderCircle
+                    <BlocksSpinner
                       data-icon="inline-start"
-                      className="animate-spin"
+                      
                     />
                   ) : (
                     <ExternalLink data-icon="inline-start" />

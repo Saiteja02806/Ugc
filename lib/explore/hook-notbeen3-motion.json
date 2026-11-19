@@ -1,0 +1,305 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "referenceId": "explore-paired-hook-f525568f0bb9b496bb4545fb",
+      "sourceSha256": "77bee0a369dcc40c092bb4f2801d8a0bb06881a5206cc6fd947545487b7ba84c",
+      "sourceDurationSeconds": 3.3,
+      "displayTitle": "Hook 127",
+      "plan": {
+        "openingState": "Seated at a laptop in a purple T-shirt and glasses. The mouth is already wide open and the eyes look toward the laptop on screen-right.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.121212121212]: Hold the open mouth while looking toward the laptop on screen-right."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.121212121212–0.424242424242]: Turn the head from screen-right toward the lens and stop facing it. Keep the jaw open. The eyes settle wide on the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.424242424242–0.545454545455]: The eyes close once and reopen toward screen-right. Keep the mouth open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.545454545455–0.676767575758]: Return the eyes to the lens and hold the open-mouth smile."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.676767575758–1]: The unseen hand lifts the recording phone and brings it nearer. The face grows and the laptop drops out below the frame. She stays seated. Keep the mouth open and the eyes on the lens."
+          }
+        ],
+        "camera": "The recording phone is held near the laptop, then the unseen hand lifts it and brings it nearer, so the face grows and the laptop leaves below. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "A closer seated face looks toward the lens, with the mouth open in a smile and the glasses still on.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 97,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 97 decoded frames inspected, plus 0.25s overviews and native detail sheets. Source frame zero and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-3aa8cc9e54d14297eee33173",
+      "sourceSha256": "a17c6f097c85f47b7627c142d69c885a83b3fc7a02d3a9e0ef27e6df4bc78da1",
+      "sourceDurationSeconds": 2.166016,
+      "displayTitle": "Hook 128",
+      "plan": {
+        "openingState": "Seated with a bent knee in view, glasses on, and a pink pen held in the screen-right hand near the parted lips. The face points down toward screen-right.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.107724504343]: Hold the pink pen near the parted lips and the downward screen-right look."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.107724504343–0.338563057706]: Turn the head from screen-right toward the lens and stop facing it. Keep the pink pen upright in the screen-right hand beside the lips, with the camera seeing the fingers wrapped around it. Open the jaw. The eyes settle wide on the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.338563057706–0.784851081432]: Hold the open mouth, upright pen and wide eyes on the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.784851081432–1]: The recording hand turns the phone toward screen-right and tips it down. The face shifts toward the left edge as a pink laptop keyboard enters at the lower-right. She stays seated and tips her head down toward screen-right. Lower the pen with the same hand toward the knee. The eyes close briefly, then lower toward screen-right."
+          }
+        ],
+        "camera": "The phone starts at one distance. At the end the recording hand turns it toward screen-right and down, shifting the face to the left and revealing the pink laptop at lower-right. The phone stays out of frame.",
+        "endingState": "The face is partly cropped at the left edge and turned down toward the pink laptop. The pink pen is lowered beside the bent knee.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 63,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 63 decoded frames inspected, plus 0.25s overviews and native detail sheets. Source frame zero and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-5675231d7816b695470d44db",
+      "sourceSha256": "27e60bd6081c3ef56223d943edacc326f12b237faaad780796aaef04e3502ed3",
+      "sourceDurationSeconds": 4.2,
+      "displayTitle": "Hook 131",
+      "plan": {
+        "openingState": "Seated portrait in a dark sports jacket with pink sleeves. The screen-left index finger already rests vertically against the center of the lips, with the other fingers curled and the back of that hand visible. The eyes look screen-right.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.174603095238]: Hold the index finger against the lips and the eyes toward screen-right."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.174603095238–0.246031666667]: Close the eyes once, then reopen them toward the lens. Keep the finger resting on the lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.246031666667–0.404761904762]: The eyes move to screen-left and hold. Keep the head nearly still and the finger on the lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.404761904762–0.619047619048]: The eyes move back to screen-right and hold, with the lids open. Keep the finger in place."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.619047619048–0.706349285714]: Close the eyes once, then reopen them nearer the lens. Keep the same finger on the lips."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.706349285714–0.833333333333]: The eyes settle screen-left and hold. Keep the finger against the lips."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.833333333333–1]: Close the eyes once, then reopen them toward screen-right and hold through the end. Keep the same hand in place."
+          }
+        ],
+        "camera": "The recording phone stays at one distance. The face stays the same size. Keep the slight handheld drift.",
+        "endingState": "The eyes look screen-right, with the same index finger against the lips and the other fingers curled.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 124,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 124 decoded frames inspected, plus 0.25s overviews and native detail sheets. Source frame zero and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-f7f9e04735c13625bea6edbe",
+      "sourceSha256": "1bc51f7c19ddff909abb887d3970a2635dbae62f12501fe3b3659501e3482b07",
+      "sourceDurationSeconds": 2.366016,
+      "displayTitle": "Hook 132",
+      "plan": {
+        "openingState": "Close seated selfie in a gray sweatshirt and a gold necklace. The screen-left palm rests against the cheek and the fingers point up, with their backs toward the camera. The teeth show in a smile and the eyes are narrowed.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.253590846385]: Hold the tooth-visible smile and the screen-left palm against the cheek. The eyes stay narrowed toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.253590846385–0.50718169277]: Slide the same hand down from the cheek and curl it under the chin. The sleeve covers the knuckles and the camera sees the back of the covered hand. Keep the smile."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.50718169277–0.662154017555]: Keep the curled hand under the chin. The lips close into a small smile and the eyes close."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.662154017555–1]: Turn the head slightly toward screen-left and stop there. Keep the sleeve-covered knuckles against the lower lip and chin. Hold the closed-lip smile and closed eyes."
+          }
+        ],
+        "camera": "The recording phone stays at one distance, with the face almost the same size and only slight drift.",
+        "endingState": "The head is turned slightly screen-left, the eyes are closed and the sleeve-covered knuckles support the chin beneath a closed-lip smile.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 69,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 69 decoded frames inspected, plus 0.25s overviews and native detail sheets. Source frame zero and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-4761ac251b85f086dacb20fd",
+      "sourceSha256": "d92ea31945c170ff46f5f69ed3c5a97686f8d11d26dc19614a8335216a04f0c2",
+      "sourceDurationSeconds": 4.933008,
+      "displayTitle": "Hook 133",
+      "plan": {
+        "openingState": "Seated close selfie in a gray top. The screen-right hand already lies across the mouth, with the palm against the lips and the back of the hand toward the camera. The eyes look at the lens.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.209473205801]: Keep the screen-right hand across the mouth and the eyes on the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.209473205801–0.290559634203]: The eyes close once, then open and settle up toward screen-right. Keep the hand against the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.290559634203–0.398675007217]: Hold the upward screen-right look with the lids open and the same hand across the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.398675007217–0.466246963313]: The eyes close once, then open and return toward the lens. Keep the back of the hand toward the camera and the palm against the lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.466246963313–0.648691427218]: Hold the covered-mouth pose with the eyes toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.648691427218–0.702749113725]: Move the same screen-right hand sideways away from the lips and out toward screen-right. The camera sees the back of that hand as it leaves. Reveal a small closed-lip smile. Keep the eyes on the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.702749113725–1]: Hold the small closed-lip smile, with the hand out of view and the eyes on the lens."
+          }
+        ],
+        "camera": "The recording phone stays at one distance. The face stays the same size, with only slight handheld drift.",
+        "endingState": "The hand is out of view, the lips hold a small smile and the eyes look at the lens.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 146,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All 146 decoded frames inspected, plus 0.25s overviews and native detail sheets. Source frame zero and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
+      "sourceSha256": "f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f",
+      "sourceDurationSeconds": 2.633008,
+      "displayTitle": "Hook 89",
+      "plan": {
+        "openingState": "Low-angle seated selfie in a yellow hoodie under the strip lights of a train. The mouth is open in a smile and the hands start low.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.151917502719]: Hold the open-mouth smile with the eyes toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.151917502719–0.303835005439]: The screen-right hand rises inside the yellow sleeve and presses the cuff over the mouth and lower nose. The camera sees the back of the sleeve-covered hand. The eyes narrow into a smiling squint and stay on the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.303835005439–0.645649386557]: The unseen hand brings the recording phone closer, so the face grows and less of the chest remains. She stays seated. Keep the same cuff pressed over the mouth, with the back of the covered hand toward the camera. Keep the eyes on the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.645649386557–1]: The unseen hand tips the recording phone upward, leaving the covered face low beneath more train ceiling. She stays seated. Keep the mouth covered and the eyes narrowed toward the lens."
+          }
+        ],
+        "camera": "The unseen hand brings the phone nearer, then tips it upward so more train ceiling enters and the face drops low. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "The close face sits low beneath the train ceiling, with the yellow cuff still covering the mouth and the eyes toward the lens.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 77,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All77decodedframes inspected, plus0.25s overviews and native detail sheets. Source0 and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-0c9e57769a98cec980e726a1",
+      "sourceSha256": "333b1b0996c162bdfee7bf1ee6fd0ea889a74cafb9635c46246f74198e63908e",
+      "sourceDurationSeconds": 2.267,
+      "displayTitle": "Hook 126",
+      "plan": {
+        "openingState": "Close reclined selfie in a black top. The screen-right forearm is raised beside the forehead. The brows pinch upward, the eyes squeeze shut, and the mouth is open in a crying grimace.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.279370533745]: Hold the raised forearm beside the forehead. Keep the brows pinched and the mouth trembling open, with the eyes squeezed shut."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.279370533745–0.455815174239]: The recording hand tips the phone, showing more of the patterned wall above the head. Lower the screen-right forearm out of view. Keep the crying grimace."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.455815174239–0.764593295104]: The recording hand brings the phone nearer so the face grows. Keep the head facing the lens and the eyes narrowed."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.764593295104–1]: Ease the face slightly back in the frame, with the mouth still open and the eyes squeezed shut."
+          }
+        ],
+        "camera": "The recording hand lets the phone tilt, then brings it closer before easing back slightly. Keep the small uneven handheld movement.",
+        "endingState": "The forearm is down, the brows are pinched and the mouth is still open in a crying grimace.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 68,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All68decodedframes inspected, plus0.25s overviews and native detail sheets. Source0 and final frames inspected. Generated image/video quality not tested."
+    },
+    {
+      "referenceId": "explore-paired-hook-a557969f8da32f3985ecf55e",
+      "sourceSha256": "6e59800db5d9ffa36e95645fe64cd5e8125e04cfb2a0177db1b3afae9c71c817",
+      "sourceDurationSeconds": 2.9,
+      "displayTitle": "Hook 130",
+      "plan": {
+        "openingState": "Seated close selfie in a gray hoodie against a pale slatted headboard. The screen-left fingertips rest on the lips and the camera sees the back of that hand. The eyes start toward the lens.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.172413793103]: Keep the fingertips at the lips and close the eyes briefly."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.172413793103–0.321838965517]: The eyes open, look up toward screen-right and hold. Keep the fingertips at the lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.321838965517–0.51724137931]: The unseen hand brings the recording phone closer, so the face grows. She stays seated. Keep the fingertips at the lips and the back of that hand toward the camera. The eyes return wide to the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.51724137931–0.620689655172]: Hold the closer face with the fingertips still at the lips. The lids relax slightly."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.620689655172–0.724137931034]: The unseen hand eases the phone farther away, so the head and shoulders return. She dips the head. Slide the same screen-left hand upward from the lips over the eyes and forehead, with the palm against the face and the camera seeing the back of that hand."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.724137931034–1]: Keep the head bowed and the same hand covering the eyes and forehead."
+          }
+        ],
+        "camera": "The unseen hand brings the phone nearer for the wide-eyed look and then farther away as the hand covers the face. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "The head is bowed, with the screen-left palm over the forehead and eyes and the back of that hand toward the camera.",
+        "constraints": []
+      },
+      "reviewedFrameCount": 87,
+      "reviewMethod": "all_decoded_frames",
+      "reviewNotes": "All87decodedframes inspected, plus0.25s overviews and native detail sheets. Source0 and final frames inspected. Generated image/video quality not tested."
+    }
+  ]
+}

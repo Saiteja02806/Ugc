@@ -1,8 +1,18 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Check, ChevronRight, Loader2, Plus, RefreshCw, Sparkles, Upload, UserRound, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Upload,
+  UserRound,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+import { useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,8 +61,13 @@ export function FaceSwapDialog({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync selected candidate with active influencer when dialog opens
-  useEffect(() => {
+  const [selectionContext, setSelectionContext] = useState<{
+    open: boolean;
+    activeInfluencer: typeof activeInfluencer;
+  } | null>(null);
+  // Reconcile a new open/influencer before displaying the dialog's selection.
+  if (!selectionContext || selectionContext.open !== open || selectionContext.activeInfluencer !== activeInfluencer) {
+    setSelectionContext({ open, activeInfluencer });
     if (open) {
       if (activeInfluencer) {
         setSelectedCandidate({
@@ -64,7 +79,7 @@ export function FaceSwapDialog({
       }
       setUploadError(null);
     }
-  }, [open, activeInfluencer]);
+  }
 
   const influencersQuery = useInfiniteQuery({
     queryKey: ["hook-influencer-history", ownerId ?? "signed-out"],
@@ -190,7 +205,7 @@ export function FaceSwapDialog({
               className="h-7 text-xs gap-1.5"
             >
               {uploading ? (
-                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                <BlocksSpinner className="size-3" aria-hidden="true" />
               ) : (
                 <Upload className="size-3" aria-hidden="true" />
               )}
@@ -213,7 +228,7 @@ export function FaceSwapDialog({
 
           {influencersQuery.isLoading || uploadsQuery.isLoading ? (
             <div className="py-8 flex flex-col items-center justify-center gap-2 text-muted">
-              <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+              <BlocksSpinner className="size-5 text-primary" aria-hidden="true" />
               <p className="text-xs">Loading your saved influencers…</p>
             </div>
           ) : totalCandidates === 0 ? (
@@ -359,7 +374,7 @@ export function FaceSwapDialog({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  <BlocksSpinner className="size-3.5" aria-hidden="true" />
                   <span>Starting swap…</span>
                 </>
               ) : (

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fetchReactionTextEdit } from "@/lib/trending/reaction-edit-client";
 import { ReactionTextEditRequestSchema, type ReactionTextEditRecord } from "@/lib/trending/reaction-edit-contract";
@@ -77,7 +78,7 @@ export function ReactionTextEditor({ item, onClose, onUpdated }: {
           <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
             <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-black">
               <video key={edit.previewUrl} src={edit.previewUrl} className="size-full object-cover" autoPlay muted loop playsInline controls aria-label="Reaction Reel preview" />
-              {preparing ? <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-sm text-white"><Loader2 className="size-5 animate-spin" />Preparing video</div> : null}
+              {preparing ? <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-sm text-white"><BlocksSpinner className="size-5" />Preparing video</div> : null}
             </div>
             <div className="space-y-2">
               <label htmlFor="reaction-reel-text" className="text-sm font-medium">On-screen text</label>

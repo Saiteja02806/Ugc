@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { talkingHeadReferenceSettings, visibleTalkingHeadReferences } from "../lib/explore/talking-head-reference.ts";
 import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
 import * as sessions from "../lib/explore/workflow-session.ts";
+
+import * as recreateTypes from "../lib/explore/recreate-types.ts";
+import * as videoFeed from "../lib/explore/video-reference-feed.ts";
 
 const catalogue = JSON.parse(readFileSync("lib/explore/talking-head-reference-catalog.json", "utf8"));
 function load(file, imports, globals = {}) {
@@ -42,16 +45,19 @@ const tick = () => new Promise(setImmediate);
 test("retired Talking Head cards are hidden in both modes while archived saved references restore", async () => {
   const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction", "talking-surprised-story"];
   const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny", "talking-carla-eatsss", "talking-taliameals"];
-  const replaced = new Set(["talking-discovery-full", "talking-bittenbyaturtle", "talking-carla-eatsss", "talking-taliameals"]);
-  const currentExpected = expected.filter(id => !replaced.has(id)).concat(["talking-discovery-hook-v2", "talking-bittenbyaturtle-hook-v2", "talking-carla-eatsss-hook-v2", "talking-taliameals-hook-v2", "talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"]);
+  const replaced = new Set(["talking-discovery-full", "talking-bittenbyaturtle", "talking-carla-eatsss", "talking-taliameals", "talking-studywithsab"]);
+  const currentExpected = expected.filter(id => !replaced.has(id)).concat(["talking-discovery-hook-v2", "talking-bittenbyaturtle-hook-v2", "talking-carla-eatsss-hook-v2", "talking-taliameals-hook-v2", "talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what", "talking-nicki-kitchen-reaction", "talking-lowlight-instagram-what"]);
   const jsx = (type, props) => ({ type, props });
   let warmed = 0, chosen = 0;
   const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
-    react: { useState: () => [null, () => {}] },
+    react: { useState: value => [value, () => {}] },
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "lucide-react": { RotateCcw: "rotate" },
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
-    "./recreate-workspace": { ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
+    "./reference-feed-upgrade": { useFullVideoReferenceFeed: () => ({ unlimited: true }), ReferenceFeedUpgrade: "upgrade" },
+    "@/lib/explore/recreate-types": recreateTypes,
+    "@/lib/explore/video-reference-feed": videoFeed,
+    "./recreate-workspace": { FilterMenu: "filter", ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
     "@/lib/explore/talking-head-reference": { visibleTalkingHeadReferences },
     "./talking-head-references.module.css": { default: {} },
     "./workflow-studio.module.css": { default: { referenceRecreateButton: "referenceRecreateButton" } },
@@ -64,7 +70,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
     return [value, ...nodes(value.props?.children)];
   }
   for (const startingFrameEnabled of [false, true]) {
-    const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() { chosen++; }, onRetry() {} });
+    const tree = TalkingHeadReferences({ items: catalogue.items.map(item => ({ ...item, format: "hook", category: null, categoryLabel: null, slides: [] })), startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() { chosen++; }, onRetry() {} });
     assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), currentExpected);
     const action = nodes(tree).find(node => node.type === "button" && node.props.onPointerEnter);
     assert.match(action.props["aria-label"], /^(Recreate|Preview) /);
@@ -87,7 +93,7 @@ test("retired Talking Head cards are hidden in both modes while archived saved r
 });
 
 test("catalogue preserves archival clips and supplied additions, including full-length previews", () => {
-  assert.equal(catalogue.items.length, 33);
+  assert.equal(catalogue.items.length, 35);
   assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 14);
   assert.equal(new Set(catalogue.items.map(item => item.id)).size, catalogue.items.length);
   for (const item of catalogue.items) {
@@ -95,23 +101,64 @@ test("catalogue preserves archival clips and supplied additions, including full-
     assert.ok(item.durationSeconds > 0 && item.durationSeconds < 120);
     assert.match(item.sourceUrl, /^https:\/\/www\.(?:tiktok\.com\/@[^/]+\/video\/\d+|instagram\.com\/reel\/[A-Za-z0-9_-]+\/)$/);
     const localBase = "public/explore/talking-head-references/v1/" + item.id;
-    assert.ok(existsSync(item.videoUrl.startsWith("/") ? "public"+item.videoUrl : localBase+".mp4"));
+    const sourcePath = item.videoUrl.startsWith("/") ? "public"+item.videoUrl : localBase+".mp4";
+    assert.ok(existsSync(sourcePath));
     assert.ok(existsSync(item.posterUrl.startsWith("/") ? "public"+item.posterUrl : localBase+".jpg"));
+    if (existsSync(sourcePath) && statSync(sourcePath).size > 10 * 1024 ** 2) {
+      assert.match(item.previewVideoUrl ?? "", /^\/explore\/talking-head-references\/v1\/previews\/talking-[a-z0-9-]+\.mp4$/);
+      const previewPath = "public"+item.previewVideoUrl;
+      assert.ok(existsSync(previewPath));
+      assert.ok(statSync(previewPath).size < statSync(sourcePath).size, item.id);
+    } else assert.equal(item.previewVideoUrl, undefined);
     assert.match(item.generationPrompt, /user's own spoken message/);
     assert.doesNotMatch(JSON.stringify(item), /fullvideo_ignore|[A-Z]:\\/);
   }
 });
 
-test("silent-mouth talking-head references describe the muted performance without copying the source claim", () => {
-  for (const id of ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"]) {
+test("long Talking Head discovery plays its reviewed hook cut without a full-source fallback", () => {
+  const long = visibleTalkingHeadReferences(catalogue.items).filter(item => item.durationSeconds > 4);
+  assert.equal(long.length, 15);
+  for (const item of long) {
+    const playback = recreateTypes.referencePlayback(item);
+    if (item.id === "talking-mug-story") {
+      assert.equal(playback.url, item.videoUrl, "the full mug story is already a self-contained hook");
+      continue;
+    }
+    const clipUrl = `/explore/talking-head-references/v1/previews/hook-only/${item.id}.mp4`;
+    assert.deepEqual(playback, { url: clipUrl, fallbackUrl: undefined });
+    assert.ok(statSync("public" + clipUrl).size > 0);
+    assert.notEqual(playback.url, item.videoUrl);
+  }
+  for (const item of catalogue.items.filter(item => item.durationSeconds <= 4)) {
+    assert.equal(item.hookPreviewVideoUrl, undefined);
+  }
+  assert.deepEqual(recreateTypes.referencePlayback({ videoUrl: "/source.mp4", previewVideoUrl: "/compressed.mp4" }), {
+    url: "/compressed.mp4", fallbackUrl: "/source.mp4",
+  });
+});
+
+test("Kamile talking-head defaults say the heard words and leave the on-screen caption out", () => {
+  const expected = {
+    "talking-kamile-mirror-discovery": /She speaks once, out loud: “No way\.”/u,
+    "talking-kamile-car-what": /She speaks once, out loud: “What\?”/u,
+    "talking-kamile-lowlight-what": /She speaks once, out loud: “What\?”/u,
+    "talking-kamile-kitchen-discovery": /She speaks once, out loud: “Are you choking\?”/u,
+  };
+  for (const [id, spoken] of Object.entries(expected)) {
     const item = catalogue.items.find(reference => reference.id === id);
     assert.ok(item, id);
-    assert.match(item.generationPrompt, /silently mouths/u);
-    assert.match(item.generationPrompt, /no audible voice/u);
-    assert.match(item.generationPrompt, /preserve the visible lip and jaw articulation/u);
+    assert.match(item.generationPrompt, spoken);
     assert.match(item.generationPrompt, /user's own spoken message/u);
-    assert.doesNotMatch(item.generationPrompt, /Lidl|Aldi/iu, "Brand claims stay in the source caption, not the generation prompt");
+    assert.doesNotMatch(item.generationPrompt, /silently mouths|no audible voice/u);
+    assert.doesNotMatch(item.generationPrompt, /Lidl|Aldi/iu);
   }
+});
+
+test("short Talking Head defaults preserve the observed gesture and final expression", () => {
+  const prompt = id => catalogue.items.find(item => item.id === id).generationPrompt;
+  assert.match(prompt("talking-bittenbyaturtle-hook-v2"), /0\.70–1\.30s: the screen-right hand[\s\S]+small closed-lip smile/u);
+  assert.match(prompt("talking-kamile-mirror-discovery"), /1\.23–1\.33s: lift the screen-left fingertips[\s\S]+lips still parted and upper teeth visible/u);
+  assert.match(prompt("talking-kamile-lowlight-what"), /eyes open[\s\S]+1\.23–1\.47s:[\s\S]+fingertips release[\s\S]+knitted brows and a narrowed, questioning look/u);
 });
 
 test("reference model selection respects actual whole-clip limits without trimming", () => {

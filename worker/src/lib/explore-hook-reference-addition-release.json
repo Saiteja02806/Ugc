@@ -2,7 +2,7 @@
   "version": 1,
   "mediaStatus": "published",
   "activation": "active",
-  "excludedReferenceIds": [],
+  "excludedReferenceIds": ["explore-paired-hook-6070b6ecbe246d879ce0bdcb"],
   "items": [
     {
       "id": "explore-paired-hook-4aa27111a23b04a6dd27717b",

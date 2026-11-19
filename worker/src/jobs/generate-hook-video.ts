@@ -6,6 +6,9 @@ import { generateAutomaticHookText } from "../lib/automatic-hook-text-worker.js"
 import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio, silenceGeneratedVideo } from "../lib/explore-generated-reference-audio.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
+import { AudioError } from "../lib/audio-contract.js";
+import { probeAudio } from "../lib/audio-media.js";
+import { downloadAudioToBuffer } from "../lib/download-video.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -455,6 +458,29 @@ async function generateWithProvider(
     const submittingImages = !providerOperationId && !providerOutputUrl;
     const ownedUrls = submittingImages && input.ownedImageReferences ? await resolveOwnedVideoImages(input.ownedImageReferences, job.user_id ?? "") : undefined;
     const referenceOffset = input.startingFrameImageUrl ? 1 : 0;
+    const referenceAudioUrls = submittingImages
+      ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls;
+    let referenceAudioDurationSeconds = input.referenceAudioDurationSeconds;
+    if (submittingImages && isJsonObject(job.input_json) && job.input_json.generationIntent === "image_voice_reference") {
+      const [voiceUrl] = referenceAudioUrls;
+      const minSeconds = input.model === "seedance_2_5" ? 5 : 1;
+      const maxSeconds = input.model === "seedance_2_5" ? 30 : 15;
+      if (referenceAudioUrls.length !== 1 || provider !== "reapi" || !input.generateAudio || (input.model !== "seedance_2_5" && input.model !== "wan_3_0")) {
+        throw new ProviderRequestNotSubmittedError("The saved Talking Head voice reference is invalid.");
+      }
+      const maxBytes = 15 * 1024 ** 2;
+      let duration;
+      try {
+        const bytes = await downloadAudioToBuffer(voiceUrl, { maxBytes, timeoutMs: 30_000, redirect: "error" });
+        duration = await probeAudio(bytes, {}, { maxBytes, formats: "mp3,wav" });
+      } catch (cause) {
+        throw new ProviderRequestNotSubmittedError("Could not verify the voice reference. Choose a complete, playable MP3 or WAV file.", { cause, retryable: !(cause instanceof AudioError) || cause.status === 503 });
+      }
+      if (duration < minSeconds || duration > maxSeconds) {
+        throw new ProviderRequestNotSubmittedError(`Choose a voice reference that measures ${minSeconds} to ${maxSeconds} seconds.`);
+      }
+      referenceAudioDurationSeconds = [duration];
+    }
     const params = {
       aspectRatio: input.aspectRatio,
       durationSeconds: input.durationSeconds,
@@ -467,9 +493,8 @@ async function generateWithProvider(
         ? ownedUrls?.[referenceOffset] ?? await resolveOwnedPrivateMediaUrl(input.avatarImageUrl, job.user_id ?? "") : input.avatarImageUrl,
       referenceImageUrls: !providerOperationId && !providerOutputUrl
         ? ownedUrls?.slice(referenceOffset) ?? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls,
-      referenceAudioUrls: !providerOperationId && !providerOutputUrl
-        ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls,
-      referenceAudioDurationSeconds: input.referenceAudioDurationSeconds,
+      referenceAudioUrls,
+      referenceAudioDurationSeconds,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoMode: input.referenceVideoMode,
       generateAudio: input.generateAudio,

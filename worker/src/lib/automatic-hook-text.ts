@@ -1,4 +1,4 @@
-import { assertSourceRelativeHookLength, HOOK_SOURCE_RELATIVE_REMIX_VERSION } from "./hook-remix-source-relative.ts";
+import { assertSourceRelativeHookLength } from "./hook-remix-source-relative.ts";
 import { fitInitialHookText, HOOK_INITIAL_TEXT_LAYOUT_VERSION } from "./hook-initial-text-layout.ts";
 import { DEFAULT_FORMAT_TEXT_STYLE, REFERENCE_FORMAT_TEXT_STYLE, formatTextEmojiError, formatTextLayout, parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format-edit.ts";
 import { initialWallText, initialWallHeadingBody, initialWallRegions, type WallTextProfile } from "./wall-initial-text-layout.ts";
@@ -27,7 +27,7 @@ export function validateAutomaticHookText(value: unknown, plan: AutomaticHookTex
     v.blocks.length !== plan.source.blocks.length || v.blocks.length < 1 || v.blocks.length > 20 || v.blocks.some(b => typeof b !== "string" || !b.trim() || b.trim().length > (plan.source.format === "wall_text" ? 6000 : 600) || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(b))) throw new Error("The automatic text does not match the reviewed reference.");
   const blocks = v.blocks.map(b => b.trim());
   if (blocks.join("").length > Math.max(80, Math.ceil(plan.source.blocks.reduce((sum,b) => sum+b.text.length,0)*1.3))) throw new Error("The automatic text is too long for this reference.");
-  if (plan.source.format === "hook" && plan.promptVersion >= HOOK_SOURCE_RELATIVE_REMIX_VERSION) assertSourceRelativeHookLength(blocks, plan.source, plan.businessContext);
+  if (plan.source.format === "hook" && plan.promptVersion >= 9) assertSourceRelativeHookLength(blocks, plan.source, plan.businessContext);
   if (blocks.some(b => formatTextEmojiError(b))) throw new Error("The automatic text contains an unsupported symbol.");
   return { blocks, heading: "", body: "" };
 }

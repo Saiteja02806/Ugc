@@ -4,6 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import type { HookKeyframePreviewRuntime } from "@/components/explore/hook-starting-frame-workspace";
 import { LazyHookStartingFrameWorkspace as HookStartingFrameWorkspace } from "@/components/explore/lazy-hook-starting-frame-workspace";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
+import { WorkflowCreationForm } from "@/components/explore/workflow-creation-form";
+import { StartingFrameAnimationReferences } from "@/components/explore/starting-frame-animation-references";
+import { TalkingHeadScriptSection } from "@/components/explore/talking-head-script-section";
+import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
+import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
+import { createWorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
+import catalog from "@/lib/explore/talking-head-reference-catalog.json";
+import { Volume2, VolumeX } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ReferenceCard } from "@/components/explore/recreate-workspace";
 import { createHookKeyframeDraft, hookKeyframeDraftStorageKey, serializeHookKeyframeDraft, updateHookKeyframeDraft } from "@/lib/explore/hook-keyframe-draft";
@@ -43,8 +52,18 @@ const fixtureInfluencers: MediaAsset[] = Array.from({ length: 6 }, (_, index) =>
   thumbnailUrl: samplePhotos[index % samplePhotos.length].url,
   width: samplePhotos[index % samplePhotos.length].width, height: samplePhotos[index % samplePhotos.length].height }));
 
+const mirrorPrompt = catalog.items.find(item => item.id === "talking-kamile-mirror-discovery")?.generationPrompt ?? "";
+const talkingFrame = {
+  assetId: "00000000-0000-4000-8000-000000000021", jobId: "00000000-0000-4000-8000-000000000022",
+  draftId: "00000000-0000-4000-8000-000000000023", ownerId: "local-ui-preview", referenceId: "talking-kamile-mirror-discovery",
+  sourceSha256: "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
+  url: "/explore/talking-head-references/v1/talking-kamile-mirror-discovery.jpg", width: 576, height: 1024,
+  durationSeconds: 4, sourceDurationSeconds: 2.433, motionInstructions: mirrorPrompt, generateAudio: true,
+};
+
 export function HookKeyframePreview({ preparationFormat = "hook" }: { preparationFormat?: StartingFrameWorkflow }) {
-  const [open, setOpen] = useState(false);
+  const talkingHead = preparationFormat === "talking_head";
+  const [open, setOpen] = useState(talkingHead);
   const [canResume, setCanResume] = useState(false);
   const [recentFrames, setRecentFrames] = useState<HookStartingFrameSelection[]>([]);
   const [selection, setSelection] = useState<HookStartingFrameSelection | null>(null);
@@ -109,6 +128,13 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       return { ok: true, status: 202, value: { ok: true, jobId: existing.jobId, generationId: existing.resultId, receipt: existing.receipt } };
     },
   }; }, []);
+  const audio = useLocalWorkflowMedia("audio");
+  const images = useLocalWorkflowImages(6);
+  const video = useLocalWorkflowMedia("video");
+  const [settings, setSettings] = useState(() => createWorkflowGenerationSettings(6, "google_omni"));
+  const [scene, setScene] = useState(mirrorPrompt);
+  const [sound, setSound] = useState(true);
+  const [spoken, setSpoken] = useState("No way.");
   function recreate() {
     const savedDraftKey = hookKeyframeDraftStorageKey(scope.ownerId, scope.draftId, scope.referenceId);
     if (!localStorage.getItem(savedDraftKey)) {
@@ -119,10 +145,10 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
   }
   return <main className="min-h-screen bg-background p-3 text-foreground sm:p-4">
     <p role="status" className="shrink-0 rounded-lg border border-primary/40 bg-card p-2 text-xs">Local UI demo · sample outputs and face photos test layout only. No AI generation, charges or production data.</p>
-    <header className="flex shrink-0 items-center gap-3 py-2"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">Hook video</h1></header>
+    <header className="flex shrink-0 items-center gap-3 py-2"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">{talkingHead ? "Talking Head + Demo" : "Hook video"}</h1></header>
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
       <section className="min-w-0 rounded-2xl border border-border bg-card p-5"><h2 className="mb-5 font-semibold">Create</h2>
-        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: frame => { if (frame.jobId) setSelection(frame); }, previewStartingFrames: recentFrames, previewFaceReferenceImages: fixtureInfluencers, onClearStartingFrame: () => setSelection(null),
+        {talkingHead ? <WorkflowCreationForm kind="hook" ownerId="local-ui-preview" creator={images} imageReferences={images} videoReference={video} audio={audio} audioLabel="Talking head audio" audioMode="voice" onAudioModeChange={() => {}} instructions={spoken} onInstructionsChange={setSpoken} spokenScriptMode referenceInstructions={{ value: scene, defaultValue: mirrorPrompt, onChange: setScene }} generationSettings={settings} onGenerationSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))} startingFrameMode startingFrameControl={<StartingFrameAnimationReferences compact frame={{ ...talkingFrame, durationSeconds: 4, motionInstructions: scene, generateAudio: sound }} model={settings.model} photos={[]} onPhotosChange={() => {}} ownerId="local-ui-preview" preview active disabled={false} onPendingChange={() => {}} onErrorChange={() => {}} onSelectFrame={() => true} onClearFrame={() => {}} />} startingFrameSoundControl={<button type="button" role="switch" aria-label="Generate sound" aria-checked={sound} onClick={() => setSound(value => !value)} className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-2 text-xs", sound ? "text-primary" : "text-muted")}>{sound ? <Volume2 className="size-4" aria-hidden="true" /> : <VolumeX className="size-4" aria-hidden="true" />}Sound {sound ? "on" : "off"}</button>} /> : selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: frame => { if (frame.jobId) setSelection(frame); }, previewStartingFrames: recentFrames, previewFaceReferenceImages: fixtureInfluencers, onClearStartingFrame: () => setSelection(null),
           workflow: { format: "hook", controlsActive: true, controlsTarget: null, resultsTarget: null, onGenerationStart: () => {} } }} /> : <p className="text-sm text-muted">Choose a Hook and select Recreate to prepare its starting frame.</p>}
       </section>
       <section className="rounded-2xl border border-border bg-card p-5"><h2 className="mb-4 font-semibold">References</h2>
@@ -133,6 +159,7 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       </section>
     </div>
     {open ? <HookStartingFrameWorkspace preparationFormat={preparationFormat} presentation="recreation" reference={reference} ownerId={scope.ownerId} draftId={scope.draftId} previewRuntime={runtime}
+          scriptSection={talkingHead ? <TalkingHeadScriptSection ownerId="local-ui-preview" referenceId="talking-kamile-mirror-discovery" sourceSha256="d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d" draftId={scope.draftId} sceneDirections={scene} onChange={() => {}} /> : undefined}
           onClose={() => setOpen(false)} onUseStartingFrame={value => {
             const selected = { ...value, url: runtime.outputPreviewUrls?.[value.assetId] ?? samplePhoto };
             setSelection(selected); setOpen(false);

@@ -36,9 +36,22 @@ test("verification sends only to the authenticated identity, ignoring supplied r
   const response = await s.handlers.sendVerification(request({ email: "victim@example.com", plan: "growth", billing: "yearly" }));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { sent: true });
+  assert.equal(s.deliveries.length, 0, "Delivery starts after the response");
+  assert.equal(s.scheduled.length, 1, "Verification delivery is scheduled like password reset");
+  await s.scheduled[0]();
   assert.deepEqual(s.deliveries, [["verification", "owner@example.com", { plan: "growth", billing: "yearly" }]]);
   assert.deepEqual(s.limits, [["verification", "owner-uid"]]);
   assert.equal(response.headers.get("Cache-Control"), "no-store");
+});
+
+test("verification delivery failures are reported in the background, not surfaced as a hang", async () => {
+  const s = setup({ deliver: async () => { throw new Error("secret provider response"); } });
+  const response = await s.handlers.sendVerification(request());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { sent: true });
+  assert.equal(s.scheduled.length, 1);
+  await s.scheduled[0]();
+  assert.deepEqual(s.failures, ["verification"]);
 });
 
 test("unauthenticated verification is rejected without sending or consuming limits", async () => {

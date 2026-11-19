@@ -37,7 +37,7 @@ const faqs = [
   },
   {
     question: "How much does AI UGC for SaaS cost compared to hiring creators?",
-    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. Vidmake offers a 7-day trial with credits, and plans starting at $29 to $49 per month with generation credits; each experiment uses the credits required by its model.",
+    answer: "Human UGC creators charge $150 to $300 per clip with 1-2 week turnaround times. Vidmake's plans start at $29 to $49 per month with generation credits; each experiment uses the credits required by its model.",
   },
 ] as const;
 
@@ -191,7 +191,7 @@ export default function AiContentCreationToolsPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  There is a seven-day free trial with no credit card and 20 daily content pieces, followed by plans starting at $29 or $49 per month. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  Plans start at $29 or $49 per month with monthly generation credits. See <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },
@@ -216,14 +216,14 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Real YouTube, Instagram Reel, and TikTok outputs." },
           { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type and how to use them." },
           { href: "/mcp", title: "Vidmake MCP server", description: "Connect Claude, Codex, or ChatGPT to generate UGC assets." },
-          { href: "/pricing", title: "Pricing", description: "Seven-day trial and monthly plan details." },
+          { href: "/pricing", title: "Pricing", description: "Monthly plan details." },
           { href: "/blog/build-in-public-without-showing-face", title: "Build in public without showing your face", description: "Creator-style content without recording yourself on camera." },
           { href: "/blog/from-zero-to-1k-mrr-tiktok", title: "From zero to $1k MRR with TikTok", description: "A founder growth path using short-form video." },
           { href: "/blog/market-side-project-30-minutes-a-week", title: "Market a side project in 30 minutes a week", description: "A sustainable weekly content routine for founders." },
           { href: "/blog/overcoming-founder-camera-anxiety", title: "Overcoming founder camera anxiety", description: "Make founder content without being on camera." },
           { href: "/blog/product-hunt-launch-video-strategy", title: "Product Hunt launch video strategy", description: "Plan the video assets for a launch." },
           { href: "/blog/zero-ad-spend-saas-growth-engine", title: "Zero-ad-spend SaaS growth engine", description: "Grow without paid ads using short-form content." },
-          { href: "/blog/ai-ugc-video-generator-free-trial", title: "AI UGC video generator free trial", description: "A five-test checklist for using a trial properly." },
+          { href: "/blog/ai-ugc-video-generator-free-trial", title: "AI UGC video generator pre-purchase checklist", description: "A five-test checklist for testing a generator before you pay." },
           { href: "/blog/ugc-creator-brief-template", title: "UGC creator brief template", description: "The eight fields that prevent an unusable video." },
           { href: "/blog/ai-video-generator-for-mobile-apps", title: "AI video generator for mobile apps", description: "Plan store previews and social video as two tracks." },
           { href: "/blog/tiktok-slideshow-view-data", title: "TikTok slideshow view data", description: "28 verified posts, 234M views, and what the numbers do not prove." },
@@ -232,6 +232,17 @@ export default function AiContentCreationToolsPage() {
           { href: "/blog/ai-talking-head-video-generator", title: "AI talking head video generator", description: "A quality checklist before you publish." },
           { href: "/blog/ai-product-demo-video-generator", title: "AI product demo video generator", description: "Where generated footage stops and proof starts." },
           { href: "/blog/tiktok-slideshow-maker", title: "TikTok slideshow maker", description: "Build a carousel people actually swipe through." },
+          { href: "/blog/ugc-ads-without-creators", title: "UGC ads without creators", description: "Three production routes and the trust rules." },
+          { href: "/blog/founder-story-video-for-saas", title: "Founder story video", description: "A structure that earns trust without a timeline." },
+          { href: "/blog/problem-solution-video-ad-for-saas", title: "Problem-solution video ad", description: "A 25-second SaaS ad structure." },
+          { href: "/blog/reaction-video-for-saas", title: "Reaction video for SaaS", description: "Turn a first look into a hook." },
+          { href: "/blog/saas-video-ideas", title: "25 SaaS video ideas", description: "Grouped by intent, with production notes." },
+          { href: "/blog/ugcposter-alternative-for-saas", title: "UGCPoster alternative for SaaS", description: "Automation versus a product studio." },
+          { href: "/blog/aituber-alternative-for-saas", title: "AITuber alternative for SaaS", description: "Faceless automation versus product video." },
+          { href: "/blog/ai-ugc-ads-for-saas", title: "AI UGC ads for SaaS", description: "A practical four-variant testing plan." },
+          { href: "/blog/ai-influencer-video-generator", title: "AI influencer video generator", description: "Reusable identity without the drift." },
+          { href: "/blog", title: "All articles", description: "Browse every guide by the job it does." },
+          { href: "/blog/instagram-reels-ideas-for-saas", title: "20 Instagram Reels ideas", description: "Ideas with opening lines for SaaS teams." },
         ]}
       />
     </VideoMarketingPage>

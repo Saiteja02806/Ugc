@@ -5,6 +5,9 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+// BlocksSpinner is stubbed with real svg markup so the extracted button JSX renders
+// the loading indicator shape; its SMIL animation replaces the old CSS spin.
+const BlocksSpinner = (props) => React.createElement("svg", { "data-blocks-spinner": "", viewBox: "0 0 24 24", ...props });
 import { Loader2, RefreshCw } from "lucide-react";
 import ts from "typescript";
 
@@ -16,6 +19,7 @@ const helpers = {
   buttonClassName: ({ className }) => className,
   Loader2,
   RefreshCw,
+  BlocksSpinner,
 };
 
 // Render the real JSX of each Generate button, without mounting its API-owning workspace.
@@ -31,7 +35,7 @@ function buttonFixture(path, tag, marker, props) {
   }
   visit(parsed);
   assert.ok(matches.length >= 1, `Find the ${marker} button`);
-  const fixture = `const { Button, cn, buttonClassName, Loader2, RefreshCw } = helpers;
+  const fixture = `const { Button, cn, buttonClassName, Loader2, RefreshCw, BlocksSpinner } = helpers;
     module.exports = function Fixture(props) {
       const { ${Object.keys(props).join(", ")} } = props;
       return (${matches.at(-1)});
@@ -85,7 +89,7 @@ test("shared Generate button still enforces disabled and overlength states", () 
 test("shared Generate button retains its loading spinner and label", () => {
   const { markup } = buttonFixture(composerPath, "Button", "aria-label={generateLabel}", { ...composerProps, isGenerating: true });
   assert.match(markup, /<svg/);
-  assert.match(markup, /animate-spin/);
+  assert.match(markup, /data-blocks-spinner/);
   assert.match(markup, /Generating…/);
   assert.doesNotMatch(markup, /lucide-sparkles/);
 });
@@ -112,7 +116,7 @@ test("avatar Generate button drops only the sparkle, keeping loading and regener
   assert.match(idle.button, /onClick=\{handleGenerate\}/);
   const loading = buttonFixture(path, "button", "onClick={handleGenerate}", { ...props, isWorking: true });
   assert.match(loading.markup, /disabled=""/);
-  assert.match(loading.markup, /animate-spin/);
+  assert.match(loading.markup, /data-blocks-spinner/);
   const repeat = buttonFixture(path, "button", "onClick={handleGenerate}", { ...props, imageUrl: "existing-image" });
   assert.match(repeat.markup, /<svg/);
   assert.match(repeat.markup, /Generate another avatar/);

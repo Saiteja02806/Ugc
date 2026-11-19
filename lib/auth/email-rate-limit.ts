@@ -2,9 +2,27 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { AuthEmailError, type AuthEmailKind } from "./email-policy";
+
+// One Supabase client per server process; building one per verification email
+// re-paid a fresh client handshake before the limit check could run.
+let cachedLimitClient: SupabaseClient | null = null;
+let cachedLimitUrl = "";
+let cachedLimitKey = "";
+
+function getLimitClient(url: string, key: string) {
+  if (!cachedLimitClient || cachedLimitUrl !== url || cachedLimitKey !== key) {
+    cachedLimitClient = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }) },
+    });
+    cachedLimitUrl = url;
+    cachedLimitKey = key;
+  }
+  return cachedLimitClient;
+}
 
 export async function consumeAuthEmailLimit(
   request: Request,
@@ -28,11 +46,7 @@ export async function consumeAuthEmailLimit(
       max_requests: kind === "verification" ? 20 : 10, cooldown_seconds: 0 },
     { key: hash("all:global"), window_seconds: 3600, max_requests: 200, cooldown_seconds: 0 },
   ];
-  const store = createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }) },
-  });
-  const { data, error } = await store.rpc("consume_auth_email_limits", { p_buckets: buckets });
+  const { data, error } = await getLimitClient(url, key).rpc("consume_auth_email_limits", { p_buckets: buckets });
   if (error || !data || typeof data.allowed !== "boolean") {
     // Fail closed across instances when shared storage is unavailable.
     throw new AuthEmailError("Email delivery is temporarily unavailable. Please try again later.");

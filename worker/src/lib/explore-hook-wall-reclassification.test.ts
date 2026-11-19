@@ -8,7 +8,7 @@ test("published Wall-to-Hook assets are available to Recreate only after activat
   assert.equal(staged.activation, "active");
   assert.equal(staged.items.length, 4);
   for (const item of staged.items) {
-    assert.equal(getHookReferenceGalleryItems().some(existing => existing.id === item.id), true);
+    assert.equal(getHookReferenceGalleryItems().some(existing => existing.id === item.id), !staged.excludedReferenceIds.includes(item.id));
     assert.equal(getHookReferenceReleaseItems().some(existing => existing.id === item.id), true);
     for (const hash of [item.videoSha256, item.audioSha256, item.posterSha256]) assert.match(hash, /^[a-f0-9]{64}$/);
     assert.equal(item.previewSha256, item.videoSha256);

@@ -12,7 +12,6 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark, ProductWordmark } from "@/components/brand/product-logo";
-import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "@/lib/billing/free-trial-policy";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
@@ -39,12 +38,12 @@ const allowanceText = displayedPricingPlans.map(plan => {
 
 const faqs = [
   {
-    question: "What does the free trial include?",
-    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification. The trial does not include AI credits. No payment card is required, and the trial does not automatically become a paid subscription.`,
+    question: "Do I need a paid plan to use Vidmake?",
+    answer: `Yes. Vidmake is paid-only. Choose Starter, Growth or Startup to create content: each paid plan includes daily slideshow concepts in Trending to review and edit, plus a monthly AI credit allowance. Hooks and text-led videos are separate Explore workflows. Creating an account does not include free content or free credits.`,
   },
   {
-    question: "What happens when my trial ends?",
-    answer: "Choose Starter, Growth, or Startup to keep receiving daily content. Signing in again does not restart an expired trial. A paid plan adds a monthly AI credit allowance.",
+    question: "What do paid plans include?",
+    answer: "Starter, Growth, or Startup keep daily content flowing and add a monthly AI credit allowance for AI Studio images and videos, and AI characters.",
   },
   {
     question: "Are daily content concepts separate from AI credits?",
@@ -52,7 +51,7 @@ const faqs = [
   },
   {
     question: "How do Vidmake credits work?",
-    answer: `Free accounts do not include AI credits. ${allowanceText}. These are alternative uses of the same shared credit balance, including on annual subscriptions. These counts use WAN 3.0 or Omni Flash at ${STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second. Seedance 2.5 uses ${DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second; images and other AI generation also use this balance. Check the displayed credit cost before generating.`,
+    answer: `AI credits are included with paid plans only. ${allowanceText}. These are alternative uses of the same shared credit balance, including on annual subscriptions. These counts use WAN 3.0 or Omni Flash at ${STANDARD_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second. Seedance 2.5 uses ${DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND} credits per second; images and other AI generation also use this balance. Check the displayed credit cost before generating.`,
   },
   {
     question: "Which workflows and platforms are included?",
@@ -182,7 +181,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 From the first idea to a finished asset
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Try daily slideshows for {FREE_TRIAL_CONTENT_DAYS} days. Free accounts do not include AI credits. Daily content allowances and custom AI credits are separate.
+                Plans start at $29 a month. Daily content allowances and custom AI credits are separate.
               </p>
             </div>
 

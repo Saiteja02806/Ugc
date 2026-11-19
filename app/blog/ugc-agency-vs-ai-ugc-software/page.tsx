@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does Vidmake pricing compare to an agency retainer?",
-    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces, followed by self-serve plans starting at $29 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
+    answer: "Vidmake's self-serve plans start at $29 and $49 per month with no annual commitment—saving over 95% compared to agency retainers.",
   },
 ] as const;
 
@@ -161,7 +161,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day trial. View full details on{" "}
+                  Choose a plan. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -176,7 +176,7 @@ export default function UgcAgencyVsAiUgcSoftwarePage() {
           { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
           { href: "/blog/best-ai-ugc-tools-for-saas", title: "Best AI UGC Tools for SaaS", description: "The definitive 2026 buyer's guide and platform comparison." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

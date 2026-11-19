@@ -4,7 +4,7 @@ import { getUserSubscription } from "@/lib/billing/subscription-db";
 import { getBackgroundJobById } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { AUDIO_MAX_UPLOAD_BYTES, AUDIO_UPLOAD_TYPES, audioObjectPrefix, AudioError, audioCostMicros, isAudioUuid, isVoiceEligible, parseAudioRequestKey, parseAudioSpeech, type AudioAccount, type AudioModel, type AudioRequest, type AudioVoice } from "@/worker/src/lib/audio-contract";
+import { AUDIO_MAX_UPLOAD_BYTES, AUDIO_UPLOAD_TYPES, audioObjectPrefix, AudioError, audioCostMicros, isAudioUuid, isVoiceEligible, parseAudioRequestKey, parseAudioSpeech, providerCanGenerate, type AudioAccount, type AudioModel, type AudioRequest, type AudioVoice } from "@/worker/src/lib/audio-contract";
 import { audioDb, audioRpc, savePrivateAudio, deletePrivateAudio, privateAudioConfigured } from "@/worker/src/lib/audio-store";
 import { ElevenLabsAudio, getElevenLabsApiKey, toAudioVoice } from "@/worker/src/lib/elevenlabs-audio";
 import type { AudioBootstrap, AudioHistory } from "./types";
@@ -37,7 +37,7 @@ export async function assertPlanAccess(userId: string) {
   if (access !== "allowed") throw new AudioError("Your audio plan could not be checked. Try again shortly.", 503);
 }
 function canUse(userId: string, account: AudioAccount | null, access: AudioGenerationAccess) {
-  return access === "allowed" && (invited(userId) || Boolean(account?.paid && process.env.AUDIO_GENERATION_PUBLIC_ENABLED === "true"));
+  return access === "allowed" && (invited(userId) || Boolean(providerCanGenerate(account) && process.env.AUDIO_GENERATION_PUBLIC_ENABLED === "true"));
 }
 export function assertRolloutAccess(userId: string, account: AudioAccount | null = null) {
   if (!enabled()) throw new AudioError("Audio generation is not available yet.", 503);

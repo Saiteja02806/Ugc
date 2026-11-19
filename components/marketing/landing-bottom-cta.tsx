@@ -53,7 +53,7 @@ export function LandingBottomCta({ initialHasSession }: { initialHasSession: boo
             initialHasSession={initialHasSession}
           />
           <p className="mt-4 flex items-center gap-2 text-sm text-muted">
-            <Check className="size-4 text-primary" aria-hidden="true" /> No credit card required
+            <Check className="size-4 text-primary" aria-hidden="true" /> Plans start at $29 a month
           </p>
           <a href="/mcp" className="mt-5 rounded-control text-sm font-medium text-muted underline decoration-border-strong underline-offset-4 hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             Agent control coming soon - Explore MCP

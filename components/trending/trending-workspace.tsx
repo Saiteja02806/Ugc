@@ -8,7 +8,6 @@ import {
   CircleAlert,
   Clapperboard,
   Images,
-  Loader2,
   RefreshCw,
   Save,
   ScanText,
@@ -18,6 +17,8 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import dynamic from "next/dynamic";
 import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 import { pollInForeground } from "@/lib/http/foreground-polling";
@@ -54,10 +55,6 @@ import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refres
 import { readCreativeEdit, readCarouselEditStatus } from "@/lib/trending/creative-edit-client";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import { getTrendingPreparationCopy, type TrendingPreparationState } from "@/lib/trending/preparation-status";
-import {
-  type BillingSubscription,
-  useBillingSubscription,
-} from "@/components/billing/use-billing-subscription";
 import {
   CreativeDecisionActions,
   CreativeEditAction,
@@ -369,51 +366,6 @@ class TrendingFeedRequestError extends Error {
   }
 }
 
-type TrendingTrialPill = {
-  href: string;
-  label: string;
-  title: string;
-};
-
-function getTrendingTrialPill(
-  subscription: BillingSubscription | undefined,
-): TrendingTrialPill | null {
-  if (
-    !subscription ||
-    subscription.isActive ||
-    subscription.planKey !== "free"
-  ) {
-    return null;
-  }
-
-  if (subscription.trial.status === "active") {
-    if (subscription.trial.contentDaysRemaining > 0) {
-      const daysRemaining = subscription.trial.daysRemaining;
-      return {
-        href: "/settings#subscription-billing",
-        label: `Free \u00b7 ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} left`,
-        title: "View your free-trial details",
-      };
-    }
-
-    return {
-      href: "/pricing",
-      label: "Free \u00b7 Content used",
-      title: "Your free-trial content is used. Upgrade to keep creating.",
-    };
-  }
-
-  if (subscription.trial.status === "expired") {
-    return {
-      href: "/pricing",
-      label: "Trial ended \u00b7 Upgrade",
-      title: "Your free trial has ended. Upgrade to keep creating.",
-    };
-  }
-
-  return null;
-}
-
 function isRetryableTrendingFeedStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
@@ -584,8 +536,8 @@ function TrendingCreativeEditorLoading() {
       role="status"
     >
       <div className="flex w-full max-w-sm items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
-        <Loader2
-          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+        <BlocksSpinner
+          className="size-5 shrink-0 text-primary"
           aria-hidden="true"
         />
         Opening editor…
@@ -602,8 +554,8 @@ function TrendingContentMixDialogLoading() {
       role="status"
     >
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground">
-        <Loader2
-          className="size-4 animate-spin motion-reduce:animate-none"
+        <BlocksSpinner
+          className="size-4"
           aria-hidden="true"
         />
         Opening Adjust…
@@ -748,7 +700,6 @@ export function getInMemoryTrendingFeed(userId: string, localDate: string) {
 export function TrendingWorkspace() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const subscriptionQuery = useBillingSubscription();
   const currentBrowserLocalDate = getBrowserLocalDate();
   const existingMemoryCache = user
     ? getInMemoryTrendingFeed(user.uid, currentBrowserLocalDate)
@@ -901,7 +852,6 @@ export function TrendingWorkspace() {
     authLoading ||
     (Boolean(user) &&
       (carouselHistoryState === "idle" || carouselHistoryState === "loading"));
-  const trialPill = getTrendingTrialPill(subscriptionQuery.data);
 
   useEffect(() => {
     if (!user) {
@@ -1193,15 +1143,6 @@ export function TrendingWorkspace() {
               <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
                 Trending
               </h1>
-              {trialPill ? (
-                <Link
-                  href={trialPill.href}
-                  title={trialPill.title}
-                  className="inline-flex h-6 items-center rounded-full border border-white/40 px-2.5 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  {trialPill.label}
-                </Link>
-              ) : null}
             </div>
             <p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
               Explore slideshows made from your business profile.
@@ -1377,7 +1318,7 @@ export function TrendingFeedGallery({
   }
 
   if (!retainingReviewShell && !showSkeleton && items.length === 0 && upgradeRequired) {
-    return <TrendingUpgradeRequiredEmptyState />;
+    return <TrendingPausedEmptyState />;
   }
 
   if (
@@ -1489,21 +1430,15 @@ function TrendingFeedFailureState({
   );
 }
 
-function TrendingUpgradeRequiredEmptyState() {
+function TrendingPausedEmptyState() {
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
       <EmptyHeader>
-        <EmptyTitle>Your free trial has ended</EmptyTitle>
+        <EmptyTitle>Daily content is paused</EmptyTitle>
         <EmptyDescription>
-          Upgrade to generate the remaining daily content pieces.
+          Nothing new is being generated for this account right now. Your posts and history stay available.
         </EmptyDescription>
       </EmptyHeader>
-      <Link
-        href="/pricing"
-        className="mt-5 inline-flex h-10 items-center justify-center rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        View plans
-      </Link>
     </Empty>
   );
 }
@@ -1515,7 +1450,7 @@ function TrendingPreparingEmptyState({
 }) {
   const preparationState = useContext(TrendingPreparationContext);
   const copy = getTrendingPreparationCopy(preparationState);
-  const StatusIcon = preparationState === "failed" ? CircleAlert : Loader2;
+  const StatusIcon = preparationState === "failed" ? CircleAlert : BlocksSpinner;
   const remainingLabel =
     pendingSlotCount > 0
       ? `${pendingSlotCount} ${pendingSlotCount === 1 ? "piece" : "pieces"} of content ${pendingSlotCount === 1 ? "is" : "are"}`
@@ -1524,10 +1459,7 @@ function TrendingPreparingEmptyState({
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
       <EmptyHeader>
-        <StatusIcon
-          aria-hidden="true"
-          className={cn("mx-auto size-5 text-primary", preparationState !== "failed" && "animate-spin motion-reduce:animate-none")}
-        />
+        <StatusIcon aria-hidden="true" className="mx-auto size-5 text-primary" />
         <EmptyTitle>{copy.title}</EmptyTitle>
         <EmptyDescription>
           {remainingLabel} still pending. {copy.description}
@@ -2862,7 +2794,7 @@ export function TrendingDeck({
           </span>
         </>
       ) : upgradeRequired ? (
-        <TrendingUpgradeRequiredEmptyState />
+        <TrendingPausedEmptyState />
       ) : failure ? (
         <TrendingFeedFailureState
           failure={failure}
@@ -3144,7 +3076,7 @@ function CarouselActionDialog({
               disabled={isBusy}
               icon={
                 isSaving ? (
-                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                  <BlocksSpinner className="size-5" aria-hidden="true" />
                 ) : (
                   <Save className="size-5" aria-hidden="true" />
                 )
@@ -3158,7 +3090,7 @@ function CarouselActionDialog({
               disabled={isBusy}
               icon={
                 isScheduling ? (
-                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                  <BlocksSpinner className="size-5" aria-hidden="true" />
                 ) : (
                   <CalendarCheck className="size-5" aria-hidden="true" />
                 )
@@ -4009,7 +3941,7 @@ function TrendingWallTextDeckCard({
               className="pointer-events-none absolute inset-x-4 bottom-4 z-30 flex justify-center"
             >
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-xs text-white">
-                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                <BlocksSpinner className="size-3" aria-hidden="true" />
                 Loading video…
               </span>
             </div>
@@ -4486,7 +4418,7 @@ function CarouselFeedState({
   title: string;
 }) {
   const Icon =
-    icon === "failed" ? CircleAlert : icon === "preparing" ? Loader2 : Sparkles;
+    icon === "failed" ? CircleAlert : icon === "preparing" ? BlocksSpinner : Sparkles;
   const ActionIcon = actionIcon === "refresh" ? RefreshCw : Sparkles;
 
   return (

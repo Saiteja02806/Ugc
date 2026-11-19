@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "referenceId": "explore-paired-hook-f525568f0bb9b496bb4545fb",
+      "slideId": null,
+      "sourceSha256": "77bee0a369dcc40c092bb4f2801d8a0bb06881a5206cc6fd947545487b7ba84c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Where was this my whole semester💀",
+          "startMs": 0,
+          "endMs": 3300
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. All 97 decoded frames inspected through the final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-3aa8cc9e54d14297eee33173",
+      "slideId": null,
+      "sourceSha256": "a17c6f097c85f47b7627c142d69c885a83b3fc7a02d3a9e0ef27e6df4bc78da1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "🧠 Science-Math students,\nunderstand 2x more 🧠",
+          "startMs": 0,
+          "endMs": 2166
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. All 63 decoded frames inspected through the final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-5675231d7816b695470d44db",
+      "slideId": null,
+      "sourceSha256": "27e60bd6081c3ef56223d943edacc326f12b237faaad780796aaef04e3502ed3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Don't tell your friends about this\ncamera app 🤫📸",
+          "startMs": 0,
+          "endMs": 4200
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. All 124 decoded frames inspected through the final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-f7f9e04735c13625bea6edbe",
+      "slideId": null,
+      "sourceSha256": "1bc51f7c19ddff909abb887d3970a2635dbae62f12501fe3b3659501e3482b07",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally KISS the\ntherapist that showed\nme this",
+          "startMs": 0,
+          "endMs": 2366
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. All 69 decoded frames inspected through the final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-4761ac251b85f086dacb20fd",
+      "slideId": null,
+      "sourceSha256": "d92ea31945c170ff46f5f69ed3c5a97686f8d11d26dc19614a8335216a04f0c2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I improved my IELTS writing\nfrom 5 to 8 using this site",
+          "startMs": 0,
+          "endMs": 4933
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. All 146 decoded frames inspected through the final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-0c9e57769a98cec980e726a1",
+      "slideId": null,
+      "sourceSha256": "333b1b0996c162bdfee7bf1ee6fd0ea889a74cafb9635c46246f74198e63908e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My bf changed my alarm so now I have to do THIS🥲💔",
+          "startMs": 0,
+          "endMs": 2267
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. Motion checked through final frame. Source claims are not independently verified."
+    },
+    {
+      "referenceId": "explore-paired-hook-a557969f8da32f3985ecf55e",
+      "slideId": null,
+      "sourceSha256": "6e59800db5d9ffa36e95645fe64cd5e8125e04cfb2a0177db1b3afae9c71c817",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV your sister\nmade THIS her\nnew alarm 😭😭",
+          "startMs": 0,
+          "endMs": 2900
+        }
+      ],
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. Motion checked through final frame. Source claims are not independently verified."
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { hookMotionPlanDirections } from "./hook-motion-plan-directions.ts";
+export { hookMotionPlanDirections } from "./hook-motion-plan-directions.ts";
 import catalogData from "./hook-keyframe-motion-catalog.json" with { type: "json" };
 import { getCuratedHookMotionPlan } from "./hook-curated-motion.ts";
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
@@ -5,7 +7,9 @@ import plansA from "./hook-keyframe-motion-plans-a.json" with { type: "json" };
 import plansB from "./hook-keyframe-motion-plans-b.json" with { type: "json" };
 import plansC from "./hook-keyframe-motion-plans-c.json" with { type: "json" };
 import reclassifiedPlans from "./hook-wall-reclassification-motion.json" with { type: "json" };
-import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
+import notbeen3Plans from "./hook-notbeen3-motion.json" with { type: "json" };
+import notbeen2Plans from "./hook-notbeen2-motion.json" with { type: "json" };
+import { getHookReferenceReleaseItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 import { parseHookMotionRewrite, type HookMotionRewrite } from "./hook-motion-rewrite-contract.ts";
 import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
 
@@ -35,6 +39,8 @@ export type HookMotionPlan = {
   camera: string;
   endingState: string;
   constraints: readonly string[];
+  /** Reviewed wording: camera and ending summaries repeat the timed beats. */
+  summariesInTimeline?: readonly ("camera" | "ending")[];
 };
 
 export type HookMotionReview = {
@@ -125,7 +131,7 @@ export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha2
     canSubmitPaidAnimation: false as const,
   };
   const entry = hookKeyframeMotionCatalog[referenceId];
-  if (!entry || entry.sourceSha256 !== sourceSha256) return getReclassifiedHookMotionReview(referenceId, sourceSha256, startingFrameIndex, getHookReferenceGalleryItems());
+  if (!entry || entry.sourceSha256 !== sourceSha256) return getReclassifiedHookMotionReview(referenceId, sourceSha256, startingFrameIndex, getHookReferenceReleaseItems());
   const rewrite = hookKeyframeMotionRewrites[referenceId];
   return {
     status: "review_draft" as const,
@@ -143,11 +149,11 @@ export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha2
   };
 }
 
-/** Only a published and active matching gallery item may surface the reviewed
- * reclassified plans. They remain preparation suggestions and never grant paid admission. */
+/** A published release item, including a card removed from the gallery, may
+ * surface its reviewed plan for a saved recreation. The plan never grants paid admission. */
 export function getReclassifiedHookMotionReview(referenceId: string, sourceSha256: string, startingFrameIndex: number, activeItems: readonly { id: string; videoSha256: string }[]) {
   if (startingFrameIndex !== 0 || !activeItems.some(item => item.id === referenceId && item.videoSha256 === sourceSha256)) return undefined;
-  const entry = reclassifiedPlans.entries.find(item => item.referenceId === referenceId && item.sourceSha256 === sourceSha256);
+  const entry = [...reclassifiedPlans.entries, ...notbeen2Plans.entries, ...notbeen3Plans.entries].find(item => item.referenceId === referenceId && item.sourceSha256 === sourceSha256);
   if (!entry) return undefined;
   return { status: "review_draft" as const, referenceId, sourceSha256, displayTitle: entry.displayTitle,
     sourceDurationSeconds: entry.sourceDurationSeconds, previewDurationSeconds: 4,
@@ -168,17 +174,6 @@ function planText(plan: HookMotionPlan): string[] {
   return [plan.openingState, ...plan.beats.map(beat => beat.action), plan.camera, plan.endingState, ...plan.constraints];
 }
 
-/** User-visible action directions; contains no source-video or identity input. */
-export function hookMotionPlanDirections(plan: HookMotionPlan): string {
-  return [
-    `OPENING STATE: ${plan.openingState.trim()}`,
-    ...plan.beats.map(beat => `${beat.phase.toUpperCase()}: ${beat.action.trim()}`),
-    `CAMERA: ${plan.camera.trim()}`,
-    `ENDING STATE: ${plan.endingState.trim()}`,
-    ...plan.constraints.map(constraint => `CONSTRAINT: ${constraint.trim()}`),
-  ].join("\n\n");
-}
-
 /** Prompt construction only, never evidence of catalog review or paid admission. */
 export function buildHookAnimationPrompt(input: { directions: string; durationSeconds: number; generateAudio: boolean; actionDurationSeconds?: number; removePhysicalText?: boolean; identityPhotoCount?: number; maxDurationSeconds?: number }) {
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
@@ -192,22 +187,21 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
     throw new Error("Choose a supported animation duration and sound setting.");
   }
   const sound = input.generateAudio
-    ? "SOUND SETTING: ON. Preserve the timed lip and jaw movements above and generate a matching brief vocal reaction synchronized to them. If exact reaction words are explicitly supplied, voice those words; otherwise use a natural nonverbal reaction without inventing a sentence. Natural ambient sound is allowed."
-    : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Preserve every instructed lip and jaw movement, including visible word articulation, at the same timing without audible sound. Do not replace the mouth performance with a closed or motionless mouth.";
+    ? "SOUND SETTING: ON. Sync supplied words once, else a brief nonverbal reaction. Ambient sound allowed."
+    : "SOUND SETTING: OFF. Silent; retain timed lips, jaw and word articulation.";
   return [
-    input.identityPhotoCount && input.identityPhotoCount > 0
-      ? `Animate Image 1, the approved starting image, into a ${input.durationSeconds}-second video. Image 1 supplies the person's appearance and the complete opening composition.`
-      : `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
-    "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
+    input.identityPhotoCount
+      ? `Animate approved Image 1 as frame 0 for ${input.durationSeconds}s.`
+      : `Animate the approved image as frame 0 for ${input.durationSeconds}s. Keep its face, hair, clothes, light and scene.`,
     ...(input.identityPhotoCount && input.identityPhotoCount > 0 ? [
-      input.identityPhotoCount === 1
-        ? "Image 2 is the main face identity image for the person in Image 1. Use it for facial features and proportions only; do not copy its clothing, lighting, background or pose. Image 1 controls the opening composition, pose, clothing, lighting and background; do not add another person."
-        : input.identityPhotoCount === 2
-          ? "Image 2 is the main face identity image for the person in Image 1. Image 3 is an additional face identity image of the same person; use it for identity only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the identity photos' scenes, outfits or poses, and do not add another person."
-          : `Image 2 is the main face identity image for the person in Image 1. Images 3 through ${input.identityPhotoCount + 1} are additional face identity images of the same person; use them for identity only. Image 1 controls the opening composition, pose, clothing, lighting and background; do not copy the identity photos' scenes, outfits or poses, and do not add another person.`,
+      `Image 2=main face proportions${input.identityPhotoCount === 1 ? "" : input.identityPhotoCount === 2 ? "; Image 3=same-person support" : `; Images 3–${input.identityPhotoCount + 1}=same-person support`}. Identity only; Image 1 sets hair, clothes, light, scene and pose. No blended faces or extra people.`,
     ] : []),
-    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds, input.actionDurationSeconds, input.maxDurationSeconds),
-    input.removePhysicalText ? "Keep the approved scene free of captions, physical logos, readable text, labels, signage and watermarks. Keep the underlying clothing, props and surfaces intact; do not regenerate removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
+    // The attached literal first frame already supplies this static pose.
+    // Keep every timed action, including the opening hold and complete ending.
+    retimeSourceMotionDirections(input.directions.includes("PHASE [")
+      ? input.directions.trim().replace(/^OPENING STATE:[^\n]+\n\s*/u, "")
+      : input.directions.trim(), input.durationSeconds, input.actionDurationSeconds, input.maxDurationSeconds),
+    input.removePhysicalText ? "Keep cleaned surfaces plain; no captions, letters, logos or watermarks." : "Add no captions or graphics. Keep physical object text.",
     sound,
   ].join("\n\n");
 }

@@ -38,7 +38,11 @@ test("all31 respective references compile full-source assignments and role-bound
     for (const durationSeconds of [3, 4, 8, 10]) {
       const prompt = buildHookAnimationPrompt({ directions, durationSeconds, generateAudio: false });
       assert.match(prompt, new RegExp(`–${durationSeconds}s:`));
-      assert.ok(prompt.includes(entry.endingState));
+      // Repeated summaries may be omitted; every timed ending action must remain.
+      for (const beat of entry.beats.filter((beat: { phase: string }) => beat.phase === "ending")) {
+        const action = beat.action.replace(/^PHASE \[[^\]]+\]:\s*/u, "");
+        for (const sentence of action.split(/(?<=[.!?])\s+(?=[A-Z])/u)) assert.ok(prompt.includes(sentence), sentence);
+      }
       assert.doesNotMatch(prompt, /PHASE \[/);
     }
     const image = buildHookFullRecreationOpeningImagePrompt({ personImageCount: 2, referenceId: frame.referenceId, sourceSha256: frame.sourceSha256, assignedEntry: privateCase ? entry : undefined });
@@ -57,7 +61,7 @@ test("all31 respective references compile full-source assignments and role-bound
       const input = { receipt, ownerId: "owner", model: "gemini_3_pro", aspectRatio: "9:16", prompt: image.prompt, referenceImageUrl: urls[0], referenceImageUrls: urls };
       assert.ok(isHookKeyframeImageInput(input));
       assert.equal(isHookKeyframeImageInput({ ...input, referenceImageUrl: urls[1], referenceImageUrls: [urls[1], urls[0], ...urls.slice(2)] }), false);
-      assert.equal(isHookKeyframeImageInput({ ...input, referenceImageUrl: urls[0].replace("www.getugcpilot.com", "evil.example"), referenceImageUrls: [urls[0].replace("www.getugcpilot.com", "evil.example"), ...urls.slice(1)] }), false);
+      assert.equal(isHookKeyframeImageInput({ ...input, referenceImageUrl: urls[0].replace(new URL(urls[0]).hostname, "evil.example"), referenceImageUrls: [urls[0].replace(new URL(urls[0]).hostname, "evil.example"), ...urls.slice(1)] }), false);
     }
   }
 });

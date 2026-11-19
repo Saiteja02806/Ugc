@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between HeyGen and Vidmake?",
-    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. Vidmake offers a 7-day free trial with 20 daily content pieces, followed by self-serve plans starting at $29 and $49 per month.",
+    answer: "HeyGen charges monthly subscriptions based on video minutes, with higher enterprise tiers for custom avatar clones. Vidmake's self-serve plans start at $29 and $49 per month.",
   },
 ] as const;
 
@@ -119,7 +119,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Pricing Structure</th>
                 <td className="p-4 align-top">Credit per minute; enterprise custom pricing</td>
-                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; self-serve from $29/mo</td>
+                <td className="p-4 align-top">paid plans with monthly credits; self-serve from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -196,7 +196,7 @@ export default function HeyGenAlternativeForUgcHooksPage() {
           { href: "/blog/arcads-alternative-for-saas", title: "Arcads Alternative for SaaS", description: "Physical e-commerce ads vs software video workflows." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

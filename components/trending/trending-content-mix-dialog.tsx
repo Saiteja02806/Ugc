@@ -4,11 +4,11 @@ import {
   CircleAlert,
   Clapperboard,
   Images,
-  Loader2,
   RotateCcw,
   ScanText,
   Sparkles,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -357,8 +357,8 @@ export function TrendingContentMixDialog({
               className="flex min-h-56 items-center justify-center gap-3 text-sm font-medium text-muted"
               role="status"
             >
-              <Loader2
-                className="size-4 animate-spin motion-reduce:animate-none"
+              <BlocksSpinner
+                className="size-4"
                 aria-hidden="true"
               />
               Loading content mix…
@@ -607,9 +607,9 @@ export function TrendingContentMixDialog({
               onClick={() => void saveContentMix()}
             >
               {saving ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : null}

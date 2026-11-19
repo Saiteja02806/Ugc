@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import {
   useCallback,
@@ -399,14 +400,11 @@ export function InstagramAnalyticsWorkspace() {
               disabled={activeRefreshInProgress}
               className="w-full rounded-full sm:w-auto"
             >
-              <RefreshCw
-                data-icon="inline-start"
-                className={cn(
-                  activeRefreshInProgress &&
-                    "animate-spin motion-reduce:animate-none",
-                )}
-                aria-hidden="true"
-              />
+              {activeRefreshInProgress ? (
+                <BlocksSpinner data-icon="inline-start" />
+              ) : (
+                <RefreshCw data-icon="inline-start" aria-hidden="true" />
+              )}
               Refresh
             </Button>
           </div>

@@ -18,6 +18,7 @@ export function actionLayoutFixture(sourceOverrides = {}) {
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
     "react-dom": { createPortal: (children, target) => element("portal", { target, children }) },
     "lucide-react": Object.fromEntries(["Check", "ChevronDown", "Loader2", "SlidersHorizontal", "X"].map(name => [name, "icon"])),
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/generation/composer-settings-rail": { ComposerSettingsRail: "div" },
     "@/components/ui/field": Object.fromEntries(["Field", "FieldGroup"].map(name => [name, "div"]).concat([["FieldLabel", "label"], ["FieldDescription", "p"]])),

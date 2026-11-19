@@ -1,8 +1,8 @@
 import { PERSON_REFERENCE_INSTRUCTIONS } from "./person-reference.ts";
 
 /** New requests only. User text and original assets retain their order. */
-export function buildExploreGenerationInstructions({ model, personPhotos, imageCount, hasVideo, generateAudio, referenceVideoMode }: {
-  model: string; personPhotos: boolean; imageCount: number; hasVideo: boolean; generateAudio?: boolean; referenceVideoMode?: "edit";
+export function buildExploreGenerationInstructions({ model, personPhotos, imageCount, hasVideo, generateAudio, referenceVideoMode, compact = false }: {
+  model: string; personPhotos: boolean; imageCount: number; hasVideo: boolean; generateAudio?: boolean; referenceVideoMode?: "edit"; compact?: boolean;
 }) {
   const seedance = model === "seedance_2_5";
   const reapi = seedance || model === "wan_3_0";
@@ -12,6 +12,14 @@ export function buildExploreGenerationInstructions({ model, personPhotos, imageC
   const editing = hasVideo && referenceVideoMode === "edit";
   const intent = identity ? hasVideo ? editing ? "replace_face" : "recreate_performance" : "create_performance" : editing ? "edit_video" : "general";
   const instructions: string[] = [];
+  if (compact && hasVideo) {
+    if (identity) instructions.push(`${image(1)}=main face and proportions; other images=same-person views. Never blend faces. ${seedance ? "@Video 1" : "Video"} supplies lighting, hair, clothes, pose, scene, camera and performance.`);
+    if (editing) instructions.push(`EDIT THE EXISTING VIDEO: In ${video}, ${identity ? "replace facial identity only" : "apply the requested changes"}. Keep source actions and timing unless requested otherwise.`);
+    if (generateAudio !== undefined) instructions.push(generateAudio
+      ? "SOUND ON: Use requested sound/words only. No unrequested dialogue."
+      : "SOUND OFF: Silent; retain every visible expression and mouth movement.");
+    return { intent, instructions: instructions.join("\n") };
+  }
   if (identity) {
     // Keep the established role requirements; bind their names to this route's
     // documented media syntax rather than inventing provider identity fields.

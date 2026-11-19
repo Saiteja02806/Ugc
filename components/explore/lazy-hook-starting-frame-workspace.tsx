@@ -1,7 +1,8 @@
 "use client";
 
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { Component, lazy, Suspense, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { HookStartingFrameWorkspace } from "./hook-starting-frame-workspace";
@@ -41,7 +42,7 @@ export function LazyHookStartingFrameWorkspace(props: ComponentProps<typeof Hook
       <Button type="button" variant="ghost" onClick={props.onClose}>Back to references</Button>
     </div>
   </div>;
-  const opening = <p role="status" className={styles.openingStatus}><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Opening your starting frame…</p>;
+  const opening = <p role="status" className={styles.openingStatus}><BlocksSpinner  aria-hidden="true" />Opening your starting frame…</p>;
   const shell = (content: ReactNode) => props.presentation === "workspace" ? content : <Dialog open onOpenChange={open => { if (!open) props.onClose(); }}>
     <DialogContent className={`${styles.dialog} ${props.presentation === "recreation" ? styles.recreationDialog : ""}`} initialFocus={title}>
       <header className={styles.header}>

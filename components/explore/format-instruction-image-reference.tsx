@@ -5,7 +5,14 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PreviewCard } from "@base-ui/react/preview-card";
-import { Check, Loader2, Plus, RefreshCw, X } from "lucide-react";
+import {
+  Check,
+  Plus,
+  RefreshCw,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
@@ -130,7 +137,7 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
     <input ref={input} type="file" multiple className="hidden" aria-label="Choose instruction reference images" accept="image/jpeg,image/png,image/webp" disabled={disabled || pending || full} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void choose(files); }} />
     <Popover open={active && open} onOpenChange={next => { setOpen(next); if (next) { setPreviewId(null); setImagePages(1); } }}>
       <PopoverTrigger render={<Button type="button" variant="outline" size="icon-sm" className="shrink-0 rounded-lg" aria-label="Add images to your instructions" aria-busy={pending} title="Attach reference images" disabled={disabled || pending} />}>
-        {pending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
+        {pending ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
       </PopoverTrigger>
       <PopoverContent side="right" align="start" className="max-h-[min(30rem,calc(100dvh-2rem))] w-[min(320px,calc(100vw-2rem))] overflow-y-auto">
         <PopoverTitle>Attach reference images</PopoverTitle>

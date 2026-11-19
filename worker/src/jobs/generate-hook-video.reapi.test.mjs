@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { after, afterEach, mock, test } from "node:test";
+import { execFileSync } from "node:child_process";
+import ffmpeg from "ffmpeg-static";
+import ffprobe from "ffprobe-static";
 
 const previousKey = process.env.REAPI_API_KEY;
 process.env.REAPI_API_KEY = "reapi-worker-test-key";
@@ -39,11 +42,14 @@ function context() {
 }
 
 test("Talking Head approved-image reference plus voice preserves roles and recovers the same provider operation", async () => {
+  Object.assign(process.env, { FFMPEG_PATH: ffmpeg, FFPROBE_PATH: ffprobe.path });
+  const voice = execFileSync(ffmpeg, ["-v", "error", "-f", "lavfi", "-i", "sine=frequency=400:duration=8", "-f", "mp3", "pipe:1"]);
   for(const model of ["wan_3_0","seedance_2_5"]){
-    const ctx=context();let posts=0;
+    const ctx=context();let posts=0, reads=0;
     const selected={...job,input_json:{...job.input_json,model,durationSeconds:4,referenceVideoUrl:undefined,referenceVideoDurationSeconds:undefined,generateAudio:true,generationIntent:"image_voice_reference",
       startingImageReference:{version:1,mode:"image_voice_reference",assetId:"approved-image",imageJobId:"image-job",sourceFrameIndex:0}}};
     mock.method(globalThis,"fetch",async(url,init)=>{
+      if(String(url)===selected.input_json.referenceAudioUrls[0]) { reads++; return new Response(voice,{headers:{"content-type":"audio/mpeg"}}); }
       if(init?.method==="POST"){
         posts++;const body=JSON.parse(init.body);assert.deepEqual(body.image_urls,selected.input_json.referenceImageUrls);assert.deepEqual(body.audio_urls,selected.input_json.referenceAudioUrls);
         assert.equal(body.image_with_roles,undefined);assert.equal(body.video_urls,undefined);assert.equal(model==="wan_3_0"?body.generation_type:body.omni_reference_task_type,"reference");
@@ -52,7 +58,7 @@ test("Talking Head approved-image reference plus voice preserves roles and recov
       if(String(url).includes("/tasks/"))return json({status:"completed",output:{video_urls:["https://cdn.reapi.ai/voice.mp4"]}});
       return new Response(video,{headers:{"content-type":"video/mp4"}});
     });
-    await runGenerateHookVideoJob(selected,ctx);await runGenerateHookVideoJob(selected,ctx);assert.equal(posts,1);mock.restoreAll();
+    await runGenerateHookVideoJob(selected,ctx);await runGenerateHookVideoJob(selected,ctx);assert.equal(posts,1);assert.equal(reads,1);mock.restoreAll();
   }
 });
 

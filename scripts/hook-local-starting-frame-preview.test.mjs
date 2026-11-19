@@ -5,6 +5,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as deadlines from "../lib/http/read-deadline.ts";
+import * as frameCache from "../lib/explore/starting-frame-cache.ts";
 
 function load(path, imports, globals = {}) {
   const exports = {};
@@ -12,7 +13,7 @@ function load(path, imports, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(code, { exports, URL, URLSearchParams, Response, Uint8Array, crypto: webcrypto, ...globals,
-    require(name) { if (name === "../http/read-deadline") return deadlines; if (name in imports) return imports[name]; throw Error(`Unexpected import ${name}`); } });
+    require(name) { if (name === "../http/read-deadline") return deadlines; if (name === "./starting-frame-cache") return frameCache; if (name in imports) return imports[name]; throw Error(`Unexpected import ${name}`); } });
   return exports;
 }
 

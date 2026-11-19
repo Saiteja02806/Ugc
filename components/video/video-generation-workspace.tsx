@@ -23,6 +23,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -314,6 +315,16 @@ export function VideoGenerationStudioPanel({
   const [dismissedReferenceKey, setDismissedReferenceKey] = useState<
     string | null
   >(null);
+  const [dismissedReferenceInstructions, setDismissedReferenceInstructions] =
+    useState<string | null>(null);
+  const referenceInstructionsDismissed = Boolean(
+    startingFramePreparation &&
+      dismissedReferenceInstructions === startingFramePreparation.referenceId
+  );
+  // Reset when the reference is cleared, before rendering the next card.
+  if (!startingFramePreparation?.referenceId && dismissedReferenceInstructions !== null) {
+    setDismissedReferenceInstructions(null);
+  }
   const referenceContext =
     !startingFramePreparation && referenceParamKey && dismissedReferenceKey !== referenceParamKey
       ? referenceParamContext
@@ -1458,7 +1469,7 @@ export function VideoGenerationStudioPanel({
       {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
       {generationLocked ? (
         <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh access" title="Refresh access" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
-          <RefreshCw className={cn("size-3.5", refreshingAccess && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+          {refreshingAccess ? <BlocksSpinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
         </Button>
       ) : null}
       {isGenerating ? (
@@ -1658,13 +1669,13 @@ export function VideoGenerationStudioPanel({
         estimatedCredits={workflow && !awaitingStartingFrame && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "google_omni" ? "Google Omni" : getAIStudioVideoModelLabel(model)} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSummary}`} · ${hasWorkflowVideoReference && model === "seedance_2_5" ? "Source shape" : aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={awaitingStartingFrame ? <section aria-label="Reference instructions" className="space-y-3 rounded-xl border border-border p-3"><p className="text-sm font-medium">Use this reference’s instructions</p><p className="text-xs leading-5 text-muted">Copy its video prompt into Your instructions, then edit it and generate your video.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission) || referenceFilesPending || creatorReferenceUploadPending || !startingFramePreparation?.instructions?.trim() || !startingFramePreparation.onUseInstructionsAlone} onClick={useReferenceInstructionsAlone}>Use instructions alone</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div>{!startingFramePreparation?.instructions?.trim() ? <p className="text-xs leading-5 text-muted">This reference’s instructions are unavailable. Choose another reference.</p> : null}</section> : workflow && startingFrame ? <StartingFrameAnimationReferences key={user?.uid ?? "preview"}
+        referenceControls={awaitingStartingFrame && !referenceInstructionsDismissed ? <section aria-label="Reference instructions" className="relative space-y-3 rounded-xl border border-border p-3 pr-10"><button type="button" onClick={() => setDismissedReferenceInstructions(startingFramePreparation?.referenceId ?? null)} aria-label="Close" className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-md text-muted transition-colors hover:bg-card hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><X className="size-3.5" aria-hidden="true" /></button><p className="text-sm font-medium">Use this reference’s instructions</p><p className="text-xs leading-5 text-muted">Copy its video prompt into Your instructions, then edit it and generate your video.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission) || referenceFilesPending || creatorReferenceUploadPending || !startingFramePreparation?.instructions?.trim() || !startingFramePreparation.onUseInstructionsAlone} onClick={useReferenceInstructionsAlone}>Use instructions alone</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div>{!startingFramePreparation?.instructions?.trim() ? <p className="text-xs leading-5 text-muted">This reference’s instructions are unavailable. Choose another reference.</p> : null}</section> : workflow && startingFrame ? <StartingFrameAnimationReferences key={user?.uid ?? "preview"}
           compact frame={startingFrame} model={model} photos={referenceImages} onPhotosChange={handleImageReferencesChange}
           onSelectFrame={recreateView?.onSelectStartingFrame} onClearFrame={recreateView?.onClearStartingFrame}
           previewFrames={recreateView?.previewStartingFrames} previewInfluencers={recreateView?.previewFaceReferenceImages}
           ownerId={user?.uid} preview={Boolean(recreateView?.preview)} active={workflow.controlsActive}
           disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)}
-          onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} /> : workflow ? <FormatGenerationReferences startingFrame={startingFrame} onSelectStartingFrame={recreateView?.onSelectStartingFrame} onClearStartingFrame={recreateView?.onClearStartingFrame} previewStartingFrames={recreateView?.previewStartingFrames} heading={startingFrame ? "Starting frame" : "Optional references"} imagePurpose={imagePurpose} onImagePurposeChange={setImagePurpose} key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={audioReferences[0] ?? null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={galleryVideoReference} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("video")} audioInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={hasWorkflowVideoReference} /> : undefined}
+          onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} /> : workflow && !awaitingStartingFrame ? <FormatGenerationReferences startingFrame={startingFrame} onSelectStartingFrame={recreateView?.onSelectStartingFrame} onClearStartingFrame={recreateView?.onClearStartingFrame} previewStartingFrames={recreateView?.previewStartingFrames} heading={startingFrame ? "Starting frame" : "Optional references"} imagePurpose={imagePurpose} onImagePurposeChange={setImagePurpose} key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={audioReferences[0] ?? null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={galleryVideoReference} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("video")} audioInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={hasWorkflowVideoReference} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={!generationLocked && generationReferenceError ? generationReferenceError : workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}
@@ -1753,7 +1764,7 @@ export function VideoGenerationStudioPanel({
         }
         maxLength={promptMaxLength === undefined ? undefined : Math.max(0, promptMaxLength - (referencePrompt.trim() ? referencePrompt.trim().length + 2 : 0))}
         name="videoPrompt"
-        placeholder={workflow ? workflow.format === "wall_text" ? "A quiet café at sunset, with a slow camera pan…" : "A creator speaks to camera: “Here’s one thing I wish I knew…”" : recreateView ? "What would you like to change?" : "Describe the video you want to create…"}
+        placeholder={workflow ? workflow.format === "wall_text" ? "A quiet café at sunset,\nwith a slow camera pan…" : "A creator speaks to camera: “Here’s one thing I wish I knew…”" : recreateView ? "What would you like to change?" : "Describe the video you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
           submissionKeyRef.current = null;

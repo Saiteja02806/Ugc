@@ -1,6 +1,10 @@
 "use client";
 
-import { ImagePlus, Loader2, X } from "lucide-react";
+import {
+  ImagePlus,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -97,7 +101,7 @@ export function ReferenceImageListUpload({
         disabled={disabled || busy || selections.length >= maxImages}
         onClick={() => inputRef.current?.click()}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
+        {busy ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
       </Button>
       {selections.length > 0 ? (
         <span className="shrink-0 text-xs text-muted">{selections.length}/{maxImages} images</span>

@@ -8,7 +8,6 @@ import {
   FolderOpen,
   FolderPlus,
   Image as ImageIcon,
-  Loader2,
   Pencil,
   Pause,
   Play,
@@ -21,6 +20,8 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -992,7 +993,7 @@ export function UserMediaCollection({
           ))}
           {isLoadingGroups ? (
             <span className="inline-flex items-center gap-1.5 px-2 text-xs text-muted">
-              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <BlocksSpinner className="size-3.5" aria-hidden="true" />
               Loading groups…
             </span>
           ) : null}
@@ -1110,7 +1111,7 @@ export function UserMediaCollection({
             title={`Refresh ${title}`}
             className="inline-flex size-9 items-center justify-center rounded-[10px] border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw className={isLoading ? "size-3.5 animate-spin motion-reduce:animate-none" : "size-3.5"} aria-hidden="true" />
+            {isLoading ? <BlocksSpinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
           </button>
           {selectedGroup ? (
             <>
@@ -1158,8 +1159,8 @@ export function UserMediaCollection({
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading ? (
-              <Loader2
-                className="size-3.5 animate-spin motion-reduce:animate-none"
+              <BlocksSpinner
+                className="size-3.5"
                 aria-hidden="true"
               />
             ) : (
@@ -1176,7 +1177,7 @@ export function UserMediaCollection({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               {isUploading ? (
-                <Loader2 className="size-4 animate-spin text-foreground motion-reduce:animate-none" aria-hidden="true" />
+                <BlocksSpinner className="size-4 text-foreground" aria-hidden="true" />
               ) : (
                 <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
               )}
@@ -1423,9 +1424,9 @@ export function UserMediaCollection({
               disabled={Boolean(deletingAssetId)}
             >
               {deletingAssetId ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : selectedGroup ? (
@@ -1502,9 +1503,9 @@ export function UserMediaCollection({
               </Button>
               <Button type="submit" disabled={isSavingGroup}>
                 {isSavingGroup ? (
-                  <Loader2
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : null}
@@ -1622,9 +1623,9 @@ export function UserMediaCollection({
               disabled={selectedAssetIds.size === 0 || isAddingAssets}
             >
               {isAddingAssets ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : (
@@ -1674,9 +1675,9 @@ export function UserMediaCollection({
               disabled={isDeletingGroup}
             >
               {isDeletingGroup ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : (
@@ -1817,7 +1818,7 @@ function MediaAssetCard({
               className="shrink-0"
             >
               {displayState.isRendering ? (
-                <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <BlocksSpinner  aria-hidden="true" />
               ) : (
                 <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
               )}
@@ -1864,8 +1865,8 @@ function MediaAssetCard({
             }
           >
             {deleting ? (
-              <Loader2
-                className="size-3.5 animate-spin motion-reduce:animate-none"
+              <BlocksSpinner
+                className="size-3.5"
                 aria-hidden="true"
               />
             ) : grouped ? (

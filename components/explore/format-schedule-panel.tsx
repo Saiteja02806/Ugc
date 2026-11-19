@@ -15,6 +15,7 @@ import { resolveWorkflowScheduleDraft, workflowScheduleTargets, workflowSelected
 import type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from "@/lib/explore/format-schedule-draft";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { isScheduleAckMismatch, ScheduleAckMismatchError } from "@/lib/explore/schedule-ack";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
@@ -73,6 +74,9 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const [savedReceipt, setReceipt] = useState<ScheduleReceipt | null>(null);
   const [receiptLoadedKey, setReceiptLoadedKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // True after the self-heal releases a receipt whose server row is verified
+  // scheduled/published with different stored details (see schedule-ack.ts).
+  const [ackScheduled, setAckScheduled] = useState(false);
   const alive = useRef(true), working = useRef(false);
   const key = `ugc-explore:schedule:v1:${user?.uid}:format:${output?.kind}:${output?.id}`;
   const currentKey = useRef(key);
@@ -100,6 +104,20 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     if (draftKey) try { localStorage.removeItem(draftKey); } catch { /* The confirmed receipt remains the scheduling authority. */ }
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { setError("The post is saved. Review it in Scheduling."); }
   }
+  // A verified scheduled/publishing/published row for the same idempotency key
+  // whose details differ from the receipt is real evidence that the earlier
+  // request was scheduled. Release the receipt so the composer offers the next
+  // post instead of looping on the mismatch (schedule-ack.ts).
+  function releaseAckMismatch(entry: ScheduleReceipt, error: ScheduleAckMismatchError): boolean {
+    if (!error.alreadyScheduled) return false;
+    if (!alive.current || currentKey.current !== key || !user || !output) return false;
+    let priorKey: string | null = null;
+    try { priorKey = readScheduleReceipt(localStorage.getItem(key), user.uid, "hook", output.kind)?.input.idempotencyKey ?? null; } catch { priorKey = null; }
+    if (priorKey !== entry.input.idempotencyKey) return false;
+    try { localStorage.removeItem(key); } catch { /* The release remains valid across reloads. */ }
+    setReceipt(null); setMessage(error.message); setAckScheduled(true);
+    return true;
+  }
   useEffect(() => {
     const timer = setTimeout(() => {
       setReceipt(null); setMessage(null); setError(null);
@@ -120,6 +138,10 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         localStorage.setItem(key, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
         throw e;
       }
+      if (isScheduleAckMismatch(e)) {
+        if (releaseAckMismatch(entry, e)) return;
+        throw e;
+      }
       let rejected = false;
       try {
         const value = await authorized("/api/schedules");
@@ -128,14 +150,20 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         if (Array.isArray(value.schedules) && isScheduleSubmissionRejected(e) && !entry.scheduleId && alive.current && currentKey.current === key && saved()?.input.idempotencyKey === entry.input.idempotencyKey) {
           localStorage.removeItem(key); setReceipt(null); setMessage("Review your updated choices, then click Schedule post."); rejected = true;
         }
-      } catch { /* Preserve the same idempotency key for Try again. */ }
+      } catch (verifyError) {
+        if (isScheduleAckMismatch(verifyError)) {
+          if (releaseAckMismatch(entry, verifyError)) return;
+          throw verifyError;
+        }
+        /* Preserve the same idempotency key for Try again. */
+      }
       if (rejected) throw e;
       throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
   async function schedule() {
     if (!active || !user || !output || localPreview || pendingSource || working.current) return;
-    working.current = true; setBusy(true); setError(null);
+    working.current = true; setBusy(true); setError(null); setAckScheduled(false);
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
       await navigator.locks.request(key, { ifAvailable: true }, async lock => {
@@ -143,7 +171,13 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         if (!alive.current || currentKey.current !== key) return;
         const prior = saved();
         if (prior?.scheduleId) {
-          if (receipt?.scheduleId !== prior.scheduleId) { accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); return; }
+          if (receipt?.scheduleId !== prior.scheduleId) {
+            try { accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); return; }
+            catch (e) {
+              if (isScheduleAckMismatch(e)) { if (releaseAckMismatch(prior, e)) return; throw e; }
+              throw e;
+            }
+          }
           archiveConfirmedSchedule(localStorage, key, prior.input.idempotencyKey!, prior);
           setReceipt(null); setMessage(null);
           return;
@@ -177,7 +211,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const selectedAccountCount = new Set(Object.values(selectedAccounts).flat()).size;
   const actions = <div hidden={!active} className={reviewStyles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {message && !receipt?.scheduleId ? <p role="status" className="text-xs leading-5 text-muted">{message}</p> : null}
+    {message && !receipt?.scheduleId ? <p role="status" className="text-xs leading-5 text-muted">{message}{ackScheduled ? <>  <Link href="/scheduling" className={`${reviewStyles.schedulingLink} ${reviewStyles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link></> : null}</p> : null}
     <div className={reviewStyles.actionRow}>
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>

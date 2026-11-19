@@ -1,3 +1,5 @@
+import * as videoFeed from "../lib/explore/video-reference-feed.ts";
+import { isPaidBillingPlan } from "../lib/billing/policy.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -46,13 +48,14 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     "@base-ui/react/tabs": { Tabs: { Root: "Tabs.Root", Panel: "Tabs.Panel" } },
     "@tanstack/react-query": { useQuery: query => ({ data: query.queryKey[0] === "recreate-references" ? [reference] : query.queryKey[0] === "explore-edit-restore" && existingOpening && location.search.includes("editVideoId=") ? sourceAsset : undefined, isFetching: false, isError: false }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner-a" }, loading: false }) },
-    "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { isActive: true } }) },
+    "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { isActive: true, planKey: "growth" }, isSuccess: true, isError: false }) },
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => access },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => source },
     "@/components/explore/use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, setFrame() {}, ready: true, error: null, retry() {} }) },
     "@/components/explore/use-creator-accounts": { useCreatorAccounts: () => ({ accounts: [], selectedId: null, select() {}, account: undefined, references: [], loading: false, error: null, catalogueError: null, retry() {}, retryCatalogue() {} }) },
     "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => ({ data: false, isFetching: false }) },
     "@/lib/explore/wall-pending-composition": { createWallScheduleComposition: () => ({ signature: "fixture", error: null, resolve: async () => ({}) }) },
+    "@/lib/explore/video-reference-feed": videoFeed, "@/lib/billing/policy": { isPaidBillingPlan }, "./reference-feed-upgrade": { ReferenceFeedUpgrade: "ReferenceFeedUpgrade" },
     "@/lib/explore/recreate-types": references, "@/lib/explore/reference-pagination": pagination,
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid },
     "@/lib/explore/format-video-source": { formatVideoFromAsset: value => value },
@@ -62,6 +65,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { throw new Error("No authentication request is allowed in this fixture"); } },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
     "@/lib/explore/local-hook-starting-frame-preview": { LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview-owner", createLocalHookStartingFramePreviewRuntime: () => ({ generationDisabledReason: "Local source preview only" }) },
+    "@/lib/billing/free-video-pass-badge": { freeVideoPassShowsRemainingGeneration: () => false },
   };
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-workspace.tsx", import.meta.url), "utf8"), {

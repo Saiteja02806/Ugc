@@ -11,13 +11,14 @@ import {
   FileVideo,
   Images,
   List,
-  Loader2,
   Plus,
   Pencil,
   RefreshCw,
   RotateCcw,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type {
@@ -1282,12 +1283,22 @@ export function SchedulingWorkspace() {
         method: "DELETE",
         signal: AbortSignal.timeout(20_000),
       });
-      const data = (await response.json()) as ScheduleMutationResponse;
+      const data = (await response.json().catch(() => null)) as
+        | ScheduleMutationResponse
+        | null;
+      const unconfirmedMessage = `Cancellation could not be confirmed (HTTP ${response.status}). The list is refreshing; this post may still publish.`;
 
-      if (!response.ok || data.ok !== true) {
+      if (!response.ok || data?.ok !== true) {
         throw new Error(
-          getApiResponseMessage(data, "Could not cancel this schedule."),
+          getApiResponseMessage(data, unconfirmedMessage),
         );
+      }
+
+      if (
+        data.schedule?.id !== scheduleId ||
+        data.schedule?.status !== "cancelled"
+      ) {
+        throw new Error(unconfirmedMessage);
       }
 
       storeServerSchedule(data.schedule);
@@ -1340,8 +1351,8 @@ export function SchedulingWorkspace() {
           className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait disabled:opacity-70"
         >
           {checkingScheduleAccess ? (
-            <Loader2
-              className="size-4 animate-spin motion-reduce:animate-none"
+            <BlocksSpinner
+              className="size-4"
               aria-hidden="true"
             />
           ) : (
@@ -1388,13 +1399,7 @@ export function SchedulingWorkspace() {
               aria-busy={schedulesRefreshing}
               onClick={() => void loadSchedules({ force: true })}
             >
-              <RefreshCw
-                className={cn(
-                  "size-4",
-                  schedulesRefreshing && "animate-spin motion-reduce:animate-none",
-                )}
-                aria-hidden="true"
-              />
+              {schedulesRefreshing ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
               {schedulesRefreshing ? "Retrying…" : "Retry"}
             </Button>
           </div>
@@ -1594,9 +1599,9 @@ function ScheduleEditorLoading() {
       role="status"
     >
       <div className="flex w-full max-w-sm items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
-        <Loader2
+        <BlocksSpinner
           aria-hidden="true"
-          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+          className="size-5 shrink-0 text-primary"
         />
         Opening scheduling editor…
       </div>
@@ -2284,10 +2289,7 @@ function ScheduleDraftActions({
             disabled={isRendering}
             className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RotateCcw
-              className={cn("size-3.5", isRendering && "animate-spin")}
-              aria-hidden="true"
-            />
+            {isRendering ? <BlocksSpinner className="size-3.5" /> : <RotateCcw className="size-3.5" aria-hidden="true" />}
             {isRendering
               ? "Preparing…"
               : draft.status === "render_failed"
@@ -2303,10 +2305,7 @@ function ScheduleDraftActions({
             disabled={!canScheduleFinal || isSchedulingFinal}
             className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RotateCcw
-              className={cn("size-3.5", isSchedulingFinal && "animate-spin")}
-              aria-hidden="true"
-            />
+            {isSchedulingFinal ? <BlocksSpinner className="size-3.5" /> : <RotateCcw className="size-3.5" aria-hidden="true" />}
             {isSchedulingFinal ? "Retrying…" : "Retry scheduling"}
           </button>
         ) : null}
@@ -2444,7 +2443,7 @@ function CancelScheduleDialog({
             className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
           >
             {cancelling ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              <BlocksSpinner className="size-4" aria-hidden="true" />
             ) : (
               <Ban className="size-4" aria-hidden="true" />
             )}
@@ -2619,10 +2618,7 @@ function ScheduleTargetStatusList({
                   onClick={() => onRetryPublishing(draft, target)}
                   className="inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-control bg-primary px-2.5 text-[11px] font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"
                 >
-                  <RefreshCw
-                    className={cn("size-3.5", isRetrying && "animate-spin")}
-                    aria-hidden="true"
-                  />
+                  {isRetrying ? <BlocksSpinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
                   {isRetrying ? "Retrying…" : "Retry publishing"}
                 </button>
               ) : null}

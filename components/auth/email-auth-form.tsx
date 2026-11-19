@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowRight, KeyRound, LoaderCircle, Lock, Mail } from "lucide-react";
+import {
+  ArrowRight,
+  KeyRound,
+  Lock,
+  Mail,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -199,7 +205,7 @@ export function EmailAuthForm({
           })}
         >
           {isSubmitting ? (
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            <BlocksSpinner className="size-4" aria-hidden="true" />
           ) : (
             <ArrowRight className="size-4" aria-hidden="true" />
           )}

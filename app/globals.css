@@ -524,3 +524,20 @@ p {
     @apply font-sans;
   }
 }
+
+/* Blocks-shuffle loading indicator: show the animated SMIL group by default
+   and the static three-block fallback when reduced motion is requested. */
+.blocks-spinner-static {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blocks-spinner-motion {
+    display: none;
+  }
+
+  .blocks-spinner-static {
+    display: inline;
+  }
+}
+

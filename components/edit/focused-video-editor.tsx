@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Clock3,
   Film,
-  Loader2,
   Pause,
   Play,
   Plus,
@@ -14,6 +13,8 @@ import {
   Type,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -492,7 +493,7 @@ export function FocusedVideoEditor({
                     {videoLoadState === "loading" ? (
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
                         <div className="flex items-center gap-2 rounded-control bg-black/70 px-3 py-2 text-xs font-semibold text-white">
-                          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                          <BlocksSpinner className="size-4" aria-hidden="true" />
                           Loading preview
                         </div>
                       </div>

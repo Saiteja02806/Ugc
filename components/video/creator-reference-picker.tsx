@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Check, ChevronDown, ImagePlus, Loader2, UserRound, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ImagePlus,
+  UserRound,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 
@@ -175,8 +182,8 @@ export function CreatorReferencePicker({
         )}
         <span className={iconOnly ? "sr-only" : "truncate"}>{isPending ? "Preparing" : triggerLabel}</span>
         {isPending ? (
-          <Loader2
-            className="size-3 shrink-0 animate-spin text-muted motion-reduce:animate-none"
+          <BlocksSpinner
+            className="size-3 shrink-0 text-muted"
             aria-hidden="true"
           />
         ) : (
@@ -208,8 +215,8 @@ export function CreatorReferencePicker({
             </p>
           </div>
           {isPending ? (
-            <Loader2
-              className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted motion-reduce:animate-none"
+            <BlocksSpinner
+              className="mt-0.5 size-3.5 shrink-0 text-muted"
               aria-label="Preparing creator reference"
             />
           ) : null}
@@ -291,8 +298,8 @@ export function CreatorReferencePicker({
                 </span>
                 {loading ? (
                   <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
-                    <Loader2
-                      className="size-4 animate-spin motion-reduce:animate-none"
+                    <BlocksSpinner
+                      className="size-4"
                       aria-hidden="true"
                     />
                   </span>

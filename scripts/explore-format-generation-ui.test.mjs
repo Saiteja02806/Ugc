@@ -382,6 +382,16 @@ for (const format of ["hook", "wall_text"]) test(`${format}: unapproved Recreate
   assert.equal(h.events.includes("show-results"), false);
 });
 
+for (const format of ["hook", "wall_text"]) test(`${format}: the reference instructions card has a working close mark`, () => {
+  const h = harness(format, { startingFrameRequired: true, captureRequests: true });
+  const composer = h.render().composer;
+  assert.equal(composer.props.referenceControls.props["aria-label"], "Reference instructions");
+  const close = resultNodes(composer.props.referenceControls).find(node => (node.type === "button" || node.type === "Button") && node.props["aria-label"] === "Close");
+  assert.ok(close, "The reference instructions card exposes a close mark");
+  close.props.onClick();
+  assert.equal(h.render().composer.props.referenceControls, undefined, "The close mark hides the card");
+});
+
 for (const format of ["hook", "wall_text"]) test(`${format}: Use instructions alone copies the current source prompt and submits no source media`, async () => {
   const h = harness(format, { startingFrameRequired: true, captureRequests: true });
   const updated = "Source B: raise the cup, turn left, then smile.";

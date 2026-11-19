@@ -4,11 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
-  LoaderCircle,
   Plus,
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import {
   useCallback,
   useEffect,
@@ -329,7 +330,7 @@ export function InstagramAccountManager() {
   const accountLimitReached = connections.length >= instagramAccountLimit;
   const accountLimitMessage =
     instagramAccountLimit === 1
-      ? "Your Free plan supports 1 connected Instagram account. Upgrade to Starter to connect up to 3 accounts."
+      ? "Your account supports 1 connected Instagram account. Upgrade to Starter to connect up to 3 accounts."
       : instagramAccountLimit === 3
         ? "Your Starter plan supports up to 3 connected Instagram accounts. Upgrade to Growth to connect up to 5 accounts."
         : "Your Growth plan supports up to 5 connected Instagram accounts. Disconnect an account before adding another.";
@@ -381,11 +382,7 @@ export function InstagramAccountManager() {
               disabled={loading || isConnecting}
               className="h-9 rounded-full px-3.5"
             >
-              <RefreshCw
-                data-icon="inline-start"
-                className={loading ? "animate-spin motion-reduce:animate-none" : ""}
-                aria-hidden="true"
-              />
+              {loading ? <BlocksSpinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" aria-hidden="true" />}
               Refresh
             </Button>
             {accountLimitReached ? (
@@ -401,9 +398,9 @@ export function InstagramAccountManager() {
                 className="h-9 rounded-full px-4"
               >
                 {isAdding ? (
-                  <LoaderCircle
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : (
@@ -570,9 +567,9 @@ export function InstagramAccountManager() {
               disabled={Boolean(disconnectingId)}
             >
               {disconnectingId ? (
-                <LoaderCircle
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : (
@@ -645,9 +642,9 @@ function InstagramConnectionRow({
           className="h-8 flex-1 rounded-full px-3 lg:flex-none"
         >
           {reconnecting ? (
-            <LoaderCircle
+            <BlocksSpinner
               data-icon="inline-start"
-              className="animate-spin motion-reduce:animate-none"
+              
               aria-hidden="true"
             />
           ) : (

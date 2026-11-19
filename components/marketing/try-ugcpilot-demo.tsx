@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { preconnect, preload } from "react-dom";
-import { ArrowDown, Heart, Check, Flame, LoaderCircle, RotateCcw, Volume2, VolumeX, Wifi } from "lucide-react";
+import {
+  ArrowDown,
+  Heart,
+  Check,
+  Flame,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Wifi,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 
 import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
 import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
@@ -924,7 +935,7 @@ export function TryUgcPilotDemo() {
 
             {!topCard && (isAnalyzing || isRefilling) ? (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center" role="status" aria-live="polite">
-                <LoaderCircle className="size-9 animate-spin text-[#0078d4]" aria-hidden="true" />
+                <BlocksSpinner className="size-9 text-[#0078d4]" aria-hidden="true" />
                 <h2 className="mt-3 text-xl font-bold">Loading more content</h2>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   {isAnalyzing ? "Building your personalized deck…" : "Preparing your next cards…"}
@@ -1030,7 +1041,7 @@ function ProductControlPanel({
           disabled={isAnalyzing || !url.trim()}
           className="flex h-10 w-full items-center justify-center rounded-[11px] bg-[#0078d4] px-4 text-[13px] font-bold text-white transition hover:bg-[#005a9e] disabled:cursor-wait disabled:opacity-65"
         >
-          {isAnalyzing ? <LoaderCircle className="mr-2 size-3.5 animate-spin" aria-hidden="true" /> : null}
+          {isAnalyzing ? <BlocksSpinner className="mr-2 size-3.5" aria-hidden="true" /> : null}
           {isAnalyzing ? "Analyzing…" : "Analyze URL"}
         </button>
       </form>
@@ -1061,7 +1072,7 @@ function StatusRow({ done, label, loading = false }: { done: boolean; label: str
   return (
     <div className="flex items-center gap-2.5">
       <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-[#0078d4] text-white" : "bg-zinc-800 text-zinc-400"}`}>
-        {loading ? <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> : done ? <Check className="size-3" aria-hidden="true" /> : <span className="size-1.5 rounded-full bg-current" />}
+        {loading ? <BlocksSpinner className="size-3" aria-hidden="true" /> : done ? <Check className="size-3" aria-hidden="true" /> : <span className="size-1.5 rounded-full bg-current" />}
       </span>
       <span className="truncate text-xs font-medium text-zinc-300">{label}</span>
     </div>

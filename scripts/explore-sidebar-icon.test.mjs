@@ -65,11 +65,11 @@ test("production navigation shows Explore and Audio in active and collapsed stat
       SidebarLink, (...values) => values.filter(Boolean).join(" "), { quiet: "quiet-scrollbar" }, () => ({ user: null }), () => false,
     );
     for (const collapsed of [false, true]) {
-      for (const activeKey of ["explore", "audio-generation"]) {
+      for (const activeKey of ["explore"]) {
         const html = renderToStaticMarkup(createElement(Navigation, { collapsed, activeKey }));
         assert.match(html, /href="\/explore"/);
-        assert.match(html, /href="\/audio-generation"/);
-        assert.match(html, new RegExp(`href="/${activeKey}" aria-current="page" data-collapsed="${collapsed}"`));
+        assert.doesNotMatch(html, /href="\/audio-generation"/, "audio generation is no longer promoted in navigation");
+        assert.match(html, new RegExp(`href="/explore" aria-current="page" data-collapsed="${collapsed}"`));
         assert.doesNotMatch(html, /href="\/create-content"/);
       }
     }

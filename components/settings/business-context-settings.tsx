@@ -1,6 +1,9 @@
 "use client";
 
-import { CheckCircle2, LoaderCircle } from "lucide-react";
+import {
+  CheckCircle2,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -128,7 +131,7 @@ export function BusinessContextSettings() {
   if (!profile || !context || !listText) {
     return (
       <div className="flex min-h-48 items-center justify-center text-sm text-muted" aria-live="polite">
-        {error ? error : <><LoaderCircle className="mr-2 size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Loading Business Context…</>}
+        {error ? error : <><BlocksSpinner className="mr-2 size-4" aria-hidden="true" />Loading Business Context…</>}
       </div>
     );
   }
@@ -260,7 +263,7 @@ export function BusinessContextSettings() {
 
       <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
         <Button variant="neutral" type="button" disabled={busyAction !== null || !canApplyChanges} onClick={() => void runAction("apply")}>
-          {busyAction === "apply" ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 data-icon="inline-start" aria-hidden="true" />}
+          {busyAction === "apply" ? <BlocksSpinner data-icon="inline-start"  aria-hidden="true" /> : <CheckCircle2 data-icon="inline-start" aria-hidden="true" />}
           Apply changes to future content
         </Button>
       </div>

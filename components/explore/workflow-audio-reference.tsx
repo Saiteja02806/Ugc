@@ -37,7 +37,7 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = fals
     </PopoverTrigger>
     <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
       <PopoverTitle>Audio reference</PopoverTitle>
-      <p className="text-xs text-muted">Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds. Seedance voice references need at least 5 seconds.</p>
+      <p className="text-xs text-muted">Pick a sample voice or add your own audio to guide the delivery. Seedance 2.5 accepts 5–30 seconds; WAN 3.0 accepts 1–15.</p>
       <WorkflowFilePicker attachment={{ ...audio, choose: file => audio.choose(file, { minDuration, maxDuration }) }} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
       {open && ownerId ? <WorkflowSavedAudioChoices ownerId={ownerId} audio={audio} minDuration={minDuration} maxDuration={maxDuration} onVoiceReference={() => {}} /> : null}
       {audio.asset ? <>

@@ -322,8 +322,11 @@ test("busy video previews show the shared animated placeholders and retain compl
 
 test("shared controls preserve input and picker scrolling and reserve the action footer", () => {
   for (const selector of ["controls", "controlContent"]) {
-    for (const block of styles.matchAll(new RegExp(`\\.${selector}\\s*\\{([^}]+)\\}`, "g"))) {
-      assert.doesNotMatch(block[1], /overflow(?:-y)?:\s*(auto|scroll|hidden)|height: calc/);
+    for (const block of styles.matchAll(new RegExp(`([^{}]*?)\\.${selector}(?![\\w-])\\s*\\{([^}]+)\\}`, "g"))) {
+      // The guest workflow card is the one exception: its app frame scrolls its own content column,
+      // scoped by [data-guest-workflow], so the signed-in panel keeps its natural page flow.
+      if (block[1].includes("[data-guest-workflow]")) continue;
+      assert.doesNotMatch(block[2], /overflow(?:-y)?:\s*(auto|scroll|hidden)|height: calc/);
     }
   }
   assert.match(styles, /\.prompt[^}]*height: 72px[^}]*resize: none[^}]*overflow-y: auto/);
@@ -357,7 +360,7 @@ test("Create audio keeps the recording as AI guidance without an unimplemented e
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every(node => !["Exact recording", "Voice reference"].includes(text(node))));
   assert.deepEqual(changes, []);
-  assert.match(text(tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
+  assert.match(text(tree), /Seedance 2\.5 accepts 5–30 seconds; WAN 3\.0 accepts 1–15/);
   assert.doesNotMatch(text(tree), /exact copy|Files upload only|through OpenRouter/);
   assert.equal(audio.asset.name, "voice.wav");
   assert.doesNotMatch(audioSource, /setInstructions|onInstructionsChange|\bfetch\(|localStorage|sessionStorage/);
@@ -467,9 +470,9 @@ test("both workflows expose explicit play-once/repeat choices and honest local t
     assert.match(workspace, videoLabel === "Hook" ? /useState<ExploreBackgroundPlayback>\(recovery\.session\.demoAudioPlayback\)/ : /useState<ExploreBackgroundPlayback>\("once"\)/);
     assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\} onDemoAudioPlaybackChange=\{setDemoAudioPlayback\}/);
     if (videoLabel === "Hook") {
-      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 60, maxBytes: 100 \* 1024 \*\* 2 \}\)\) return false;[\s\S]*?localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true;/);
-      assert.match(workspace, /function removeDemoAudio\(\) \{\s*audioRevision\.current\+\+; localDemoAudio\.remove\(\); recovery\.clearMedia\("demoAudio"\);[\s\S]*?setDemoAudioPlayback\("once"\);/);
-      assert.match(workspace, /if \(!await localDemoAudio\.choose\(file, \{ maxDuration: 600 \}\)\) return false;[\s\S]*?setDemoAudioPlayback\("once"\); return true;/);
+      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 60, maxBytes: 100 \* 1024 \*\* 2 \}\)\) return false;[\s\S]*?setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true;/);
+      assert.match(workspace, /function removeDemoAudio\(\) \{\s*recovery\.clearMedia\("demoAudio"\);[\s\S]*?setDemoAudioPlayback\("once"\);/);
+      assert.doesNotMatch(workspace, /chooseDemoAudio|purpose: "explore-demo"/);
     } else {
       assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
       assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
@@ -518,7 +521,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
     const { tree } = audioRender({ audioLabel, audio });
     const popup = nodes(tree).find(node => node.type === "PopoverContent");
     const paragraphs = nodes(popup).filter(node => node.type === "p");
-    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds. Seedance voice references need at least 5 seconds.", "voice.mp3"]);
+    assert.deepEqual(paragraphs.map(text), ["Pick a sample voice or add your own audio to guide the delivery. Seedance 2.5 accepts 5–30 seconds; WAN 3.0 accepts 1–15.", "voice.mp3"]);
     const picker = nodes(tree).find(node => node.type === "picker");
     assert.equal(await picker.props.attachment.choose(file), true);
     assert.equal(chosen[0][0], file);
@@ -545,7 +548,7 @@ test("both workflows keep concise voice-reference guidance separate from demo-on
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
     assert.match(text(reference.tree), /Audio reference/);
-    assert.match(text(reference.tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
+    assert.match(text(reference.tree), /Seedance 2\.5 accepts 5–30 seconds; WAN 3\.0 accepts 1–15/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
     const details = nodes(demo.tree).find((node) => node.props["aria-label"] === "Demo audio details");
@@ -596,12 +599,12 @@ test("generation drafts use only their own voice reference and never the demo or
   }
 });
 
-test("the Talking Head demo card uses Hook-style source tiles and a demo sound disclosure", () => {
+test("the Talking Head Demo keeps video sources and hides empty voiceover controls", () => {
   const { tree } = render({ videoLabel: "Talking head", demoSourceTiles: true, demoSoundDetails: true, onChooseSavedDemo() {} });
   assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Upload demo"));
   assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Saved demos"));
   const summary = nodes(tree).find(node => node.type === "summary" && text(node).includes("Demo voiceover"));
-  assert.ok(summary, "the demo sound controls sit inside one disclosure");
+  assert.equal(summary, undefined);
   assert.equal(nodes(tree).some(node => node.type === "demo-controls"), false);
 });
 
@@ -612,14 +615,14 @@ test("legacy demo framing remains resettable without the crop control", () => {
   assert.ok(nodes(tree).some(node => node.type === "button" && text(node) === "Reset demo framing"));
 });
 
-test("the demo sound disclosure keeps the demo-only audio upload and saved audio", () => {
+test("Talking Head keeps existing voiceovers removable and disables every new attachment path", () => {
   const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true), demoSourceTiles: true, demoSoundDetails: true, connected: true, ownerId: "owner" });
   const disclosure = nodes(tree).find(node => node.type === "details" && node.props?.["aria-label"] === "Demo voiceover");
   assert.ok(disclosure, "the demo sound controls are grouped in one disclosure");
-  assert.ok(nodes(disclosure).some(node => node.type === "picker" && node.props.label === "Upload demo voiceover"), "the demo-only upload stays available");
-  const saved = nodes(disclosure).find(node => node.type === "saved-audio-picker");
-  assert.equal(saved.props.voiceoverOnly, true);
-  assert.equal(saved.props.buttonLabel, "Choose saved voiceover");
+  assert.ok(!nodes(disclosure).some(node => node.type === "picker" || node.type === "saved-audio-picker"));
+  const attachment = nodes(tree).find(node => node.props?.["aria-label"] === "Demo voiceover attachment");
+  assert.equal(attachment.props.onDrop, undefined);
+  assert.ok(nodes(disclosure).some(node => node.type === "remove" && node.props.label === "demo voiceover"));
   assert.ok(text(disclosure).includes("demo.wav"));
   assert.match(text(tree), /The demo voiceover plays during the demo only/);
 });

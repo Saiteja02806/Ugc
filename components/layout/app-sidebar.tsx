@@ -56,12 +56,7 @@ const primaryNavigationItems: SidebarItem[] = [
     href: "/explore",
     icon: "explore",
   },
-  {
-    key: "audio-generation",
-    label: "Audio generation",
-    href: "/audio-generation",
-    icon: "audio",
-  },
+  // Audio generation is no longer promoted in navigation; the screen stays reachable for saved-audio links.
   {
     key: "ai-studio",
     label: "AI Studio",
@@ -103,9 +98,11 @@ const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
 export function AppSidebar({
   activeKey = "explore",
   defaultCollapsed = false,
+  guestWorkflow = false,
 }: {
   activeKey?: AppSidebarActiveKey;
   defaultCollapsed?: boolean;
+  guestWorkflow?: boolean;
 }) {
   const { user } = useAuth();
   const workflowNavigation = useWorkflowNavigation();
@@ -116,11 +113,13 @@ export function AppSidebar({
   const mobileNavigationId = workflowNavigation?.enabled ? workflowNavigation.id : fallbackNavigationId;
   const mobileNavigationRef = useRef<HTMLElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
-  const collapsed = useSyncExternalStore(
+  const [guestCollapsed, setGuestCollapsed] = useState(false);
+  const savedCollapsed = useSyncExternalStore(
     subscribeToSidebarPreference,
     () => getSidebarPreference(defaultCollapsed),
     () => getServerSidebarPreference(defaultCollapsed),
   );
+  const collapsed = guestWorkflow ? guestCollapsed : savedCollapsed;
   const displayName =
     user?.displayName || user?.email?.split("@")[0] || "Vidmake user";
   const initials = getInitials(displayName);
@@ -179,7 +178,8 @@ export function AppSidebar({
   }, [isMobileNavigationOpen, setIsMobileNavigationOpen]);
 
   function toggleSidebar() {
-    setSidebarPreference(!collapsed);
+    if (guestWorkflow) setGuestCollapsed(!collapsed);
+    else setSidebarPreference(!collapsed);
   }
 
   return (

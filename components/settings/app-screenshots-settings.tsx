@@ -4,10 +4,10 @@ import {
   AlertCircle,
   CheckCircle2,
   ImagePlus,
-  LoaderCircle,
   Trash2,
   Upload,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -301,9 +301,9 @@ export function AppScreenshotsSettings() {
             className="w-full sm:w-auto"
           >
             {isUploading ? (
-              <LoaderCircle
+              <BlocksSpinner
                 data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                
                 aria-hidden="true"
               />
             ) : (
@@ -450,9 +450,9 @@ export function AppScreenshotsSettings() {
               onClick={() => void removeScreenshot()}
             >
               {removingAssetId ? (
-                <LoaderCircle
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : (

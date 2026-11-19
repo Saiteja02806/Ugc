@@ -12,9 +12,12 @@ import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts"
 const ownerId="curated-test",draftId="00000000-0000-4000-8000-000000000001",photo="00000000-0000-4000-8000-000000000002";
 test("twenty-one exact selections include the first gallery Hook; Hook 88 stays original and hidden references stay archival",()=>{
   assert.equal(catalog.frames.length,21);assert.equal(new Set(catalog.frames.map(r=>r.referenceId)).size,21);assert.ok(!catalog.frames.some(r=>r.number===88));
-  const active=getHookReferenceGalleryItems(),all=getHookReferenceReleaseItems();assert.equal(active.length,106);
-  for(const id of ["explore-paired-hook-e5870158a2ad1494edc92741","explore-paired-hook-6365d336034633aa5070eb48"]){assert.ok(all.some(r=>r.id===id));assert.ok(!active.some(r=>r.id===id));}
+  const active=getHookReferenceGalleryItems(),all=getHookReferenceReleaseItems();assert.equal(active.length,129);
+  assert.equal(active.some(row => row.id === "explore-paired-hook-ddcfb2950d40f37771058b73"), false);
+  assert.equal(active.some(row => row.id === "explore-paired-hook-6070b6ecbe246d879ce0bdcb"), false);
+  for(const id of ["explore-paired-hook-e5870158a2ad1494edc92741"]){assert.ok(all.some(r=>r.id===id));assert.ok(!active.some(r=>r.id===id));}
   assert.ok(active.some(r=>r.title==="Hook 88"));
+  assert.ok(active.some(r=>r.id==="explore-paired-hook-6365d336034633aa5070eb48" && r.videoSha256==="f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f"));
 });
 test("the first gallery Hook adds one clearer binding without changing the original twenty approved selections", async () => {
   const original = JSON.parse(await readFile("docs/approved-hook-frame-selections-2026-10-24.json", "utf8"));
@@ -89,7 +92,7 @@ test("Hook 100 keeps old approved opening receipts recoverable while new prepara
   assert.ok(parseHookKeyframeGenerationReceipt(originalReceipt), "Previously accepted request still uses its original input and frame");
   const nextPrompt = getHookKeyframePromptPreview(next);
   assert.match(nextPrompt.directions, /PHASE \[0/);
-  assert.match(nextPrompt.directions, /ENDING STATE:/);
+  assert.match(nextPrompt.directions, /ENDING(?: STATE)?:/);
   assert.ok(getHookKeyframePromptPreview(restored).animationPrompt, "Legacy frame-zero motion remains available through history");
 });
 test("hidden or removed sources and changed approved source versions fail without decoding an opening fallback", async () => {

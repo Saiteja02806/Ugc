@@ -1,6 +1,7 @@
 import publicData from "./hook-middle-frame-public.json" with { type: "json" };
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import type { HookMotionPlan } from "./hook-keyframe-motion.ts";
+import { hookMotionPlanDirections } from "./hook-motion-plan-directions.ts";
 
 export type MiddleFrameMotionEntry = {
   referenceId: string;
@@ -16,6 +17,7 @@ export type MiddleFrameMotionEntry = {
   captionCleanup: { text: string; region: string };
   openingImageRequirement: string;
   constraints?: readonly string[];
+  summariesInTimeline?: readonly ("camera" | "ending")[];
   risks?: readonly string[];
   visualQualification: "not_tested";
 };
@@ -26,6 +28,8 @@ const text = (value: unknown): value is string => typeof value === "string" && B
 
 /** Source-bound data validation, not a claim of generated-output fidelity. */
 export function validateMiddleFrameMotionEntry(entry: MiddleFrameMotionEntry): boolean {
+  if (entry?.summariesInTimeline !== undefined && (!Array.isArray(entry.summariesInTimeline) ||
+    !entry.summariesInTimeline.every(field => field === "camera" || field === "ending"))) return false;
   if (!entry || !text(entry.referenceId) || !/^[a-f0-9]{64}$/.test(entry.sourceSha256) ||
     !Number.isFinite(entry.sourceDurationSeconds) || entry.sourceDurationSeconds <= 0 ||
     !Number.isFinite(entry.sourceFps) || entry.sourceFps <= 0 ||
@@ -66,19 +70,14 @@ export function sourceMotionPlan(entry: MiddleFrameMotionEntry): HookMotionPlan 
     })),
     camera: entry.camera,
     endingState: entry.endingState,
+    ...(entry.summariesInTimeline ? { summariesInTimeline: entry.summariesInTimeline } : {}),
     constraints: ["Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."],
   };
 }
 
 export function buildSourceMotionDirections(entry: MiddleFrameMotionEntry): string {
   const plan = sourceMotionPlan(entry);
-  return [
-    `OPENING STATE: ${plan.openingState}`,
-    ...plan.beats.map(beat => `${beat.phase.toUpperCase()}: ${beat.action}`),
-    `CAMERA: ${plan.camera}`,
-    `ENDING STATE: ${plan.endingState}`,
-    ...plan.constraints.map(value => `CONSTRAINT: ${value}`),
-  ].join("\n\n");
+  return hookMotionPlanDirections(plan);
 }
 
 /** Normalized authoring boundaries are mapped only at submission/preview duration.
@@ -100,5 +99,5 @@ export function retimeSourceMotionDirections(directions: string, durationSeconds
   const actionDuration = actionDurationSeconds ?? durationSeconds;
   const seconds = (value: number) => Number((value * actionDuration).toFixed(2)).toString();
   const timed = directions.replace(pattern, (_match, start: string, end: string) => `${seconds(Number(start))}–${seconds(Number(end))}s`);
-  return actionDuration < durationSeconds ? `${timed}\n\nFINAL HOLD ${seconds(1)}–${durationSeconds}s: Keep the completed ending pose, expression, hand and prop contact, lighting and camera composition continuous. Introduce no new gesture or scene change.` : timed;
+  return actionDuration < durationSeconds ? `${timed}\n\nFINAL HOLD ${seconds(1)}–${durationSeconds}s: Hold the completed ending pose, expression, hand/prop contact, light and framing. No new gesture or scene change.` : timed;
 }

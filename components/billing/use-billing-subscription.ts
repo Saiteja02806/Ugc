@@ -6,6 +6,9 @@ import { syncFreeVideoPassUiCookie } from "@/components/explore/explore-free-vid
 import { useAuth } from "@/contexts/auth-context";
 import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-state";
 import { freeVideoPassShowsRemainingGeneration } from "@/lib/billing/free-video-pass-badge";
+import {
+  writeSubscriptionSnapshot,
+} from "@/lib/billing/subscription-snapshot";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 
@@ -113,16 +116,28 @@ async function fetchBillingSubscription(ownerId: string, signal?: AbortSignal): 
     if (!response.ok || !data?.subscription) {
       throw new Error(data?.error || "Could not load billing details.");
     }
+    const subscription = data.subscription;
 
     if (typeof document !== "undefined") {
       syncFreeVideoPassUiCookie(
         freeVideoPassShowsRemainingGeneration(
-          data.subscription.freeVideoPass,
-          data.subscription.isActive,
+          subscription.freeVideoPass,
+          subscription.isActive,
         ),
       );
+      // The pricing page hydrates the last known plan action from this
+      // snapshot immediately; the next fetch always refreshes it again.
+      writeSubscriptionSnapshot(subscription.userId, {
+        accessSource: subscription.accessSource,
+        billingInterval: subscription.billingInterval,
+        isActive: subscription.isActive,
+        isDodoManaged: subscription.isDodoManaged,
+        planKey: subscription.planKey,
+        status: subscription.status,
+        trial: { status: subscription.trial?.status ?? "unavailable" },
+      });
     }
 
-    return data.subscription;
+    return subscription;
   }, signal);
 }

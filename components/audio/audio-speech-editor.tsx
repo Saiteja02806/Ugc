@@ -2,7 +2,15 @@
 
 import type { RefObject } from "react";
 import Link from "next/link";
-import { ArrowRight, AudioLines, ChevronDown, LoaderCircle, LockKeyhole, SlidersHorizontal, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  AudioLines,
+  ChevronDown,
+  LockKeyhole,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import type { AudioModel, AudioVoice } from "@/lib/audio/types";
 import { VoiceOrb } from "./voice-orb";
 
@@ -53,7 +61,7 @@ export function AudioSpeechEditor({ layout, voice, name, script, placeholder, sc
         <details className="audio-studio-settings"><summary><SlidersHorizontal size={14} />Voice settings<span>{models.find(model => model.id === modelId)?.name || "Speech model"} · {speed.toFixed(2)}×</span><ChevronDown size={13} /></summary><div className="audio-studio-controls">{controls}</div></details>
         {availabilityMessage ? <p className="audio-inline-note audio-studio-availability"><LockKeyhole size={15} />{availabilityMessage}</p> : null}
       </> : null}
-      <div className="audio-generate-row"><span className="audio-fine-print">{upgradeRequired ? "Browse voices and listen to samples on Free." : freeTest ? "Free-plan testing · Noncommercial use" : "Your audio saves automatically."}</span><div className="audio-generate-actions">{upgradeRequired ? <Link href="/pricing" className="audio-text-button">View plans<ArrowRight size={14} /></Link> : null}<button type="button" className="audio-primary" disabled={!ready || upgradeRequired} onClick={onGenerate}>{posting || generating ? <LoaderCircle size={16} className="animate-spin" /> : <AudioLines size={17} />}{posting ? "Submitting…" : generating ? "Generating…" : "Generate audio"}</button></div></div>
+      <div className="audio-generate-row"><span className="audio-fine-print">{upgradeRequired ? "Browse voices and listen to samples on Free." : freeTest ? "Free-plan testing · Noncommercial use" : "Your audio saves automatically."}</span><div className="audio-generate-actions">{upgradeRequired ? <Link href="/pricing" className="audio-text-button">View plans<ArrowRight size={14} /></Link> : null}<button type="button" className="audio-primary" disabled={!ready || upgradeRequired} onClick={onGenerate}>{posting || generating ? <BlocksSpinner size={16}  /> : <AudioLines size={17} />}{posting ? "Submitting…" : generating ? "Generating…" : "Generate audio"}</button></div></div>
     </div>
     {!studio ? <aside className="audio-speech-settings" aria-label="Speech settings">
       <h3>Voice</h3><div className="audio-selected-voice">{voice ? <VoiceOrb id={voice.id} /> : <AudioLines size={30} />}<div><strong>{voice?.name || "Choose a voice"}</strong><span>{voice ? [voice.labels.accent, voice.labels.gender].filter(Boolean).map(displayLabel).join(" · ") : "Browse the voice library"}</span></div></div>

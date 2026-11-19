@@ -1,9 +1,14 @@
-import { ArrowRight, Check, LoaderCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import type { BillingSubscription } from "@/components/billing/use-billing-subscription";
+import type { PricingSubscription } from "@/lib/pricing/plan-action";
 import { CreditIcon } from "@/components/icons/credit-icon";
 import { PricingModelSelect } from "@/components/pricing/pricing-model-select";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
-import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { resolvePricingPlanAction } from "@/lib/pricing/plan-action";
 import {
   formatPlanAllowance,
@@ -31,7 +35,7 @@ type PricingCardProps = {
   isSubscriptionError?: boolean;
   isSubscriptionLoading: boolean;
   plan: PricingPlan;
-  subscription: BillingSubscription | null;
+  subscription: PricingSubscription | null;
 };
 
 export function PricingCard({
@@ -198,7 +202,7 @@ export function PricingCard({
             {formatPricingAmount(Math.round(pricing.monthlyEquivalent))}
           </span>
           <span className="text-xs font-medium uppercase tracking-wider text-muted">
-            {isFree ? `for ${FREE_TRIAL_CONTENT_DAYS} days` : "/ month"}
+            {isFree ? "" : "/ month"}
           </span>
         </div>
         <p className="mt-1 min-h-4 text-xs font-normal text-muted">
@@ -231,9 +235,9 @@ export function PricingCard({
             )}
           >
             {isWorking || (action.disabled && !isSubscriptionError) ? (
-              <LoaderCircle
+              <BlocksSpinner
                 data-icon="inline-start"
-                className="size-4 animate-spin motion-reduce:animate-none"
+                className="size-4"
                 aria-hidden="true"
               />
             ) : null}

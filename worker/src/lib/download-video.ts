@@ -22,10 +22,7 @@ export async function downloadVideoToBuffer(
 
 export async function downloadAudioToBuffer(
   url: string,
-  options: {
-    maxBytes?: number;
-    timeoutMs?: number;
-  } = {},
+  options: Pick<DownloadOptions, "maxBytes" | "timeoutMs" | "redirect"> = {},
 ) {
   return downloadMediaToBuffer(url, {
     ...options,

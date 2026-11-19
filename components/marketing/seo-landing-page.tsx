@@ -230,7 +230,7 @@ export const seoPageContent = {
       {
         question: "Can I try AI video generation before choosing a paid plan?",
         answer:
-          "Vidmake's pricing page explains the current seven-day trial and the credits available during it. Review that page for the current plan details before you generate or export work for a campaign.",
+          "Vidmake is paid-only: plans start at $29 a month with daily content concepts and monthly AI credits. Review the pricing page for the current plan details before you generate or export work for a campaign.",
       },
     ],
     relatedPages: [

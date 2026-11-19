@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Film,
   Library,
-  Loader2,
   Pause,
   Play,
   RefreshCw,
@@ -20,6 +19,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -716,8 +716,8 @@ export function HookVideoComposer({
               className={secondaryButtonClass}
             >
               {saving ? (
-                <Loader2
-                  className="size-4 animate-spin motion-reduce:animate-none"
+                <BlocksSpinner
+                  className="size-4"
                   aria-hidden="true"
                 />
               ) : (
@@ -742,8 +742,8 @@ export function HookVideoComposer({
                 className={primaryButtonClass}
               >
                 {scheduling ? (
-                  <Loader2
-                    className="size-4 animate-spin motion-reduce:animate-none"
+                  <BlocksSpinner
+                    className="size-4"
                     aria-hidden="true"
                   />
                 ) : (
@@ -1131,7 +1131,7 @@ function DemoSelection({
         >
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-card-muted text-primary">
             {uploading ? (
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <BlocksSpinner className="size-4" aria-hidden="true" />
             ) : (
               <Upload data-icon="inline-start" aria-hidden="true" />
             )}

@@ -23,8 +23,8 @@ const replacements = [
 ];
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 
-test("the Kamile upload leads the Talking Head gallery and is the only New batch", () => {
-  const kamile = ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"];
+test("the notbeen3 upload leads the Talking Head gallery and is the only New batch", () => {
+  const kamile = ["talking-nicki-kitchen-reaction", "talking-lowlight-instagram-what"];
   const visible = visibleTalkingHeadReferences(getTalkingHeadReferences());
   assert.deepEqual(visible.slice(0, kamile.length).map(item => item.id), kamile);
   assert.deepEqual(visible.filter(item => item.isNew).map(item => item.id), kamile);
@@ -42,9 +42,9 @@ test("the gallery replaces exactly four demo sources with hosted opening-only ve
     assert.equal(visible.some(row => row.id === oldId), false);
     assert.equal(current.sourceUrl, old.sourceUrl);
     assert.equal(current.durationSeconds, duration);
-    assert.match(current.generationPrompt, /Opening at t=0/);
+    assert.match(current.generationPrompt, /^(?:Opening at t=0|Hold the approved .*opening)/);
     assert.match(current.generationPrompt, /user's own spoken message/);
-    assert.match(current.generationPrompt, /finish the described action by the source endpoint/);
+    assert.match(current.generationPrompt, /hold .* if time remains/i);
     assert.match(current.videoUrl, /^https:\/\/storage\.googleapis\.com\/ugcsaas-media\/explore\/talking-head-hook-trims\/v1\/[a-f0-9]{64}\.mp4$/);
     const source = sources.items.find(row => row.id === id);
     assert.equal(sha(readFileSync("public" + source.file)), current.sourceSha256);
@@ -67,12 +67,13 @@ test("approved trimmed Remix records use their new source identity and remain av
   }
 });
 
-test("the approved Talia Hook uses the same exact MP4 with its own editable caption and timed Recreate prompt", () => {
+test("Talia stays a Talking Head reference and is not a selectable Hook card", () => {
   const id = "explore-paired-hook-573ce74ab0b1421f00e93add";
   const hook = getRecreateReference(id);
   const talking = getTalkingHeadReferences().find(row => row.id === "talking-taliameals-hook-v2");
   assert.ok(hook);
-  assert.equal(hook.archived, undefined);
+  assert.equal(hook.archived, true);
+  assert.equal(getTalkingHeadReferences().some(row => row.id === "talking-taliameals-hook-v2"), true);
   assert.equal(hook.videoUrl, talking.videoUrl);
   assert.equal(hook.durationSeconds, talking.durationSeconds);
   assert.equal(hook.sourceUrl, talking.sourceUrl);

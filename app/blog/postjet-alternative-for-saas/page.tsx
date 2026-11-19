@@ -35,7 +35,7 @@ const faqs = [
   {
     question: "How much does Vidmake cost?",
     answer:
-      "Vidmake has a seven-day trial with 20 daily content pieces and no credit card. Paid plans start at $29 a month (Starter, 200 AI credits), $49 (Growth, 600 credits) and $99 (Startup, 1,200 credits).",
+      "Vidmake's paid plans start at $29 a month (Starter, 200 AI credits), $49 (Growth, 600 credits) and $99 (Startup, 1,200 credits).",
   },
   {
     question: "Which is better for a founder who hates posting manually?",
@@ -91,7 +91,7 @@ export default function PostjetAlternativePage() {
           <li><strong className="text-foreground-strong">Context-first creation:</strong> the work starts from your website and business details.</li>
           <li><strong className="text-foreground-strong">Focused formats:</strong> hook video, talking-head plus demo, text-led video, slideshows and carousels.</li>
           <li><strong className="text-foreground-strong">Review before download:</strong> inspect the finished asset and keep the version you approve.</li>
-          <li><strong className="text-foreground-strong">Pricing:</strong> 7-day trial with 20 daily content pieces; Starter $29 (200 credits), Growth $49 (600), Startup $99 (1,200).</li>
+          <li><strong className="text-foreground-strong">Pricing:</strong> paid plans with monthly credits; Starter $29 (200 credits), Growth $49 (600), Startup $99 (1,200).</li>
           <li><strong className="text-foreground-strong">Honest boundary:</strong> generated footage cannot prove a product feature; real demos stay real.</li>
         </ul>
 
@@ -112,7 +112,7 @@ export default function PostjetAlternativePage() {
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Formats</th><td className="p-4 align-top">20 formats</td><td className="p-4 align-top">Focused UGC formats for products</td></tr>
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Hooks</th><td className="p-4 align-top">Licensed clips of real creators</td><td className="p-4 align-top">Generated or reference-guided opening</td></tr>
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">TikTok</th><td className="p-4 align-top">Inbox handoff (per site)</td><td className="p-4 align-top">Asset export; scheduling support depends on connected platform</td></tr>
-              <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Entry price</th><td className="p-4 align-top">Free 10 posts; $19/mo Starter</td><td className="p-4 align-top">7-day trial; $29/mo Starter</td></tr>
+              <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Entry price</th><td className="p-4 align-top">Free 10 posts; $19/mo Starter</td><td className="p-4 align-top">Paid plans; $29/mo Starter</td></tr>
             </tbody>
           </table>
         </div>
@@ -149,7 +149,7 @@ export default function PostjetAlternativePage() {
         links={[
           { href: "/blog/revid-alternative-for-saas", title: "Revid alternative for SaaS", description: "Compare a broad creation-and-publishing engine with a review-first studio." },
           { href: "/blog/ugc-creator-brief-template", title: "UGC creator brief template", description: "Give both tools the same fair brief." },
-          { href: "/pricing", title: "Vidmake pricing", description: "Current trial, credits and plan details." },
+          { href: "/pricing", title: "Vidmake pricing", description: "Current credits and plan details." },
           { href: "/instagram-carousel-maker", title: "Carousel maker", description: "Create and review a complete slide sequence." },
           { href: "/blog/tiktok-slideshow-view-data", title: "TikTok slideshow data", description: "What 28 verified posts show about slide counts." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "The Vidmake workflow this page compares." },

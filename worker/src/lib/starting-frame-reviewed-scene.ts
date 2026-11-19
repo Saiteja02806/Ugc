@@ -6,6 +6,10 @@ export function reviewedStartingFrameScene(
   sourceSha256?: string,
   options?: StartingFrameReferenceOptions,
 ) {
+  if (referenceId === "explore-paired-hook-1280571372ff2cd67af995f3" &&
+    sourceSha256 === "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417") {
+    return "REVIEWED IMAGE1 OPENING — The camera stays straight. Her head is slightly tilted toward screen-left. The eyes are toward screen-left, off the lens. The lips are closed. The hands stay outside the picture. Keep that slight head tilt in the still. Do not level the head or turn the eyes onto the lens. These describe the original still, not later action.";
+  }
   if (referenceId !== "explore-paired-hook-17133540b2315e0a3a05bfbd" ||
     sourceSha256 !== "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd") return "";
   if (options?.background === "photo") {

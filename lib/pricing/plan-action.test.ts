@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FREE_TRIAL_CONTENT_DAYS } from "../billing/free-trial-policy.ts";
 import { resolvePricingPlanAction } from "./plan-action.ts";
 import { pricingPlans } from "./plans.ts";
 
 type Params = Parameters<typeof resolvePricingPlanAction>[0];
-const [free, starter, growth] = pricingPlans;
+const [starter, growth] = pricingPlans;
+// The catalogue no longer sells a free plan (paid-only, 2026-11-12); this
+// fixture only exercises the unpaid-account branch of the resolver.
+const free = { name: "Free", slug: "free" } as const;
+// The pricing plan action reads only the trial status; the full entitlement
+// stays on the real subscription and is narrowed here to the action subset.
 const trial: NonNullable<Params["subscription"]> = {
   accessSource: "free",
   billingInterval: null,
@@ -14,19 +18,7 @@ const trial: NonNullable<Params["subscription"]> = {
   isDodoManaged: false,
   planKey: "free",
   status: "free",
-  trial: {
-    contentDaysLimit: FREE_TRIAL_CONTENT_DAYS,
-    contentDaysRemaining: FREE_TRIAL_CONTENT_DAYS,
-    contentDaysUsed: 0,
-    dailyContentPieces: 20,
-    daysRemaining: FREE_TRIAL_CONTENT_DAYS,
-    expiresAt: null,
-    instagramSchedulesLimit: null,
-    instagramSchedulesRemaining: null,
-    instagramSchedulesUsed: 0,
-    startedAt: null,
-    status: "active",
-  },
+  trial: { status: "active" },
 };
 const paid = {
   ...trial,
@@ -49,23 +41,23 @@ function action(params: Partial<Params> = {}) {
   });
 }
 
-test("anonymous trial signup uses the current trial duration", () => {
+test("anonymous free signup uses a neutral start-free action", () => {
   const result = action({ plan: free, signedIn: false, subscription: null });
-  assert.equal(result.label, `Start ${FREE_TRIAL_CONTENT_DAYS}-day trial`);
+  assert.equal(result.label, "Start free");
   assert.equal(result.destination, "sign-in");
   assert.equal(result.disabled, false);
   assert.equal(action({ signedIn: false, subscription: null }).label, "Get Starter");
 });
 
-test("active and expired trial users have a working workspace action and accurate badges", () => {
+test("free-plan users have a working workspace action without trial badges", () => {
   const active = action({ plan: free });
   assert.equal(active.label, "Open workspace");
   assert.equal(active.destination, "workspace");
   assert.equal(active.disabled, false);
-  assert.equal(active.badgeLabel, "Trial active");
+  assert.equal(active.badgeLabel, null);
 
   const expired = action({ plan: free, subscription: { ...trial, trial: { ...trial.trial, status: "expired" } } });
-  assert.equal(expired.badgeLabel, "Trial ended");
+  assert.equal(expired.badgeLabel, null);
   assert.equal(expired.disabled, false);
   assert.equal(action({ subscription: { ...trial, trial: { ...trial.trial, status: "expired" } } }).destination, "checkout");
 });

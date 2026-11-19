@@ -6,7 +6,6 @@ import {
   type PricingPlan,
 } from "@/lib/pricing/plans";
 import { CreditIcon } from "@/components/icons/credit-icon";
-import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { cn } from "@/lib/utils";
 
 type PricingComparisonProps = {
@@ -22,16 +21,16 @@ type FeatureRow = {
 
 
 const featureMatrix: FeatureRow[] = [
-  { label: "Daily slideshow concepts in Trending", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
-  { label: "Hook, text-led video & slideshow creation in Explore", free: true, starter: true, growth: true },
-  { label: "Review, edit & demo library", free: true, starter: true, growth: true },
-  { label: "Download finished assets", free: "During trial", starter: true, growth: true },
-  { label: "Connect Instagram, TikTok & YouTube", free: true, starter: true, growth: true },
-  { label: "Saved captions with the finished asset", free: true, starter: true, growth: true },
-  { label: "Video editing and export", free: true, starter: true, growth: true },
-  { label: "AI Studio images & videos", free: "Not included", starter: "Uses shared credits", growth: "Uses shared credits" },
-  { label: "AI character generation", free: "Not included", starter: "Uses shared credits", growth: "Uses shared credits" },
-  { label: "Connected-account analytics", free: true, starter: true, growth: true },
+  { label: "Daily slideshow concepts in Trending", free: "Not offered", starter: true, growth: true },
+  { label: "Hook, text-led video & slideshow creation in Explore", free: "Not offered", starter: true, growth: true },
+  { label: "Review, edit & demo library", free: "Not offered", starter: true, growth: true },
+  { label: "Download finished assets", free: "Not offered", starter: true, growth: true },
+  { label: "Connect Instagram, TikTok & YouTube", free: "Not offered", starter: true, growth: true },
+  { label: "Saved captions with the finished asset", free: "Not offered", starter: true, growth: true },
+  { label: "Video editing and export", free: "Not offered", starter: true, growth: true },
+  { label: "AI Studio images & videos", free: "Not offered", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "AI character generation", free: "Not offered", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "Connected-account analytics", free: "Not offered", starter: true, growth: true },
 ];
 
 export function PricingComparison({ plans }: PricingComparisonProps) {
@@ -106,7 +105,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       )}
                     >
                       {plan.prices.monthly === 0
-                        ? `$0 / ${FREE_TRIAL_CONTENT_DAYS}-day trial`
+                        ? "$0"
                         : `${formatPricingAmount(plan.prices.monthly)}/mo`}
                     </td>
                   ))}

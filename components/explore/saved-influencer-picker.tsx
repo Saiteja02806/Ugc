@@ -1,7 +1,13 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Check, ChevronDown, Loader2, RefreshCw, UserRound } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  RefreshCw,
+  UserRound,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterHistoryImage } from "@/lib/characters/types";
@@ -25,10 +31,10 @@ export function SavedInfluencerPicker({ images, selectedAssetId, open, onOpenCha
   }
   function status() {
     return <>
-      {loading && !images.length ? <p className={styles.status} role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Loading your influencers…</p> : null}
+      {loading && !images.length ? <p className={styles.status} role="status"><BlocksSpinner  aria-hidden="true" />Loading your influencers…</p> : null}
       {error ? <div className={styles.status} role="alert"><span>{error.message}</span><Button type="button" variant="ghost" size="sm" disabled={loading} onClick={onRetry}><RefreshCw aria-hidden="true" />Retry</Button></div> : null}
       {!loading && !error && !images.length ? <p className={styles.status}>No saved influencers yet. Choose photos below or create one.</p> : null}
-      {selecting ? <p className={styles.status} role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Selecting your face photo…</p> : null}
+      {selecting ? <p className={styles.status} role="status"><BlocksSpinner  aria-hidden="true" />Selecting your face photo…</p> : null}
     </>;
   }
   return <>

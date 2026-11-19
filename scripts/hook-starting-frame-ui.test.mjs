@@ -24,7 +24,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ scriptSection, priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, frameOverride = {}, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto, submissionGate } = {}) {
+function harness({ initialSection, scriptSection, priceError = false, captureCreatorDirections, referenceOverrides = {}, curatedReplacement, uuidStart = 43, creatorAccountId, presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, frameOverride = {}, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto, submissionGate } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = uuidStart;
   const jobs = new Map();
@@ -109,12 +109,12 @@ function harness({ scriptSection, priceError = false, captureCreatorDirections, 
     jobFor(id) { return jobs.get(id); },
     setStatusReadError(value) { statusReadError = value; },
     repairFrame() { frameData = { ...frameData, frame: { ...frameData.frame, index: 0, timeSeconds: 0 } }; },
-    render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection,
+    render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection, initialSection,
       reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) });
       for (const image of nodes(tree).filter(node => node.type === "img")) if (image.props.ref) image.props.ref.current = { src: "", removeAttribute() {} };
       for (const effect of effects.splice(0)) effect();
       for (const image of nodes(tree).filter(node => node.type === "StartingFrameImage")) image.props.onStateChange(image.props.assetId, image.props.url, previewState);
-      cursor = 0; return exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection, reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) }); },
+      cursor = 0; return exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, scriptSection, initialSection, reference: { creatorAccountId, id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4`, ...referenceOverrides }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) }); },
     async settle() { await new Promise(resolve => setImmediate(resolve)); await new Promise(resolve => setImmediate(resolve)); },
   };
 }
@@ -850,7 +850,7 @@ for (const presentation of ["dialog", "workspace", "recreation"]) test(`${presen
   let tree = h.render();
   let pending = nodes(tree).find(node => node.props?.["aria-busy"] === true);
   assert.ok(pending);
-  assert.ok(nodes(pending).some(node => node.type === "Loader2" && node.props.className.includes("animate-spin")));
+  assert.ok(nodes(pending).some(node => node.type === "BlocksSpinner"));
   const { job } = completeImage(h);
   for (const [status, label] of [["queued", /queued/], ["waiting_external_service", /Generating/], ["uploading_output", /Finishing/]]) {
     h.setJob({ ...job, status, isTerminal: false, output: null }); tree = h.render();
@@ -1095,4 +1095,18 @@ test('Hook and Text on screen never inherit Talking Head preparation tabs', asyn
     assert.equal(nodes(h.render()).filter(node => node.props?.role === 'tab').length, 0);
     assert.equal(nodes(h.render()).filter(node => node.props?.role === 'tabpanel').length, 0);
   }
+});
+
+test('Generate prompt can open directly in Script & Remix while frame preparation remains mounted', async () => {
+ const scriptSection={type:'script-section',props:{children:'Selected source transcript'}};
+ const h=harness({presentation:'recreation',preparationFormat:'talking_head',scriptSection,initialSection:'script'});
+ h.render();await h.settle();let tree=h.render();
+ assert.equal(preparationPanel(tree,'script').props.hidden,false);
+ assert.equal(preparationPanel(tree,'frame').props.hidden,true);
+ assert.equal(preparationPanel(tree,'script').props.children,scriptSection);
+ assert.equal(h.submissions.length,0);
+ preparationTab(tree,'frame').props.onClick();tree=h.render();
+ assert.equal(preparationPanel(tree,'frame').props.hidden,false);
+ assert.equal(preparationPanel(tree,'script').props.children,scriptSection);
+ assert.equal(h.submissions.length,0);
 });

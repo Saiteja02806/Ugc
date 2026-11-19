@@ -1,6 +1,17 @@
 "use client";
 
-import { Check, ChevronDown, ChevronUp, History, ImageIcon, Images, Loader2, Plus, RefreshCw } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  History,
+  ImageIcon,
+  Images,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1646,7 +1657,7 @@ function ImageGenerationCard({
                 {isSwappingFace ? (
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/65 backdrop-blur-xs p-3 text-center" role="status" aria-live="polite">
                     <span className="inline-flex size-9 items-center justify-center rounded-xl border border-amber-500/30 bg-black/60 text-amber-400 shadow-md mb-2">
-                      <RefreshCw className="size-4 animate-spin text-amber-400" aria-hidden="true" />
+                      <BlocksSpinner className="size-4 text-amber-400" />
                     </span>
                     <p className="text-xs font-semibold text-amber-300">Swapping face…</p>
                     <p className="mt-0.5 text-[10px] text-muted">Locking biometric identity</p>
@@ -1662,7 +1673,7 @@ function ImageGenerationCard({
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center pointer-events-none" role="status" aria-live="polite">
                   <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" />
                   <span className="relative z-10 inline-flex size-9 items-center justify-center rounded-xl border border-white/15 bg-black/45 backdrop-blur-sm text-amber-400 shadow-md">
-                    <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+                    <BlocksSpinner className="size-4 text-primary" aria-hidden="true" />
                   </span>
                   <div className="relative z-10">
                     <p className="text-xs font-medium text-foreground">Creating your image</p>
@@ -1705,7 +1716,7 @@ function ImageGenerationCard({
                 >
                   {isSwappingFace ? (
                     <>
-                      <Loader2 className="size-3 animate-spin mr-1" aria-hidden="true" />
+                      <BlocksSpinner className="size-3 mr-1" aria-hidden="true" />
                       Swapping…
                     </>
                   ) : (

@@ -23,7 +23,7 @@ import schedulePreview from "@/components/explore/talking-head-schedule-preview.
 import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
-export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, sourceActions, demoSourceActions, finishedVideo, demoFraming, demoPreview, openingPreview, demoSegmentPreview, rawComposition = false, onAddDemo, onEditSource, onEditDemo, editingBusy = false, compositionPreview }: {
+export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, sourceActions, demoSourceActions, finishedVideo, demoFraming, demoPreview, openingPreview, demoSegmentPreview, rawComposition = false, onAddDemo, onEditSource, onEditDemo, editingBusy = false, compositionPreview, scheduleAction }: {
   kind: "hook" | "phone";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -43,6 +43,8 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   onEditDemo?: () => void;
   editingBusy?: boolean;
   compositionPreview?: ReactNode;
+  /** Primary Schedule entry offered directly on the videos overview; the caller owns its guards. */
+  scheduleAction?: ReactNode;
 }) {
   const videoLabel = kind === "hook" ? "Hook video" : "Phone video";
   const sourceEditLabel = kind === "hook" ? "Edit hook video" : "Edit phone video";
@@ -56,10 +58,13 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   const outputHeight = editedOpening?.segment.height ?? generatedVideo?.height ?? undefined;
   if (finishedVideo && kind !== "hook") return <section aria-label="Saved finished video" className={creation.editWorkspace}><h2 className={creation.sectionTitle}>Your finished video</h2><WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds, width: finishedVideo.width, height: finishedVideo.height }} kind="video" label="Finished video preview" /><p className="text-xs text-muted">Saved to your Library. Review the rendered subtitles and audio before scheduling.</p>{onEditSource || onEditDemo ? <div className={creation.segmentActions}>{onEditSource ? <Button type="button" variant="outline" aria-label={sourceEditLabel} disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />{sourceEditLabel}</Button> : null}{onEditDemo ? <Button type="button" variant="outline" aria-label="Edit demo video" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo video</Button> : null}</div> : null}</section>;
   return <section aria-label="Video editing workspace" className={creation.editWorkspace}>
-    <div>
-      <h2 className={creation.sectionTitle}>{kind === "hook" ? "Your videos" : hasDemo ? "Your video sequence" : "Your video"}</h2>
-      <p className={creation.sectionHelp}>{kind === "hook" ? "Your hook plays first. Add a demo after it, or continue with just the hook." : hasDemo ? `${videoLabel} first, then Demo.` : "Publish this video on its own, or add an optional demo."}</p>
-      {kind !== "hook" && !hasDemo && onAddDemo ? <Button type="button" variant="outline" className="mt-3" disabled={editingBusy} onClick={onAddDemo}>Add optional demo</Button> : null}
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className={creation.sectionTitle}>{kind === "hook" ? "Your videos" : hasDemo ? "Your video sequence" : "Your video"}</h2>
+        <p className={creation.sectionHelp}>{kind === "hook" ? "Your hook plays first. Add a demo after it, or continue with just the hook." : hasDemo ? `${videoLabel} first, then Demo.` : "Publish this video on its own, or add an optional demo."}</p>
+        {kind !== "hook" && !hasDemo && onAddDemo ? <Button type="button" variant="outline" className="mt-3" disabled={editingBusy} onClick={onAddDemo}>Add optional demo</Button> : null}
+      </div>
+      {scheduleAction ? <div className="shrink-0">{scheduleAction}</div> : null}
     </div>
     <div data-workflow-sequence data-demo-selected={hasDemo} data-kind={kind} className={creation.sequenceGrid}>
       <section aria-label={`${videoLabel} segment`} className={creation.segment}>
@@ -88,9 +93,9 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
         {demo.error ? <p role="alert" className="text-sm text-destructive">{demo.error}</p> : null}
       </section></> : null}
     </div>
-    {hasDemo ? <section aria-label="Demo audio summary" className={creation.audioSummary}>
+    {hasDemo && demoAudio.asset ? <section aria-label="Demo audio summary" className={creation.audioSummary}>
       <AudioLines className="size-4 shrink-0 text-muted" aria-hidden="true" />
-      <div className="min-w-0"><h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3><p className="mt-1 truncate text-xs text-muted" title={demoAudio.asset?.name}>{demoAudio.asset?.name ?? (demo.asset ? "Original demo sound preserved. Extra audio is optional." : "Add a demo before choosing its audio.")}</p></div>
+      <div className="min-w-0"><h3 className="text-sm font-medium">Saved demo voiceover</h3><p className="mt-1 truncate text-xs text-muted" title={demoAudio.asset.name}>{demoAudio.asset.name}</p></div>
     </section> : null}
     {compositionPreview}
     <p className="text-xs leading-5 text-muted">{kind === "hook" ? finishedVideo ? "Your final video is ready. Open Schedule to review it, or edit a clip to make changes." : "Edit each clip separately, then choose Schedule video to prepare and schedule your video." : "Editing preview. Save your clip edits, then prepare the final video to review rendered subtitles and the complete audio mix."}</p>

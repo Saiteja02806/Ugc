@@ -4,11 +4,11 @@ import {
   CheckCircle2,
   ImagePlus,
   Inbox,
-  LoaderCircle,
   RefreshCw,
   Send,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import {
   useCallback,
   useEffect,
@@ -298,9 +298,9 @@ export function SupportFeedbackSettings({
                 }
               >
                 {isSubmitting ? (
-                  <LoaderCircle
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : (
@@ -430,13 +430,7 @@ function FeedbackOwnerInbox() {
             disabled={isRefreshing}
             className="w-full sm:w-auto"
           >
-            <RefreshCw
-              data-icon="inline-start"
-              className={
-                isRefreshing ? "animate-spin motion-reduce:animate-none" : ""
-              }
-              aria-hidden="true"
-            />
+            {isRefreshing ? <BlocksSpinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" aria-hidden="true" />}
             Refresh
           </Button>
         </header>
@@ -593,9 +587,9 @@ function FeedbackAttachmentPreview({
           disabled={isLoading}
         >
           {isLoading ? (
-            <LoaderCircle
+            <BlocksSpinner
               data-icon="inline-start"
-              className="animate-spin motion-reduce:animate-none"
+              
               aria-hidden="true"
             />
           ) : null}

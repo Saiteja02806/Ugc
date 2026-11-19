@@ -22,6 +22,7 @@ const load = (file, imports = {}, globals = {}) => {
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "./talking-head-animation-prompt": load("lib/explore/talking-head-animation-prompt.ts"),
   "./talking-head-script-input": load("lib/explore/talking-head-script-input.ts"),
   "./starting-frame-animation-input": { startingFrameFaceReferenceError, startingFrameForwardsPhotos },
   "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),

@@ -11,7 +11,6 @@ import {
   updateUserSchedule,
 } from "@/lib/scheduling/service";
 import { getScheduledPostForUser } from "@/lib/scheduling/db";
-import { startWallTextScheduleRender } from "@/lib/scheduling/wall-text-render-start";
 import type { ScheduleUpdateInput } from "@/lib/scheduling/types";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
@@ -83,12 +82,19 @@ export async function GET(
       schedule.metadata.wallTextRenderStatus === "not_requested"
     ) {
       after(() =>
-        startWallTextScheduleRender({ schedule, userId }).catch((error) => {
-          console.error("Could not resume the saved Wall-of-text render:", {
-            error: error instanceof Error ? error.message : "Unknown error",
-            scheduleId: schedule.id,
-          });
-        }),
+        // Rendering can load native media dependencies. Keep their initialization
+        // out of schedule reads, edits and cancellation; only this continuation
+        // needs the renderer, and its existing error boundary contains failures.
+        import("@/lib/scheduling/wall-text-render-start")
+          .then(({ startWallTextScheduleRender }) =>
+            startWallTextScheduleRender({ schedule, userId }),
+          )
+          .catch((error) => {
+            console.error("Could not resume the saved Wall-of-text render:", {
+              error: error instanceof Error ? error.message : "Unknown error",
+              scheduleId: schedule.id,
+            });
+          }),
       );
     }
 

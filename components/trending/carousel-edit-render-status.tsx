@@ -1,4 +1,8 @@
-import { Check, CircleAlert, Loader2 } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { getCarouselEditRenderStatus } from "@/lib/trending/carousel-edit-render-status";
 import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
@@ -21,7 +25,7 @@ export function CarouselEditRenderStatus({ edit, active }: {
         status.tone === "pending" ? "border-amber-500/35 text-amber-500" : "border-red-500/35 text-red-500")}
     >
       {status.tone === "ready" ? <Check className="size-2.5 stroke-[3]" aria-hidden="true" /> :
-        status.tone === "pending" ? <Loader2 className="size-2.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> :
+        status.tone === "pending" ? <BlocksSpinner className="size-2.5" aria-hidden="true" /> :
         <CircleAlert className="size-2.5" aria-hidden="true" />}
       <span>{status.label}</span>
     </div>

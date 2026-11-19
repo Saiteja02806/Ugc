@@ -167,7 +167,7 @@ export async function assertFreeTrialContentAccess(
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your free trial has ended. Upgrade to generate more content.",
+      "Your content allowance has ended. Upgrade to generate more content.",
       "free_trial_content_expired",
     );
   }
@@ -198,7 +198,7 @@ export async function assertFreeTrialContentAccess(
       }
     }
     throw new FreeTrialAccessError(
-      "Your free trial content allowance has been used. Upgrade to generate more content.",
+      "Your content allowance has been used. Upgrade to generate more content.",
       "free_trial_content_days_exhausted",
     );
   }
@@ -215,7 +215,7 @@ export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your free trial has ended. Upgrade to schedule another Instagram post.",
+      "Your free Instagram scheduling has ended. Upgrade to schedule another Instagram post.",
       "free_trial_schedule_expired",
     );
   }
@@ -225,7 +225,7 @@ export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
     trial.instagramSchedulesRemaining <= 0
   ) {
     throw new FreeTrialAccessError(
-      `Your free trial allows up to ${trial.instagramSchedulesLimit} Instagram posts in total, including future dates. Upgrade to schedule more.`,
+      `Your account allows up to ${trial.instagramSchedulesLimit} Instagram posts in total, including future dates. Upgrade to schedule more.`,
       "free_trial_schedule_limit_reached",
     );
   }

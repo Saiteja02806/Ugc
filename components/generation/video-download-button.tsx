@@ -1,6 +1,10 @@
 "use client";
 
-import { Download, Loader2 } from "lucide-react";
+import {
+  Download,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -66,7 +70,7 @@ function OwnedVideoDownloadButton({ assetId, className, title, url, userId, labe
       aria-label={`Download ${title}`} aria-busy={busy}
       title={busy ? "Preparing download…" : userId ? "Download video" : "Sign in to download your video"}
       className={`${className} disabled:cursor-wait disabled:opacity-50`}>
-      {busy ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      {busy ? <BlocksSpinner className="size-3.5" aria-hidden="true" />
         : <Download className="size-3.5" aria-hidden="true" />}
       {label}
     </button>

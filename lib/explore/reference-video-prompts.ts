@@ -1,12 +1,15 @@
 import octoberRefresh from "./hook-reference-oct23-refresh-prompts.json" with { type: "json" };
 import wallMoney from "./wall-money-reference-prompts.json" with { type: "json" };
 import reclassifiedHookMotion from "./hook-wall-reclassification-motion.json" with { type: "json" };
-import { getHookKeyframeMotionReviewDraft, hookKeyframeMotionCatalog, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
+import notbeen3HookMotion from "./hook-notbeen3-motion.json" with { type: "json" };
+import notbeen2HookMotion from "./hook-notbeen2-motion.json" with { type: "json" };
+import { getHookKeyframeMotionReviewDraft, hookKeyframeMotionCatalog, hookMotionPlanDirections, type HookMotionPlan } from "./hook-keyframe-motion.ts";
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { formatMotionPromptTimes } from "./motion-phase-display.ts";
 
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
-export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
+export const REFERENCE_TEXT_REMOVAL = "Remove overlays and text emojis; rebuild underneath. Keep physical object text; add none.";
+export const REFERENCE_PERFORMANCE_INTRO = "Follow the video from its opening, using attached influencer photos for face identity. Keep video styling unless requested otherwise.";
 
 export type ReferenceVideoPrompt = {
   version: 1 | 2;
@@ -67,6 +70,25 @@ const reclassifiedHookVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
     reviewedFrameCount: entry.reviewedFrameCount,
     reviewNotes: entry.reviewNotes,
     performance: reviewedReclassifiedPerformance(entry),
+  } satisfies ReferenceVideoPrompt]),
+);
+
+function reviewedNotbeen2Performance(entry: typeof notbeen2HookMotion.entries[number]) {
+  const toSourceSeconds = (fraction: string) => Number((Number(fraction) * entry.sourceDurationSeconds).toFixed(2));
+  return hookMotionPlanDirections(entry.plan as HookMotionPlan).replace(
+    /PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/g,
+    (_phase, start: string, end: string) => `${toSourceSeconds(start)}–${toSourceSeconds(end)}s:`,
+  );
+}
+
+const notbeen2HookVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Object.fromEntries(
+  [...notbeen2HookMotion.entries, ...notbeen3HookMotion.entries].map(entry => [entry.referenceId, {
+    version: 2 as const,
+    sourceSha256: entry.sourceSha256,
+    reviewMethod: parseReferenceVideoReviewMethod(entry.reviewMethod),
+    reviewedFrameCount: entry.reviewedFrameCount,
+    reviewNotes: entry.reviewNotes,
+    performance: reviewedNotbeen2Performance(entry),
   } satisfies ReferenceVideoPrompt]),
 );
 
@@ -620,11 +642,14 @@ export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
     performance: "Follow the original performance and timing: begin in a low-angle close shot holding the magenta-cased phone upright on screen-right, looking between its screen and the camera with knitted brows and slightly parted lips. Open the eyes much wider, blink and hold the incredulous stare. Briefly roll the eyes upward off screen-left, then return them forward and press the lips into a skeptical closed-mouth expression. Lower the phone out of view, move the camera closer and slightly sideways, and finish with a small pursed-lip, questioning look in the tighter off-center crop. Preserve the dark V-neck top, long straight highlighted hair, layered necklaces with dark pendant, pale room and long rectangular ceiling light, natural indoor light, original camera movement and full source duration.",
   },
   ...reclassifiedHookVideoPrompts,
+  ...notbeen2HookVideoPrompts,
 };
 
 export function getReferenceVideoPrompt(id: string, videoUrl: string | undefined): string | undefined {
   const entry = referenceVideoPrompts[id] ?? wallMoneyVideoPrompts[id];
-  const source = hookKeyframeMotionCatalog[id];
+  const catalogSource = hookKeyframeMotionCatalog[id];
+  // A reviewed replacement uses its own source clock, preserving historical catalog evidence.
+  const source = catalogSource && (!entry || catalogSource.sourceSha256 === entry.sourceSha256) ? catalogSource : undefined;
   const sourceSha256 = entry?.sourceSha256 ?? source?.sourceSha256;
   if (!sourceSha256 || !videoUrl) return undefined;
   // References use content-addressed storage; a replacement file needs review.
@@ -634,12 +659,14 @@ export function getReferenceVideoPrompt(id: string, videoUrl: string | undefined
   // source-video request retains its source clock; image animation retimes later.
   const frame = source && getCuratedHookFrame(id, sourceSha256);
   const reviewed = source && getHookKeyframeMotionReviewDraft(id, sourceSha256, frame?.index ?? 0);
-  const performance = reviewed?.candidatePlan
+  const sourceDurationSeconds = source?.sourceDurationSeconds;
+  const performance = reviewed?.candidatePlan && sourceDurationSeconds !== undefined
     ? hookMotionPlanDirections(reviewed.candidatePlan).replace(/PHASE \[([\d.eE+-]+)[–-]([\d.eE+-]+)\]:/g,
-      (_phase, start: string, end: string) => `${Number((Number(start) * source.sourceDurationSeconds).toFixed(2))}–${Number((Number(end) * source.sourceDurationSeconds).toFixed(2))}s:`)
+      (_phase, start: string, end: string) => `${Number((Number(start) * sourceDurationSeconds).toFixed(2))}–${Number((Number(end) * sourceDurationSeconds).toFixed(2))}s:`)
     : entry?.performance;
   if (!performance) return undefined;
-  return formatMotionPromptTimes(`If an influencer image is attached, replace the performer's facial identity with the person in that image. Keep the source hairstyle, clothing and accessories unless requested otherwise. Use the image for appearance and the video for performance.\n\n${performance}\n\n${REFERENCE_TEXT_REMOVAL}`);
+  const motion = performance.replace(/^OPENING STATE:[^\n]+\n\s*/u, "");
+  return formatMotionPromptTimes(`${REFERENCE_PERFORMANCE_INTRO}\n\n${motion}\n\n${REFERENCE_TEXT_REMOVAL}`);
 }
 
 export function combineReferenceVideoPrompt(referencePrompt: string, userPrompt: string): string {

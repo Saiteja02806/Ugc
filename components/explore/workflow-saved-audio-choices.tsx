@@ -1,7 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines, Bookmark, Check, LoaderCircle, Pause, Play, RefreshCw, Sparkles } from "lucide-react";
+import {
+  AudioLines,
+  Bookmark,
+  Check,
+  Pause,
+  Play,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
@@ -15,56 +25,49 @@ import { Button } from "@/components/ui/button";
 import type { WorkflowAttachment } from "./hook-workflow-media-controls";
 import styles from "./workflow-saved-audio.module.css";
 
-const CURATED_FAST_VOICES: AudioVoice[] = [
-  {
-    id: "21m00Tcm4TlvDq8ikWAM",
-    name: "Anna",
-    category: "premade",
-    labels: { accent: "American", gender: "Female", age: "young", use_case: "conversational" },
-    description: "Conversational female voice",
-    private: false,
-    available: true,
-    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/df6788f9-1965-4720-94f6-7b447814b628.mp3",
-  },
-  {
-    id: "TxGEqnHWrfWFTfGW9XjX",
-    name: "Josh",
-    category: "premade",
-    labels: { accent: "American", gender: "Male", age: "young", use_case: "founder" },
-    description: "Energetic founder voice",
-    private: false,
-    available: true,
-    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/TxGEqnHWrfWFTfGW9XjX/3a34a179-883a-4424-ab04-f655b3bc919b.mp3",
-  },
+/** The default sample voices guests and the audio popover offer. Names and URLs come from the provider's
+ *  public premade catalogue (verified 13 November 2026); durations are 2.5–4.1s, so sample attachment uses
+ *  the provider's 2-second floor instead of the 5-second upload minimum. */
+export const CURATED_FAST_VOICES: AudioVoice[] = [
   {
     id: "EXAVITQu4vr4xnSDxMaL",
-    name: "Chloe",
+    name: "Sarah",
     category: "premade",
-    labels: { accent: "American", gender: "Female", age: "young", use_case: "ugc creator" },
-    description: "Authentic UGC creator voice",
+    labels: { accent: "American", gender: "Female", age: "young", use_case: "conversational" },
+    description: "Mature, reassuring, confident",
     private: false,
     available: true,
-    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/0152fdf5-94f1-4ae4-b374-90d160432740.mp3",
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3",
   },
   {
-    id: "VR6AewLTigWG4xSOukaG",
-    name: "Kobbie",
+    id: "cgSgspJ2msm6clMCkdW9",
+    name: "Jessica",
     category: "premade",
-    labels: { accent: "British", gender: "Male", age: "middle aged", use_case: "storyteller" },
-    description: "Deep narrative storyteller voice",
+    labels: { accent: "American", gender: "Female", age: "young", use_case: "conversational" },
+    description: "Playful, bright, warm",
     private: false,
     available: true,
-    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/VR6AewLTigWG4xSOukaG/66e83dc2-6543-4897-9283-e18e3a890479.mp3",
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3",
   },
   {
-    id: "pNInz6obpgDQGcFmaJgB",
-    name: "Wilder",
+    id: "iP95p4xoKVk53GoZ742B",
+    name: "Chris",
     category: "premade",
-    labels: { accent: "American", gender: "Male", age: "middle aged", use_case: "authority" },
-    description: "Confident authoritative voice",
+    labels: { accent: "American", gender: "Male", age: "middle aged", use_case: "conversational" },
+    description: "Charming, down-to-earth",
     private: false,
     available: true,
-    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/67341770-466d-473d-82d2-282136e05367.mp3",
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3",
+  },
+  {
+    id: "TX3LPaxmHKxFdv7VOQHJ",
+    name: "Liam",
+    category: "premade",
+    labels: { accent: "American", gender: "Male", age: "young", use_case: "social media" },
+    description: "Energetic social media creator",
+    private: false,
+    available: true,
+    previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/63148076-6363-42db-aea8-31424308b92c.mp3",
   },
 ];
 
@@ -91,6 +94,10 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
   const selected = voices.find(voice => voice.id === selection.voiceId);
   const saved = [...bookmarks.ids].map(id => voices.find(voice => voice.id === id)).filter((voice): voice is AudioVoice => Boolean(voice) && voice?.id !== selected?.id);
   const unavailable = [...bookmarks.ids].filter(id => !voices.some(voice => voice.id === id)).length;
+  // Prefer the live provider catalogue so the samples stay current; the static list only covers outages.
+  const bookmarked = new Set(bookmarks.ids);
+  const catalogueSamples = voices.filter(voice => voice.category === "premade" && voice.previewUrl && voice.id !== selected?.id && !bookmarked.has(voice.id)).slice(0, 4);
+  const defaultSamples = catalogueSamples.length >= 4 ? catalogueSamples : CURATED_FAST_VOICES.filter(voice => voice.id !== selected?.id);
   const recordings = library.data?.assets.filter(asset => asset.status === "ready" && !asset.testOnly && (asset.purpose === "generated" || asset.purpose === "exact") && (asset.duration === null || asset.duration <= maxDuration)) ?? [];
 
   function preview(voice: AudioVoice) {
@@ -114,7 +121,7 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
         if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error(`Choose a complete audio recording up to ${maxDuration} seconds.`);
         const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
         return new File([blob], `${name}.${extension}`, { type: blob.type });
-      }, { minDuration, maxDuration, signal: controller.signal });
+      }, { minDuration: voice ? Math.min(minDuration, 2) : minDuration, maxDuration, signal: controller.signal });
       if (accepted && !controller.signal.aborted && voice) onVoiceReference();
     } catch (error) {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Audio could not be selected. Try again.");
@@ -143,29 +150,23 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
           <span>{voice.labels.accent || voice.labels.use_case || "Voice sample"}{chosen ? " · Selected with Use It" : ""}</span>
         </div>
       </div>
-      <Button type="button" variant="outline" disabled={!voice.previewUrl || !library.data?.account?.paid || busy} title={library.data?.account?.paid ? "Attach this voice sample as a reference" : "This voice is currently available for preview only"} aria-label={`Use ${voice.name} sample as voice reference`} className={styles.useButton} onClick={() => void attach(`/api/audio/voices/${encodeURIComponent(voice.id)}/sample`, voice.id, `${voice.name} voice sample`, true)}>
-        {attaching === voice.id ? <LoaderCircle size={14} className="animate-spin" /> : chosen ? <Check size={14} /> : null}Use sample
+      <Button type="button" variant="outline" disabled={!voice.previewUrl || busy} title="Attach this voice sample as a reference" aria-label={`Use ${voice.name} sample as voice reference`} className={styles.useButton} onClick={() => void attach(`/api/audio/voices/${encodeURIComponent(voice.id)}/sample`, voice.id, `${voice.name} voice sample`, true)}>
+        {attaching === voice.id ? <BlocksSpinner size={14}  /> : chosen ? <Check size={14} /> : null}Use sample
       </Button>
     </li>;
   }
   return <div className={styles.library} aria-label="Saved audio choices">
     {library.isPending ? <p role="status" className="text-xs text-muted">Loading your voices and audio…</p> : null}
     {loadError ? <p role="alert" className={styles.error}>{loadError}<button type="button" onClick={refresh}><RefreshCw size={13} />Retry saved choices</button></p> : null}
-    {library.isSuccess && !library.data?.account?.paid ? <div role="status" className={styles.availability}>
-      <p>{library.data?.account
-        ? "These samples are preview-only on the connected voice service. You can listen, upload your own audio, or choose a saved recording."
-        : "Voice sample selection is unavailable because the voice service is not connected or its account details could not be loaded. You can still listen, upload audio, or choose a saved recording."}</p>
-      <button type="button" disabled={library.isFetching} onClick={refresh}><RefreshCw size={13} />{library.isFetching ? "Checking voice service…" : "Retry voice service"}</button>
-    </div> : null}
     {selected ? <section aria-label="Selected voice"><h4 className={styles.heading}><AudioLines size={14} />Your selected voice</h4><ul className={styles.list}>{voiceRow(selected, true)}</ul></section> : null}
     <section aria-label="Bookmarked voices"><h4 className={styles.heading}><Bookmark size={14} />Bookmarked voices</h4>
       {saved.length ? (
         <ul className={styles.list}>{saved.map(voice => voiceRow(voice))}</ul>
       ) : !bookmarks.loading && !bookmarks.error ? (
         <>
-          <p className="text-xs leading-5 text-muted">{selected && bookmarks.ids.has(selected.id) ? "Your selected voice is also bookmarked." : "Bookmark voices in Audio generation, or pick from popular creator voices below:"}</p>
-          <ul className={styles.list} aria-label="Curated creator voices">
-            {CURATED_FAST_VOICES.filter(v => v.id !== selected?.id).map(voice => voiceRow(voice))}
+          <p className="text-xs leading-5 text-muted">{selected && bookmarks.ids.has(selected.id) ? "Your selected voice is also bookmarked." : "Bookmark voices in Audio generation, or pick from the default sample voices below:"}</p>
+          <ul className={styles.list} aria-label="Default sample voices">
+            {defaultSamples.map(voice => voiceRow(voice))}
           </ul>
         </>
       ) : null}
@@ -174,7 +175,7 @@ function SavedAudioSession({ uid, audio, onVoiceReference, minDuration, maxDurat
     <details className={styles.recordings}><summary>Choose saved audio <span>{recordings.length}</span></summary>
       {recordings.length ? <ul className={styles.list}>{recordings.map(asset => <li key={asset.id} className={styles.voiceRow}>
         <AudioLines size={17} className="shrink-0 text-muted" /><div className={styles.details}><strong>{asset.name}</strong><span>{asset.duration ? `${Math.round(asset.duration)}s · ` : ""}{asset.purpose === "generated" ? "Generated audio" : "Recording"}</span></div>
-        <Button type="button" variant="outline" className={styles.useButton} disabled={busy} aria-label={`Choose saved audio ${asset.name}`} onClick={() => void attach(`/api/audio/assets/${asset.id}?forExplore=1`, asset.id, asset.name, false)}>{attaching === asset.id ? <LoaderCircle size={14} className="animate-spin" /> : null}Choose</Button>
+        <Button type="button" variant="outline" className={styles.useButton} disabled={busy} aria-label={`Choose saved audio ${asset.name}`} onClick={() => void attach(`/api/audio/assets/${asset.id}?forExplore=1`, asset.id, asset.name, false)}>{attaching === asset.id ? <BlocksSpinner size={14}  /> : null}Choose</Button>
       </li>)}</ul> : <p className="text-xs text-muted">No saved recordings available.</p>}
     </details>
     {error ? <p role="alert" className={styles.error}>{error}</p> : null}

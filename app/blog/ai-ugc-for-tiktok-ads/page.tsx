@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     question: "How much does it cost to make AI UGC with Vidmake?",
-    answer: "There's a seven-day free trial with no card, then plans at $29 or $49 a month with monthly credits. See /pricing.",
+    answer: "Plans start at $29 or $49 a month with monthly credits. See /pricing.",
   },
 ] as const;
 
@@ -267,7 +267,7 @@ export default function AiUgcForTikTokAdsPage() {
               question: faqs[5].question,
               answer: (
                 <>
-                  There&apos;s a seven-day free trial with no card, then plans at $29 or $49 a month with monthly credits. See <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  Plans start at $29 or $49 a month with monthly credits. See <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },
@@ -282,7 +282,7 @@ export default function AiUgcForTikTokAdsPage() {
           { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
           { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from Vidmake's own channel." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Make a short video from a prompt and optional reference media." },
-          { href: "/pricing", title: "Pricing", description: "Current trial and paid plan details." },
+          { href: "/pricing", title: "Pricing", description: "Current paid plan details." },
         ]}
       />
     </VideoMarketingPage>

@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
-import { LoaderCircle, Pencil, SlidersHorizontal } from "lucide-react";
+import {
+  Pencil,
+  SlidersHorizontal,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 
 import { TrendingApplicationDemo } from "@/components/trending/trending-application-demo";
 
@@ -41,9 +45,9 @@ export default function TrendingWalkthroughPreviewPage() {
         <div className="relative flex min-h-0 w-full flex-1 items-center" data-trending-feed-transition>
           <div className="flex min-w-0 flex-1 items-center justify-center">
             <div className="flex max-w-sm flex-col items-center text-center">
-              <LoaderCircle
+              <BlocksSpinner
                 aria-hidden="true"
-                className="size-5 animate-spin text-primary motion-reduce:animate-none"
+                className="size-5 text-primary"
               />
               <p className="mt-3 text-sm font-semibold text-foreground-strong">
                 Generating for you

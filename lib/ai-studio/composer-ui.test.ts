@@ -226,7 +226,7 @@ test("video references start empty and offer optional creator references", () =>
   assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
   assert.match(videoWorkspace, /<CreatorReferencePicker/);
   assert.match(videoWorkspace, /settings=\{[\s\S]*?<CreatorReferencePicker/);
-  assert.match(videoWorkspace, /referenceControls=\{awaitingStartingFrame \?[\s\S]*?workflow && startingFrame \? <StartingFrameAnimationReferences/);
+  assert.match(videoWorkspace, /referenceControls=\{awaitingStartingFrame && !referenceInstructionsDismissed \?[\s\S]*?workflow && startingFrame \? <StartingFrameAnimationReferences/);
   assert.match(creatorReferencePicker, /<Popover open=\{open\}/);
   assert.match(creatorReferencePicker, /Creator reference/);
   assert.match(creatorReferencePicker, /Optional\. Choose a look or upload your own image/);
@@ -390,7 +390,7 @@ test("the active reference control accepts a pasted image into the composer", ()
 test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /status\?\.tone === "progress"/);
   assert.match(resultSurface, /<EmptyMedia variant="icon"/);
-  assert.match(resultSurface, /animate-spin/);
+  assert.match(resultSurface, /BlocksSpinner/);
 });
 
 test("image previews remain compact and video results use the dedicated history layout", () => {

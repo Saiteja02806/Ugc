@@ -6,12 +6,13 @@ import {
   Bookmark,
   CheckCircle2,
   Image as ImageIcon,
-  Loader2,
   Pencil,
   Scissors,
   UserRound,
   Video,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -112,7 +113,7 @@ function SavedCreativeAssetsLoading() {
       className="flex min-h-64 items-center justify-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card-muted px-6 text-sm font-medium text-muted"
       role="status"
     >
-      <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      <BlocksSpinner className="size-5" aria-hidden="true" />
       Loading saved content…
     </div>
   );
@@ -615,8 +616,8 @@ function AvatarEditorShell({
         <div className="max-w-sm">
           <div className="mx-auto flex size-12 items-center justify-center rounded-control bg-selected text-primary">
             {isLoading ? (
-              <Loader2
-                className="size-5 animate-spin text-primary motion-reduce:animate-none"
+              <BlocksSpinner
+                className="size-5 text-primary"
                 aria-hidden="true"
               />
             ) : (
@@ -779,8 +780,8 @@ function AvatarFullPageEditor({
             {loadingPreviewAvatarId === avatar.asset.id ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#102033]/55">
                 <span className="inline-flex items-center gap-2 rounded-md bg-black/55 px-3 py-2 text-xs font-semibold text-white">
-                  <Loader2
-                    className="size-4 animate-spin motion-reduce:animate-none"
+                  <BlocksSpinner
+                    className="size-4"
                     aria-hidden="true"
                   />
                   Loading preview…
@@ -846,7 +847,7 @@ function AvatarFullPageEditor({
               className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-border bg-card-muted px-5 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card hover:text-foreground-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {openingInEdit ? (
-                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <BlocksSpinner className="size-4" aria-hidden="true" />
               ) : (
                 <Pencil className="size-4" aria-hidden="true" />
               )}
@@ -860,7 +861,7 @@ function AvatarFullPageEditor({
             >
               {usingAvatar ? (
                 <>
-                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  <BlocksSpinner className="size-4" aria-hidden="true" />
                   Selecting
                 </>
               ) : (
@@ -988,7 +989,7 @@ function TrimControls({
           className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {savingTrim ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <BlocksSpinner className="size-3.5" aria-hidden="true" />
           ) : null}
           Save trim
         </button>

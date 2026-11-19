@@ -21,8 +21,16 @@ process.env.GCP_STORAGE_PUBLIC_BASE_URL ??= "https://hook-decisions.example.test
 
 test("airplane retires from browsing while its historical identity remains recoverable", () => {
   const gallery = getHookReferenceGalleryItems();
-  assert.equal(gallery.length, 106);
+  const hiddenReel = "explore-paired-hook-ddcfb2950d40f37771058b73";
+  const hiddenStretch = "explore-paired-hook-6070b6ecbe246d879ce0bdcb";
+  assert.equal(gallery.length, 129);
   assert.equal(gallery.some(item => item.id === airplane), false);
+  assert.equal(gallery.some(item => item.id === hiddenReel), false);
+  assert.equal(gallery.some(item => item.id === hiddenStretch), false);
+  assert.ok(getHookReferenceReleaseItems().some(item => item.id === hiddenStretch));
+  assert.equal(getRecreateReference(hiddenStretch)?.archived, true);
+  assert.ok(getHookReferenceReleaseItems().some(item => item.id === hiddenReel));
+  assert.equal(getRecreateReference(hiddenReel)?.archived, true);
   assert.ok(getHookReferenceReleaseItems().some(item => item.id === airplane));
   assert.ok(getArchivedHookReferences().some(item => item.id === airplane));
   assert.equal(getRecreateReference(airplane)?.archived, true);
@@ -46,7 +54,7 @@ test("all remaining selectable Hooks resolve canonical sources and valid origina
     assert.match(preview.imagePrompt!, /Image2 is the primary influencer face/, hook.id);
     assert.match(preview.imagePrompt!, /logos/, hook.id);
     assert.match(preview.animationPrompt!, /SOUND SETTING: OFF/, hook.id);
-    assert.match(preview.animationPrompt!, /do not regenerate removed lettering/, hook.id);
+    assert.match(preview.animationPrompt!, /Keep cleaned surfaces plain; no captions, letters, logos or watermarks/, hook.id);
   }
 });
 
@@ -67,13 +75,13 @@ test("six explicit decisions unblock original-opening preparation and keep clean
     assert.match(preview.imagePrompt!, /Image2 is the primary influencer face/);
     assert.match(preview.imagePrompt!, /logos/);
     assert.match(preview.animationPrompt!, /SOUND SETTING: OFF/);
-    assert.match(preview.animationPrompt!, /do not regenerate removed lettering/);
+    assert.match(preview.animationPrompt!, /Keep cleaned surfaces plain; no captions, letters, logos or watermarks/);
   }
   const plan = (index: number) => JSON.stringify(hookKeyframeMotionRewrites[approved[index]].plan);
   assert.match(plan(1), /deliberate hard cut/);
-  assert.match(plan(2), /can must leave below the picture before the same empty hand returns/);
+  assert.match(plan(2), /can leave below the edge before the empty hand returns/);
   assert.match(plan(3), /Retreat and lower the viewpoint/);
   assert.match(plan(4), /purple handled bottle/);
-  assert.match(plan(4), /Preserve this repeated period/);
+  assert.match(plan(4), /tongue comes toward the same fingertips again/);
   assert.match(plan(5), /Do not invent a full portrait/);
 });

@@ -3,7 +3,11 @@
 import {
   applyActionCode, checkActionCode, confirmPasswordReset, verifyPasswordResetCode,
 } from "firebase/auth";
-import { CheckCircle2, LoaderCircle, MailCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  MailCheck,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
@@ -141,7 +145,7 @@ function EmailActionContent({ mode, code, continueUrl }: {
         <div className="w-full max-w-[420px] rounded-3xl border border-border bg-card/95 p-7 shadow-floating sm:p-8">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-primary">
-              {state === "checking" ? <LoaderCircle className="size-6 animate-spin" aria-hidden="true" /> :
+              {state === "checking" ? <BlocksSpinner className="size-6" aria-hidden="true" /> :
                 success ? <CheckCircle2 className="size-7" aria-hidden="true" /> : <MailCheck className="size-7" aria-hidden="true" />}
             </div>
             <h1 className="text-3xl font-bold tracking-normal">{title}</h1>

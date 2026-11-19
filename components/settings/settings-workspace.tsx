@@ -9,7 +9,6 @@ import {
   FileText,
   Images,
   Lightbulb,
-  LoaderCircle,
   LogOut,
   Mail,
   Moon,
@@ -22,6 +21,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -289,9 +289,9 @@ export function SettingsWorkspace() {
               className="w-full justify-start text-muted hover:text-foreground-strong"
             >
               {isSigningOut ? (
-                <LoaderCircle
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                   aria-hidden="true"
                 />
               ) : (
@@ -381,9 +381,9 @@ export function SettingsWorkspace() {
                 className="w-full justify-start"
               >
                 {isSigningOut ? (
-                  <LoaderCircle
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : (
@@ -445,12 +445,7 @@ export function SettingsWorkspace() {
                             : "Active"
                           : subscription?.status === "on_hold"
                             ? "Payment required"
-                            : subscription?.trial.status === "active" &&
-                                subscription.trial.contentDaysRemaining > 0
-                              ? `${subscription.trial.daysRemaining} day trial left`
-                              : subscription?.trial.status === "active"
-                                ? "Content used"
-                                : "Trial ended"}
+                            : "No plan"}
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted">
@@ -462,12 +457,7 @@ export function SettingsWorkspace() {
                           : `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
                         : subscription?.status === "on_hold"
                           ? "Your payment needs attention. Update your payment method to restore your subscription."
-                          : subscription?.trial.status === "active" &&
-                            subscription.trial.contentDaysRemaining > 0
-                          ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
-                          : subscription?.trial.status === "active"
-                            ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
-                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling."}
+                          : "You don't have an active plan. Choose a plan to start creating content."}
                     </p>
                   </div>
                 </div>
@@ -481,9 +471,9 @@ export function SettingsWorkspace() {
                       disabled={isOpeningBilling}
                     >
                       {isOpeningBilling ? (
-                        <LoaderCircle
+                        <BlocksSpinner
                           data-icon="inline-start"
-                          className="animate-spin motion-reduce:animate-none"
+                          
                           aria-hidden="true"
                         />
                       ) : (
@@ -546,10 +536,7 @@ export function SettingsWorkspace() {
                   <p className="mt-1 text-[11px] text-muted">
                     {subscription?.isActive
                       ? "Up to 50 daily on Growth"
-                      : subscription?.trial.status === "active" &&
-                          subscription.trial.contentDaysRemaining > 0
-                        ? `${subscription.trial.daysRemaining} trial day${subscription.trial.daysRemaining === 1 ? "" : "s"} remaining`
-                        : "Upgrade to resume daily drops"}
+                      : "Upgrade to resume daily drops"}
                   </p>
                 </div>
 

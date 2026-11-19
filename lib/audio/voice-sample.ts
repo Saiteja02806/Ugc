@@ -55,7 +55,9 @@ export async function handleAudioVoiceSample(request: Request, voiceId: string) 
     if (!catalogue.ok) return catalogue;
     if (!/^[\w-]{1,100}$/.test(voiceId)) throw new AudioError("Voice sample not found.", 404);
     const data = await catalogue.json() as AudioBootstrap;
-    if (!data.account?.paid) throw new AudioError("This voice is available for preview only. Choose a saved recording for your video.", 403);
+    if (!/^[\w-]{1,100}$/.test(voiceId)) throw new AudioError("Voice sample not found.", 404);
+    // Samples are the provider's public premade demos: read-only bytes with no generation, so every
+    // signed-in user may attach them. Only the trusted-URL and byte checks below still guard access.
     const voice = data.voices.find(voice => voice.id === voiceId);
     if (!voice?.previewUrl || !trustedVoiceSample(voice.previewUrl, voiceId)) throw new AudioError("This voice has no available reference sample. Choose a saved recording instead.", 404);
     const response = await fetch(voice.previewUrl, { redirect: "error", signal: AbortSignal.any([request.signal, AbortSignal.timeout(15000)]), headers: { Accept: "audio/*" } });

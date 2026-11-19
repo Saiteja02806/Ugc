@@ -1,8 +1,9 @@
 "use client";
 
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 /* eslint-disable @next/next/no-img-element -- Owned, verified result URL; do not send signed URLs through image optimization. */
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import styles from "./hook-starting-frame-workspace.module.css";
 
 export type StartingFramePreviewState = "loading" | "ready" | "error";
@@ -30,7 +31,7 @@ export function StartingFrameImage({ assetId, url, alt, width, height, onStateCh
       onLoad={event => setState(event.currentTarget.naturalWidth > 0 ? "ready" : "error")}
       onError={() => setState("error")} />
     {state !== "ready" ? <span className={styles.previewFeedback} role={state === "error" ? "alert" : "status"}>
-      {state === "loading" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+      {state === "loading" ? <BlocksSpinner  aria-hidden="true" /> : null}
       {state === "loading" ? "Loading preview…" : "Preview could not load. Retry below; your image request is saved."}
     </span> : null}
   </span>;

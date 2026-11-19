@@ -11,9 +11,9 @@ test("the optional-source Hook addition has complete reviewed media and preserve
   const unlinked = additions.items.filter(item => !item.sourceUrl);
 
   assert.equal(additions.items.length, 31);
-  assert.equal(ready.eligible.length, 31);
+  assert.equal(ready.eligible.length, 30);
   assert.equal(ready.assets.length, 124);
-  assert.deepEqual(ready.excluded, []);
+  assert.deepEqual(ready.excluded, ["explore-paired-hook-6070b6ecbe246d879ce0bdcb"]);
   assert.equal(linked.length, 20);
   assert.equal(linked.filter(item => item.sourcePlatform === "instagram").length, 4);
   assert.equal(linked.filter(item => item.sourcePlatform === "tiktok").length, 16);

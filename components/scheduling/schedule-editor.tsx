@@ -9,7 +9,6 @@ import {
   FileVideo,
   Images,
   Info,
-  Loader2,
   Play,
   Plus,
   RefreshCw,
@@ -18,6 +17,8 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -1671,7 +1672,7 @@ function ScheduleVideoPicker({
             onClick={onRefreshMedia}
             className="flex size-9 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
           >
-            <RefreshCw className={cn("size-4", refreshingMedia && "animate-spin")} aria-hidden="true" />
+            {refreshingMedia ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
           </button>
 
         </div>
@@ -1690,7 +1691,7 @@ function ScheduleVideoPicker({
           if (file) void onUploadVideo(file);
         }} />
         <Button type="button" variant="outline" disabled={uploadingVideo || disabled} onClick={() => uploadInput.current?.click()}>
-          {uploadingVideo ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
+          {uploadingVideo ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
           {uploadingVideo ? "Uploading video…" : "Upload video"}
         </Button>
         <p className="text-xs text-muted">MP4, MOV or WebM · Up to 250 MB</p>
@@ -1978,7 +1979,7 @@ function ConnectedAccountSelector({
           onClick={() => void refreshAccounts()}
           className={cn(styles.refreshAccounts, "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control border border-border px-3 py-1.5 text-foreground transition hover:bg-card-muted disabled:opacity-50")}
         >
-          <RefreshCw className={cn("size-3.5 shrink-0", refreshing && "motion-safe:animate-spin")} aria-hidden="true" />
+          {refreshing ? <BlocksSpinner className="size-3.5 shrink-0" /> : <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />}
           {refreshing ? "Refreshing…" : "Refresh accounts"}
         </button>
       </div>
@@ -2291,7 +2292,7 @@ function TikTokAccountSettings({
   if (!capabilitiesState || capabilitiesState.status === "loading") {
     return (
       <div className="mt-3 flex h-10 items-center gap-2 text-xs font-semibold text-muted">
-        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        <BlocksSpinner className="size-4" aria-hidden="true" />
         Loading available TikTok settings…
       </div>
     );

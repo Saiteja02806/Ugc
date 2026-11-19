@@ -144,59 +144,33 @@ test("restored generated result two remains exact and unavailable choices never 
 });
 
 function demoSelectionHarness() {
-  // Execute the actual component handlers with deferred metadata/uploads. This
-  // verifies the cross-handler handoff instead of reproducing a guard in a test.
   const source = readFileSync(new URL("../components/explore/hook-workflow-preview.tsx", import.meta.url), "utf8");
   const syntax = ts.createSourceFile("hook-workflow-preview.tsx", source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
   const layout = syntax.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "RestoredHookWorkflowLayout");
-  const handlers = layout.body.statements.filter(node => ts.isFunctionDeclaration(node) && ["chooseDemo", "chooseDemoAudio"].includes(node.name?.text));
-  assert.equal(handlers.length, 2);
-  const exported = {}, uploads = [], acceptedAudio = [];
-  const deferred = () => { let resolve; const promise = new Promise(ok => { resolve = ok; }); return { promise, resolve }; };
-  const demoMetadata = deferred(), audioMetadata = deferred();
+  const handler = layout.body.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "chooseDemo");
+  assert.ok(handler);
+  assert.doesNotMatch(layout.getText(syntax), /chooseDemoAudio|uploadAIStudioReferenceMedia/);
+  const exported = {}, uploads = [];
   const session = { ...sessions.createWorkflowSession("owner-a"), demoAssetId: id(1), demoAudioAssetId: id(8) };
-  const currentDemoIdentity = { current: id(1) }, assets = { demo: media(1), demoAudio: { ...media(8), collection: "audio", mimeType: "audio/mpeg" } };
-  const demo = { asset: { url: media(1).url } }, state = { audioUpload: null, demoUpload: null };
-  const recovery = { session, assets, markPending(role) { session[role === "demo" ? "pendingDemo" : "pendingDemoAudio"] = true; },
-    acceptAsset(role, asset) {
-      assets[role] = asset;
-      if (role === "demo") { session.demoAssetId = asset.id; session.demoAudioAssetId = null; assets.demoAudio = null; currentDemoIdentity.current = asset.id; demo.asset = { url: asset.url }; }
-      else { session.demoAudioAssetId = asset.id; acceptedAudio.push({ demo: session.demoAssetId, audio: asset.id }); }
-      return true;
-    } };
-  vm.runInNewContext(ts.transpileModule(handlers.map(node => `export ${node.getText(syntax)}`).join("\n"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-    { exports: exported, Error, demo, demoIdentity: id(1), currentDemoIdentity, demoRevision: { current: 0 }, audioRevision: { current: 0 }, active: { current: true }, generationEnabled: true, ownerId: "owner-a", recovery,
-      localDemo: { choose: () => demoMetadata.promise, remove() {} }, localDemoAudio: { choose: () => audioMetadata.promise, remove() {}, cancelPending() {} },
-      updateSession(change) { Object.assign(session, change(session)); }, clearProblem() {}, setDemoAudioPlayback() {}, setDemoFraming() {},
-      setDemoUpload(next) { state.demoUpload = typeof next === "function" ? next(state.demoUpload) : next; }, setAudioUpload(next) { state.audioUpload = typeof next === "function" ? next(state.audioUpload) : next; },
-      uploadHookVideoDemo(file) { const pending = deferred(); uploads.push({ file, kind:"video", ...pending }); return pending.promise.then(result => result.asset); },
-      uploadAIStudioReferenceMedia(file, kind) { const pending = deferred(); uploads.push({ file, kind, ...pending }); return pending.promise; },
+  const recovery = { markPending() { session.pendingDemo = true; },
+    acceptAsset(role, asset) { assert.equal(role, "demo"); Object.assign(session, { demoAssetId: asset.id, demoAudioAssetId: null, pendingDemo: false }); return true; } };
+  vm.runInNewContext(ts.transpileModule(`export ${handler.getText(syntax)}`, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
+    { exports: exported, Error, demoRevision: { current: 0 }, active: { current: true }, generationEnabled: true, ownerId: "owner-a", recovery,
+      localDemo: { choose: async file => file.valid, remove() {} },
+      updateSession(change) { Object.assign(session, change(session)); }, setDemoAudioPlayback() {}, setDemoFraming() {}, setDemoUpload() {},
+      uploadHookVideoDemo: file => new Promise(resolve => uploads.push({ file, resolve })),
     });
-  return { ...exported, uploads, acceptedAudio, demoMetadata, audioMetadata, session, assets, state };
+  return { ...exported, uploads, session };
 }
 
-test("replacing a demo while audio metadata is pending prevents the old audio upload from starting", async () => {
-  const h = demoSelectionHarness(); const audioChoice = h.chooseDemoAudio({ name: "audio-A" });
-  const demoChoice = h.chooseDemo({ name: "demo-B" }); h.demoMetadata.resolve(true); await tick();
-  h.uploads.find(upload => upload.kind === "video").resolve({ asset: media(2) }); assert.equal(await demoChoice, true);
-  h.audioMetadata.resolve(true); assert.equal(await audioChoice, false);
-  assert.equal(h.uploads.some(upload => upload.kind === "audio"), false); assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.demoAssetId, id(2)); assert.equal(h.session.demoAudioAssetId, null);
-});
-
-test("late audio upload for demo A cannot attach to accepted demo B or re-enable old loading state", async () => {
-  const h = demoSelectionHarness(); const audioChoice = h.chooseDemoAudio({ name: "audio-A" }); h.audioMetadata.resolve(true); await tick();
-  const audioUpload = h.uploads.find(upload => upload.kind === "audio"); assert.ok(audioUpload);
-  const demoChoice = h.chooseDemo({ name: "demo-B" }); h.demoMetadata.resolve(true); await tick();
-  h.uploads.find(upload => upload.kind === "video").resolve({ asset: media(2) }); assert.equal(await demoChoice, true);
-  audioUpload.resolve({ asset: { ...media(9), collection: "audio", mimeType: "audio/mpeg" } }); assert.equal(await audioChoice, false);
-  assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.demoAssetId, id(2)); assert.equal(h.session.demoAudioAssetId, null); assert.equal(h.state.audioUpload.busy, false);
-});
-
-test("a rejected demo replacement retains prior accepted demo/audio while cancelling its pending audio candidate", async () => {
-  const h = demoSelectionHarness(); const audioChoice = h.chooseDemoAudio({ name: "audio-A" }); h.audioMetadata.resolve(true); await tick();
-  const demoChoice = h.chooseDemo({ name: "invalid-demo-B" }); h.demoMetadata.resolve(false); assert.equal(await demoChoice, false);
-  h.uploads.find(upload => upload.kind === "audio").resolve({ asset: { ...media(9), collection: "audio", mimeType: "audio/mpeg" } }); assert.equal(await audioChoice, false);
-  assert.equal(h.session.demoAssetId, id(1)); assert.equal(h.session.demoAudioAssetId, id(8)); assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.pendingDemoAudio, false); assert.equal(h.session.pendingDemo, false);
+test("a rejected demo replacement keeps its saved voiceover; an accepted replacement clears it", async () => {
+  const h = demoSelectionHarness();
+  assert.equal(await h.chooseDemo({ valid: false }), false);
+  assert.equal(h.session.demoAssetId, id(1)); assert.equal(h.session.demoAudioAssetId, id(8)); assert.equal(h.session.pendingDemo, false);
+  const next = h.chooseDemo({ valid: true }); await tick();
+  assert.equal(h.session.demoAudioAssetId, id(8), "Keep the prior audio while the replacement is pending");
+  h.uploads[0].resolve(media(2)); assert.equal(await next, true);
+  assert.equal(h.session.demoAssetId, id(2)); assert.equal(h.session.demoAudioAssetId, null); assert.equal(h.session.pendingDemo, false);
 });
 
 test('draft lock releases on cleanup while hydration is still pending, retaining true cross-tab exclusion', async () => {

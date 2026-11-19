@@ -61,11 +61,17 @@ test("landing Explore destination is allowlisted and does not override paid chec
   assert.match(landing, /\/sign-in\?next=explore/);
 });
 
-test("all authenticated users can browse references while paid generation policy stays intact", () => {
+test("only Hook and Talking Head free feeds are limited; other reference browsing and paid generation remain", () => {
   const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
   const workspace = read("components/explore/recreate-workspace.tsx");
+  assert.match(workspace, /format === "hook" \? videoReferencePreview/);
   assert.match(workspace, /filtered\.map\(\(reference\)/);
-  assert.match(workspace, /export function ProReferenceGate/);
   assert.match(read("app/api/explore/recreate-references/route.ts"), /await requireFirebaseUser\(request\)/);
   for (const file of ["components/workspace/ugc-chat-workspace.tsx", "components/video/video-generation-workspace.tsx"]) assert.match(read(file), /accessState !== "pro"/);
+  const shared = read("components/explore/format-workspace.tsx");
+  assert.match(shared, /canBrowseAllReferences = format !== "hook"/);
+  assert.match(shared, /visible = filtered\.slice\(0, alignReferenceLimit/);
+  assert.match(shared, /data-reference-scroll-end/);
+  assert.match(shared, /hasLockedReferences.*ReferenceFeedUpgrade/);
+  assert.match(read("components/explore/talking-head-references.tsx"), /videoReferencePreview\(activeItems, feedAccess.unlimited\)/);
 });

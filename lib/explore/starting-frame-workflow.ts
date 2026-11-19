@@ -1,5 +1,6 @@
 import { buildHookAnimationPrompt } from "./hook-keyframe-motion.ts";
 import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
+import { buildTalkingHeadAnimationPrompt } from "./talking-head-animation-prompt.ts";
 import { talkingHeadScriptInputError } from "./talking-head-script-input.ts";
 
 export type StartingFrameWorkflow = "hook" | "wall_text" | "talking_head";
@@ -34,7 +35,9 @@ export function buildStartingFrameAnimationPrompt(input: {
   if (input.workflow === "hook") return buildHookAnimationPrompt(input);
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) throw new Error("Describe the video within 6,000 characters.");
-  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") throw new Error("Choose a supported animation duration and sound setting.");
+  const maxDuration = input.workflow === "talking_head" ? input.maxDurationSeconds ?? 15 : 15;
+  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > maxDuration || typeof input.generateAudio !== "boolean") throw new Error("Choose a supported animation duration and sound setting.");
+  if (input.workflow === "talking_head") return buildTalkingHeadAnimationPrompt(input);
   return [
     input.voiceReference ? `Create a ${input.durationSeconds}-second talking-head video. Image 1 is the approved visual reference for the person, scene and opening pose; it is not a strict first-frame input. Audio 1 is a voice reference: use its vocal characteristics and delivery, not its words or background music. Speak only the user's script below.` : input.identityPhotoCount && input.identityPhotoCount > 0
       ? `Animate Image 1, the approved starting image, into a ${input.durationSeconds}-second video. Image 1 supplies the person's appearance and the complete opening composition.`
@@ -42,12 +45,11 @@ export function buildStartingFrameAnimationPrompt(input: {
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
     ...(input.voiceReference && input.voiceIdentityPhotoCount ? identityReferenceRoles(input.voiceIdentityPhotoCount) : []),
     ...(!input.voiceReference && input.identityPhotoCount && input.identityPhotoCount > 0 ? identityReferenceRoles(input.identityPhotoCount) : []),
-    input.workflow === "talking_head" ? "Create a natural talking-head performance. Use only the user's own script below. Do not invent product claims or add a demo segment." : "Create clean moving background footage. Overlay text is added separately in the editor; do not render the requested overlay words into the video.",
-    input.workflow === "wall_text" ? retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds) : input.directions.trim(),
-    ...(input.spokenScript !== undefined ? [`APPROVED SPOKEN SCRIPT (say these words exactly, in this order; never speak scene directions or source/demo narration; this script overrides any conflicting dialogue mentioned in other directions):\n${JSON.stringify(input.spokenScript.trim())}`] : []),
+    "Create clean moving background footage. Overlay text is added separately in the editor; do not render the requested overlay words into the video.",
+    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds),
     input.removePhysicalText ? "Keep the scene free of captions, physical logos, readable text, labels, signage and watermarks. Preserve the underlying surfaces, clothing and props without recreating removed lettering." : "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     input.generateAudio
-      ? input.workflow === "talking_head" ? "SOUND SETTING: ON. Generate the user's requested speech with natural delivery and lip-sync. Do not invent extra spoken words." : "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add speech, narration, singing or music."
+      ? "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add speech, narration, singing or music."
       : "SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
   ].join("\n\n");
 }

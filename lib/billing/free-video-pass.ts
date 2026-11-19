@@ -7,6 +7,8 @@ export const FREE_VIDEO_PASS_ALLOWED_FORMATS = [
   "slideshow",
 ] as const;
 
+export const FREE_VIDEO_PASS_MAX_DURATION_SECONDS = 10;
+
 export const FREE_VIDEO_PASS_EXCLUDED_VIDEO_MODELS = [
   "kling_4_0",
   "google_omni",
@@ -56,6 +58,7 @@ export type FreeVideoPassReservationContext =
       kind: "generation";
       model?: string | null;
       totalUnits?: number;
+      durationSeconds?: number | null;
     }
   | {
       format: "slideshow";
@@ -520,6 +523,17 @@ export async function reserveFreeVideoPassCredits(params: {
       "Only Kling 3.0 is included on the free generation pass. Choose Kling 3.0 or upgrade your plan to use another video model.",
       402,
       "free_video_pass_model_excluded",
+    );
+  }
+  if (
+    context.kind === "generation" &&
+    typeof context.durationSeconds === "number" &&
+    context.durationSeconds > FREE_VIDEO_PASS_MAX_DURATION_SECONDS
+  ) {
+    throw new FreeVideoPassError(
+      `Free video pass videos are limited to ${FREE_VIDEO_PASS_MAX_DURATION_SECONDS} seconds. Upgrade your plan to generate longer videos.`,
+      402,
+      "free_video_pass_duration_exceeded",
     );
   }
 

@@ -46,11 +46,10 @@ test("monthly pricing has no annual savings", () => {
   }
 });
 
-test("plans expose credit balances for Free, Starter, Growth, and Startup", () => {
+test("plans expose credit balances for Starter, Growth, and Startup", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.sharedMonthlyCredits]),
     [
-      ["free", 0],
       ["starter", 200],
       ["growth", 600],
       ["startup", 1200],
@@ -78,7 +77,6 @@ test("plans expose the complete daily content allowance", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.dailyContentPieces]),
     [
-      ["free", "20/day for 7 days"],
       ["starter", 20],
       ["growth", 50],
       ["startup", 50],
@@ -86,22 +84,18 @@ test("plans expose the complete daily content allowance", () => {
   );
 });
 
-test("Free pricing consistently advertises the seven-day trial", () => {
-  const free = pricingPlans.find((plan) => plan.slug === "free")!;
-  for (const interval of ["monthly", "yearly"] as const) {
-    assert.equal(getPlanPricing(free, interval).billingSummary, "7-day free trial");
-  }
-  assert.equal(free.capacityLabel, "No AI credits");
-  assert.equal(free.features.some((feature) => /free credits/i.test(feature)), false);
-  assert.ok(free.features.includes("20 daily concepts for 7 days"));
-  assert.ok(free.features.includes("Download finished carousels and videos"));
+test("the catalogue offers no free plan or free daily content", () => {
+  // User decision, 2026-11-12: Vidmake is paid-only. No plan entry may be
+  // free, and no plan copy may advertise a free plan or trial.
+  assert.equal(pricingPlans.some((plan) => plan.slug === "free"), false);
+  assert.equal(pricingPlans.some((plan) => plan.prices.monthly === 0), false);
+  assert.doesNotMatch(JSON.stringify(pricingPlans), /free plan|free trial|-day trial/i);
 });
 
-test("Free allows one Instagram account, Starter three, and Growth five", () => {
+test("Starter allows three Instagram accounts, and Growth and Startup five", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.instagramAccounts]),
     [
-      ["free", 1],
       ["starter", 3],
       ["growth", 5],
       ["startup", 5],
@@ -120,7 +114,6 @@ test("plan feature lists describe all three supported connection platforms witho
       "Connect Instagram, TikTok & YouTube",
       "Connect Instagram, TikTok & YouTube",
       "Connect Instagram, TikTok & YouTube",
-      "Connect Instagram, TikTok & YouTube",
     ],
   );
 });
@@ -129,7 +122,6 @@ test("plans map slug to proper display name", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.name]),
     [
-      ["free", "Free trial"],
       ["starter", "Starter"],
       ["growth", "Growth"],
       ["startup", "Startup"],
@@ -145,7 +137,6 @@ test("display prices match the configured Dodo catalog", () => {
       plan.prices.yearly,
     ]),
     [
-      ["free", 0, 0],
       ["starter", 29, 299],
       ["growth", 49, 490],
       ["startup", 99, 999],

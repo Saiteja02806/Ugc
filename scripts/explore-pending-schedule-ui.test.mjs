@@ -11,6 +11,7 @@ import * as contract from "../lib/explore/pending-schedule-contract.ts";
 import * as client from "../lib/explore/pending-schedule-client.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as scheduleAck from "../lib/explore/schedule-ack.ts";
 import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -68,6 +69,7 @@ function fixture(options = {}) {
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" }, "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); return value.connections; } },
     "@/lib/explore/pending-schedule-contract": contract, "@/lib/explore/pending-schedule-client": client,
+    "@/lib/explore/schedule-ack": scheduleAck,
     "@/lib/explore/workflow-schedule-client": scheduleClient, "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
     "@/components/explore/workflow-schedule-review.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) },
   };
@@ -366,6 +368,59 @@ test("reply verification rejects wrong snapshots and allows existing provider de
     value => { value.schedule.metadata.plannedTargetsJson = JSON.stringify([{ ...submission.targets[0], settings: { shareToFeed: true, containsSyntheticMedia: true } }]); },
     value => { value.schedule.metadata.plannedTargetsJson = "bad json"; }, value => { value.preparation.mediaAssetId = id(99); }, value => { value.requestKey = id(99); },
   ]) { const value = reply(); corrupt(value); assert.throws(() => client.verifyExploreScheduleReply(value, saved)); }
+});
+
+test("a verified mismatch names the differing field and flags an already-scheduled row", () => {
+  const saved = savedEntry();
+  const planned = [{ connectionId: id(99), platform: "tiktok" }];
+  const caption = reply(); caption.schedule.caption = "Different caption";
+  try { client.verifyExploreScheduleReply(caption, saved); assert.fail("expected a mismatch"); }
+  catch (e) { assert.ok(scheduleAck.isScheduleAckMismatch(e)); assert.equal(e.alreadyScheduled, false); assert.match(e.message, /changed: caption/); assert.match(e.message, /Try again checks the same post/); }
+  const accounts = reply(); accounts.schedule.status = "draft"; accounts.schedule.metadata.plannedTargetsJson = JSON.stringify(planned);
+  try { client.verifyExploreScheduleReply(accounts, saved); assert.fail("expected a mismatch"); }
+  catch (e) { assert.ok(scheduleAck.isScheduleAckMismatch(e)); assert.equal(e.alreadyScheduled, false); assert.match(e.message, /changed: posting accounts/); assert.doesNotMatch(e.message, /account settings/); }
+  const settings = reply(); settings.schedule.status = "draft"; const sameButChanged = JSON.parse(settings.schedule.metadata.plannedTargetsJson); sameButChanged[0].settings.shareToFeed = true; settings.schedule.metadata.plannedTargetsJson = JSON.stringify(sameButChanged);
+  try { client.verifyExploreScheduleReply(settings, saved); assert.fail("expected a mismatch"); }
+  catch (e) { assert.match(e.message, /changed: account settings/); assert.doesNotMatch(e.message, /posting accounts/); }
+  const published = reply(); published.schedule.status = "published"; published.schedule.metadata.plannedTargetsJson = JSON.stringify(planned);
+  try { client.verifyExploreScheduleReply(published, saved); assert.fail("expected a mismatch"); }
+  catch (e) { assert.ok(scheduleAck.isScheduleAckMismatch(e)); assert.equal(e.alreadyScheduled, true); assert.match(e.message, /Your post was already scheduled/); assert.match(e.message, /changed: posting accounts/); }
+});
+
+test("a verified scheduled row with changed destinations releases the stuck request with its Scheduling link", async () => {
+  const saved = savedEntry(false);
+  const mismatched = reply(input(), "scheduled");
+  mismatched.schedule.status = "scheduled";
+  mismatched.schedule.metadata.plannedTargetsJson = JSON.stringify([{ connectionId: id(99), platform: "tiktok" }]);
+  const h = fixture({ saved, serverReply: mismatched });
+  h.render(); await settle(); h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.match(h.text(), /Your post was already scheduled/);
+  assert.match(h.text(), /changed: posting accounts/);
+  const links = h.nodes().filter(node => node.type === "Link" && text(node) === "View in Scheduling");
+  assert.equal(links.length, 1);
+  assert.equal(links[0].props.href, "/scheduling");
+  const storageKey = "ugc-explore:background-schedule:v1:owner-a:hook";
+  assert.equal(h.values.get(storageKey), undefined, "The stuck request is released from the active slot");
+  const archived = JSON.parse(h.values.get(`${storageKey}:confirmed:${encodeURIComponent(saved.input.requestKey)}`) ?? "null");
+  assert.ok(archived?.input?.requestKey === saved.input.requestKey, "The release keeps the exact recovery evidence");
+  assert.equal(h.button("Try again"), undefined);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.unmount();
+});
+
+test("a verified not-yet-scheduled mismatch keeps the durable request with the named detail", async () => {
+  const saved = savedEntry(false);
+  const mismatched = reply(input(), "preparing");
+  mismatched.schedule.status = "draft";
+  mismatched.schedule.metadata.plannedTargetsJson = JSON.stringify([{ connectionId: id(99), platform: "tiktok" }]);
+  const h = fixture({ saved, serverReply: mismatched });
+  h.render(); await settle(); h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.match(h.text(), /changed: posting accounts/);
+  assert.match(h.text(), /Try again checks the same post/);
+  assert.doesNotMatch(h.text(), /Your post was already scheduled/);
+  h.unmount();
 });
 
 

@@ -1,7 +1,36 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownAZ, ArrowRight, AudioLines, Bookmark, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, FileAudio, Headphones, Languages, LoaderCircle, LockKeyhole, Megaphone, MessageCircle, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowRight,
+  AudioLines,
+  Bookmark,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileAudio,
+  Headphones,
+  Languages,
+  LockKeyhole,
+  Megaphone,
+  MessageCircle,
+  MonitorPlay,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Trash2,
+  Upload,
+  Users,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useAuth } from "@/contexts/auth-context";
 import { createAudioApi } from "@/lib/audio/client";
 import { audioLibraryQueryOptions, refreshAudioLibrary } from "@/lib/audio/library-query";
@@ -276,7 +305,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       <div><h1>Audio generation</h1><p>Discover a voice. Create your next voiceover.</p></div>
       <div className="audio-header-actions">
         {refreshing && data ? <span role="status" className="audio-fine-print">Updating voices…</span> : null}
-        <button type="button" className="audio-icon-button" disabled={refreshing || posting} aria-label="Refresh voices" onClick={() => { void load(true); bookmarks.refresh(); }}><RefreshCw size={17} className={cn(refreshing && "animate-spin")} /></button>
+        <button type="button" className="audio-icon-button" disabled={refreshing || posting} aria-label="Refresh voices" onClick={() => { void load(true); bookmarks.refresh(); }}>{refreshing ? <BlocksSpinner size={17} /> : <RefreshCw size={17} />}</button>
       </div>
     </header>
     <nav className="audio-tabs" aria-label="Audio workspace">
@@ -295,7 +324,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
     {view === "studio" ? <div className="audio-studio">
       <div className="audio-section-heading"><div><h2>Recommended voices</h2><p>A small selection for your next post, ad or product video.</p></div><button type="button" className="audio-text-button" onClick={() => changeView("library")}>View all voices<ArrowRight size={15} /></button></div>
       <div className="audio-studio-purpose" role="group" aria-label="Studio content purpose">{AUDIO_CONTENT_PURPOSES.filter(item => item.id !== "storytelling").map(item => <button key={item.id} type="button" className={cn("audio-category", purpose === item.id && "is-active")} aria-pressed={purpose === item.id} onClick={() => changeCategory(item.id)}>{item.label}</button>)}</div>
-      {loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading recommended voices…</p> : studioVoices.length ? <VoiceList items={studioVoices} compact privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><AudioLines size={25} /><h3>No recommendations available</h3><p>Open the voice library to explore the available styles, or select a saved private voice in My voices.</p></div>}
+      {loading ? <p role="status" className="audio-empty"><BlocksSpinner size={18}  />Loading recommended voices…</p> : studioVoices.length ? <VoiceList items={studioVoices} compact privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><AudioLines size={25} /><h3>No recommendations available</h3><p>Open the voice library to explore the available styles, or select a saved private voice in My voices.</p></div>}
       <div className="audio-studio-pager"><p className="audio-fine-print">{publicPreview ? "Real voice samples · Preview only" : "Play a sample, then select a voice for your script."}</p><div aria-label="Recommended voice pages"><span className="audio-fine-print" role="status">{studioPageCount ? currentStudioPage + 1 : 0} / {studioPageCount}</span><button type="button" className="audio-icon-button" aria-label="Previous recommended voices" disabled={!studioPageCount || currentStudioPage === 0} onClick={() => changeStudioPage(currentStudioPage - 1)}><ChevronLeft size={18} /></button><button type="button" className="audio-icon-button" aria-label="Next recommended voices" disabled={!studioPageCount || currentStudioPage >= studioPageCount - 1} onClick={() => changeStudioPage(currentStudioPage + 1)}><ChevronRight size={18} /></button></div></div>
     </div> : null}
 
@@ -317,12 +346,12 @@ function AudioGenerationSession({ uid }: { uid: string }) {
         <UploadControl disabled={posting || !accountReady || !data?.canUpload} label="Upload voice reference" onFile={file => void upload(file, "reference")} />
         <div className="audio-reference-fields"><div><label htmlFor="audio-reference">Reference recording</label><select id="audio-reference" className="audio-input" value={referenceId} onChange={e => setReferenceId(e.target.value)}><option value="">Choose a recording</option>{references.map(asset => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></div><div><label htmlFor="audio-voice-name">Voice name</label><input id="audio-voice-name" className="audio-input" value={voiceName} maxLength={100} onChange={e => setVoiceName(e.target.value)} placeholder="My narration voice" /></div></div>
         <label className="audio-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I own this voice or have permission to clone and use it.</label>
-        <button type="button" className="audio-primary" disabled={!accountReady || !data?.canClone || !referenceId || !references.some(asset => asset.id === referenceId) || !voiceName.trim() || !consent || posting || activeRequests.some(r => r.kind === "clone")} onClick={() => void clone()}>{posting ? <LoaderCircle size={16} className="animate-spin" /> : <AudioLines size={16} />}Create private voice</button>
+        <button type="button" className="audio-primary" disabled={!accountReady || !data?.canClone || !referenceId || !references.some(asset => asset.id === referenceId) || !voiceName.trim() || !consent || posting || activeRequests.some(r => r.kind === "clone")} onClick={() => void clone()}>{posting ? <BlocksSpinner size={16}  /> : <AudioLines size={16} />}Create private voice</button>
         <p className="audio-fine-print">MP3, WAV, M4A, OGG or WebM · Up to 3 MB and 3 minutes</p>
       </div> : null}
 
       {view === "library" ? <div className="audio-section-heading audio-library-heading"><div><h2>{filtered ? "Matching voices" : focusInfo.heading}</h2><p>{filtered ? `${voices.length} ${voices.length === 1 ? "voice" : "voices"} found` : focusInfo.description}</p></div><span className="audio-fine-print">{publicPreview ? "Public demos · Preview before connecting" : `${voices.length} ${voices.length === 1 ? "voice" : "voices"} in your library`}</span></div> : null}
-      {loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading voices…</p> : voices.length ? <>
+      {loading ? <p role="status" className="audio-empty"><BlocksSpinner size={18}  />Loading voices…</p> : voices.length ? <>
         <VoiceList items={view === "library" && !filtered ? voices.slice(0,6) : voices} privateLibrary={view === "voices"} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} />
         {view === "library" && !filtered && voices.length > 6 ? <><div className="audio-section-heading audio-more-heading"><h2>More voices to explore</h2><span className="audio-fine-print">Listen to a sample, then choose your voice.</span></div><VoiceList items={voices.slice(6)} privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /></> : null}
       </> : <div className="audio-empty"><AudioLines size={25} /><h3>{view === "voices" && !query ? "Make a voice your own" : "No voices found"}</h3><p>{view === "voices" && !query ? "Your private voices will appear here after creation. Your recordings stay private." : "Try another name, accent or style, or clear your filters."}</p>{filtered ? <button type="button" className="audio-text-button" onClick={clearFilters}>Clear filters</button> : null}</div>}
@@ -331,7 +360,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
 
     {view === "bookmarks" ? <div className="audio-bookmarks">
       <div className="audio-section-heading"><div><h2>Bookmarked voices</h2><p>Your saved picks. Listen to a sample, then use it for your next voiceover.</p></div><button type="button" className="audio-text-button" onClick={() => changeView("library")}>Explore voices<ArrowRight size={15} /></button></div>
-      {loading || bookmarks.loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading bookmarked voices…</p> : bookmarkedVoices.length ? <VoiceList items={bookmarkedVoices} privateLibrary voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><Bookmark size={27} /><h3>{bookmarks.ready ? "Keep your favorite voices here" : "Bookmarks are unavailable"}</h3><p>{bookmarks.ready ? "Tap the bookmark beside any voice to save it. Your script and selected voice stay as they are." : "Reload your bookmarks to try again. You can still explore voices and use text to speech."}</p><button type="button" className="audio-text-button" onClick={() => bookmarks.ready ? changeView("library") : bookmarks.refresh()}>{bookmarks.ready ? "Browse the voice library" : "Reload bookmarks"}<ArrowRight size={15} /></button></div>}
+      {loading || bookmarks.loading ? <p role="status" className="audio-empty"><BlocksSpinner size={18}  />Loading bookmarked voices…</p> : bookmarkedVoices.length ? <VoiceList items={bookmarkedVoices} privateLibrary voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><Bookmark size={27} /><h3>{bookmarks.ready ? "Keep your favorite voices here" : "Bookmarks are unavailable"}</h3><p>{bookmarks.ready ? "Tap the bookmark beside any voice to save it. Your script and selected voice stay as they are." : "Reload your bookmarks to try again. You can still explore voices and use text to speech."}</p><button type="button" className="audio-text-button" onClick={() => bookmarks.ready ? changeView("library") : bookmarks.refresh()}>{bookmarks.ready ? "Browse the voice library" : "Reload bookmarks"}<ArrowRight size={15} /></button></div>}
       {missingBookmarks.length ? <div className="audio-unavailable-bookmarks"><p className="audio-fine-print">Some saved voices are no longer in your current library. They stay bookmarked in case they become available again.</p>{missingBookmarks.map((id, index) => <div key={id}><span className="audio-fine-print">Unavailable saved voice</span><button type="button" className="audio-text-button" disabled={bookmarks.pendingIds.has(id)} aria-label={`Remove unavailable saved voice ${index + 1} bookmark`} onClick={() => void bookmarks.toggle(id)}>Remove bookmark</button></div>)}</div> : null}
     </div> : null}
 
@@ -376,7 +405,7 @@ function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSam
       </button>
       <div className="audio-voice-actions">
         <button type="button" className={cn("audio-use-voice", voice.id === voiceId && "is-active")} aria-label={`Use It: ${voice.name}`} aria-pressed={voice.id === voiceId} onClick={() => selectVoice(voice)}>Use It{voice.id === voiceId ? <Check size={15} /> : <ArrowRight size={15} />}</button>
-        <button type="button" className={cn("audio-icon-button audio-bookmark-voice", bookmarkIds.has(voice.id) && "is-active")} disabled={bookmarkPendingIds.has(voice.id)} aria-busy={bookmarkPendingIds.has(voice.id)} aria-label={`${bookmarkIds.has(voice.id) ? "Remove bookmark for" : "Bookmark"} ${voice.name}`} title={bookmarkIds.has(voice.id) ? "Remove bookmark" : "Bookmark voice"} aria-pressed={bookmarkIds.has(voice.id)} onClick={() => onBookmark(voice.id)}>{bookmarkPendingIds.has(voice.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Bookmark size={16} fill={bookmarkIds.has(voice.id) ? "currentColor" : "none"} />}</button>
+        <button type="button" className={cn("audio-icon-button audio-bookmark-voice", bookmarkIds.has(voice.id) && "is-active")} disabled={bookmarkPendingIds.has(voice.id)} aria-busy={bookmarkPendingIds.has(voice.id)} aria-label={`${bookmarkIds.has(voice.id) ? "Remove bookmark for" : "Bookmark"} ${voice.name}`} title={bookmarkIds.has(voice.id) ? "Remove bookmark" : "Bookmark voice"} aria-pressed={bookmarkIds.has(voice.id)} onClick={() => onBookmark(voice.id)}>{bookmarkPendingIds.has(voice.id) ? <BlocksSpinner size={16}  /> : <Bookmark size={16} fill={bookmarkIds.has(voice.id) ? "currentColor" : "none"} />}</button>
         {voice.profileId && privateLibrary ? <button type="button" className="audio-icon-button" disabled={posting} aria-label={`Remove ${voice.name} private voice`} onClick={() => onRemove(voice.profileId!)}><Trash2 size={15} /></button> : null}
       </div>
     </article>)}</div>;

@@ -1,6 +1,12 @@
 "use client";
 
-import { FileAudio, FileVideo, Loader2, X } from "lucide-react";
+import {
+  FileAudio,
+  FileVideo,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -46,7 +52,7 @@ export function ReferenceUploadPreview({
       )}
       {pending ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white" role="status">
-          {queued ? null : <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+          {queued ? null : <BlocksSpinner className="size-4" aria-hidden="true" />}
           <span className="text-[9px] font-medium">{queued ? "Queued" : "Uploading"}</span>
         </div>
       ) : (

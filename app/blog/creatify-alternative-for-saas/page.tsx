@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Creatify and Vidmake?",
-    answer: "Creatify charges credit-based tiers focused on high-volume e-commerce ad generation. Vidmake offers a 7-day free trial with 20 daily content pieces, with self-serve founder plans starting at $29 and $49 per month.",
+    answer: "Creatify charges credit-based tiers focused on high-volume e-commerce ad generation. Vidmake's self-serve founder plans start at $29 and $49 per month.",
   },
 ] as const;
 
@@ -117,9 +117,9 @@ export default function CreatifyAlternativeForSaasPage() {
                 <td className="p-4 align-top">multi-tool OAuth MCP server for Claude and Codex</td>
               </tr>
               <tr className="border-t border-border">
-                <th scope="row" className="p-4 font-semibold text-foreground-strong">Free Trial &amp; Plans</th>
+                <th scope="row" className="p-4 font-semibold text-foreground-strong">Pricing &amp; Plans</th>
                 <td className="p-4 align-top">Credit-based subscription</td>
-                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; plans from $29/mo</td>
+                <td className="p-4 align-top">paid plans with monthly credits; plans from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -181,7 +181,7 @@ export default function CreatifyAlternativeForSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Vidmake offers self-serve plans from $29/mo. Start with a 7-day trial on our{" "}
+                  Vidmake offers self-serve plans from $29/mo. Choose a plan with our{" "}
                   <ArticleLink href="/pricing">pricing page</ArticleLink>.
                 </>
               ),
@@ -196,7 +196,7 @@ export default function CreatifyAlternativeForSaasPage() {
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

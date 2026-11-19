@@ -4,15 +4,15 @@ import vm from "node:vm";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import ts from "typescript";
-import { estimateTalkingHeadSpeechSeconds } from "../lib/explore/talking-head-script-remix.ts";
+import * as scriptPolicy from "../lib/explore/talking-head-script-remix.ts";
 import { readTalkingHeadScriptDraft } from "../lib/explore/talking-head-script-draft.ts";
-import { buildTalkingHeadPromptExport } from "../lib/explore/talking-head-prompt.ts";
+import * as promptHelpers from "../lib/explore/talking-head-prompt.ts";
 
 const source = { referenceId: "talking-test", sourceSha256: "a".repeat(64), transcriptSha256: "b".repeat(64), selectionSha256: "d".repeat(64), hookText: "Try this.", fullText: "Try this. Demo narration.", hookEndMs: 3000 };
 const settle = async () => { for (let i = 0; i < 6; i++) await new Promise(setImmediate); };
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const text = tree => Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : "";
-function harness({ values = new Map(), send, failSource = false, unavailableStorage = false, initialScript, preferInitialScript, selectedSource = source, sceneDirections = "Stable phone camera, natural window light.", failClipboard = false, business = { name: "Example", ready: true, version: 2 }, enabled = true, failCompletedSave = false } = {}) {
+function harness({ values = new Map(), send, failSource = false, unavailableStorage = false, initialScript, preferInitialScript, selectedSource = source, sceneDirections = "Stable phone camera, natural window light.", failClipboard = false, business = { name: "Example", ready: true, version: 2 }, enabled = true, failCompletedSave = false, onApply, useSourceDraft, targetDurationSeconds } = {}) {
   const slots = [], effects = [], calls = [], changes = [], reviewChanges = [], copied = []; let cursor = 0;
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => { if (unavailableStorage || failCompletedSave && JSON.parse(value).videoPrompt) throw Error("Storage denied"); values.set(key, value); } };
   const react = {
@@ -34,15 +34,36 @@ function harness({ values = new Map(), send, failSource = false, unavailableStor
     if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
     if (name.endsWith("/ui/button")) return { Button: "button" };
     if (name.endsWith("/firebase/auth")) return { getCurrentUserIdToken: async () => "owner-token" };
-    if (name.endsWith("/talking-head-script-remix")) return { estimateTalkingHeadSpeechSeconds };
+    if (name.endsWith("/talking-head-script-remix")) return scriptPolicy;
     if (name.endsWith("/talking-head-script-draft")) return { readTalkingHeadScriptDraft };
-    if (name.endsWith("/talking-head-prompt")) return { buildTalkingHeadPromptExport };
+    if (name.endsWith("/talking-head-prompt")) return promptHelpers;
     throw Error(`Unexpected import ${name}`);
   }, localStorage: storage, fetch, crypto: { randomUUID }, navigator: { clipboard: { async writeText(value) { if (failClipboard) throw Error("Clipboard denied"); copied.push(value); } } }, AbortController, AbortSignal, Error, JSON, encodeURIComponent });
   const onChange = (value, reviewed) => { changes.push(value); reviewChanges.push(reviewed); };
-  const render = () => { cursor = 0; const tree = exports.TalkingHeadScriptSection({ ownerId: "owner", referenceId: selectedSource.referenceId, sourceSha256: selectedSource.sourceSha256, draftId: "draft", initialScript, preferInitialScript, sceneDirections, onChange }); while (effects.length) effects.shift()(); return tree; };
+  const render = () => { cursor = 0; const tree = exports.TalkingHeadScriptSection({ ownerId: "owner", referenceId: selectedSource.referenceId, sourceSha256: selectedSource.sourceSha256, draftId: "draft", initialScript, preferInitialScript, sceneDirections, onChange, onApply, useSourceDraft, targetDurationSeconds }); while (effects.length) effects.shift()(); return tree; };
   return { render, calls, changes, reviewChanges, copied, values, nodes: () => nodes(render()), edit(value) { nodes(render()).find(node => node.type === "textarea").props.onChange({ target: { value } }); }, review() { nodes(render()).find(node => node.type === "input").props.onChange({ target: { checked: true } }); }, click(label) { const button = nodes(render()).find(node => node.type === "button" && text(node) === label); assert.ok(button, label); assert.equal(Boolean(button.props.disabled), false, label); button.props.onClick(); }, script: () => nodes(render()).find(node => node.type === "textarea").props.value };
 }
+
+test("a duration-limited remix retains the original hook and applies its frozen duration to Create", async () => {
+  const originalHook = "The complete original source words. ".repeat(20).trim();
+  const selectedSource = { ...source, hookText: originalHook, hookEndMs: 27780 };
+  let applied;
+  const h = harness({ selectedSource, targetDurationSeconds: 12, onApply: (...values) => { applied = values; return true; } });
+  h.render(); await settle();
+  h.review(); h.click("Generate prompt"); await settle();
+  const posted = JSON.parse(h.calls.find(call => call.options.method === "POST").options.body);
+  assert.equal(posted.targetDurationSeconds, 12);
+  assert.equal(posted.script, originalHook);
+  assert.ok(text(h.render()).includes(originalHook));
+  assert.match(h.nodes().find(node => node.props?.["aria-label"] === "Talking Head video prompt").props.value, /approximately 12 seconds/u);
+  h.review(); h.click("Use prompt in Create");
+  assert.deepEqual(applied, ["Try that!", "Stable phone camera, natural window light.", 12]);
+  const restored = harness({ selectedSource, values: h.values, targetDurationSeconds: 8, onApply: () => assert.fail("Stale duration") });
+  restored.render(); await settle();
+  assert.ok(text(restored.render()).includes("The selected duration changed"));
+  assert.equal(restored.nodes().find(node => node.type === "button" && text(node) === "Use hook in Create").props.disabled, true);
+  assert.equal(restored.calls.filter(call => call.options.method === "POST").length, 0);
+});
 
 test("one action personalizes the complete hook then exports an editable prompt; reload and Copy never repay", async () => {
   const longHook = "These are the complete introduction words. ".repeat(10) + "Let me show you.";
@@ -53,7 +74,7 @@ test("one action personalizes the complete hook then exports an editable prompt;
   assert.ok(output); assert.ok(output.props.value.includes(JSON.stringify(personalized)));
   assert.equal(output.props.value.split(JSON.stringify(personalized)).length - 1, 1);
   assert.doesNotMatch(output.props.value, /Demo narration starts here/u);
-  assert.ok(h.nodes().some(node => text(node).includes("15-second single-clip limit")));
+  assert.doesNotMatch(text(h.render()), /Demo narration starts here|15-second single-clip limit/u);
   const custom = output.props.value + "\nMy extra camera note.";
   output.props.onChange({ target: { value: custom } });
   h.click("Copy prompt"); await settle(); assert.equal(h.copied.at(-1), custom);
@@ -184,6 +205,34 @@ test("same-source active nonempty Create words override an older saved script wi
   active.render(); await settle();
   assert.equal(active.script(), "Current Create words");
   assert.equal(active.calls.filter(call => call.options.method === "POST").length, 0);
+});
+
+test("reviewed Remix scene edits and exact hook words can be applied without another paid request", async () => {
+  const applied = [];
+  const options = { preferInitialScript: true, initialScript: "Try this.", onApply: (script, directions) => { applied.push({ script, directions }); return true; } };
+  const first = harness(options);
+  first.render(); await settle(); first.review(); first.click("Generate prompt"); await settle();
+  const h = harness({ ...options, values: first.values });
+  h.render(); await settle();
+  assert.equal(h.script(), "Try that!", "Reopening with the same Create words retains the newer Remix");
+  const output = h.nodes().find(node => node.props?.["aria-label"] === "Talking Head video prompt");
+  output.props.onChange({ target: { value: `${output.props.value}\nChanged export footer.` } });
+  assert.ok(h.nodes().find(node => node.type === "button" && text(node) === "Use hook in Create").props.disabled);
+  h.click("Restore generated format");
+  output.props.onChange({ target: { value: output.props.value.replace("Stable phone camera, natural window light.", "Lean toward the camera at the end.") } });
+  assert.ok(h.nodes().find(node => node.type === "button" && text(node) === "Use prompt in Create").props.disabled);
+  h.review(); h.click("Use prompt in Create");
+  assert.deepEqual(applied, [{ script: "Try that!", directions: "Lean toward the camera at the end." }]);
+  assert.equal([...first.calls, ...h.calls].filter(call => call.options.method === "POST").length, 1);
+});
+
+test("opening preparation for a short clip keeps its untouched default available", async () => {
+  const h = harness({ useSourceDraft: false });
+  h.render(); await settle(); h.render();
+  assert.equal(h.script(), source.hookText);
+  assert.equal(h.changes.at(-1), undefined);
+  h.edit("My short hook."); h.render();
+  assert.equal(h.changes.at(-1), "My short hook.");
 });
 
 test("visiting another source preserves an uncertain Remix for read-only recovery", async () => {

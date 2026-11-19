@@ -6,21 +6,41 @@ const same = (a: ExploreClipDraftContent, b: ExploreClipDraftContent) => JSON.st
 export function clipDraftPendingKey(owner: string, scope: string, sourceAssetId: string) {
   return `ugc-explore:clip-save:v1:${owner}:${scope}:${sourceAssetId}`;
 }
-export type ClipDraftTransport = { token: () => Promise<string | null>; fetch: typeof fetch };
+export type ClipDraftTransport = { token: () => Promise<string | null>; fetch: typeof fetch; tokenDeadlineMs?: number; readDeadlineMs?: number };
+const TOKEN_DEADLINE_MS = 8_000;
+const READ_DEADLINE_MS = 20_000;
 async function request(deps: ClipDraftTransport, url: string, body?: ExploreClipDraftSaveRequest, parentSignal?: AbortSignal) {
-  // Bound authentication and response parsing too. A late token must never send
-  // a mutation after the UI has already offered a retry of the same request.
-  try { return await withReadDeadline(async signal => {
-    const token = await deps.token();
-    signal.throwIfAborted();
-    if (!token) throw new ExploreClipDraftError("Sign in to save your edits.", 401);
-    const response = await deps.fetch(url, { method: body ? "POST" : "GET", cache: "no-store", signal,
+  // Sign-in has its own budget. Folding it into the read deadline made a slow
+  // token refresh abort the draft request while the server was still checking
+  // the account, which blocked Schedule after 15 seconds.
+  let token: string | null;
+  try { token = await withReadDeadline(async signal => { const value = await deps.token(); signal.throwIfAborted(); return value; }, parentSignal, deps.tokenDeadlineMs ?? TOKEN_DEADLINE_MS); }
+  catch (error) {
+    if (error instanceof ReadDeadlineError) throw new ExploreClipDraftError(body
+      ? "Could not confirm your saved edits in time. Retry Save edits to check the same save."
+      : "Sign-in is still loading. Retry loading your saved edits.", 503, "clip_draft_unavailable");
+    throw error;
+  }
+  if (!token) throw new ExploreClipDraftError("Sign in to save your edits.", 401);
+  const read = () => withReadDeadline(async signal => {
+    if (parentSignal?.aborted) parentSignal.throwIfAborted();
+    // Call fetch unbound. A browser's native fetch rejects a transport object as this.
+    const send = deps.fetch;
+    const response = await send(url, { method: body ? "POST" : "GET", cache: "no-store", signal,
       headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json", "Idempotency-Key": body.requestId } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}) });
     const result = await response.json().catch(() => null);
     if (!response.ok || !result?.ok) throw new ExploreClipDraftError(result?.error ?? "Could not confirm your saved edits. Retry this save.", response.status, result?.code ?? "clip_draft_unavailable");
     return result;
-  }, parentSignal, 15000); } catch (error) {
+  }, parentSignal, deps.readDeadlineMs ?? READ_DEADLINE_MS);
+  try { return await read(); }
+  catch (error) {
+    // A read is safe to repeat once. A save keeps its single attempt so a late
+    // reply cannot start a second mutation after the screen offers Retry.
+    if (error instanceof ReadDeadlineError && !body && !parentSignal?.aborted) {
+      try { return await read(); }
+      catch (retryError) { if (!(retryError instanceof ReadDeadlineError)) throw retryError; }
+    }
     if (error instanceof ReadDeadlineError) throw new ExploreClipDraftError(body
       ? "Could not confirm your saved edits in time. Retry Save edits to check the same save."
       : "Loading your saved edits took too long. Please retry loading your saved edits.", 503, "clip_draft_unavailable");

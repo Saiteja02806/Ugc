@@ -1,6 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Download, Headphones, LoaderCircle, Radio, Trash2 } from "lucide-react";
+import {
+  Download,
+  Headphones,
+  Radio,
+  Trash2,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { AudioAsset } from "@/lib/audio/types";
 
@@ -55,7 +61,7 @@ export function AudioPlayer({ asset, liveRequestId, userId, onRemove, removing }
     <div className="audio-player-heading"><Headphones size={16} aria-hidden="true" />{asset?.name || (liveRequestId ? "Your speech is being generated" : "Audio preview")}</div>
     {url ? <audio ref={audio} src={url} controls preload="metadata" aria-label="Audio preview" onCanPlay={() => { if (playWhenReady.current) { playWhenReady.current = false; void audio.current?.play().catch(() => setError("Press play to listen to this recording.")); } }} /> : <p className="audio-player-placeholder">{asset ? "Play this recording or download a copy." : liveRequestId ? "Listen as it arrives, or wait for the saved recording." : "Your generated speech will appear here."}</p>}
     <div className="audio-player-controls">
-      {asset ? <><button type="button" className="audio-text-button" disabled={busy} onClick={() => void load()}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Headphones size={15} />}Play recording</button><button type="button" className="audio-text-button" disabled={busy} onClick={() => void load(true)}><Download size={15} />Download</button><button type="button" className="audio-text-button" disabled={busy || removing} onClick={() => onRemove(asset.id)}><Trash2 size={15} />Remove recording</button></> : liveRequestId ? <button type="button" className="audio-text-button" disabled={busy} onClick={() => void listenLive()}><Radio size={15} />{busy ? "Listening live…" : "Listen live"}</button> : null}
+      {asset ? <><button type="button" className="audio-text-button" disabled={busy} onClick={() => void load()}>{busy ? <BlocksSpinner size={15}  /> : <Headphones size={15} />}Play recording</button><button type="button" className="audio-text-button" disabled={busy} onClick={() => void load(true)}><Download size={15} />Download</button><button type="button" className="audio-text-button" disabled={busy || removing} onClick={() => onRemove(asset.id)}><Trash2 size={15} />Remove recording</button></> : liveRequestId ? <button type="button" className="audio-text-button" disabled={busy} onClick={() => void listenLive()}><Radio size={15} />{busy ? "Listening live…" : "Listen live"}</button> : null}
     </div>
     {asset?.testOnly ? <p className="audio-player-attribution">Free-plan test audio · Noncommercial use. Made with <a href="https://elevenlabs.io" target="_blank" rel="noreferrer">ElevenLabs</a>.</p> : null}
     {error ? <p role="alert" className="audio-player-error">{error}</p> : null}

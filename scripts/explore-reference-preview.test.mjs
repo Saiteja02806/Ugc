@@ -1,3 +1,5 @@
+import * as recreateTypes from "../lib/explore/recreate-types.ts";
+import * as videoFeed from "../lib/explore/video-reference-feed.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -7,6 +9,21 @@ import { canOpenReferenceSource } from "../lib/explore/reference-source-access.t
 import { getReferenceSource, referenceSourceLabel } from "../lib/explore/reference-source-link.ts";
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
+
+test("user-reported rounded views show truthful provenance in the existing tooltip", () => {
+  const h = harness("hook");
+  h.reference.sourceUrl = "https://www.tiktok.com/@creator/video/123";
+  h.reference.viewCount = 1300000;
+  h.reference.viewsApproximate = true;
+  h.reference.viewsSource = "user-reported";
+  const badge = h.render().find(node => node.props?.["data-reference-views"]);
+  assert.ok(badge);
+  assert.match(badge.props.title, /^Approximately 1,300,000 source-post views.*User-reported$/);
+  assert.ok(!badge.props.title.includes("Retrieved"));
+  h.reference.viewsApproximate = false; h.reference.viewCount = 64;
+  const exact = h.render().find(node => node.props?.["data-reference-views"]);
+  assert.match(exact.props.title, /^64 source-post views.*User-reported$/);
+});
 
 test("a failed reference preview derivative falls back to the original video", () => {
   const h = harness("hook");
@@ -29,6 +46,8 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
     play() { this.plays++; return Promise.resolve(); }, pause() { this.pauses++; } };
   const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
   const imports = {
+    "@/lib/explore/recreate-types": recreateTypes,
+    "@/lib/explore/video-reference-feed": videoFeed,
     "./use-starting-frame-preload": { useStartingFramePreload: () => () => {} },
     "react/jsx-runtime": { jsx: element, jsxs: element },
     react: { useRef: () => ({ current: video }), useState(initial) {
@@ -54,12 +73,36 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
   const reference = { id: "reference", title: "Reference", format, posterUrl: "https://media.test/poster.webp",
     sourceUrl: showSource ? "https://www.instagram.com/reel/fixture/" : undefined,
     videoUrl: format === "slideshow" ? undefined : "https://media.test/reference.mp4", slides: format === "slideshow" ? [{ width: 1080, height: 1350 }] : [] };
-  return { video, reference, playbackSources, get previews() { return previews; }, get recreations() { return recreations; }, render() {
+  return { video, reference, playbackSources, filter: props => nodes(exports.FilterMenu(props)), get previews() { return previews; }, get recreations() { return recreations; }, render() {
     cursor = 0;
     return nodes(exports.ReferenceCard({ reference, isSelected: false, compact: showSource, showActionLabel: true, overlayActions: overlay, canOpenSource,
       onPreview: () => { previews++; }, onRecreate: () => { recreations++; } }));
   } };
 }
+
+test("actual Filter menu commits both view choices and retains category/clear callbacks", () => {
+  const h = harness("hook"), calls = [];
+  const tree = h.filter({ activeCategories: ["instagram"], categories: [{ id: "instagram", label: "Instagram", count: 1 }], disabled: false, count: 1,
+    onToggle: (...args) => calls.push(args), onClear: () => calls.push("clear"), views: { sort: "highest", filter: "all", onSort: value => calls.push(value), onFilter: value => calls.push(value) } });
+  const radios = tree.filter(node => node.type === "input");
+  assert.deepEqual(radios.map(node => node.props.value), ["highest", "lowest", "all", "available", "unavailable"]);
+  radios.find(node => node.props.value === "lowest").props.onChange();
+  radios.find(node => node.props.value === "unavailable").props.onChange();
+  tree.find(node => node.type === "Checkbox").props.onCheckedChange(false);
+  tree.find(node => node.props?.children === "Clear filters").props.onClick();
+  assert.deepEqual(calls, ["lowest", "unavailable", ["instagram", false], "clear"]);
+  assert.equal(h.filter({ activeCategories: [], categories: [], disabled: false, count: 0 }).some(node => node.type === "input"), false, "sibling filters do not acquire view controls");
+});
+
+test("actual video cards hide unavailable/no-link metrics and expose genuine zero plus snapshot date", () => {
+  const h = harness("hook", false, true, true);
+  assert.equal(h.render().some(node => node.props?.["data-reference-views"]), false);
+  h.reference.viewCount = 0; h.reference.viewsRetrievedAt = "2026-11-04T12:42:05Z";
+  const badge = h.render().find(node => node.props?.["data-reference-views"]);
+  assert.ok(badge); assert.match(badge.props.title, /0 source-post views.*Retrieved/);
+  h.reference.sourceUrl = undefined;
+  assert.equal(h.render().some(node => node.props?.["data-reference-views"]), false);
+});
 
 for (const overlay of [false, true]) test(`free Hook ${overlay ? "overlay" : "caption"} source click opens Upgrade to Pro without an external source link or selecting the reference`, () => {
   // A generation-eligible free account must remain locked for source posts.

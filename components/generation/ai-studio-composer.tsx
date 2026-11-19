@@ -3,9 +3,10 @@
 import {
   Check,
   ChevronDown,
-  Loader2,
   SlidersHorizontal,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { Children, Fragment, isValidElement, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -161,7 +162,7 @@ export function AiStudioComposer({
       <div className={focused.actionInfo}>
         {estimatedCredits !== undefined ? <p className={focused.estimate}>Estimated cost <strong>{estimatedCredits} credits</strong></p> : null}
       </div>
-      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${focused.generate} ${generateClass}`}>{isGenerating ? <><BlocksSpinner className="size-4" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="focused" noValidate onSubmit={onSubmit} className={focused.composer}>
       {workflowFeedback}
@@ -182,7 +183,7 @@ export function AiStudioComposer({
 
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
-      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
+      <div hidden={selectionOnly}><Button variant="ghost" type="submit" form={formId} aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`${creation.primaryAction} ${generateClass}`}>{isGenerating ? <><BlocksSpinner className="size-4" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
       {workflowFeedback}
@@ -219,7 +220,7 @@ export function AiStudioComposer({
           <div className="grid grid-cols-2 gap-3">{settings}</div>
         </PopoverContent>
       </Popover>
-      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${generateClass}`}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <Button variant="ghost" type="submit" form={formId} size="lg" aria-label={generateLabel} aria-describedby={workflowFeedback ? workflowFeedbackId : undefined} disabled={generateDisabled || promptTooLong} className={`h-11 w-full rounded-[10px] ${generateClass}`}>{isGenerating ? <><BlocksSpinner className="size-4" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
@@ -399,9 +400,9 @@ export function AiStudioComposer({
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2
+                      <BlocksSpinner
                         data-icon="inline-start"
-                        className="animate-spin motion-reduce:animate-none"
+                        
                         aria-hidden="true"
                       />
                       Generating…

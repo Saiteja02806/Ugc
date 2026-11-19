@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import transcripts from "./talking-head-transcripts.json" with { type: "json" };
 import manifest from "./talking-head-source-manifest.json" with { type: "json" };
+import references from "./talking-head-reference-catalog.json" with { type: "json" };
+import { visibleTalkingHeadReferences } from "./talking-head-reference.ts";
 import { TALKING_HEAD_SCRIPT_MODEL, TALKING_HEAD_SCRIPT_SYSTEM, talkingHeadScriptRemixPayload, validateTalkingHeadScriptOutput } from "./talking-head-script-remix.ts";
 import { talkingHeadScriptInputError } from "./talking-head-script-input.ts";
 import { buildStartingFrameAnimationPrompt } from "./starting-frame-workflow.ts";
@@ -10,8 +12,8 @@ import { createWorkflowSession, parseWorkflowSession } from "./workflow-session.
 import { workflowGenerationPrompt } from "./workflow-generation-client.ts";
 import { getTalkingHeadScript } from "./talking-head-script-store.ts";
 
-test("all 33 transcripts bind to their exact source versions; hooks exclude reviewed demo openings", () => {
-  assert.equal(transcripts.items.length, 33);
+test("all 35 transcripts bind to their exact source versions; hooks exclude reviewed demo openings", () => {
+  assert.equal(transcripts.items.length, 35);
   for (const row of transcripts.items) {
     assert.equal(manifest.items.find(source => source.id === row.referenceId)?.sourceSha256, row.sourceSha256);
     assert.ok(row.fullText.trim()); assert.ok(row.hookText.trim());
@@ -30,15 +32,15 @@ test("all 33 transcripts bind to their exact source versions; hooks exclude revi
   assert.match(sawyer.fullText, /chatubt/u, "the raw source transcription remains immutable");
   assert.ok(sawyer.corrections.some(note => note.includes("source caption at 4s")));
 });
-test("silent-mouth references use caption-reviewed manual transcripts, not ASR", () => {
-  for (const id of ["talking-kamile-mirror-discovery", "talking-kamile-kitchen-discovery", "talking-kamile-car-what", "talking-kamile-lowlight-what"]) {
+test("Kamile transcripts use the heard speech, not the on-screen caption", () => {
+  const expected = { "talking-kamile-mirror-discovery": "No way.", "talking-kamile-car-what": "What?", "talking-kamile-lowlight-what": "What?", "talking-kamile-kitchen-discovery": "Are you choking?" };
+  for (const [id, text] of Object.entries(expected)) {
     const row = transcripts.items.find(item => item.referenceId === id);
     assert.ok(row, id);
-    assert.equal(row.provider, "manual");
-    assert.equal(row.model, "on-screen-caption-review");
-    assert.equal(row.review, "cross_checked_draft");
-    assert.match(row.reviewNotes, /No audible speech/u);
-    assert.match(row.reviewNotes, /brand claims/u);
+    assert.equal(row.provider, "whisper.cpp");
+    assert.equal(row.hookText, text);
+    assert.equal(row.fullText, text);
+    assert.match(row.reviewNotes, /burned-in caption/u);
   }
 });
 
@@ -61,7 +63,7 @@ test("spoken script requires Sound and sufficient duration; historical prompts r
   const current = buildStartingFrameAnimationPrompt({ ...input, spokenScript: "Ready to practice? Let me show you." });
   assert.doesNotMatch(legacy, /APPROVED SPOKEN SCRIPT/u);
   assert.equal(current.split('"Ready to practice? Let me show you."').length - 1, 1);
-  assert.match(current, /never speak scene directions/u);
+  assert.match(current, /Never speak scene directions/u);
   assert.throws(() => buildStartingFrameAnimationPrompt({ ...input, workflow: "wall_text", spokenScript: "Hello" }), /Talking Head only/u);
 });
 test("new script drafts survive session recovery; old drafts keep their original shape", () => {
@@ -71,8 +73,28 @@ test("new script drafts survive session recovery; old drafts keep their original
   assert.deepEqual(parseWorkflowSession(next, "owner"), next);
   assert.throws(() => parseWorkflowSession({ ...next, talkingHeadScriptMode: "true" }, "owner"));
   assert.throws(() => parseWorkflowSession({ ...next, talkingHeadScriptReviewed: "true" }, "owner"));
+  const scriptSource = `talking-example:${"a".repeat(64)}`;
+  assert.equal(parseWorkflowSession({ ...next, talkingHeadScriptSource: scriptSource }, "owner").talkingHeadScriptSource, scriptSource);
+  assert.throws(() => parseWorkflowSession({ ...next, talkingHeadScriptSource: "talking-example" }, "owner"));
+  const directions = { frameAssetId: "11111111-1111-4111-8111-111111111111", text: "Keep the camera still." };
+  assert.deepEqual(parseWorkflowSession({ ...next, talkingHeadRemixDirections: directions }, "owner").talkingHeadRemixDirections, directions);
+  assert.throws(() => parseWorkflowSession({ ...next, talkingHeadRemixDirections: { ...directions, frameAssetId: "other" } }, "owner"));
   assert.equal(workflowGenerationPrompt({ instructions: "My reviewed words", talkingHeadScript: "My reviewed words", referenceInstructions: "Camera stays still." }), "Camera stays still.");
   assert.match(workflowGenerationPrompt({ instructions: "Old free-text direction", referenceInstructions: "Scene" }), /Your instructions:\nOld free-text direction/u);
+});
+
+test("all selectable short Talking Head defaults and reviewed replacements fit the Omni ReAPI prompt budget", () => {
+  const short = visibleTalkingHeadReferences(references.items).filter(source => source.durationSeconds <= 4);
+  assert.equal(short.length, 9);
+  for (const source of short) {
+    const input = { workflow: "talking_head" as const, directions: source.generationPrompt, durationSeconds: 4, generateAudio: true, removePhysicalText: true };
+    assert.ok(buildStartingFrameAnimationPrompt(input).length <= 2000, source.id);
+    const script = "Try my exact opening today.";
+    const remix = buildStartingFrameAnimationPrompt({ ...input, spokenScript: script });
+    assert.ok(remix.length <= 2000, source.id);
+    assert.equal(remix.split(script).length - 1, 1, source.id);
+    assert.doesNotMatch(remix, /Speak this line out loud:|SPOKEN SCRIPT:|speaks once, out loud:/iu, source.id);
+  }
 });
 
 

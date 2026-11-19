@@ -1,3 +1,4 @@
+import { assertReviewedMotion } from "../../scripts/assert-reviewed-motion.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import candidates from "../../docs/prompt-reviews/reviewed-prompt-candidates-2026-10-26.json" with { type: "json" };
@@ -34,10 +35,10 @@ test("all 104 reviewed public references resolve the corrected source-bound dire
     for (const durationSeconds of [3, 4, 8, 10, 15]) {
       const compiled = buildHookAnimationPrompt({ directions, durationSeconds, generateAudio: false });
       assert.doesNotMatch(compiled, /PHASE \[/, row.referenceId);
-      assert.ok(compiled.includes(draft.candidatePlan.endingState));
+      assertReviewedMotion(compiled, draft.candidatePlan, row.referenceId);
     }
     const direct = getReferenceVideoPrompt(row.referenceId, `https://source.test/${row.sourceSha256}.mp4`)!;
-    assert.ok(direct.includes(draft.candidatePlan.endingState));
+    assertReviewedMotion(direct, draft.candidatePlan, row.referenceId);
     assert.equal(getReferenceVideoPrompt(row.referenceId, "https://source.test/replaced.mp4"), undefined);
     assert.equal(getHookKeyframeMotionReviewDraft(row.referenceId, "0".repeat(64), frame?.index ?? 0), undefined);
   }
@@ -50,12 +51,12 @@ test("Hook 01 keeps phone pickup and continued final shake at every animation du
   const directions = hookMotionPlanDirections(plan);
   for (const durationSeconds of [3, 4, 8]) {
     const compiled = buildHookAnimationPrompt({ directions, durationSeconds, generateAudio: false });
-    assert.match(compiled, /arm remains extended toward the camera/);
-    assert.match(compiled, /Continue lifting and tilting the handheld viewpoint/);
+    assert.match(compiled, /Do not withdraw the reaching arm back to the keyboard/);
+    assert.match(compiled, /same handheld move continues/);
     assert.doesNotMatch(compiled, /takes hold of the recording phone/);
-    assert.match(compiled, /small uneven shake/);
+    assert.match(compiled, /brief irregular shake/);
     assert.match(compiled, /Do not settle back into a centered desk shot/);
-    assert.match(compiled, /completely silent/);
+    assert.match(compiled, /SOUND SETTING: OFF\. Silent/);
   }
 });
 
@@ -67,10 +68,10 @@ test("batch 1 preserves source-bound endings and avoids asserting unseen contact
     assert.ok(plan, id);
     const durationSeconds = Math.max(4, Math.ceil(source.sourceDurationSeconds));
     const compiled = buildHookAnimationPrompt({ directions: hookMotionPlanDirections(plan), durationSeconds, actionDurationSeconds: source.sourceDurationSeconds, generateAudio: false });
-    assert.ok(compiled.includes(plan.endingState), id);
+    assertReviewedMotion(compiled, plan, id);
     assert.doesNotMatch(compiled, /PHASE \[/, id);
     assert.equal(getHookKeyframeMotionReviewDraft(id, "0".repeat(64), 0), undefined);
-    if (id === ids[2]) assert.match(compiled, /glance toward screen-right, then shift the eyes toward screen-left/);
+    if (id === ids[2]) assert.match(compiled, /finish toward screen-left with wide lids/);
     if (id === ids[4]) {
       assert.match(compiled, /raised index finger in front of the face/);
       assert.doesNotMatch(compiled, /finger separate from the lips/);

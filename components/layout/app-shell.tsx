@@ -12,16 +12,19 @@ export function AppShell({
   children,
   defaultSidebarCollapsed = false,
   focusNavigation = false,
+  guestWorkflow = false,
 }: {
   activeKey: AppSidebarActiveKey;
   children: ReactNode;
   defaultSidebarCollapsed?: boolean;
   focusNavigation?: boolean;
+  guestWorkflow?: boolean;
 }) {
   return (
     <WorkspaceNavigationFeedback><WorkflowNavigationProvider enabled={focusNavigation}><main className="app-canvas instagram-theme flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground md:flex-row">
       <AppSidebar
         activeKey={activeKey}
+        guestWorkflow={guestWorkflow}
         defaultCollapsed={defaultSidebarCollapsed}
       />
       <div className="flex min-w-0 flex-1 flex-col">

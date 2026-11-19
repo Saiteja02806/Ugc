@@ -52,7 +52,7 @@ function pricingJsonLd() {
             "@type": "UnitPriceSpecification",
             price: String(pricing.billedAmount),
             priceCurrency: "USD",
-            unitText: plan.prices.monthly === 0 ? "trial" : interval === "yearly" ? "year" : "month",
+            unitText: plan.prices.monthly === 0 ? "MON" : interval === "yearly" ? "year" : "month",
           },
         };
       });

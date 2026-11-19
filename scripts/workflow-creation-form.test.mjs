@@ -305,7 +305,7 @@ test("text-only prompts remain valid and local reference previews do not promise
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
   assert.match(audio, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audio, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
+  assert.match(audio, /Seedance 2\.5 accepts 5\u201330 seconds; WAN 3\.0 accepts 1\u201315/);
   assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);
   assert.match(audio, /maxDuration \}/);
@@ -466,3 +466,20 @@ test("Talking Head selects direct identity animation through its existing model 
   assert.equal(picker(render()).props.value, "seedance_2_5");
   assert.equal(picker(h.render({kind: "phone"}))?.props.options?.some(o => o.value === "google_omni_direct") ?? false, false);
 });
+
+ test("prompt invitation replaces default instructions and dismisses without clearing either script or scene", () => {
+  const h = harness(); let opens = 0; const changes = [];
+  const props = { promptInvitation: { referenceId: "talking-long-a", onOpen() { opens++; } }, instructions: "My words", referenceInstructions: { value: "Scene instructions", defaultValue: "Scene instructions", onChange: value => changes.push(value) } };
+  let tree = h.render(props);
+  assert.equal(nodes(tree).some(n => n.props["aria-label"] === "Reference instructions"), false);
+  nodes(tree).find(n => n.type === "button" && text(n) === "Remix source hook").props.onClick();
+  assert.equal(opens, 1); assert.deepEqual(changes, []);
+  nodes(tree).find(n => n.props["aria-label"] === "Dismiss prompt suggestion").props.onClick();
+  tree = h.render(props);
+  assert.equal(nodes(tree).some(n => n.type === "button" && text(n) === "Remix source hook"), false);
+  assert.equal(nodes(tree).some(n => n.props["aria-label"] === "Reference instructions"), false);
+  assert.equal(nodes(tree).find(n => n.type === "textarea").props.value, "My words");
+  assert.deepEqual(changes, []);
+  tree = h.render({ ...props, promptInvitation: undefined });
+  assert.equal(nodes(tree).find(n => n.props["aria-label"] === "Reference instructions").type, "div");
+ });

@@ -1,6 +1,8 @@
 import "server-only";
 import catalog from "./reference-text-catalog.json" with { type: "json" };
 import reclassified from "./hook-wall-reclassification-text.json" with { type: "json" };
+import notbeen3Text from "./hook-notbeen3-text.json" with { type: "json" };
+import notbeen2Text from "./hook-notbeen2-text.json" with { type: "json" };
 import { ReferenceTextSchema, type ReferenceText } from "./reference-text";
 import { getRecreateReference } from "./recreate-catalog";
 import { getCreatorAccountText } from "./creator-accounts.ts";
@@ -31,7 +33,7 @@ export function getReferenceText(referenceId: string, slideId: string | null, fo
     : slideId === null ? reference.videoUrl : undefined;
   if (!sourceUrl) throw new Error("Choose a slide belonging to this reference.");
   const hash = new URL(sourceUrl).pathname.match(/\/([a-f0-9]{64})\.[a-z0-9]+$/i)?.[1];
-  const raw = ([...catalog.items, ...reclassified.items] as unknown[]).find(value => {
+  const raw = ([...catalog.items, ...reclassified.items, ...notbeen2Text.items, ...notbeen3Text.items] as unknown[]).find(value => {
     const item = value as Partial<ReferenceText>;
     return item.referenceId === referenceId && item.slideId === slideId;
   });

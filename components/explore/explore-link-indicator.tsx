@@ -1,6 +1,10 @@
 "use client";
 
-import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import {
+  ArrowUpRight,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useLinkStatus } from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -15,7 +19,7 @@ export function ExploreLinkIndicator({ label, className }: { label: string; clas
       <ArrowUpRight className={cn("size-full", pending ? "invisible" : undefined)} aria-hidden="true" />
       {pending ? (
         <>
-          <LoaderCircle className="absolute inset-0 size-full animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <BlocksSpinner className="absolute inset-0 size-full" aria-hidden="true" />
           <span className="sr-only" role="status">Opening {label}…</span>
         </>
       ) : null}

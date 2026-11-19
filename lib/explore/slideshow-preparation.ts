@@ -1,8 +1,9 @@
-/** Prepare two independent slides at a time without changing their output order. */
+/** Prepare independent slides concurrently (two by default) without changing their output order. */
 export async function prepareSlideshowSequence<T, R>(
   slides: readonly T[],
   prepare: (slide: T, index: number) => Promise<R>,
   onProgress?: (completed: number, total: number) => void,
+  concurrency = 2,
 ): Promise<R[]> {
   const results = new Array<R>(slides.length);
   let next = 0, completed = 0, failed = false;
@@ -21,7 +22,7 @@ export async function prepareSlideshowSequence<T, R>(
     }
   }
   // Wait for in-flight preparations before releasing the save lock on failure.
-  await Promise.all(Array.from({length: Math.min(2, slides.length)}, worker));
+  await Promise.all(Array.from({length: Math.max(1, Math.min(concurrency, slides.length))}, worker));
   if (failed) throw failure;
   return results;
 }

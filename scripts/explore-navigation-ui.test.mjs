@@ -47,6 +47,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
   const { ExploreLinkIndicator } = load("components/explore/explore-link-indicator.tsx", {
     "next/link": { useLinkStatus: () => ({ pending }) },
     "lucide-react": { ArrowUpRight: "arrow", LoaderCircle: "spinner" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "spinner" },
   });
   const render = () => ExploreLinkIndicator({ label: "AI character builder", className: "size-4" });
   const idle = render();
@@ -57,7 +58,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
   assert.equal(busy.props.className, idle.props.className);
   assert.equal(busy.props["data-explore-link-pending"], true);
   assert.equal(nodes(busy).find(node => node.type === "arrow").props.className, "size-full invisible");
-  assert.match(nodes(busy).find(node => node.type === "spinner").props.className, /motion-reduce:animate-none/);
+  assert.equal(nodes(busy).find(node => node.type === "spinner").props.className, "absolute inset-0 size-full");
   assert.equal(text(nodes(busy).find(node => node.props?.role === "status")), "Opening AI character builder…");
   pending = false;
   assert.equal(nodes(render()).filter(node => node.type === "spinner").length, 0);
@@ -115,6 +116,7 @@ test("quick starts preserve destinations, duration and preview query parameters 
     "next/link": { default: "next-link", __esModule: true },
     "@/contexts/auth-context": { useAuth: () => ({ user: currentUser }) },
     "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-free-video-pass-badge": { ExploreFreeVideoPassBadge: "free-video-pass-badge" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },

@@ -15,19 +15,38 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
   const layout = useMemo(() => formatTextLayout(text, width, height), [text, width, height]);
   const background = layout.background;
   const drag = useRef<{ id: number; clientX: number; clientY: number; x: number; y: number; width: number; height: number } | null>(null);
-  function move(event: ReactPointerEvent<SVGRectElement>) {
+  function move(event: ReactPointerEvent<SVGElement>) {
     const start = drag.current;
     if (!start || start.id !== event.pointerId || !onChange) return;
     event.preventDefault();
     onChange(positionFormatText(text, start.x + (event.clientX - start.clientX) / start.width,
       start.y + (event.clientY - start.clientY) / start.height, width, height));
   }
-  function stop(event: ReactPointerEvent<SVGRectElement>) {
+  function stop(event: ReactPointerEvent<SVGElement>) {
     if (drag.current?.id !== event.pointerId) return;
     drag.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
   const hitPadding = width * .025;
+  const box = { x: layout.x - layout.textWidth / 2 - hitPadding, y: height * text.y - hitPadding,
+    width: layout.textWidth + hitPadding * 2, height: layout.lines.length * layout.lineHeight + (background ? width * .036 : 0) + hitPadding * 2 };
+  // Always-visible drag affordance: a dashed container around the text plus a
+  // small corner chip with a move glyph, so users see the text can be dragged.
+  const chip = Math.max(width * .017, 12);
+  const chipCx = Math.max(box.x + chip * .9, chip);
+  const chipCy = Math.max(box.y + chip * .9, chip);
+  const chipScale = chip * .72 / 24;
+  const startDrag = (event: ReactPointerEvent<SVGElement>) => {
+    if (event.button !== 0 || drag.current) return;
+    const bounds = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
+    if (!bounds?.width || !bounds.height) return;
+    event.preventDefault(); event.stopPropagation();
+    event.currentTarget.focus({ preventScroll: true });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY,
+      x: layout.x / width, y: text.y, width: bounds.width, height: bounds.height };
+    onMoveStart?.();
+  };
   // Text layout and per-glyph SVG paths are content-derived. Keep the painted
   // layer stable across playback time updates and unrelated parent renders;
   // only an actual text/style change invalidates it.
@@ -55,27 +74,27 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
     {paintedText}
     {onChange && text.value.trim() ? <rect data-text-handle role="button" tabIndex={0} aria-label={`Move ${label}`} aria-roledescription="draggable text"
       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-      x={layout.x - layout.textWidth / 2 - hitPadding} y={height * text.y - hitPadding}
-      width={layout.textWidth + hitPadding * 2} height={layout.lines.length * layout.lineHeight + (background ? width * .036 : 0) + hitPadding * 2}
-      rx={width * .012} fill="transparent" strokeWidth={width / 360}
-      className="pointer-events-auto cursor-grab stroke-transparent outline-none hover:stroke-white focus:stroke-white active:cursor-grabbing" style={{ touchAction: "none", userSelect: "none" }}
-      onPointerDown={event => {
-        if (event.button !== 0 || drag.current) return;
-        const bounds = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
-        if (!bounds?.width || !bounds.height) return;
-        event.preventDefault(); event.stopPropagation();
-        event.currentTarget.focus({ preventScroll: true });
-        event.currentTarget.setPointerCapture(event.pointerId);
-        drag.current = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY,
-          x: layout.x / width, y: text.y, width: bounds.width, height: bounds.height };
-        onMoveStart?.();
-      }} onPointerMove={move} onPointerUp={event => { move(event); stop(event); }} onPointerCancel={stop}
-      onLostPointerCapture={() => { drag.current = null; }} onKeyDown={event => {
+      x={box.x} y={box.y} width={box.width} height={box.height}
+      rx={width * .012} fill="transparent"
+      stroke="rgba(255,255,255,.38)" strokeDasharray={`${width * .014} ${width * .014}`} strokeWidth={Math.max(width / 720, 1)}
+      className="pointer-events-auto cursor-grab outline-none hover:stroke-white focus:stroke-white active:cursor-grabbing" style={{ touchAction: "none", userSelect: "none" }}
+      onPointerDown={startDrag} onPointerMove={move} onPointerUp={event => { move(event); stop(event); }} onPointerCancel={stop}
+      onLostPointerCapture={() => { drag.current = null; }}
+      onKeyDown={event => {
         const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
         if (!direction) return;
         event.preventDefault(); event.stopPropagation(); onMoveStart?.();
         const step = event.shiftKey ? .05 : .005;
         onChange(positionFormatText(text, layout.x / width + direction[0] * step, text.y + direction[1] * step, width, height));
       }} /> : null}
+    {onChange && text.value.trim() ? <g data-move-chip aria-hidden="true" className="pointer-events-auto cursor-grab" style={{ touchAction: "none", userSelect: "none" }}
+      onPointerDown={startDrag} onPointerMove={move} onPointerUp={event => { move(event); stop(event); }} onPointerCancel={stop}
+      onLostPointerCapture={() => { drag.current = null; }}>
+      <rect x={chipCx - chip / 2} y={chipCy - chip / 2} width={chip} height={chip} rx={chip * .3} fill="rgba(12,12,16,.68)" stroke="rgba(255,255,255,.75)" strokeWidth={Math.max(width / 1080, 1)} />
+      <g transform={`translate(${chipCx - chip * .36} ${chipCy - chip * .36}) scale(${chipScale})`} stroke="white" strokeWidth={1.6 / chipScale} strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><polyline points="15 19 12 22 9 19" /><polyline points="19 9 22 12 19 15" />
+        <line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" />
+      </g>
+    </g> : null}
   </svg>;
 }

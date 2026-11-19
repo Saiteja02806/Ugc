@@ -35,8 +35,8 @@ const faqs = [
     answer: "Yes. Vidmake features a 105-tool Streamable HTTP OAuth MCP server at https://vidmake.io/mcp, letting technical founders trigger video rendering directly from AI coding environments.",
   },
   {
-    question: "Is there a free trial to test this workflow?",
-    answer: "Yes. Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
+    question: "Can I test this workflow before paying?",
+    answer: "Yes. Choose a plan from $29/mo, run the checklist below on a real brief, and keep only the assets you approve.",
   },
 ] as const;
 
@@ -170,7 +170,7 @@ export default function BuildInPublicWithoutShowingFacePage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day trial. View full details on{" "}
+                  Choose a plan. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -185,7 +185,7 @@ export default function BuildInPublicWithoutShowingFacePage() {
           { href: "/blog/ai-creator-avatars-tech-products", title: "AI Creator Avatars for Tech", description: "Personas that developers and software buyers trust." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

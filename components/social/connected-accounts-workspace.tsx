@@ -6,10 +6,11 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
-  LoaderCircle,
   Plug,
   Trash2,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useMemo, useState } from "react";
 
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
@@ -261,7 +262,7 @@ export function ConnectedAccountsWorkspace() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border-strong bg-card px-4 text-sm font-bold text-foreground transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+              <BlocksSpinner className="size-4" aria-hidden="true" />
             ) : (
               <Plug className="size-4" aria-hidden="true" />
             )}
@@ -335,8 +336,8 @@ export function ConnectedAccountsWorkspace() {
                 className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {connectingPlatform === platform.value ? (
-                  <LoaderCircle
-                    className="size-4 animate-spin"
+                  <BlocksSpinner
+                    className="size-4"
                     aria-hidden="true"
                   />
                 ) : (
@@ -402,7 +403,7 @@ function ConnectionCard({
         className="mt-4 inline-flex h-9 items-center gap-2 rounded-md border border-border-strong bg-card px-3 text-xs font-bold text-error transition hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {disconnecting ? (
-          <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+          <BlocksSpinner className="size-4" aria-hidden="true" />
         ) : (
           <Trash2 className="size-4" aria-hidden="true" />
         )}

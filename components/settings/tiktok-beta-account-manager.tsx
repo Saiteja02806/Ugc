@@ -3,11 +3,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  LoaderCircle,
   Plus,
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useCallback, useEffect, useState } from "react";
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
@@ -230,7 +230,7 @@ export function TikTokBetaAccountManager() {
             className="h-9 w-fit rounded-full px-4"
           >
             {isConnecting && connectingIntent === "add" ? (
-              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+              <BlocksSpinner data-icon="inline-start"  />
             ) : (
               <Plus data-icon="inline-start" />
             )}
@@ -330,9 +330,9 @@ export function TikTokBetaAccountManager() {
                         className="h-8 flex-1 rounded-full px-3 lg:flex-none"
                       >
                         {isReconnecting ? (
-                          <LoaderCircle
+                          <BlocksSpinner
                             data-icon="inline-start"
-                            className="animate-spin"
+                            
                           />
                         ) : (
                           <RefreshCw data-icon="inline-start" />
@@ -394,7 +394,7 @@ export function TikTokBetaAccountManager() {
               className="rounded-full"
             >
               {disconnecting ? (
-                <LoaderCircle data-icon="inline-start" className="animate-spin" />
+                <BlocksSpinner data-icon="inline-start"  />
               ) : (
                 <Trash2 data-icon="inline-start" />
               )}

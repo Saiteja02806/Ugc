@@ -11,6 +11,7 @@ import * as drafts from "../lib/explore/format-schedule-draft.ts";
 import * as scheduling from "../lib/explore/workflow-scheduling-draft.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as scheduleAck from "../lib/explore/schedule-ack.ts";
 import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 
 const empty = { platform: "", caption: "", date: "", time: "", connectionId: "" };
@@ -178,6 +179,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
     "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
     "@/lib/explore/format-schedule-draft": drafts, "@/lib/explore/workflow-scheduling-draft": scheduling,
     "@/lib/explore/workflow-schedule-client": allowConfirm ? scheduleClient : { readScheduleReceipt: () => null },
+    "@/lib/explore/schedule-ack": scheduleAck,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => { externalCalls++; if (allowReview) return "fixture-token"; throw new Error("Unexpected auth request"); } },
   };

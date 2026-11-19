@@ -13,19 +13,20 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.586666666667–0.696666666667]: Bring the gaze nearer the lens and lift the screen-right hand to cover the mouth. The other hand leaves the keyboard and reaches directly toward the recording phone, near the lens."
+            "action": "PHASE [0.586666666667–0.696666666667]: She stays seated. The screen-right hand rises and lays the fingers across the mouth. The palm stays against the mouth. The camera sees the back of that hand. The eyes stay wide and come nearer the lens. The other hand leaves the keyboard and reaches toward the recording phone."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.696666666667–0.923333333333]: Keep the same hand covering the mouth and eyes wide. The other arm remains extended toward the camera as the viewpoint lifts from the desk, moves closer and tilts with brief irregular handheld shake and motion softness. This is physical camera movement, not a smooth digital zoom. Do not withdraw the reaching arm back to the keyboard."
+            "action": "PHASE [0.696666666667–0.923333333333]: She stays seated. The reaching hand picks up the recording phone, so the view lifts, the face grows, and the picture tilts, with a brief irregular shake. The phone stays out of frame. Do not use a smooth digital zoom. The same hand stays across the mouth. The palm stays against the mouth. The camera sees the back of that hand. The eyes stay wide and clear of the hand. Do not withdraw the reaching arm back to the keyboard."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.923333333333–1.000000000000]: Continue lifting and tilting the handheld viewpoint toward the face, retaining the small uneven shake. End in a very tight off-center crop with part of the face outside the screen-right edge, while the same hand stays over the mouth. Do not settle back into a centered desk shot before the final frame or introduce a second visible phone."
+            "action": "PHASE [0.923333333333–1.000000000000]: She stays seated. The same handheld move continues, and the face grows into a very tight crop with part of the face outside the screen-right edge. The phone stays out of frame. Do not use a smooth digital zoom. The same hand stays across the mouth. The camera sees the back of that hand. Do not settle back into a centered desk shot or introduce a second visible phone."
           }
         ],
-        "camera": "Keep the camera low and still during the opening hold; physical phone pickup, uneven handheld shake and tilt begin only after the reaching gesture. Do not use a smooth digital zoom or introduce another visible phone.",
-        "endingState": "End in a very tight off-center crop with part of the face outside the screen-right edge; keep the same hand covering the mouth and the other arm extended through the final frame.",
+        "camera": "She stays seated. The recording phone stays low until the other hand reaches for it, then that hand picks it up, so the view lifts, tilts, and the face grows into a tight crop past the screen-right edge. Do not use a smooth digital zoom or introduce another visible phone.",
+        "endingState": "She stays seated. The face is in a very tight crop, partly outside the screen-right edge. The camera sees the back of the screen-right hand across the mouth, and the other arm stays extended.",
+        "summariesInTimeline": ["ending", "camera"],
         "constraints": [
           "Keep the same hand covering the mouth after contact.",
           "Do not introduce a separate display shot or a scene cut."
@@ -90,7 +91,7 @@
             "action": "PHASE [0.7826086105860206–1]: Keep the glasses visibly held low in front, eyes wide toward the laptop, with the mouth settling from wide open to slightly parted through the ending."
           }
         ],
-        "camera": "Keep the seated portrait camera steady with the laptop low in the foreground.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop lid leaves toward screen-right and stays out.",
         "endingState": "The glasses are held in front of the chest while the performer looks toward the laptop.",
         "constraints": [
           "Remove the glasses forward and hold them; do not place them on the head.",
@@ -198,7 +199,7 @@
           90
         ],
         "frameCount": 91,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the laptop lid leaves toward screen-right and stays out, the face stays the same size, and she stays seated. The glasses path was left as written.",
         "issues": [],
         "sourceFileSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
         "visualQualification": "not_tested"
@@ -208,39 +209,39 @@
       "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
       "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
       "plan": {
-        "openingState": "The reclining performer looks upward from a patterned pillow, lips slightly parted and brows questioning.",
+        "openingState": "She stays reclining. The eyes are up toward screen-left. The white shows under the iris. The lips are parted.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.03571419961733925]: Remain reclining on the pillow with parted lips and an upward sideward gaze."
+            "action": "PHASE [0–0.03571419961733925]: She stays reclining. The eyes stay up toward screen-left. The white shows under the iris. The lips stay parted."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.03571419961733925–0.07142866709184527]: Briefly blink, bring the eyes toward the lens and widen them, lifting the brows."
+            "action": "PHASE [0.03571419961733925–0.07142866709184527]: She stays reclining. The eyes blink once, then drop from that upper corner onto the lens and open wide. The head does not turn."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.07142866709184527–0.3125001171875104]: Hold the wide-eyed look toward the lens with only small head and camera drift."
+            "action": "PHASE [0.07142866709184527–0.3125001171875104]: She stays reclining. The eyes stay wide on the lens. The head does not turn."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3125001171875104–0.419642983896695]: Glance toward screen-right while retaining the startled parted-mouth look."
+            "action": "PHASE [0.3125001171875104–0.393749055000]: The eyes leave the lens and settle toward screen-right. They hold there with wide lids. The head stays on the pillow."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.419642983896695–0.5357143335459227]: Shift the gaze across toward screen-left without turning the head substantially."
+            "action": "PHASE [0.393749055000–0.5357143335459227]: The eyes move across toward screen-left and hold there with wide lids. The head stays on the pillow."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5357143335459227–0.8839286503507723]: Look wide-eyed toward the lens again and hold this incredulous stare."
+            "action": "PHASE [0.5357143335459227–0.857142857000]: The eyes return to the lens and stay wide. The lips stay parted. The head stays on the pillow."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8839286503507723–1]: Briefly glance toward screen-right, then shift the eyes toward screen-left by the final frame; keep the lips parted, head reclining and hands outside the picture."
+            "action": "PHASE [0.857142857000–1]: The eyes glance toward screen-right, then move back across toward screen-left and finish there with wide lids. The lips stay slightly parted, with the upper teeth visible and the corners relaxed. The head stays on the pillow and the hands stay outside the picture."
           }
         ],
-        "camera": "Maintain the reclining handheld angle with gentle natural drift; keep the pillow and headboard in place.",
-        "endingState": "The performer is still reclining, with parted lips and an incredulous sideways gaze.",
+        "camera": "She stays reclining. The recording phone stays at one distance. The face stays the same size. Keep the pillow and headboard in place, with only a small drift.",
+        "endingState": "She stays reclining with the head on the pillow. The eyes finish toward screen-left with wide lids. The lips stay slightly parted, with the upper teeth visible and the corners relaxed.",
         "constraints": [
           "Keep hands outside the image. Do not add a hand gesture."
         ]
@@ -267,7 +268,7 @@
           108
         ],
         "frameCount": 109,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 eye crops: the middle glance is screen-left, then screen-right, then back to the lens. The ending glance is screen-left, then screen-right through the last frame. She stays reclining. 2026-11-10 generation 03b66e91 reached the lens, then repeated the opening upper screen-right corner and skipped the screen-left corner. The eyes roll upward into a corner, hold, then roll across. The white shows under the iris.",
         "issues": [],
         "sourceFileSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
         "visualQualification": "not_tested"
@@ -278,32 +279,33 @@
       "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
       "plan": {
         "openingState": "The performer sits at the dark desk facing an open silver laptop on screen-left, wearing eyeglasses with brows raised and mouth open.",
-        "camera": "Fixed desk view until the reaching arm extends; late physical handheld lift and upward tilt reveal more wall/ceiling and shift the covered face into the lower-right corner.",
-        "endingState": "Eyeglasses remain on; hand covers mouth; face is close and cropped at the lower-right edge while wall, curtain and upper window dominate.",
+        "camera": "She stays seated. The screen-right hand picks up the recording phone, so the view lifts and tilts, more wall and ceiling show, and the covered face grows into the lower-right edge. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "She stays seated. The eyeglasses stay on. The camera sees the back of the hand across the mouth. The face is close at the lower-right edge, with wall and ceiling above.",
+        "summariesInTimeline": ["ending", "camera"],
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.43478245274103783]: Hold the open-mouth, raised-brow reaction toward the laptop. Keep the screen-right hand low near the keyboard; the other hand remains below the mouth."
+            "action": "PHASE [0–0.375000000000]: She stays seated. Hold the open-mouth, raised-brow look toward the laptop. The screen-right hand stays low near the keyboard. The eyeglasses stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.43478245274103783–0.4891303816162629]: Raise the other hand and place its palm across the mouth. Keep the eyeglasses on."
+            "action": "PHASE [0.375000000000–0.4891303816162629]: She stays seated. The hand on the laptop side of her face rises and lays the fingers across the mouth. Keep palm against mouth, back of hand visible. The eyes stay wide and clear of the hand, looking toward the laptop. The eyeglasses stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4891303816162629–0.5869564579395155]: Hold the mouth covered and gaze surprised toward the laptop; keep the screen-right hand low."
+            "action": "PHASE [0.4891303816162629–0.5869564579395155]: She stays seated. Hold that same mouth cover. Keep palm against mouth, back of hand visible. The eyes stay wide and clear of the hand, looking toward the laptop. The screen-right hand stays low near the keyboard."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5869564579395155–0.7499999184782697]: Extend the screen-right arm forward toward the camera while the other hand stays over the mouth."
+            "action": "PHASE [0.5869564579395155–0.7499999184782697]: She stays seated. The screen-right hand leaves the keyboard and reaches toward the recording phone. Hold that same mouth cover. Keep palm against mouth, back of hand visible."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7499999184782697–0.8369565394612457]: Keep the arm extended toward and beyond the lens, holding the covered-mouth reaction. The view starts to shift slightly."
+            "action": "PHASE [0.7499999184782697–0.8369565394612457]: She stays seated. The screen-right hand reaches beyond the lens and picks up the recording phone, so the view starts to lift. The phone stays out of frame. Do not use a smooth digital zoom. Hold that same mouth cover. The hand back stays visible."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8369565394612457–1]: Lift and tilt the camera upward with a brief irregular handheld wobble. Reveal much more wall and ceiling; the covered face grows closer and slides into the lower-right edge, partly cropped there through the ending. Do not replace this with only a head lean or a centered zoom."
+            "action": "PHASE [0.8369565394612457–1]: She stays seated. The same hand keeps moving the phone: the view lifts and tilts, wall and ceiling expand, and the covered face grows at the lower-right edge. The phone stays out of frame. Do not use a smooth digital zoom. Hold that same mouth cover. The hand back stays visible. Do not replace this with only a head lean or a centered zoom."
           }
         ],
         "constraints": [
@@ -333,7 +335,7 @@
           91
         ],
         "frameCount": 92,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the hand on the laptop side of her face shows its back across the mouth, and the screen-right hand picks up the recording phone. She stays seated.",
         "issues": [],
         "sourceFileSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
         "visualQualification": "not_tested"
@@ -344,8 +346,9 @@
       "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
       "plan": {
         "openingState": "In the café close-up, the performer holds a tall light-colored can in the hand on screen-right, just below an open mouth, and looks off screen-right with lifted brows.",
-        "camera": "Continuous café handheld close-up: early approach, slight retreat/upward tilt during late chin lift, then return close for the final questioning stare.",
-        "endingState": "Close questioning stare with knitted brows and small pursed lips, can held below mouth and index finger lowered; same café.",
+        "camera": "The unseen hand brings the recording phone closer so the face grows, draws it back and tips it up so more ceiling shows, then brings it closer again so the face grows. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "The face is close again. The brows are knitted, the lips are pursed, and the eyes are on the lens. The can and the index finger are lowered.",
+        "summariesInTimeline": ["ending", "camera"],
         "beats": [
           {
             "phase": "opening",
@@ -353,11 +356,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.11337934881557857–0.3607522486196592]: Turn toward the lens with widening eyes as the camera comes closer and the can lowers slightly. Keep the mouth open."
+            "action": "PHASE [0.11337934881557857–0.3607522486196592]: The unseen hand brings the phone closer, enlarging the face. The phone stays out of frame. Do not use a smooth digital zoom. She turns toward the lens and the eyes open wide. The can lowers slightly. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3607522486196592–0.5256674120836714]: Glance screen-right and extend the index finger of the can-holding hand vertically beside the nose, above the open lips. Other fingers continue holding the can; do not take a sip."
+            "action": "PHASE [0.3607522486196592–0.5256674120836714]: The screen-right index finger rises upright beside the nose, above the open lips. The other fingers keep the can gripped. The eyes leave the lens toward screen-right with wide lids. Do not take a sip."
           },
           {
             "phase": "middle",
@@ -365,15 +368,15 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6081251484237399–0.7833474129742138]: Reopen the eyes, lower the vertical finger to a more horizontal point beneath the chin and look toward the lens with knitted brows and pursed lips. Retain the can grip."
+            "action": "PHASE [0.6081251484237399–0.7833474129742138]: The index finger lowers to a point under the chin. The eyes stay narrowed. The brows knit and the lips purse. The other fingers keep the can."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7833474129742138–0.9585699867408126]: Close or narrow the eyes again and lift the chin, briefly parting the lips while the finger remains extended under the chin. The handheld viewpoint retreats slightly and tips upward, showing more ceiling."
+            "action": "PHASE [0.7833474129742138–0.9585699867408126]: She lifts her chin. The unseen hand draws the phone back and tips it up: more ceiling shows and the face sits lower. The phone stays out of frame. Do not use a smooth digital zoom. The eyes open toward the lens. The finger stays under the chin. The other fingers keep the can."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9585699867408126–1]: Reopen the eyes and bring the questioning face close to the lens again, brows knitted and lips small/pursed. Lower the finger and can further, ending without a sip."
+            "action": "PHASE [0.9585699867408126–1]: The unseen hand brings the phone closer again, enlarging the face. The phone stays out of frame. Do not use a smooth digital zoom. The eyes stay on the lens. The brows stay knitted and the lips stay pursed. The finger and the can lower. Do not take a sip."
           }
         ],
         "constraints": [
@@ -403,7 +406,7 @@
           95
         ],
         "frameCount": 96,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the phone comes closer, draws back and tips up so more ceiling shows, then comes closer again. The glance is screen-left. The index finger stays a point, not a mouth cover.",
         "issues": [],
         "sourceFileSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
         "visualQualification": "not_tested"
@@ -414,8 +417,9 @@
       "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
       "plan": {
         "openingState": "The performer holds a slender silver-blue can upright at chest level in the screen-right hand, with wide eyes, raised brows and a rounded open mouth.",
-        "camera": "Close handheld view retreats a little during the sustained sip and comes closer as the can lowers, staying in the same room.",
+        "camera": "He stays seated. The unseen hand draws the recording phone back during the sip, so the face gets smaller and the shoulders show, then brings it closer as the can lowers, so the face grows. The phone stays out of frame. Do not use a smooth digital zoom.",
         "endingState": "Can upright below the mouth; eyes widened just off lens, mouth rounded open again.",
+        "summariesInTimeline": ["ending", "camera"],
         "beats": [
           {
             "phase": "opening",
@@ -427,11 +431,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3482143168048497–0.5803572839604717]: Take a sustained sip with the rim touching and hiding the lips, can tilted almost horizontal and head slightly back. The handheld view eases back slightly."
+            "action": "PHASE [0.3482143168048497–0.5803572839604717]: He stays seated and tips his head back. The screen-right hand holds the can at the lips, tilted nearly level, and the rim hides the lips. The eyes stay wide and look upward. The unseen hand draws the recording phone back, so the face gets smaller and the shoulders show. The phone stays out of frame. Do not use a smooth digital zoom."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5803572839604717–0.812499983258927]: Lower the can gradually toward upright and away from the mouth. Bring the view a little closer again; keep the expression restrained during the swallow."
+            "action": "PHASE [0.5803572839604717–0.812499983258927]: He stays seated. The same hand lowers the can toward upright and away from the mouth. The unseen hand brings the recording phone closer, so the face grows. The phone stays out of frame. Do not use a smooth digital zoom."
           },
           {
             "phase": "middle",
@@ -568,7 +572,7 @@
           110
         ],
         "frameCount": 111,
-        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: he stays seated, tips his head back, and looks upward during the sip. The phone draws back so the shoulders show, then comes closer so the face grows. The can stays in the screen-right hand.",
         "issues": [],
         "sourceFileSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
         "visualQualification": "not_tested"
@@ -579,8 +583,9 @@
       "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
       "plan": {
         "openingState": "The performer sits in an office chair with mouth open and brows raised; the hand on screen-left already holds the outer eyeglass corner while the other arm extends into the foreground.",
-        "camera": "Arm-length office-chair view with modest natural drift closer; no abrupt camera pickup or cut.",
-        "endingState": "Glasses rest on top of head; same watch-wearing hand covers lips; wide eyes look toward lens.",
+        "camera": "She stays seated. The arm extended into the foreground brings the recording phone closer, so the face grows. The phone stays out of frame. Do not use a smooth digital zoom.",
+        "endingState": "She stays seated. The glasses rest on top of the head. The camera sees the back of the screen-left hand across the mouth. The eyes stay wide on the lens.",
+        "summariesInTimeline": ["ending", "camera"],
         "beats": [
           {
             "phase": "opening",
@@ -596,11 +601,11 @@
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6250000468749941–0.7499999062500118]: Release the glasses and lower the same hand diagonally across the cheek toward the lips as the gaze comes toward the lens."
+            "action": "PHASE [0.6250000468749941–0.7499999062500118]: She stays seated. The same screen-left hand lowers from beside the cheek onto the mouth. The palm meets the mouth. The camera sees the back of that hand. The eyes come to the lens and stay wide."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.7499999062500118–1]: Cover the lips with the same hand and hold the wide-eyed reaction through the final frame. Glasses stay on top of the head."
+            "action": "PHASE [0.7499999062500118–1]: She stays seated. The arm extended into the foreground brings the recording phone closer, so the face grows. The phone stays out of frame. Do not use a smooth digital zoom. The same screen-left hand stays across the mouth. The palm stays against the mouth. The camera sees the back of that hand. The eyes stay wide and clear of the hand, on the lens. The glasses stay on top of the head."
           }
         ],
         "constraints": [
@@ -695,7 +700,7 @@
           76
         ],
         "frameCount": 77,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she stays seated, the glasses settle on the head, and the screen-left hand then shows its back across the mouth. The extended arm brings the phone closer and the face grows.",
         "issues": [],
         "sourceFileSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
         "visualQualification": "not_tested"
@@ -705,37 +710,38 @@
       "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
       "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
       "plan": {
-        "openingState": "The performer sits behind an open laptop wearing large white headphones, with a calm expression and the fingers already interlaced in front of the upper chest.",
-        "camera": "Static desk view throughout; no cut, push or handheld pickup.",
-        "endingState": "Upright with white headphones still on, both hands near keyboard and lowered gaze toward laptop.",
+        "openingState": "She stays seated. The fingers stay interlaced in front of the chest. The arms stay forward. The camera sees the palms. The headphones stay on. The eyes are open.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "She stays seated and upright. The headphones stay on. Both hands are at the keyboard and the eyes look down toward the laptop.",
+        "summariesInTimeline": ["ending"],
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.18518518518518517]: Continue the already-interlaced grip by rotating joined palms outward and extending both arms forward, then hold the relaxed stretch."
+            "action": "PHASE [0–0.18518518518518517]: She stays seated. The fingers stay interlaced. The arms stay forward. The camera sees the palms. The eyes close. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.18518518518518517–0.2469137037037037]: Release the joined hands and raise the screen-left hand over the crown while beginning to tip the head screen-left."
+            "action": "PHASE [0.18518518518518517–0.2469137037037037]: The head tips toward screen-left. The screen-left hand settles on top of the headphones. The eyes open and look toward the laptop on screen-left. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.2469137037037037–0.48148148148148145]: Hold the gentle screen-left neck stretch with the hand over the crown, eyes closed or lowered. Keep the headphones on."
+            "action": "PHASE [0.2469137037037037–0.48148148148148145]: The head stays tipped toward screen-left, with that ear dropped. The screen-left hand stays on the headphones. The eyes stay directed toward the laptop, then close. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.48148148148148145–0.5555555555555555]: Release that hand and bring the head back through upright. Raise the opposite hand over the crown."
+            "action": "PHASE [0.48148148148148145–0.5555555555555555]: She stays seated. The screen-left hand comes down. The head comes upright. The screen-right hand settles on top of the headphones. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5555555555555555–0.7407407407407407]: Tip and hold the head toward screen-right with the opposite hand over the crown. Maintain a calm expression and gentle stretch."
+            "action": "PHASE [0.5555555555555555–0.7407407407407407]: The head tips toward screen-right and stops with that ear dropped. The screen-right hand stays on the headphones. The eyes begin closed, then reopen beneath lowered upper lids toward the laptop. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7407407407407407–0.8518518518518517]: Release the raised hand and return the head upright, lowering both hands."
+            "action": "PHASE [0.7407407407407407–0.8518518518518517]: She stays seated. The screen-right hand comes down. The head comes back upright. The eyes open. The headphones stay on."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8518518518518517–1]: Place both hands back near the keyboard and resume working with the gaze down toward the laptop. Keep the headphones on through the ending."
+            "action": "PHASE [0.8518518518518517–1]: She stays seated and upright. Both hands come down to the keyboard. The eyes look down toward the laptop. The headphones stay on."
           }
         ],
         "constraints": [
@@ -766,7 +772,7 @@
           78
         ],
         "frameCount": 79,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Independent frame-zero review confirms the fingers are already interlaced; the opening continues that grip rather than repeating its formation.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Independent frame-zero review confirms the fingers are already interlaced; the opening continues that grip rather than repeating its formation. 2026-11-10 0.25s frames: she stays seated, the phone stays at one distance, the palms turn toward the lens on the reach, the head tips screen-right under the screen-left hand, then screen-left under the screen-right hand.",
         "issues": [],
         "sourceFileSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
         "visualQualification": "not_tested"
@@ -776,31 +782,31 @@
       "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
       "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
       "plan": {
-        "openingState": "The tight front-facing close-up shows translucent eyeglasses on the face, raised brows, an open mouth and hands initially below the face.",
+        "openingState": "The face fills the close view. The glasses are on. The mouth is open. The eyes are up toward screen-left. The hands are below the face.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.3410982560240284]: Hold the wide-eyed open-mouth reaction toward the lens with glasses on and hands below the face; do not begin the glasses gesture yet."
+            "action": "PHASE [0–0.3410982560240284]: The eyes stay up toward screen-left. The mouth stays open. The glasses stay on the face. The hands stay below the face."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3410982560240284–0.48224231329464107]: Raise the hand from screen-right and grip the outer corner of the eyeglasses, keeping the mouth open."
+            "action": "PHASE [0.3410982560240284–0.48224231329464107]: The screen-right hand rises and pinches the outer corner of the glasses. The eyes stay up toward screen-left. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.48224231329464107–0.7174821735055666]: Briefly close the eyes as the hand lifts the glasses up past the eyes and forehead onto the top of the head. Reopen the eyes toward the lens; gradually close the mouth as the glasses settle."
+            "action": "PHASE [0.48224231329464107–0.7174821735055666]: The same hand slides the glasses up over the forehead until they settle on top of the head. The eyes come onto the lens and stay wide. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7174821735055666–0.8115783293060228]: Release the glasses on the head and bring the same hand down to place the painted fingertips vertically across the lips."
+            "action": "PHASE [0.7174821735055666–0.8115783293060228]: The same screen-right hand comes down. The fingertips land vertically across the lips. The camera sees the backs of the fingers and hand. The glasses stay on the head. The eyes stay wide."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8115783293060228–1]: Hold the fingertips against the lips and keep the glasses resting on the head, brows lifted and gaze toward the lens through the final frame."
+            "action": "PHASE [0.8115783293060228–1]: The fingertips stay vertical across the lips. The camera sees the backs of the fingers and hand. The glasses stay on the head. The eyes stay wide, just off the lens toward screen-left."
           }
         ],
-        "camera": "Keep the close handheld viewpoint with only a gentle natural bob.",
-        "endingState": "The eyeglasses remain on the head and the fingertips cover the lips.",
+        "camera": "The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The glasses stay on the head. The fingertips stay vertical across the lips and the camera sees the backs of the fingers and hand. The eyes stay wide, just off the lens toward screen-left.",
         "constraints": [
           "Keep the glasses on the head after lifting them.",
           "Keep the rings and fingers continuous as the hand moves from frame to mouth."
@@ -901,7 +907,7 @@
           84
         ],
         "frameCount": 85,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the eyes start up toward screen-left, the screen-right hand sets the glasses on the head, and the same hand finishes with the fingertips vertical on the lips and the palm toward the lens.",
         "issues": [],
         "sourceFileSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
         "visualQualification": "not_tested"
@@ -911,51 +917,51 @@
       "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
       "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
       "plan": {
-        "openingState": "The seated performer looks to screen-left with widened eyes and slightly parted lips, with hands below the face.",
+        "openingState": "She is seated. The eyes are wide and up toward screen-left. The lips are slightly parted. The hands are below the face.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.12903225806451613]: Look up toward screen-left with wide eyes and open the mouth further; hands stay below the face initially."
+            "action": "PHASE [0–0.12903225806451613]: She stays seated. The eyes stay wide and up toward screen-left. The mouth opens wider. The hands stay below the face."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.12903225806451613–0.21505387096774192]: Raise the hand from screen-left until its fingertips touch beside the lower lip."
+            "action": "PHASE [0.12903225806451613–0.21505387096774192]: She stays seated. The screen-left hand rises with the backs of the fingers and hand toward the lens. The fingertips settle beside the lower lip. The camera sees the backs of the fingers and hand. The eyes stay wide and up toward screen-left. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.21505387096774192–0.4086022580645161]: Hold the hand beside the lower lip and the wide-eyed sideways open-mouth reaction."
+            "action": "PHASE [0.21505387096774192–0.4086022580645161]: She stays seated. The fingertips stay beside the lower lip. The camera sees the backs of the fingers and hand. The eyes stay wide and up toward screen-left. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4086022580645161–0.4623654838709677]: Briefly close the eyes while the fingertips remain near the lip, then reopen them."
+            "action": "PHASE [0.4086022580645161–0.4623654838709677]: She stays seated. The eyes close once, then open wide, still up toward screen-left. The fingertips stay beside the lower lip. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4623654838709677–0.5268816129032258]: Slide that hand down from the mouth to rest flat across the upper chest while turning the eyes toward the lens."
+            "action": "PHASE [0.4623654838709677–0.5268816129032258]: She stays seated. The same hand slides down and lies flat on the upper chest. The palm meets the chest. The camera sees the back of that hand. The eyes drop onto the lens and stay wide. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5268816129032258–0.7956990322580646]: Hold the direct wide-eyed open-mouth expression, with the hand resting across the chest."
+            "action": "PHASE [0.5268816129032258–0.7956990322580646]: She stays seated. The same hand stays flat on the upper chest. The camera sees the back of that hand. The eyes stay wide on the lens. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7956990322580646–0.8387096774193549]: Briefly close and reopen the eyes without moving the chest hand or closing the mouth."
+            "action": "PHASE [0.7956990322580646–0.8387096774193549]: She stays seated. The eyes close once and open wide again on the lens. The hand stays on the chest. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8387096774193549–0.8817203225806451]: Hold the wide-eyed direct gaze again with the mouth open."
+            "action": "PHASE [0.8387096774193549–0.8817203225806451]: She stays seated. The eyes stay wide on the lens. The hand stays flat on the upper chest. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8817203225806451–0.9247312903225806]: Close and reopen the eyes once more, keeping the chest hand in place."
+            "action": "PHASE [0.8817203225806451–0.9247312903225806]: She stays seated. The eyes close once more and open wide on the lens. The hand stays on the chest. The mouth stays open."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9247312903225806–1]: Finish looking toward the lens with eyes open, mouth still open and the same hand across the chest."
+            "action": "PHASE [0.9247312903225806–1]: She stays seated. The eyes stay wide on the lens. The mouth stays open. The same hand stays flat on the upper chest. The camera sees the back of that hand."
           }
         ],
-        "camera": "Keep the seated portrait composition steady.",
-        "endingState": "The performer faces nearer the lens with mouth open and the hand across the upper chest.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The lamp and the plant stay in place.",
+        "endingState": "She stays seated. The eyes are wide on the lens. The mouth stays open. The hand stays flat on the upper chest and the camera sees the back of that hand.",
         "constraints": [
           "Move the hand from lip to chest once; do not keep covering the mouth."
         ]
@@ -982,7 +988,7 @@
           92
         ],
         "frameCount": 93,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she stays seated, the eyes stay wide and up toward screen-left, the screen-left fingertips stop beside the lower lip with the palm toward the lens, then that hand lies flat on the chest and the eyes drop onto the lens.",
         "issues": [],
         "sourceFileSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
         "visualQualification": "not_tested"
@@ -992,27 +998,27 @@
       "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
       "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
       "plan": {
-        "openingState": "The seated performer already wears black over-ear headphones, with both hands gripping the earcups, sleeves partly covering the hands, mouth open and brows raised/drawn together; the laptop is low on screen-right.",
+        "openingState": "She stays seated. Both hands already grip the headphone earcups. The mouth is open. The eyes are down toward the laptop on screen-right.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.38049802070192873]: Hold both black over-ear headphone earcups with the hands already beside the head, sleeves partly covering the hands. Keep the mouth open and brows raised/drawn together while looking down toward the laptop on screen-right."
+            "action": "PHASE [0–0.38049802070192873]: She stays seated. Both hands stay on the headphone earcups. The mouth stays open. The eyes stay down toward the laptop on screen-right."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.38049802070192873–0.4335907801237698]: Briefly blink with the mouth still open, keeping both hands gripping the headphone earcups."
+            "action": "PHASE [0.38049802070192873–0.4335907801237698]: She stays seated. Both hands stay on the earcups. The eyes close once, then open. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4335907801237698–0.5486252691802902]: Shift the eyes and turn the face gradually from the laptop toward the lens without releasing or moving the headphones off the ears."
+            "action": "PHASE [0.4335907801237698–0.5486252691802902]: She stays seated and turns toward the lens. The eyes rise from the laptop and settle wide on the lens. Both hands stay on the earcups. The mouth stays open."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.5486252691802902–1]: Hold the direct startled open-mouth gaze through the ending, making only small head adjustments while maintaining both earcup grips."
+            "action": "PHASE [0.5486252691802902–1]: She stays seated. Both hands stay on the earcups. The eyes stay wide on the lens. The mouth stays open."
           }
         ],
-        "camera": "Hold the fixed portrait composition with the laptop low on screen-right.",
-        "endingState": "Direct startled open-mouth gaze with black headphones still on and both hands gripping the same earcups.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop stays low on screen-right.",
+        "endingState": "She stays seated. Both hands stay on the earcups. The eyes stay wide on the lens. The mouth stays open.",
         "constraints": [
           "Do not add a hand-to-mouth gesture.",
           "Do not lower and re-raise hands that are already beside the head."
@@ -1040,7 +1046,7 @@
           111
         ],
         "frameCount": 112,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she stays seated, both hands stay on the earcups, the eyes start down toward the laptop, blink once, then settle wide on the lens.",
         "issues": [],
         "sourceFileSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
         "visualQualification": "not_tested"
@@ -1050,23 +1056,23 @@
       "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
       "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
       "plan": {
-        "openingState": "The performer is already drinking from a cream ceramic mug held by the screen-left hand; the other hand rests over the top edge of the open laptop lid.",
+        "openingState": "She is behind the laptop. The screen-left hand holds the mug at the lips. The screen-right fingers rest on the laptop edge. The eyes are lowered.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.410849]: Finish the sip while widening the eyes toward the laptop, then lower the mug until it sits just above the laptop lid."
+            "action": "PHASE [0–0.410849]: The eyes open wide and look up while the mug is still at the lips. Then the screen-left hand lowers the mug until it sits under the chin. The screen-right fingers stay on the laptop edge."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.410849–0.718986]: Hold the wide-eyed stare as a thin trickle falls from the lower lip toward the mug, keeping the mug positioned beneath it."
+            "action": "PHASE [0.410849–0.718986]: The mug stays under the chin. The mouth rounds open. A thin trickle starts from the lower lip and falls into the mug. The eyes settle wide on the lens."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.718986–1]: Part the lips into a rounded surprised expression and hold, with the mug low and the other hand still touching the lid."
+            "action": "PHASE [0.718986–1]: The mug stays under the chin. The thin trickle keeps falling from the lower lip into the mug. The eyes stay wide on the lens. The mouth stays rounded and open. The screen-right fingers stay on the laptop edge."
           }
         ],
-        "camera": "Keep the low tabletop camera fixed, with the laptop naturally hiding the lower body.",
-        "endingState": "The performer stares wide-eyed above the laptop, mouth rounded, with the mug low in the same hand.",
+        "camera": "She stays behind the laptop. The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The mug stays under the chin. The eyes stay wide on the lens. The mouth stays rounded and open. A thin trickle falls from the lower lip into the mug.",
         "constraints": [
           "Keep the spill a narrow trickle, not a spray.",
           "Preserve the mug handle grip and lid contact.",
@@ -1156,7 +1162,7 @@
           72
         ],
         "frameCount": 73,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Also inspected full-resolution frame44 to verify the narrow liquid trickle. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Also inspected full-resolution frame44 to verify the narrow liquid trickle. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the eyes open wide and look up while the mug is still at the lips, then the mug lowers and a thin trickle falls into it. The eyes settle wide on the lens. She stays behind the laptop.",
         "issues": [],
         "sourceFileSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
         "visualQualification": "not_tested"
@@ -1166,31 +1172,31 @@
       "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
       "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
       "plan": {
-        "openingState": "The performer sits at a tabletop looking toward the laptop on screen-right, brows lifted and mouth open, with one hand loosely curled beside the cheek.",
+        "openingState": "She is at the table. The eyes are toward the laptop on screen-right. The mouth is open. The screen-right hand is loosely curled beside the cheek.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.2871010682532064]: Hold the open-mouth reaction toward the laptop on screen-right, with the jewelry-wearing hand loosely curled beside the cheek. Keep this opening pause before covering the mouth."
+            "action": "PHASE [0–0.2871010682532064]: She stays at the table. The screen-right hand stays loosely curled beside the cheek. The eyes stay toward the laptop on screen-right. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.2871010682532064–0.356401203210462]: Bring that same hand from beside the cheek across the mouth, retaining the wristwatch and bracelets."
+            "action": "PHASE [0.2871010682532064–0.356401203210462]: The screen-right hand moves from beside the cheek and lays across the mouth. The palm meets the mouth. The camera sees the back of the hand and fingers. The fingers stay together over the lips."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.356401203210462–0.8118026416457181]: Hold the palm over the lips as the eyes widen, then bring the gaze toward the lens; keep the hand in contact rather than releasing early."
+            "action": "PHASE [0.356401203210462–0.8118026416457181]: The same hand stays across the mouth. The camera sees the back of the hand and fingers. The fingers stay together over the lips. The eyes come onto the lens and stay wide."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8118026416457181–0.9009029424483336]: Lower the hand back beside the cheek and let the startled expression soften into a closed-mouth smile toward the lens."
+            "action": "PHASE [0.8118026416457181–0.9009029424483336]: The same hand returns beside the cheek and stays loosely curled. The mouth closes into a smile. The eyes stay on the lens."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9009029424483336–1]: Open into a toothy smile and lean slightly toward the camera with a small natural viewpoint bob; finish smiling with the hand beside the cheek."
+            "action": "PHASE [0.9009029424483336–1]: The mouth opens into a toothy smile. The eyes stay on the lens. The hand stays loosely curled beside the cheek."
           }
         ],
-        "camera": "Maintain the close seated angle with a slight handheld bob.",
-        "endingState": "The hand is beside the cheek again and the performer smiles toward the lens.",
+        "camera": "She stays at the table. The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The hand stays loosely curled beside the cheek. The eyes stay on the lens. The mouth is open in a toothy smile.",
         "constraints": [
           "Keep the wrist jewelry attached and continuous as the hand moves.",
           "Do not hold the mouth covered through the ending."
@@ -1218,7 +1224,7 @@
           100
         ],
         "frameCount": 101,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-right hand lays across the mouth and the camera sees the palm. The eyes come onto the lens, then the hand returns beside the cheek and the mouth opens into a toothy smile.",
         "issues": [],
         "sourceFileSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
         "visualQualification": "not_tested"
@@ -1229,31 +1235,31 @@
       "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
       "previewDurationSeconds": 8,
       "plan": {
-        "openingState": "The performer faces the close portrait camera with eyes squeezed shut, worried inward-raised brows and both open hands already raised in front of the upper chest, fingers spread and palms facing forward.",
+        "openingState": "The eyes are closed. Both hands are raised in front of the chest. The palms face the lens.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.138986]: Draw both open hands inward and rest them across the upper chest. Open the eyes and glance upward and sideways with a pleading, uneasy expression, keeping the mouth in a restrained worried pout."
+            "action": "PHASE [0–0.138986]: The eyes open and look up toward screen-right. Both hands settle on the upper chest. The palms face the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.138986–0.347464]: Lift both hands away from the chest into open palms beside the shoulders and make a small questioning shrug. Look from side to side with subtle head turns, natural blinks, pinched brows and small changes between parted lips and an uneasy closed-mouth smile."
+            "action": "PHASE [0.138986–0.347464]: Both palms rise beside the shoulders. The camera sees the palms. The eyes stay up toward screen-right."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.347464–0.65636]: Bring both hands briefly back to the upper chest, then open the palms beside the shoulders once more. Let the fingers stay relaxed as the worried expression and small upward or sideways glances continue; hold the final open-palmed shrug without rushing or adding another gesture."
+            "action": "PHASE [0.347464–0.65636]: The mouth opens and the eyes close while the palms stay beside the shoulders. Then both hands return to the upper chest, the eyes open up toward screen-right, and the palms rise beside the shoulders again. The camera sees the palms."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.65636–0.694928]: About two-thirds of the way through, make one clean cut to a calmer take of the same performer in the same room, with the hands already lowered, the head slightly tilted and the eyes looking directly toward the lens. The cut deliberately resets the pose; do not animate an intermediate hand-lowering motion."
+            "action": "PHASE [0.65636–0.694928]: About two-thirds of the way through, make one clean cut. The hands are already down. The eyes are on the lens. The mouth is closed. Do not animate a hand lowering across the cut."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.694928–1]: In the calmer take, keep the hands lowered and hold the direct gaze with only a natural blink and very small head adjustments. Gradually soften the neutral, composed mouth into a faint closed-lip smile and hold that quiet expression through the finish."
+            "action": "PHASE [0.694928–1]: The unseen hand brings the recording phone closer, so the face grows. The eyes stay on the lens. The mouth closes into a small smile. The hands stay down."
           }
         ],
-        "camera": "Keep the portrait viewpoint steady during the expressive gestures. Use a single clean cut into a slightly closer front-facing take, retaining the same pale wall, wooden door, striped shirt, hairstyle and soft room lighting. Keep the calmer take nearly still with gentle natural drift; do not pan or change rooms.",
-        "endingState": "The calmer take ends on the same performer looking toward the lens with hands lowered, a slight head tilt and a faint closed-lip smile.",
+        "camera": "The recording phone stays at one distance through the gestures. After the cut, the unseen hand brings the recording phone closer, so the face grows.",
+        "endingState": "The eyes stay on the lens. The mouth is a small closed smile. The hands stay down. The face is closer.",
         "constraints": [
           "Preserve both distinct takes and exactly one deliberate cut. Do not turn the pose reset into a morph or continuous hand motion.",
           "Keep both repeated chest-touch-to-open-palm gestures restrained; do not add a mouth-cover, clapping or exaggerated crying.",
@@ -1528,7 +1534,7 @@
           257
         ],
         "frameCount": 258,
-        "reviewNote": "Independently re-inspected all 258 canonical decoded frames across 6 ordered contact-sheet pages, plus the opening and final take at larger size. The video stream is 8.633984 seconds at 30 fps; the clean pose/take change starts at decoded frame 170. The user requested an eight-second prompt and accepted the reviewed direction. This adaptation retains the two chest-touch/open-palm cycles, one deliberate cut about two-thirds through, and the quiet final take. Its explicit eight-second preview duration is propagated separately from the action directions. Timing is an adaptation rather than a claim of frame-exact replay. No edited starting image or generated video has been qualified; paid admission remains blocked.",
+        "reviewNote": "Independently re-inspected all 258 canonical decoded frames across 6 ordered contact-sheet pages, plus the opening and final take at larger size. The video stream is 8.633984 seconds at 30 fps; the clean pose/take change starts at decoded frame 170. The user requested an eight-second prompt and accepted the reviewed direction. This adaptation retains the two chest-touch/open-palm cycles, one deliberate cut about two-thirds through, and the quiet final take. Its explicit eight-second preview duration is propagated separately from the action directions. Timing is an adaptation rather than a claim of frame-exact replay. No edited starting image or generated video has been qualified; paid admission remains blocked. 2026-11-10 0.5s frames: the palms face the lens, the eyes look up toward screen-right, the cut drops the hands, and the phone then comes closer.",
         "issues": [],
         "sourceFileSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
         "visualQualification": "not_tested"
@@ -1538,31 +1544,31 @@
       "referenceId": "explore-paired-hook-be7df3868a7b06024c0a90d1",
       "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
       "plan": {
-        "openingState": "The seated performer looks toward the lens with a knowing closed-mouth expression, lifted eyebrows and a slight head tilt.",
+        "openingState": "She stays seated. The eyes are on the lens. The mouth is closed. The head is tilted.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.15053774193548386]: Keep the knowing closed-mouth expression, lifted brows and slight head tilt as the handheld view moves a little closer."
+            "action": "PHASE [0–0.15053774193548386]: She stays seated. The unseen hand brings the recording phone closer, so the face grows. The eyes stay on the lens. The mouth stays closed."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.15053774193548386–0.48387096774193544]: Hold the close portrait toward the lens with the hands still low; preserve this pause."
+            "action": "PHASE [0.15053774193548386–0.48387096774193544]: She stays seated. The phone stays at one distance. The eyes stay on the lens. The hands stay below the face."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.48387096774193544–0.5376345161290322]: Glance up toward screen-right and raise the hand from screen-left, placing fingertips diagonally over the lips."
+            "action": "PHASE [0.48387096774193544–0.5376345161290322]: The screen-left hand rises with the back of the hand and fingers toward the lens. The fingertips land diagonally across the lips. The eyes leave the lens and settle toward screen-right beneath open lids."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5376345161290322–0.7956990322580646]: Keep the fingers against the lips and hold the amused sideways glance."
+            "action": "PHASE [0.5376345161290322–0.7956990322580646]: The fingertips stay diagonally across the lips. The camera sees the back of the hand and fingers. The eyes stay toward screen-right. The lids stay open."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.7956990322580646–1]: Return the eyes toward the lens and smile softly behind the fingers through the final frame."
+            "action": "PHASE [0.7956990322580646–1]: The eyes return to the lens. A smile shows beside the fingers. The fingertips stay across the lips. The camera sees the back of the hand and fingers."
           }
         ],
-        "camera": "Use a small continuous handheld approach and natural bob in the close portrait view.",
-        "endingState": "The fingertips remain over the lips as the performer gives a restrained amused smile toward the lens.",
+        "camera": "She stays seated. The unseen hand brings the recording phone closer, so the face grows. Then the phone stays at one distance.",
+        "endingState": "The fingertips stay across the lips. The camera sees the back of the hand and fingers. The eyes are on the lens and a smile shows beside the fingers.",
         "constraints": [
           "Keep the hand covering the lips rather than pulling at the face."
         ]
@@ -1589,7 +1595,7 @@
           92
         ],
         "frameCount": 93,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the phone comes closer so the face grows, the eyes settle toward screen-right, and the screen-left fingertips cross the lips with the palm toward the lens.",
         "issues": [],
         "sourceFileSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
         "visualQualification": "not_tested"
@@ -1599,39 +1605,39 @@
       "referenceId": "explore-paired-hook-b0aead788c4930565401371b",
       "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
       "plan": {
-        "openingState": "The performer sits under a golf-cart roof facing the lens, with wide eyes, raised brows and an open mouth.",
+        "openingState": "She is in the cart. The cap stays on. The eyes are wide toward the lens. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.14444433333333334]: Hold the wide-eyed open-mouth surprise toward the lens under the cart roof."
+            "action": "PHASE [0–0.14444433333333334]: She stays in the cart. The eyes stay wide toward the lens. The mouth stays open. The cap stays on. The hands stay below the face."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.14444433333333334–0.188889]: Raise the hand from screen-left to cover the mouth, fingers diagonal across the lips."
+            "action": "PHASE [0.14444433333333334–0.188889]: The screen-left hand rises with the back of the hand and fingers toward the lens. The palm meets the mouth, with the fingertips across the lips. The cap stays on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.188889–0.3333333333333333]: Hold the mouth covered while looking toward the camera."
+            "action": "PHASE [0.188889–0.3333333333333333]: The same hand stays across the mouth. The camera sees the back of the hand and fingers. The eyes stay wide toward the lens. The cap stays on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3333333333333333–0.4666666666666666]: Glance screen-left while retaining the mouth cover, then look back toward the lens."
+            "action": "PHASE [0.3333333333333333–0.4666666666666666]: The eyes look up toward screen-left with open lids. The same hand stays across the mouth. The camera sees the back of the hand and fingers. The cap stays on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4666666666666666–0.5555556666666667]: Lower the hand past the chin toward the chest, mouth briefly closing into a small smile."
+            "action": "PHASE [0.4666666666666666–0.5555556666666667]: The hand lowers past the chin. The eyes return wide to the lens. The mouth closes into a small smile. The cap stays on."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.5555556666666667–0.811328]: Finish with the hand lowered and a broad toothy smile toward the lens."
+            "action": "PHASE [0.5555556666666667–0.811328]: The hand stays down. The mouth opens into a toothy smile. The eyes stay wide on the lens. The cap stays on."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.811328–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.811328–1]: The hand stays down. The mouth stays open in the toothy smile. The eyes stay wide on the lens. The cap stays on."
           }
         ],
-        "camera": "Maintain the close handheld selfie framing under the cart roof with a gentle bob.",
-        "endingState": "The hand is lowered and the performer smiles broadly toward the lens.",
+        "camera": "She stays in the cart. The recording phone stays at one distance. The face stays the same size. The cap stays on.",
+        "endingState": "The hand stays down. The mouth is open in a toothy smile. The eyes stay wide on the lens. The cap stays on.",
         "constraints": [
           "Do not remove the cap or change its position.",
           "End smiling with the mouth uncovered."
@@ -1659,7 +1665,7 @@
           71
         ],
         "frameCount": 72,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-left hand shows its palm across the mouth, the eyes look up toward screen-right, then the hand drops and the mouth opens into a toothy smile.",
         "issues": [],
         "sourceFileSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
         "visualQualification": "not_tested"
@@ -1669,31 +1675,31 @@
       "referenceId": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
       "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
       "plan": {
-        "openingState": "The performer leans toward the lens with the screen-left hand spread across the forehead, brows knitted and eyes widened down toward screen-left.",
+        "openingState": "The screen-left hand is spread across the forehead. The camera sees the back of the hand and fingers. The eyes are wide toward screen-left. The lips are pressed.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.16666666666666666]: Hold the fingers firmly across the forehead, brows knitted and lips pressed, gaze below and screen-left of the lens."
+            "action": "PHASE [0–0.16666666666666666]: The screen-left hand stays across the forehead. The camera sees the back of the hand and fingers. The eyes stay wide toward screen-left. The lips stay pressed."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.16666666666666666–0.32222233333333333]: Narrow the screen-right eye into a skeptical squint while maintaining forehead contact."
+            "action": "PHASE [0.16666666666666666–0.32222233333333333]: The screen-right eye narrows. The screen-left eye stays wide. The gaze stays toward screen-left. The hand stays across the forehead. The camera sees the back of the hand and fingers."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.32222233333333333–0.64]: Hold the skeptical sideways stare with pressed lips, maintaining the hand on the forehead."
+            "action": "PHASE [0.32222233333333333–0.64]: The screen-right eye stays narrowed. The screen-left eye stays wide. The gaze stays toward screen-left. The lips stay pressed. The hand stays across the forehead. The camera sees the back of the hand and fingers."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.64–0.82]: Briefly close and reopen the eyes while keeping the same concerned pose and hand position."
+            "action": "PHASE [0.64–0.82]: The eyes close once, then open toward screen-left. The screen-right eye stays narrowed. The hand stays across the forehead. The camera sees the back of the hand and fingers."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.82–1]: Keep the hand on the forehead and the concerned expression as the handheld viewpoint shakes and the image briefly blurs near the end; do not add another gesture."
+            "action": "PHASE [0.82–1]: The unseen hand gives the recording phone a small shake, briefly blurring the picture. The screen-left hand stays across the forehead. The camera sees the back of the hand and fingers. Both eyes reopen wider toward screen-left beneath open lids. The lips stay pressed. Do not move the hand onto the mouth."
           }
         ],
-        "camera": "Keep the close handheld perspective and a small natural shake near the ending.",
-        "endingState": "The performer remains concerned with the hand fixed across the forehead.",
+        "camera": "The recording phone stays at one distance. The face stays the same size. Near the end, the phone shakes and the picture blurs.",
+        "endingState": "The screen-left hand stays across the forehead. The camera sees the back of the hand and fingers. Both eyes finish open toward screen-left, wider than the earlier one-eye squint. The lips stay pressed.",
         "constraints": [
           "Do not turn this into a hand-to-mouth reaction.",
           "Keep the rings and fingertips at the forehead."
@@ -1721,7 +1727,7 @@
           62
         ],
         "frameCount": 63,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-left palm stays across the forehead, the screen-right eye narrows while the gaze stays toward screen-left, then the phone shakes.",
         "issues": [],
         "sourceFileSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
         "visualQualification": "not_tested"
@@ -1731,23 +1737,23 @@
       "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
       "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
       "plan": {
-        "openingState": "The opening shows the airplane window, seatback and bright airport apron, with no performer visible.",
+        "openingState": "The airplane window fills the picture. No face is visible.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.168521]: Pan along the cabin wall and rotate the handheld camera inward away from the window."
+            "action": "PHASE [0–0.168521]: The recording phone stays on the airplane window. The window fills the picture, then leaves toward screen-left. No face is visible."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.168521–0.758344]: Reveal the seated performer at arm’s length, smiling toward the lens with white headphones around the neck. Let the performer glance sideways, close the eyes briefly and tilt the head."
+            "action": "PHASE [0.168521–0.758344]: She enters from screen-right and stays seated. Her arm extends toward the camera and stays there. The headphones stay around her neck. The eyes stay on the lens, close once, then open on the lens. The mouth stays a closed smile."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.758344–1]: Return the gaze toward the lens and finish with a broad toothy smile in the cabin selfie composition."
+            "action": "PHASE [0.758344–1]: She stays seated. Her arm stays extended toward the camera. The head tips toward screen-left. The eyes stay on the lens and close once. The mouth stays a closed smile. The headphones stay around her neck."
           }
         ],
-        "camera": "Make a continuous inward pan and rotation from the window into an arm-length tilted selfie.",
-        "endingState": "The performer smiles in the cabin, headphones around the neck and nearby passengers visible behind.",
+        "camera": "The recording phone turns away from the airplane window until she is in the picture. She stays seated. Her arm stays extended toward the camera after she enters. The headphones stay around her neck.",
+        "endingState": "She stays seated. Her arm stays extended toward the camera. The headphones stay around her neck. The mouth is a closed smile.",
         "constraints": [
           "Keep the headphones around the neck, not over the ears.",
           "Keep the pan continuous rather than using a scene cut."
@@ -1849,7 +1855,7 @@
           87
         ],
         "frameCount": 88,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. The unresolved scene/identity decision prevents approval for starting-frame animation. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. The unresolved scene/identity decision prevents approval for starting-frame animation. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the phone turns off the window, she stays seated with her arm extended, the eyes stay on the lens through one close, and the mouth stays a closed smile.",
         "issues": [
           "Frame0 contains an airplane window with no performer. A later revealed face has no identity anchor in the starting image; do not silently skip the window opening."
         ],
@@ -1861,23 +1867,23 @@
       "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
       "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
       "plan": {
-        "openingState": "The performer sits in a gray hoodie with both hands rising together in front of the mouth, looking toward screen-left.",
+        "openingState": "She stays seated. The eyes are closed. Both hands are already up beside the face. The palms face the lens.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.38652]: Bring both palms over the lips and widen the eyes toward screen-left, keeping elbows bent."
+            "action": "PHASE [0–0.38652]: She stays seated. The eyes open wide toward screen-left. Both hands meet across the mouth and the nose. The fingertips point up. The camera sees the palms."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.38652–0.618432]: Briefly close the eyes, slide both hands outward over the cheeks and up to the sides of the head, then open the mouth wider."
+            "action": "PHASE [0.38652–0.618432]: She stays seated. The eyes close. Both hands slide up along the cheeks and through the hair until they rest behind the head. The elbows spread. The mouth opens wide. The eyes then open wide toward screen-left."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.618432–1]: Move the hands back through the hair to rest behind the head with elbows spread. Hold the wide-eyed, open-mouth look toward screen-left."
+            "action": "PHASE [0.618432–1]: She stays seated. Both hands stay behind the head. The elbows stay spread. The eyes stay wide toward screen-left. The mouth stays open."
           }
         ],
-        "camera": "Keep the seated portrait camera fixed.",
-        "endingState": "Both hands rest behind the head, elbows wide, as the performer looks sideways with mouth open.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "Both hands stay behind the head. The elbows stay spread. The eyes stay wide toward screen-left. The mouth stays open.",
         "constraints": [
           "Keep finger contact continuous across cheeks and hair.",
           "Do not leave the hands covering the mouth at the ending."
@@ -1905,7 +1911,7 @@
           96
         ],
         "frameCount": 97,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the camera sees both palms across the mouth, the eyes stay wide toward screen-left, then the hands rest behind the head with the mouth open. The still already has both hands up beside the face, so the video continues from there.",
         "issues": [],
         "sourceFileSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
         "visualQualification": "not_tested"
@@ -1915,35 +1921,35 @@
       "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
       "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
       "plan": {
-        "openingState": "The seated performer holds the screen-right hand flat across the forehead, looking off screen-right with wide eyes, raised brows and an open mouth.",
+        "openingState": "She stays seated. The screen-right hand lies flat across the forehead. The camera sees the back of the hand and fingers. The eyes are wide toward screen-right. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.5]: Keep the hand flat across the forehead and hold the wide-eyed open-mouth stare off screen-right while leaning slightly forward."
+            "action": "PHASE [0–0.5]: She stays seated. The screen-right hand stays flat across the forehead. The camera sees the back of the hand and fingers. The eyes stay wide toward screen-right. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5–0.6111110000000001]: Lift the same hand clear of the forehead and lower it out of the upper picture, keeping the mouth open."
+            "action": "PHASE [0.5–0.6111110000000001]: The same hand lifts off the forehead and leaves toward screen-right. The eyes stay wide toward screen-right. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6111110000000001–0.7777776666666667]: Keep the hand lowered and hold the surprised sideways gaze."
+            "action": "PHASE [0.6111110000000001–0.7777776666666667]: The hand stays down. The eyes stay wide toward screen-right. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7777776666666667–0.8444443333333332]: Briefly close the eyes while turning the face toward the lens."
+            "action": "PHASE [0.7777776666666667–0.8444443333333332]: The upper lids drop as the face turns toward the lens. The mouth stays open. The hand stays down."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8444443333333332–0.9777776666666668]: Reopen the eyes toward the lens and hold the open-mouth reaction, with a slightly closer face in the ending."
+            "action": "PHASE [0.8444443333333332–0.9777776666666668]: The unseen hand brings the recording phone closer, so the face grows. The eyes open wide toward the lens. The mouth stays open. The hand stays down."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9777776666666668–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.9777776666666668–1]: The face stays closer. The eyes stay wide toward the lens. The mouth stays open. The hand stays down."
           }
         ],
-        "camera": "Maintain the seated portrait framing with only slight natural drift.",
-        "endingState": "The performer faces the camera with open mouth and the hand lowered from the forehead.",
+        "camera": "She stays seated. The recording phone stays at one distance while the hand is on the forehead. Then the unseen hand brings the recording phone closer, so the face grows.",
+        "endingState": "The eyes stay wide toward the lens. The mouth stays open. The hand stays down. The face is closer.",
         "constraints": [
           "Lower the hand clear of the face; do not move it onto the mouth.",
           "Keep the wrist, light nails and green ring continuous."
@@ -1971,7 +1977,7 @@
           86
         ],
         "frameCount": 87,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-right palm stays across the forehead, the eyes stay wide toward screen-right, then the phone comes closer and the eyes open toward the lens.",
         "issues": [],
         "sourceFileSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
         "visualQualification": "not_tested"
@@ -1981,38 +1987,39 @@
       "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
       "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
       "plan": {
-        "openingState": "The seated performer faces the laptop with one hand on the keyboard and the screen-left hand already holding the outer eyeglass corner, mouth open.",
+        "openingState": "She stays seated. The screen-left hand holds the outer corner of the glasses. The other hand rests on the keyboard. The eyes are on the lens. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.24737289980408067]: Blink while drawing the glasses forward off the eyes with the screen-left hand; keep the other hand on the keyboard and the mouth open."
+            "action": "PHASE [0–0.24737289980408067]: She stays seated. The screen-left hand draws the glasses forward off the eyes and toward screen-left. The glasses stay in that hand. The other hand stays on the keyboard. The eyes look toward the laptop. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.24737289980408067–0.49474579960816134]: Hold the glasses low at screen-left, eyes widened toward the laptop, then bring the gaze toward the lens. Keep the jaw open initially, then draw the lips forward into a small rounded opening and reopen the jaw as the gaze reaches the lens."
+            "action": "PHASE [0.24737289980408067–0.49474579960816134]: She stays seated. The glasses stay low in the screen-left hand. The eyes return and settle wide on the lens. The lips round, then the mouth opens again."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.49474579960816134–0.7215041880231937]: Lift the keyboard hand and reach it forward toward the filming device while retaining the glasses in the other hand. Briefly narrow the lip opening at the start of the reach, then drop the jaw open again before the arm reaches full extension."
+            "action": "PHASE [0.49474579960816134–0.7215041880231937]: She stays seated. The keyboard hand reaches toward the camera. That arm stays in the picture. The glasses stay in the screen-left hand. The mouth stays open. The eyes stay wide on the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.7215041880231937–0.8554980482278205]: Maintain the forward arm extension as the camera viewpoint begins lifting, with small handheld wobble and changing background angle; keep the surprised mouth open."
+            "action": "PHASE [0.7215041880231937–0.8554980482278205]: She stays seated. The same arm stays extended toward the camera. The face stays the same size. The eyes stay wide on the lens. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8554980482278205–0.9276483742653024]: Move the camera nearer and upward as the glasses-holding hand rises toward the lips; the glasses arm remains visible beside that hand."
+            "action": "PHASE [0.8554980482278205–0.9276483742653024]: She stays seated. The same hand brings the recording phone closer, so the face grows and the laptop leaves. The screen-left hand rises toward the lips, still holding the glasses. The eyes stay wide on the lens."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9276483742653024–1]: Cover the lips with the same hand while still holding the glasses, eyes wide toward the lens. Finish in a tight handheld close-up with the glasses partly visible beside the fingers; do not put them down or make them disappear."
+            "action": "PHASE [0.9276483742653024–1]: She stays seated. The screen-left hand covers the lips and keeps the glasses. The palm stays against the mouth. The camera sees the back of that hand. The eyes stay wide on the lens. The mouth stays open."
           }
         ],
-        "camera": "Begin in the desk view and follow the outstretched arm with a continuous handheld lift and move closer.",
-        "endingState": "Tight handheld close-up, wide eyes and fingers across the lips while still gripping the glasses; glasses partly visible beside the covering hand.",
+        "camera": "She stays seated. The keyboard hand reaches for the recording phone and brings it closer, so the face grows and the laptop leaves. The screen-left hand keeps the glasses.",
+        "endingState": "The screen-left hand stays across the lips. The camera sees the back of that hand. The glasses stay in that hand. The eyes stay wide on the lens. The face is closer.",
+        "summariesInTimeline": ["ending", "camera"],
         "constraints": [
-          "Retain fingertip contact with the same glasses during removal, lowering and returning mouth cover. Do not add hidden placement, make glasses vanish or put them on the head.",
-          "The glasses-holding hand is the creator’s right hand (screen-left in this selfie view). It keeps the glasses when it rises to the mouth. The opposite hand reaches for and holds the recording phone outside its view; do not swap hand roles or introduce a second visible phone."
+          "The screen-left hand keeps hold of the glasses through the mouth cover. Do not put the glasses on the head or let them vanish.",
+          "The other hand reaches for the recording phone. Do not swap the hands."
         ]
       },
       "review": {
@@ -2119,7 +2126,7 @@
           93
         ],
         "frameCount": 94,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Independent integration review confirmed the visible actions but identified unresolved hidden prop placement; the four-second adaptation is not approved. User clarification28October: creator right hand removes and continuously retains glasses then comes to mouth; opposite hand picks up recordingphone. Earlier empty-hand interpretation superseded. Generated fidelity remains untested.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Independent integration review confirmed the visible actions but identified unresolved hidden prop placement; the four-second adaptation is not approved. User clarification28October: creator right hand removes and continuously retains glasses then comes to mouth; opposite hand picks up recordingphone. Earlier empty-hand interpretation superseded. Generated fidelity remains untested. 2026-11-10 labeled frames: the glasses hand is screen-left, the other arm brings the phone closer so the face grows, and the camera sees the back of that glasses hand on the lips.",
         "issues": [],
         "sourceFileSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
         "visualQualification": "not_tested"
@@ -2129,34 +2136,34 @@
       "referenceId": "explore-paired-hook-59dee735a7c5d1643bc57127",
       "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
       "plan": {
-        "openingState": "The performer sits behind an open silver laptop with a composed expression and hands low near the chest.",
+        "openingState": "She stays seated behind the laptop. One hand is already in front of the chest. The eyes are toward the lens. The mouth is closed.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.13]: Interlace fingers at the chest, turn palms outward and extend both arms forward over the laptop while leaning back and closing the eyes."
+            "action": "PHASE [0–0.13]: She leans back in the chair. The eyes close. The fingers interlace. The palms turn toward the lens. Both arms extend forward over the laptop."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.13–0.49]: Hold the relaxed forward stretch with joined hands and eyes closed; keep the desk view steady."
+            "action": "PHASE [0.13–0.49]: She stays leaned back. The arms stay extended over the laptop. The fingers stay interlaced. The palms stay toward the lens. The eyes stay closed."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.49–0.68]: Release the joined fingers, draw both arms back and sit upright; bring the screen-right hand toward the laptop lid."
+            "action": "PHASE [0.49–0.68]: The fingers release. Both arms come back. She sits upright. The eyes open down toward the laptop. The screen-right hand moves to the laptop lid."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.68–0.84]: Rest the screen-right hand on the upper laptop-lid edge; keep the laptop still briefly."
+            "action": "PHASE [0.68–0.84]: The screen-right hand rests on the upper edge of the lid. The eyes stay down toward the laptop."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.84–1]: Tilt the laptop lid more upright on its hinge, its upper edge rising across the foreground. Keep the same hand on the lid through the final frame."
+            "action": "PHASE [0.84–1]: The same hand tilts the lid more upright. The upper edge rises across the foreground. The eyes stay down toward the laptop."
           }
         ],
-        "camera": "Keep the desk camera fixed as the laptop lid moves on its hinge.",
-        "endingState": "The performer sits upright behind the raised laptop lid with the hand resting at its upper edge.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop lid rises in the foreground.",
+        "endingState": "She sits upright. The screen-right hand stays on the raised lid. The eyes stay down toward the laptop.",
         "constraints": [
-          "Keep the stretch relaxed rather than surprised.",
-          "Maintain continuous fingers on the lid during its hinge movement."
+          "Keep the fingers interlaced while the arms stay extended. Do not bring a hand to the mouth.",
+          "Keep the screen-right hand on the lid while the lid tilts."
         ]
       },
       "review": {
@@ -2181,7 +2188,7 @@
           67
         ],
         "frameCount": 68,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she leans back with the palms toward the lens and the eyes closed, then sits upright and the screen-right hand tilts the laptop lid. The still already has one hand in front of the chest.",
         "issues": [],
         "sourceFileSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
         "visualQualification": "not_tested"
@@ -2191,27 +2198,27 @@
       "referenceId": "explore-paired-hook-43f2c2d266d23e3af05875d8",
       "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
       "plan": {
-        "openingState": "The performer holds the screen-left outer corner of translucent eyeglasses, looking down toward screen-left with widened eyes and an open mouth.",
+        "openingState": "The screen-left fingertips pinch the outer corner of the glasses. The glasses stay on. The eyes are wide toward screen-left. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.46]: Maintain the eyeglass-corner grip at screen-left, eyes wide and gaze down toward screen-left, mouth open. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
+            "action": "PHASE [0–0.46]: The screen-left fingertips stay on the outer corner. The glasses stay on. The eyes stay wide toward screen-left. The mouth stays open. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.46–0.70]: Knit the brows and purse the lips into a smaller rounded shape while keeping the glasses on. Bring the lips forward into a compact rounded opening, briefly narrow it further, then begin releasing the purse."
+            "action": "PHASE [0.46–0.70]: The brows draw together. The lips round into a small opening. The glasses stay on. The eyes stay wide toward screen-left. The fingertips stay on the corner."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.70–0.85]: The one word has already finished. Keep the wide-eyed sideways stare and the eyeglass grip. Let the rounded lips relax and the jaw settle into the earlier open look, with the lower lip easing downward. This is a face shape, not another word."
+            "action": "PHASE [0.70–0.85]: The one word has already finished. The mouth opens again. The eyes stay wide toward screen-left. The glasses stay on. The fingertips stay on the corner. This is a face shape, not another word."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.85–1]: Pull the glasses forward and upward away from the eyes toward screen-left as the eyelids close; finish with the glasses off the eyes, mouth slightly parted, without placing them on the head."
+            "action": "PHASE [0.85–1]: The same hand pulls the glasses forward off the eyes and toward screen-left. The eyes close. The mouth stays slightly open. The glasses stay off the head."
           }
         ],
-        "camera": "Keep the tight portrait camera steady with only small natural drift.",
-        "endingState": "The eyeglasses are removed toward screen-left and the performer is blinking with mouth partly open.",
+        "camera": "The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The glasses are off the eyes, toward screen-left. The eyes are closed. The mouth is slightly open.",
         "constraints": [
           "Do not lift the eyeglasses onto the head.",
           "Keep the frame passing continuously in front of the face during removal.",
@@ -2305,7 +2312,7 @@
           76
         ],
         "frameCount": 77,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-left fingertips stay on the glasses, the eyes stay wide toward screen-left, the lips round and open again, then the glasses leave toward screen-left and the eyes close.",
         "issues": [],
         "sourceFileSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
         "visualQualification": "not_tested"
@@ -2315,23 +2322,23 @@
       "referenceId": "explore-paired-hook-62f80506cbbedab0d340f863",
       "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
       "plan": {
-        "openingState": "The performer sits at the laptop with both hands against the sides of the head, fingers spread through curls, elbows out, mouth open and brows furrowed.",
+        "openingState": "She stays seated. Both hands are already raised beside the curls. The camera sees the back of the screen-left hand and the palm side of the screen-right hand. The fingers are spread. The eyes are toward the laptop on screen-right. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.37]: Hold both hands against the sides of the head with fingers in the curls, mouth open and gaze at the laptop on screen-right."
+            "action": "PHASE [0–0.37]: She stays seated. Hold the raised hands briefly, then settle both hands into the curls with the elbows out. The camera sees the back of the screen-left hand and the palm side of the screen-right hand. The eyes stay toward the laptop on screen-right. The mouth stays open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.37–0.67]: Turn face and eyes toward the lens while maintaining the open-mouth disbelief and hand contact."
+            "action": "PHASE [0.37–0.67]: She stays seated. The eyes leave the laptop and settle wide on the lens. Both hands stay in the curls. The camera sees the back of the screen-left hand and the palm side of the screen-right hand. The mouth stays open."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.67–1]: Narrow the mouth into a tense incredulous half-smile, brows furrowed and eyes wide; keep the fingers against the head and elbows out through the ending."
+            "action": "PHASE [0.67–1]: She stays seated. The mouth stays open and the lips pull back, so the teeth show. The eyes stay wide on the lens. Both hands stay in the curls. The camera sees the back of the screen-left hand and the palm side of the screen-right hand. The elbows stay out."
           }
         ],
-        "camera": "Keep the desk portrait framing fixed.",
-        "endingState": "The performer faces the camera with a tense half-smile and both hands still at the head.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop stays on screen-right.",
+        "endingState": "Both hands stay in the curls. The camera sees the back of the screen-left hand and the palm side of the screen-right hand. The eyes stay wide on the lens. The teeth show.",
         "constraints": [
           "Do not add a mouth-cover gesture.",
           "Preserve contact between the fingers and curls."
@@ -2359,7 +2366,7 @@
           47
         ],
         "frameCount": 48,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: both palms stay in the curls, the eyes leave the laptop on screen-right and settle wide on the lens, and the lips pull back so the teeth show.",
         "issues": [],
         "sourceFileSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
         "visualQualification": "not_tested"
@@ -2369,34 +2376,34 @@
       "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
       "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
       "plan": {
-        "openingState": "Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.",
+        "openingState": "The sunglasses stay on. The screen-left fingertips pinch the outer corner. The mouth is open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.336734693878]: Hold sunglasses over eyes with fingers at temple and partly open mouth. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
+            "action": "PHASE [0–0.336734693878]: The sunglasses stay on. The screen-left fingertips stay on the outer corner. The mouth stays open. Stretch one what across this hold, and form it only this once: start the W, keep the AH open and held for the whole beat, and land the T only at the end."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.336734693878–0.612244897959]: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly. Progress from the open jaw to forward-rounded lips with a small circular opening; briefly narrow the opening while keeping the sunglass grip."
+            "action": "PHASE [0.336734693878–0.612244897959]: The sunglasses stay on. The brows draw together. The lips round into a small opening. The screen-left fingertips stay on the corner."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.612244897959–0.704081632653]: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes. Keep the lips rounded as the sunglasses pass away from the eyes."
+            "action": "PHASE [0.612244897959–0.704081632653]: The screen-left hand pulls the sunglasses forward off the eyes and toward screen-left. The lips stay rounded."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.704081632653–0.857142857143]: Look slightly screen-right then toward camera and widen the eyes. The one word has already finished, so keep a surprised face: the jaw rests in a larger open look, then the lips begin to narrow. This is a face shape, not another word."
+            "action": "PHASE [0.704081632653–0.857142857143]: The sunglasses stay off. The eyes open wide toward screen-right, then settle wide on the lens. The mouth opens wider. The one word has already finished. This is a face shape, not another word."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.857142857143–1]: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens. Let the lips settle into a smaller partly open shape with the brows still questioning."
+            "action": "PHASE [0.857142857143–1]: The sunglasses stay off. The eyes stay wide on the lens. The mouth settles into a smaller open shape. The brows stay drawn together."
           }
         ],
-        "camera": "Fixed close portrait phone framing against plain beige wall; only small head/phone movement.",
-        "endingState": "Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.",
+        "camera": "The recording phone stays at one distance. The face stays the same size. The sunglasses stay off the head after they leave.",
+        "endingState": "The sunglasses stay off the eyes and off the head. The eyes stay wide on the lens. The mouth is a smaller open shape.",
+        "summariesInTimeline": ["ending"],
         "constraints": [
           "Keep the sunglasses off the eyes and off the head.",
-          "Do not smile before the final surprised face.",
           "Do not add a screen recording or app UI.",
           "Do not form that word a second time."
         ]
@@ -2509,7 +2516,7 @@
           97
         ],
         "frameCount": 98,
-        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the late sunglasses pull and final WHAT shock.",
+        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the late sunglasses pull and final WHAT shock. 2026-11-10 0.25s frames: the screen-left fingertips pinch the sunglasses, the lips round, the sunglasses leave toward screen-left, and the eyes open wide toward screen-right before settling on the lens.",
         "issues": [],
         "sourceFileSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
         "visualQualification": "not_tested"
@@ -2519,28 +2526,27 @@
       "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
       "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
       "plan": {
-        "openingState": "The performer holds the sunglasses frame at mouth level with one temple arm between the lips; eyes wide, brows raised and jaw open around the stem.",
+        "openingState": "The temple of the glasses stays between the lips. The glasses frame hangs toward screen-right. The eyes are wide toward screen-left. The mouth is slightly open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.58]: Hold the frame at mouth level with the temple arm between the lips; keep the eyes wide, brows raised and the jaw open around it. Do not remove the stem. Stretch one what around the stem, and form it only this once: start the W now and keep the AH open and held. Do not land the T while the jaw stays open."
+            "action": "PHASE [0–0.58]: The temple stays between the lips. The glasses frame hangs toward screen-right. The eyes stay wide toward screen-left. The mouth stays slightly open. The glasses stay off the eyes. Stretch one what across this reaction, and form it only this once: start the W around the temple and keep the AH open and held through the later glasses release."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.58–0.78]: Make small head and mouth movements around the stem; keep it between the lips and the eyes wide."
+            "action": "PHASE [0.58–0.78]: The brows draw together. The lips purse around the temple. The eyes stay wide toward screen-left. The glasses frame hangs toward screen-right."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.78–1]: Open the jaw wider around the stem into a stunned open-mouth reaction; keep the stem in the mouth and hold the stare. Keep the same AH held, and land the T only at the end of this hold. Do not form that word a second time."
+            "action": "PHASE [0.78–1]: The temple leaves the lips and hangs beside the chin toward screen-right. The mouth opens wide. The eyes stay wide toward screen-left. The brows stay drawn together. Continue the same held AH as the temple releases; land the T only at the end. Do not form the word a second time."
           }
         ],
-        "camera": "Keep the close portrait camera steady.",
-        "endingState": "The stem remains between the lips while the jaw is open in a stunned stare.",
+        "camera": "The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The temple hangs beside the chin toward screen-right. The mouth is wide open. The eyes stay wide toward screen-left.",
         "constraints": [
-          "Keep the temple arm in the mouth for the whole clip.",
-          "Do not put the sunglasses on the eyes or head.",
-          "Do not turn the stem into a drinking prop.",
-          "Do not form that word a second time."
+          "The glasses stay off the eyes and off the head.",
+          "The glasses frame hangs toward screen-right.",
+          "Do not turn the temple into a drinking prop."
         ]
       },
       "review": {
@@ -2630,7 +2636,7 @@
           76
         ],
         "frameCount": 77,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the stem-in-mouth position and removal.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. Re-audited on 2026-11-08 against the muted opening at 12 fps; corrected the stem-in-mouth position and removal. 2026-11-10 0.25s frames: the temple stays between the lips while the eyes stay wide toward screen-left, the lips purse, then the temple leaves toward screen-right and the mouth opens wide.",
         "issues": [],
         "sourceFileSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
         "visualQualification": "not_tested"
@@ -2640,38 +2646,38 @@
       "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
       "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
       "plan": {
-        "openingState": "The performer sits at a wooden table with both hands near the black laptop keyboard on screen-left, wearing a neutral slightly tired expression.",
+        "openingState": "She stays seated. Both hands stay on the keyboard. The eyes are down toward the laptop on screen-left. The mouth is slightly open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.1327318985546027]: Keep both hands near the laptop keyboard, face composed and gaze initially toward the screen."
+            "action": "PHASE [0–0.1327318985546027]: She stays seated. Both hands stay on the keyboard. The eyes stay down toward the laptop on screen-left. The mouth stays slightly open."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.1327318985546027–0.30970785178200533]: Look from the screen toward the lens, knit the brows and begin narrowing the eyes into skepticism."
+            "action": "PHASE [0.1327318985546027–0.30970785178200533]: She stays seated. The eyes leave the laptop and settle on the lens. The mouth stays open. Both hands stay on the keyboard."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.30970785178200533–0.6636594927730136]: Hold the skeptical look toward the lens, with small lip changes, before lifting the hand."
+            "action": "PHASE [0.30970785178200533–0.6636594927730136]: She stays seated. The brows draw together. The eyes narrow and stay on the lens. Both hands stay on the keyboard."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6636594927730136–0.8406354460004162]: Raise the screen-right hand, extend the index finger upright and wag it in a small cautioning movement; the mouth briefly opens into an expressive smile."
+            "action": "PHASE [0.6636594927730136–0.8406354460004162]: She stays seated. The screen-right hand leaves the keyboard. The index finger rises in front of the chest. The camera sees the palm. The other fingers stay curled. The mouth opens and the teeth show. The eyes stay narrowed on the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8406354460004162–0.9910647540531012]: Curl the index finger back and keep the hand near the chin, pursing the lips while the skeptical brows remain."
+            "action": "PHASE [0.8406354460004162–0.9910647540531012]: She stays seated. The index finger curls. The hand stays near the chin. The lips purse. The eyes stay narrowed on the lens. The camera sees the palm."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.9910647540531012–1]: Briefly close the eyes at the ending, retaining the hand near the chin and lips pursed."
+            "action": "PHASE [0.9910647540531012–1]: She stays seated. The eyes close once. The hand stays near the chin. The lips stay pursed."
           }
         ],
-        "camera": "Hold the seated tabletop portrait camera fixed.",
-        "endingState": "The hand rests near the chin with the index finger curled and lips pursed.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop stays on screen-left.",
+        "endingState": "The index finger stays curled near the chin. The eyes are closed. The lips stay pursed.",
         "constraints": [
-          "Keep the finger wag small and anatomically continuous.",
-          "Do not add a mouth-cover gesture or exaggerated shock."
+          "The other fingers stay curled while the index finger is up.",
+          "Do not lay that hand across the mouth."
         ]
       },
       "review": {
@@ -2696,7 +2702,7 @@
           110
         ],
         "frameCount": 111,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she stays seated, the eyes leave the laptop and narrow on the lens, the screen-right index finger rises with the palm toward the lens, then curls near the chin, and the eyes close once.",
         "issues": [],
         "sourceFileSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
         "visualQualification": "not_tested"
@@ -2706,26 +2712,27 @@
       "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
       "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
       "plan": {
-        "openingState": "The performer reclines against a light cushion with the screen-left hand diagonal across the lower lip and chin, looking down toward screen-left.",
+        "openingState": "She stays reclined. The screen-left hand lies across the mouth. The palm stays against the mouth. The camera sees the back of that hand. The eyes are lowered toward screen-left.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.346102]: Blink briefly and reopen the eyes with knitted brows, maintaining fingertip contact near the lower lip and chin."
+            "action": "PHASE [0–0.346102]: She stays reclined. The screen-left hand stays across the mouth. The palm stays against the mouth. The camera sees the back of that hand. The eyes stay lowered toward screen-left. The recording phone stays at one distance. The face stays the same size."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.346102–0.738351]: Widen the eyes progressively and open the mouth further into disbelief while keeping the hand at the chin."
+            "action": "PHASE [0.346102–0.738351]: She stays reclined. The eyes open wide and settle slightly toward screen-left. The mouth opens. The same hand slides down to the chin. The palm stays against the chin. The camera sees the back of that hand."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.738351–1]: Hold the startled gaze as the view moves closer to the face, without changing the hand placement."
+            "action": "PHASE [0.738351–1]: She stays reclined. The unseen hand brings the recording phone closer, so the face grows. The phone stays out of frame. The same hand stays at the chin. The camera sees the back of that hand. The mouth stays open. The eyes stay wide, settled slightly toward screen-left."
           }
         ],
-        "camera": "Use a gradual continuous handheld move toward a tighter facial close-up.",
-        "endingState": "The tighter view holds widened eyes, an open mouth and fingertips near the lower lip and chin.",
+        "camera": "She stays reclined. The recording phone stays at one distance while the hand is across the mouth. Then the unseen hand brings the recording phone closer, so the face grows. The phone stays out of frame.",
+        "endingState": "The hand stays at the chin. The camera sees the back of that hand. The mouth stays open. The eyes stay wide, settled slightly toward screen-left. The face is larger.",
+        "summariesInTimeline": ["ending", "camera"],
         "constraints": [
-          "Do not add a phone or any new handheld object.",
-          "Keep the hand-to-chin contact continuous."
+          "The phone stays out of frame.",
+          "The screen-left hand stays on the face, first across the mouth and then at the chin."
         ]
       },
       "review": {
@@ -2750,7 +2757,7 @@
           62
         ],
         "frameCount": 63,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-left hand shows its back across the mouth, the eyes open wide, the hand slides to the chin, and the face grows.",
         "issues": [],
         "sourceFileSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
         "visualQualification": "not_tested"
@@ -2760,34 +2767,34 @@
       "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
       "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
       "plan": {
-        "openingState": "The close-up shows eyeglasses already on the top of the head and one hand cupped diagonally over the mouth and chin, with an emotional delighted smile and gaze off screen-left.",
+        "openingState": "The glasses stay on the head. The screen-right hand cups the lower mouth and cheek, with the palm against the face. The camera sees the back of the hand and fingers. The smile shows above and beside the fingers. The eyes look slightly toward screen-left.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.12222233333333334]: Hold the delighted smile behind the hand cupped across mouth and chin, eyes off screen-left, glasses already resting on the head."
+            "action": "PHASE [0–0.12222233333333334]: The screen-right hand holds the lower mouth and cheek. The camera sees the back of the hand and fingers. The smile shows above and beside the fingers. The eyes hold slightly toward screen-left."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.12222233333333334–0.32222233333333333]: Bring the eyes nearer the lens with a gentle blink and keep the warm smile behind the fingers."
+            "action": "PHASE [0.12222233333333334–0.32222233333333333]: The eyes settle on the lens and hold with relaxed upper lids. The smile stays visible above the fingers."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.32222233333333333–0.6666666666666666]: Glance sideways again and sustain the amused expression, hand contact and glasses position unchanged."
+            "action": "PHASE [0.32222233333333333–0.6666666666666666]: The eyes settle toward screen-left and hold with relaxed upper lids. The teeth show above and beside the fingers."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.6666666666666666–0.7999999999999999]: Return the gaze nearer the lens, smiling through a soft blink and small head movement; finish still covering mouth/chin."
+            "action": "PHASE [0.6666666666666666–0.7999999999999999]: The eyes stay toward screen-left with relaxed upper lids. The teeth stay visible beside the fingers."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.7999999999999999–1]: Sustain the same final pose, expression, hand and prop positions with only tiny natural motion; no new gesture or scene transition."
+            "action": "PHASE [0.7999999999999999–1]: The eyes return to the lens and hold with slightly lowered upper lids. The teeth remain visible in the smile."
           }
         ],
-        "camera": "Maintain the close handheld composition with gentle natural movement.",
-        "endingState": "The hand remains across the mouth and chin and the eyeglasses stay on the head.",
+        "camera": "The recording phone stays at one distance. The face stays the same size. The glasses stay on the head.",
+        "endingState": "The glasses stay on the head. The screen-right hand cups the lower mouth and cheek. The camera sees the back of the hand and fingers. The teeth show above and beside the fingers. The eyes hold on the lens with slightly lowered upper lids.",
         "constraints": [
-          "Do not restart removing or lifting glasses that are already on the head.",
-          "Keep the reaction delighted rather than frightened."
+          "The glasses stay on the head.",
+          "The screen-right hand stays at the lower mouth and cheek."
         ]
       },
       "review": {
@@ -2812,7 +2819,7 @@
           68
         ],
         "frameCount": 69,
-        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected12 evenly distributed decoded frames, including frame0 and the final frame, against the prior all-decoded-frame observations. Other intervening frames were not independently re-reviewed in this pass. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the glasses stay on the head, the screen-left palm stays across the mouth, and the eyes move from the lens toward screen-left, then screen-right, then back.",
         "issues": [],
         "sourceFileSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
         "visualQualification": "not_tested"
@@ -2822,38 +2829,39 @@
       "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
       "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
       "plan": {
-        "openingState": "The performer faces the camera wearing clear eyeglasses, mouth open and eyebrows lifted, with the screen-right hand rising toward the outer frame.",
+        "openingState": "The glasses are on the eyes. The mouth is wide open. The eyes are wide on the lens.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.12903225806451613]: Bring the screen-right hand to the eyeglass corner with the jaw open."
+            "action": "PHASE [0–0.12903225806451613]: The screen-right hand reaches the outer corner of the glasses. The mouth stays wide open. The eyes stay wide on the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.12903225806451613–0.3548387096774194]: Lift glasses over the forehead onto the crown, maintaining the grip."
+            "action": "PHASE [0.12903225806451613–0.3548387096774194]: The same hand lifts the glasses onto the head. The mouth stays open. The eyes stay on the lens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3548387096774194–0.5913977419354839]: Hold the crown grip as lips narrow into a pout."
+            "action": "PHASE [0.3548387096774194–0.5913977419354839]: The glasses stay on the head. The same hand stays on them. The lips purse. The eyes settle toward screen-right."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5913977419354839–0.6666667741935484]: Release glasses and raise both hands together across mouth and nose."
+            "action": "PHASE [0.5913977419354839–0.6666667741935484]: Both hands rise to the mouth and the nose. The camera sees the backs of the hands and pink fingernails. The fingertips cover the nose and the mouth. The glasses stay on the head."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.6666667741935484–0.8602151612903225]: Keep both palms over the lower face through the brief eye closure and reopening."
+            "action": "PHASE [0.6666667741935484–0.8602151612903225]: Both hands stay on the nose and the mouth. The camera sees the backs of the hands and pink fingernails. The eyes stay open. The glasses stay on the head."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8602151612903225–1]: Lower the screen-right hand, keeping the other over the lips; finish with a small emotional smile."
+            "action": "PHASE [0.8602151612903225–1]: The screen-right hand lowers after the blink. The screen-left hand stays across the mouth and beside the nose, with its back and pink fingernails facing the camera. A small smile shows beside the fingers. The eyes open again, settle slightly toward screen-right and hold with relaxed upper lids. The glasses stay on the head."
           }
         ],
-        "camera": "Keep the close portrait framing steady with slight natural handheld drift.",
-        "endingState": "The glasses stay on the head, one hand remains over the lips and the performer gives a small emotional smile.",
+        "camera": "The recording phone stays at one distance. The face stays the same size. The glasses stay on the head after they leave the eyes.",
+        "endingState": "The glasses stay on the head. The screen-left hand stays across the mouth and beside the nose, with its back and pink fingernails facing the camera. A small smile shows beside the fingers. The eyes hold slightly toward screen-right with relaxed upper lids.",
         "constraints": [
-          "Keep the glasses on the head after release.",
-          "Preserve the separate hands and pink fingernails during the mouth-cover motion."
+          "The glasses stay on the head.",
+          "The screen-left hand stays on the mouth at the end.",
+          "The fingernails stay pink."
         ]
       },
       "review": {
@@ -2959,7 +2967,7 @@
           92
         ],
         "frameCount": 93,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-right hand lifts the glasses onto the head, both palms cover the nose and the mouth, then the screen-right hand lowers and the screen-left palm stays.",
         "issues": [],
         "sourceFileSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
         "visualQualification": "not_tested"
@@ -2969,30 +2977,30 @@
       "referenceId": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
       "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
       "plan": {
-        "openingState": "The performer wears large dark eyeglasses, with the screen-right hand gripping their outer corner, a partly open mouth and widened eyes looking upward toward screen-left.",
+        "openingState": "The glasses are on the eyes. The screen-right hand rests across the top of the glasses. The eyes are wide and up toward screen-left. The mouth is slightly open.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.30]: Lift the glasses from the eyes onto the crown while keeping the astonished upward sideward gaze."
+            "action": "PHASE [0–0.30]: The screen-right hand lifts the glasses onto the head. The eyes stay wide and up toward screen-left. The mouth opens."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.30–0.52]: Keep the hand at the glasses on top of the head and hold the broadening smile."
+            "action": "PHASE [0.30–0.52]: The glasses stay on the head. The same hand stays on them. The mouth opens into a smile and the teeth show. The eyes stay wide and up toward screen-left."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.52–0.61]: Release the glasses and lower the hand while maintaining the delighted smile."
+            "action": "PHASE [0.52–0.61]: The same hand lowers out of the picture. The glasses stay on the head. The teeth stay showing. The eyes stay wide and up toward screen-left."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.61–1]: Hold the broad smile with wide eyes looking slightly upward and screen-left, glasses on the head and hand lowered."
+            "action": "PHASE [0.61–1]: The glasses stay on the head. The hand stays down. The teeth stay showing. The eyes stay wide and up toward screen-left."
           }
         ],
-        "camera": "Maintain the close handheld perspective with a gentle bob.",
-        "endingState": "The glasses are on the head and the performer smiles broadly with the hand lowered.",
+        "camera": "The recording phone stays at one distance. The face stays the same size.",
+        "endingState": "The glasses stay on the head. The hand stays down. The teeth show. The eyes stay wide and up toward screen-left.",
         "constraints": [
-          "Do not remove the glasses completely from the image.",
-          "Do not add a mouth-cover gesture."
+          "The glasses stay on the head.",
+          "Do not bring a hand to the mouth."
         ]
       },
       "review": {
@@ -3069,7 +3077,7 @@
           63
         ],
         "frameCount": 64,
-        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 2 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: the screen-right hand lifts the glasses onto the head, the eyes stay wide and up toward screen-left, the teeth show, and the hand lowers.",
         "issues": [],
         "sourceFileSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
         "visualQualification": "not_tested"
@@ -3079,46 +3087,47 @@
       "referenceId": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
       "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
       "plan": {
-        "openingState": "The performer sits at a laptop by a window wearing white headphones, with one hand near the trackpad and a focused gaze toward the screen.",
+        "openingState": "She stays seated. The laptop stays on screen-right. The headphones stay on. The eyes are toward the laptop. One hand stays near the trackpad.",
         "beats": [
           {
             "phase": "opening",
-            "action": "PHASE [0–0.2389174173982849]: Work at the laptop with the headphones on, hand low near the trackpad."
+            "action": "PHASE [0–0.2389174173982849]: She stays seated. The headphones stay on. The eyes stay toward the laptop on screen-right. One hand stays near the trackpad."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.2389174173982849–0.3185565565310465]: Turn eyes toward the lens and furrow the brows."
+            "action": "PHASE [0.2389174173982849–0.3185565565310465]: She stays seated. The eyes leave the laptop and settle on the lens. The brows draw together. The headphones stay on."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.3185565565310465–0.4070444004128493]: Raise both hands to the earcups and briefly blink."
+            "action": "PHASE [0.3185565565310465–0.4070444004128493]: She stays seated. Both hands rise to the earcups. The eyes stay on the lens. The brows stay drawn together."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.4070444004128493–0.5132299192565315]: Hold both earcups, maintaining the puzzled stare."
+            "action": "PHASE [0.4070444004128493–0.5132299192565315]: She stays seated. Both hands stay on the earcups. The eyes stay on the lens. The brows stay drawn together."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.5132299192565315–0.637113113062093]: Lift headband forward over the crown and face, lower headphones to chest."
+            "action": "PHASE [0.5132299192565315–0.637113113062093]: She stays seated. Both hands lift the headphones forward off the ears. The headband passes in front of the face. The headphones lower to the chest."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.637113113062093–0.8140890662894956]: Hold headphones low and stare at the screen."
+            "action": "PHASE [0.637113113062093–0.8140890662894956]: She stays seated. Both hands keep the headphones at the chest. The eyes leave the lens and settle toward the laptop on screen-right."
           },
           {
             "phase": "middle",
-            "action": "PHASE [0.8140890662894956–0.8671818257113367]: Close the eyes in a skeptical grimace."
+            "action": "PHASE [0.8140890662894956–0.8671818257113367]: She stays seated. The eyes close. The brows stay drawn together. The lips press together. Both hands keep the headphones at the chest."
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.8671818257113367–1]: Turn back toward lens and release one hand into a small outward dismissive palm gesture."
+            "action": "PHASE [0.8671818257113367–1]: She stays seated. The screen-right hand keeps the headphones at the chest. The screen-left hand leaves them, briefly curls its fingers, then opens and spreads the fingers as it extends toward the camera, palm visible. The eyes open and settle on the lens, holding narrowed under drawn-together brows. The lips release their press into a small, slightly rounded opening."
           }
         ],
-        "camera": "Keep the window-side desk framing fixed throughout.",
-        "endingState": "One hand holds the headphones low while the other makes a small dismissive open-palm gesture near the lens.",
+        "camera": "She stays seated. The recording phone stays at one distance. The face stays the same size. The laptop stays on screen-right.",
+        "endingState": "The screen-right hand keeps the headphones at the chest. The screen-left hand is extended toward the camera with fingers spread and palm visible. The eyes hold narrowed on the lens under drawn-together brows. The lips are slightly parted in a small rounded opening.",
+        "summariesInTimeline": ["ending"],
         "constraints": [
-          "Keep the headphones in continuous hand contact while removing them.",
-          "Do not leave the headphones on the ears after removal."
+          "The headphones stay off the ears after they come forward.",
+          "The screen-right hand keeps the headphones at the chest."
         ]
       },
       "review": {
@@ -3242,7 +3251,7 @@
           110
         ],
         "frameCount": 111,
-        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified.",
+        "reviewNote": "Inspected every decoded frame in 3 canonical contact-sheet pages, plus the labeled12-frame overview. Authored a continuous four-second action adaptation from the verified opening pose; action order is retained, with hold lengths retimed rather than claiming unchanged source timing. This is a static prompt review only; no edited starting image or generated video has been qualified. 2026-11-10 0.25s frames: she stays seated, the laptop stays on screen-right, both hands take the headphones to the chest, the eyes close once, and the screen-left index finger points.",
         "issues": [],
         "sourceFileSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
         "visualQualification": "not_tested"

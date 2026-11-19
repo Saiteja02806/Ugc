@@ -19,11 +19,11 @@
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.515–1.000]: Raise the same hand vertically beside the face, fingers pointing upward, and hold the small smile as the eyes soften and briefly close near the ending."
+            "action": "PHASE [0.515–1.000]: Raise the same screen-right hand vertically beside the face, fingers pointing upward, with the side edge visible. The lips hold a restrained closed smile with slightly lifted corners and the brows relax. The upper lids sink almost shut and stay lowered through the finish."
           }
         ],
         "camera": "Keep the front-facing camera steady.",
-        "endingState": "Hold the raised hand beside the face and the restrained smile.",
+        "endingState": "The screen-right hand stays vertically beside the face, fingers pointing up and side edge visible. The lips hold the restrained closed smile with slightly lifted corners, brows relaxed and upper lids almost shut.",
         "constraints": [
           "Keep the same hand continuous through the gesture."
         ]
@@ -50,11 +50,11 @@
           },
           {
             "phase": "ending",
-            "action": "PHASE [0.590–1.000]: Bring both hands up beside the face toward the hair and ears, purse the lips slightly and lift the chin; finish with the fingers beside the hair."
+            "action": "PHASE [0.590–1.000]: Lift the chin slightly. Bring both hands up beside the face, finishing with fingertips at the hair and sides of the neck just below the ears, both hands partly edge-on to the camera. The lips settle into a compact purse and the brows stay relaxed. The eyes hold toward the lens with relaxed upper lids."
           }
         ],
         "camera": "Keep the portrait camera steady with the laptop in the foreground.",
-        "endingState": "Hold both hands near the ears and hair.",
+        "endingState": "The chin is slightly lifted. Both hands stay beside the ears and hair, with fingertips at the sides of the neck just below the ears and their side edges visible. The lips hold a compact purse, brows relaxed, and eyes toward the lens with relaxed upper lids.",
         "constraints": [
           "Keep both hands separate and preserve the laptop in the foreground."
         ]

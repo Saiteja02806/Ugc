@@ -5,7 +5,7 @@ import { useStartingFramePreload } from "./use-starting-frame-preload";
 /* eslint-disable @next/next/no-img-element */
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Filter, Layers3, LockKeyhole, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter, Layers3, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCoverPlayback } from "@/components/explore/use-cover-playback";
@@ -26,11 +26,13 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useAuth } from "@/contexts/auth-context";
-import { filterReferences, orderReferenceGallery, isRemovedWallTextReference, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
+import { filterReferences, orderReferenceGallery, isRemovedWallTextReference, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, referencePlayback, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
 import { fetchRecreateReferences } from "@/lib/explore/reference-catalog-client";
 export { fetchRecreateReferences } from "@/lib/explore/reference-catalog-client";
 import { cn } from "@/lib/utils";
 import { getReferenceSource, referenceSourceLabel } from "@/lib/explore/reference-source-link";
+import { filterReferenceViews, formatReferenceViews, referenceViewCount, sortReferenceViews, videoReferencePreview, type ReferenceViewSort, type ReferenceViewFilter } from "@/lib/explore/video-reference-feed";
+import { ReferenceFeedUpgrade, useFullVideoReferenceFeed } from "./reference-feed-upgrade";
 
 const GALLERY_GRID = layout.galleryGrid;
 const EMPTY_REFERENCES: RecreateReference[] = [];
@@ -39,6 +41,9 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   const { loading: authLoading, user } = useAuth();
   const localPreview = previewReferences !== undefined;
   const sourceAccess = useAIStudioAccess();
+  const feedAccess = useFullVideoReferenceFeed();
+  const [viewSort, setViewSort] = useState<ReferenceViewSort>("highest");
+  const [viewFilter, setViewFilter] = useState<ReferenceViewFilter>("all");
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
@@ -58,9 +63,11 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   const references = useMemo(() => referenceData.filter(item => !isRemovedWallTextReference(item.id)), [referenceData]);
   const categories = useMemo(() => referenceCategories(references, format), [format, references]);
   const filtered = useMemo(() => {
-    const matching = filterReferences(references, format, selectedCategories);
-    return orderReferenceGallery(matching, format);
-  }, [format, references, selectedCategories]);
+    const gallery = format === "hook" ? videoReferencePreview(filterReferences(references, format, []), feedAccess.unlimited) : references;
+    const matching = filterReferences(gallery, format, selectedCategories);
+    const ordered = orderReferenceGallery(matching, format);
+    return format === "hook" ? sortReferenceViews(filterReferenceViews(ordered, viewFilter), viewSort) : ordered;
+  }, [format, references, selectedCategories, feedAccess.unlimited, viewFilter, viewSort]);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const ready = localPreview || referencesQuery.isSuccess;
 
@@ -138,14 +145,14 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
                 >{RECREATE_FORMAT_LABELS[candidate]}</button>
               ))}
             </div>
-            <FilterMenu activeCategories={selectedCategories} categories={categories} count={selectedCategories.length} disabled={categories.length === 0} onClear={() => setSelectedCategories([])} onToggle={toggleCategory} />
+            <FilterMenu activeCategories={selectedCategories} categories={categories} count={selectedCategories.length} disabled={categories.length === 0} views={format === "hook" ? { sort: viewSort, filter: viewFilter, onSort: setViewSort, onFilter: setViewFilter } : undefined} onClear={() => { setSelectedCategories([]); setViewSort("highest"); setViewFilter("all"); }} onToggle={toggleCategory} />
           </div>
 
           <div id="reference-gallery" role="tabpanel" aria-labelledby={`reference-tab-${format}`} tabIndex={0} className="max-h-[60dvh] min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus lg:max-h-none lg:p-6">
             {loading ? <ReferenceGridSkeleton /> : null}
             {!localPreview && referencesQuery.isError ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : null}
             {!localPreview && !authLoading && !user ? <p className="py-8 text-sm text-muted">Sign in to browse references.</p> : null}
-            {ready && filtered.length === 0 ? <EmptyReferences format={format} hasFilters={selectedCategories.length > 0} onClear={() => setSelectedCategories([])} /> : null}
+            {ready && filtered.length === 0 ? <EmptyReferences format={format} hasFilters={selectedCategories.length > 0 || format === "hook" && viewFilter !== "all"} onClear={() => { setSelectedCategories([]); setViewFilter("all"); setViewSort("highest"); }} /> : null}
             {ready && filtered.length > 0 ? <>
               {selectedCategories.length > 0 ? <div className="mb-4 flex justify-end text-[11px]">
                 <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedCategories([])}>Clear filters</Button>
@@ -154,6 +161,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
                 {filtered.map((reference) => <ReferenceCard key={reference.id} canOpenSource={!localPreview && sourceAccess === "pro"} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
               </div>
             </> : null}
+            {ready && format === "hook" && !feedAccess.unlimited && filterReferences(references, "hook", []).length > 10 ? <ReferenceFeedUpgrade {...feedAccess} /> : null}
           </div>
         </section>
       </RecreateSplitPane>
@@ -163,59 +171,67 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   );
 }
 
-export function FilterMenu({ activeCategories, categories, disabled, onClear, onToggle }: {
+export function FilterMenu({ activeCategories, categories, disabled, onClear, onToggle, views }: {
   activeCategories: readonly string[];
   categories: Array<{ id: string; label: string; count: number }>;
   count: number;
   disabled: boolean;
   onClear: () => void;
   onToggle: (category: string, checked: boolean) => void;
+  views?: { sort: ReferenceViewSort; filter: ReferenceViewFilter; onSort: (sort: ReferenceViewSort) => void; onFilter: (filter: ReferenceViewFilter) => void };
 }) {
   return <Popover>
     <PopoverTrigger render={<Button type="button" variant="outline" size="sm" className={cn("px-3", activeCategories.length > 0 && "border-white/80 text-foreground-strong")} disabled={disabled} />}>
       <SlidersHorizontal data-icon="inline-start" aria-hidden="true" /> Filter
     </PopoverTrigger>
-    <PopoverContent align="end" className={cn(studio.floating, "w-64 gap-3 rounded-[24px] border-border/60 p-4")}>
+    <PopoverContent align="end" className={cn(studio.floating, "max-h-[min(var(--available-height),32rem)] w-64 gap-3 overflow-y-auto overscroll-contain rounded-[24px] border-border/60 p-4")}>
       <PopoverTitle>Filter references</PopoverTitle>
+      {views ? <div className="space-y-3 border-b border-border pb-3">
+        <fieldset><legend className="mb-1 text-xs text-muted">Sort by views</legend>{([["highest", "Highest first"], ["lowest", "Lowest first"]] as const).map(([value, label]) => <label key={value} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input type="radio" name="reference-view-sort" value={value} checked={views.sort === value} onChange={() => views.onSort(value)} />{label}</label>)}</fieldset>
+        <fieldset><legend className="mb-1 text-xs text-muted">View counts</legend>{([["all", "All references"], ["available", "Views available"], ["unavailable", "Views unavailable"]] as const).map(([value, label]) => <label key={value} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input type="radio" name="reference-view-filter" value={value} checked={views.filter === value} onChange={() => views.onFilter(value)} />{label}</label>)}</fieldset>
+      </div> : null}
       <div className="max-h-64 space-y-1 overflow-y-auto overscroll-contain">
         {categories.map((category) => <label key={category.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 text-sm text-foreground hover:bg-card-muted">
           <span className="flex min-w-0 items-center gap-2"><Checkbox checked={activeCategories.includes(category.id)} onCheckedChange={(checked) => onToggle(category.id, checked === true)} /><span className="truncate">{category.label}</span></span>
         </label>)}
       </div>
-      {activeCategories.length ? <Button type="button" variant="link" size="sm" onClick={onClear} className="w-fit">Clear filters</Button> : null}
+      {activeCategories.length || views && (views.sort !== "highest" || views.filter !== "all") ? <Button type="button" variant="link" size="sm" onClick={onClear} className="w-fit">Clear filters</Button> : null}
     </PopoverContent>
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, overlayActions = false, canOpenSource = false, hideRecreate = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean; hideRecreate?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, overlayActions = false, canOpenSource = false, hideRecreate = false, guestSignInHref }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean; hideRecreate?: boolean; guestSignInHref?: string }) {
   const preloadFrame = useStartingFramePreload();
   const source = getReferenceSource(reference);
   const overlay = overlayActions && reference.format === "hook";
   const sourceLabel = source ? referenceSourceLabel(source) : "";
+  const viewCount = reference.format === "hook" ? referenceViewCount(reference) : undefined;
+  const viewLabel = reference.format === "hook" ? viewCount === undefined ? undefined : formatReferenceViews(viewCount) : reference.formattedViews;
+  const viewDescription = viewCount === undefined ? `${viewLabel} views` : `${reference.viewsApproximate ? "Approximately " : ""}${viewCount.toLocaleString("en")} source-post views${reference.viewsSource === "user-reported" ? " · User-reported" : ""}${reference.viewsRetrievedAt ? ` · Retrieved ${new Date(reference.viewsRetrievedAt).toLocaleDateString("en", { timeZone: "UTC" })}` : ""}`;
   return <article data-reference-id={reference.id} className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
       {reference.isNew ? <span data-reference-new className={studio.referenceNewBadge}><span aria-hidden="true" className={studio.referenceNewDot} />New</span> : null}
-      {reference.formattedViews ? <span data-reference-views className={studio.referenceViewsBadge} title={`${reference.formattedViews} views`} aria-label={`${reference.formattedViews} views`}><EyeIcon className={studio.referenceViewsIcon} /><span>{reference.formattedViews}</span></span> : null}
-      {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
+      {viewLabel ? <span data-reference-views className={studio.referenceViewsBadge} title={viewDescription} aria-label={viewDescription}><EyeIcon className={studio.referenceViewsIcon} /><span>{viewLabel}</span></span> : null}
+      {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} guestSignInHref={guestSignInHref} overlay /> : null}
       {!hideRecreate ? <button type="button" onPointerEnter={() => preloadFrame(reference)} onFocus={() => preloadFrame(reference)} onPointerDown={() => preloadFrame(reference)} onClick={() => { preloadFrame(reference); onRecreate(); }} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate data-reference-recreate-overlay data-selected={isSelected || undefined} className={studio.referenceRecreateButton}>
         <RotateCcw className="size-4" aria-hidden="true" />
         <span>Recreate</span>
       </button> : null}
     </div>
-    {compact && !hideCaption && !overlay && (reference.format !== "slideshow" || source || isSelected) ? <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-1.5">{reference.format !== "slideshow" ? <p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p> : null}{source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} showLabel={reference.format === "slideshow"} /> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-foreground-strong">Selected</span> : null}</div> : null}
-    {!compact && reference.format === "slideshow" && source ? <div className="mt-2"><ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} showLabel /></div> : null}
+    {compact && !hideCaption && !overlay && (reference.format !== "slideshow" || source || isSelected) ? <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-1.5">{reference.format !== "slideshow" ? <p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p> : null}{source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} guestSignInHref={guestSignInHref} showLabel={reference.format === "slideshow"} /> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-foreground-strong">Selected</span> : null}</div> : null}
+    {!compact && reference.format === "slideshow" && source ? <div className="mt-2"><ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} guestSignInHref={guestSignInHref} showLabel /></div> : null}
   </article>;
 }
 
-export function ReferenceSourceAction({ source, label, canOpen, overlay = false, showLabel = false }: { source: { url: string; platform: "instagram" | "tiktok"; kind?: "post" | "profile" }; label: string; canOpen: boolean; overlay?: boolean; showLabel?: boolean }) {
+export function ReferenceSourceAction({ source, label, canOpen, overlay = false, showLabel = false, guestSignInHref }: { source: { url: string; platform: "instagram" | "tiktok"; kind?: "post" | "profile" }; label: string; canOpen: boolean; overlay?: boolean; showLabel?: boolean; guestSignInHref?: string }) {
   const subscription = useBillingSubscription({ freshOnMount: true, refreshOnFocus: true });
   const sourceAllowed = canOpen && canOpenReferenceSource(subscription);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const className = overlay ? cn(studio.referenceSourceOverlay, "absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white") : cn("inline-flex shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", showLabel ? "min-h-6 gap-1.5 px-1 text-xs" : "size-6");
   const icon = <SocialPlatformIcon platform={source.platform} className={cn(overlay ? "size-[18px] text-current drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" : "size-3.5 text-current", source.platform === "tiktok" && "fill-current")} />;
   const content = <>{icon}{showLabel ? <span>{source.kind === "profile" ? "Creator profile" : "Original post"}</span> : null}</>;
-  return <>{sourceAllowed ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={referenceSourceLabel(source)} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{content}</a>
+  return <>{guestSignInHref ? <Link href={guestSignInHref} title="Sign in to view reference sources" aria-label={`${label} — Sign in`} data-reference-source-overlay={overlay || undefined} className={className}>{content}</Link> : sourceAllowed ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={referenceSourceLabel(source)} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{content}</a>
     : <button type="button" title={source.kind === "profile" ? "Upgrade to Pro to view the creator profile" : "Upgrade to Pro to view the original post"} aria-label={`${label} — Upgrade to Pro`} data-reference-source-overlay={overlay || undefined} className={className} onClick={() => setUpgradeOpen(true)}>{content}</button>}
     <Dialog open={upgradeOpen && !sourceAllowed} onOpenChange={setUpgradeOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Upgrade to Pro</DialogTitle><DialogDescription>View reference sources on Instagram and TikTok with Pro.</DialogDescription></DialogHeader><Button nativeButton={false} render={<Link href="/pricing" />}>Upgrade to Pro</Button></DialogContent></Dialog>
   </>;
@@ -228,7 +244,8 @@ function EyeIcon({ className }: { className?: string }) {
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {
   const [useOriginal, setUseOriginal] = useState(false);
   const [interested, setInterested] = useState(false);
-  const preview = useCreatorVideoPreview(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : undefined, interested, 250);
+  const { url: previewUrl, fallbackUrl } = referencePlayback(reference);
+  const preview = useCreatorVideoPreview(useOriginal ? fallbackUrl : previewUrl, interested, 250);
   const videoRef = useCoverPlayback(preview.url ?? null, "button");
   const [failed, setFailed] = useState(false);
   const playable = Boolean(reference.videoUrl);
@@ -236,14 +253,14 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   // A native video poster avoids a separate image that browser visual-search
   // overlays can turn into an external action. The button owns all card clicks.
   return <button type="button" aria-label={`Preview ${reference.title}`} title={`Preview ${reference.title}`} onClick={onPreview} onPointerEnter={event => { if (event.pointerType !== "touch" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) setInterested(true); }} onPointerLeave={() => setInterested(false)} onFocus={() => { if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setInterested(true); }} onBlur={() => setInterested(false)} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
-    {playable ? <video ref={videoRef} data-reference-preview-video aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} onPlaying={() => setFailed(false)} onError={() => { if (!useOriginal && reference.previewVideoUrl && reference.previewVideoUrl !== reference.videoUrl) setUseOriginal(true); else setFailed(true); }} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
+    {playable ? <video ref={videoRef} data-reference-preview-video aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} onPlaying={() => setFailed(false)} onError={() => { if (!useOriginal && fallbackUrl && fallbackUrl !== previewUrl) setUseOriginal(true); else setFailed(true); }} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
     {failed || preview.failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : preview.loading ? <span role="status" className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/60 px-2 py-1 text-xs text-white">Loading preview…</span> : null}
     {reference.format === "slideshow" ? <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm"><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</span> : null}
   </button>;
 }
 
-export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, reference, canOpenSource = false }: { initialSlide?: number; onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null; canOpenSource?: boolean }) {
+export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, reference, canOpenSource = false, guestSignInHref }: { initialSlide?: number; onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null; canOpenSource?: boolean; guestSignInHref?: string }) {
   const [activeSlide, setActiveSlide] = useState(() => Math.max(0, Math.min(initialSlide, (reference?.slides.length ?? 1) - 1)));
   const slideshowReference = reference?.format === "slideshow" ? reference : null;
   const activeSlideData = slideshowReference?.slides[activeSlide] ?? null;
@@ -252,12 +269,12 @@ export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, r
   return <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={(isOpen) => { if (!isOpen) setActiveSlide(0); }}>
     <DialogContent className={cn(studio.dialog, "max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[28px] border-border/60 p-0 sm:max-w-[850px]")} overlayClassName={cn(studio.overlay, "bg-overlay/88")}>
       {reference ? <>
-        <DialogHeader className="p-4 pr-12 sm:px-5"><div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle>{slideshowReference ? "Slideshow preview" : "Video preview"}</DialogTitle>{source ? <ReferenceSourceAction source={source} label={`${referenceSourceLabel(source)}: ${reference.title}`} canOpen={canOpenSource} showLabel /> : null}</div><DialogDescription className="sr-only">{slideshowReference ? "Browse the complete slideshow using Previous, Next or the thumbnails." : "Watch the reference using the video controls."}</DialogDescription></DialogHeader>
+        <DialogHeader className="p-4 pr-12 sm:px-5"><div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle>{slideshowReference ? "Slideshow preview" : "Video preview"}</DialogTitle>{source ? <ReferenceSourceAction source={source} label={`${referenceSourceLabel(source)}: ${reference.title}`} canOpen={canOpenSource} guestSignInHref={guestSignInHref} showLabel /> : null}</div><DialogDescription className="sr-only">{slideshowReference ? "Browse the complete slideshow using Previous, Next or the thumbnails." : "Watch the reference using the video controls."}</DialogDescription></DialogHeader>
         <div className="min-h-0 overflow-y-auto bg-card-muted/45 p-4 sm:p-5">
           {slideshowReference && activeSlideData ? <div className="mx-auto max-w-[520px]"><img src={activeSlideData.url} width={activeSlideData.width} height={activeSlideData.height} alt={`${slideshowReference.title}, slide ${activeSlide + 1}`} className="mx-auto h-auto max-h-[62dvh] w-auto max-w-full rounded-2xl object-contain shadow-card" />
             <div className="mt-3 flex items-center justify-between gap-2"><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === 0} onClick={() => setActiveSlide((current) => current - 1)}><ArrowLeft data-icon="inline-start" aria-hidden="true" /> Previous</Button><span aria-live="polite" className="text-[11px] font-medium tabular-nums text-muted">{activeSlide + 1} / {slideshowReference.slides.length}</span><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === slideshowReference.slides.length - 1} onClick={() => setActiveSlide((current) => current + 1)}>Next <ArrowRight data-icon="inline-end" aria-hidden="true" /></Button></div>
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{slideshowReference.slides.map((slide, index) => <button key={slide.id} type="button" onClick={() => setActiveSlide(index)} aria-label={`View slide ${index + 1}`} aria-current={activeSlide === index ? "step" : undefined} className={cn("w-11 shrink-0 overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", activeSlide === index ? "border-white ring-1 ring-white/40" : "border-border")}><img alt="" src={slide.url} width={slide.width} height={slide.height} className="aspect-[4/5] w-full object-contain" /></button>)}</div>
-          </div> : <ReferenceVideoPlayer key={reference.id} title={reference.title} poster={reference.posterUrl} url={reference.previewVideoUrl ?? reference.videoUrl} fallbackUrl={reference.videoUrl} />}
+          </div> : <ReferenceVideoPlayer key={reference.id} title={reference.title} poster={reference.posterUrl} {...referencePlayback(reference)} />}
         </div>
       </> : null}
     </DialogContent>
@@ -274,8 +291,4 @@ export function LoadError({ onRetry }: { onRetry: () => void }) {
 
 export function EmptyReferences({ format, hasFilters, onClear }: { format: RecreateFormat; hasFilters: boolean; onClear: () => void }) {
   return <div className="flex min-h-75 flex-col items-center justify-center rounded-[24px] bg-card-muted/45 px-6 text-center"><Filter className="size-5 text-muted-subtle" aria-hidden="true" /><p className="mt-3 text-sm font-semibold text-foreground-strong">{hasFilters ? <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} match this filter</> : <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} yet</>}</p>{hasFilters ? <Button type="button" variant="outline" className="mt-5" onClick={onClear}>Clear filters</Button> : <p className="mt-2 text-sm leading-6 text-muted">This format will appear here when its references are ready.</p>}</div>;
-}
-
-export function ProReferenceGate() {
-  return <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-card p-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-foreground-strong"><LockKeyhole className="size-3.5" aria-hidden="true" /></span><div><p className="text-sm font-semibold text-foreground-strong">More references are ready to explore</p><p className="text-xs text-muted">Upgrade to open the full Recreate catalogue.</p></div></div><Button size="sm" nativeButton={false} render={<Link href="/pricing" />}>View plans</Button></div>;
 }

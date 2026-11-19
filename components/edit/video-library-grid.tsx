@@ -1,4 +1,7 @@
-import { FolderOpen, Loader2 } from "lucide-react";
+import {
+  FolderOpen,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 
 import { type EditableVideo } from "@/lib/edit/video-library";
 import { VideoCard } from "@/components/edit/video-card";
@@ -38,7 +41,7 @@ function LoadingVideoLibrary() {
     >
       <div>
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-border bg-card text-primary shadow-sm">
-          <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+          <BlocksSpinner className="size-6" aria-hidden="true" />
         </div>
         <h2 className="mt-5 text-lg font-bold text-foreground">
           Loading edit library.

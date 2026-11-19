@@ -8,6 +8,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as scheduleAck from "../lib/explore/schedule-ack.ts";
 import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
@@ -605,6 +606,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: input => { finishingInputs.push(input); return { action: {}, output: finished }; } },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
+    "@/lib/explore/schedule-ack": scheduleAck,
     "./talking-head-pending-composition": { useTalkingHeadPendingComposition: () => ({}) },
     "./use-workflow-background-music": { useWorkflowBackgroundMusic: () => ({ source: null, playback: "repeat", selectionError: null }) },
     "@/lib/explore/format-demo": { trimmedDemoFraming: (framing) => framing },
@@ -725,6 +727,50 @@ test("a corrected request with an uncertain server failure clears old time help 
     assert.equal(mutations.length, 2);
     assert.equal(mutations[1].body, firstPost.body, "Uncertainty can only replay the original corrected confirmation");
     assert.equal(h.render().view.schedule.message, "Post scheduled");
+    h.unmount();
+  }
+});
+
+test("a verified scheduled row whose details differ releases the workflow for a new post instead of a verify loop", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const saved = { version: 1, owner: "owner", kind, input: { caption: "Earlier request", source: { kind: "media_asset", id: output.id }, targets: [{ connectionId: randomUUID(), platform: "instagram" }], scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
+    const h = schedulingHarness({ kind, saved, transport: async (url, init) => {
+      if (init?.method === "POST") return null;
+      if (url === "/api/schedules") return Response.json({ ok: true, schedules: [{ id: randomUUID(), mediaAssetId: saved.input.source.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", scheduledFor: "2026-10-13T22:40:00.000Z", targets: [{ socialConnectionId: randomUUID(), platform: "instagram" }] }] });
+      return null;
+    } });
+    h.render(); await tick();
+    let screen = h.render();
+    assert.match(screen.view.schedule.message, /Your post was already scheduled/, "Hydration releases a mismatched scheduled row into an acknowledged receipt");
+    assert.match(screen.view.schedule.message, /changed: posting accounts/);
+    assert.equal(screen.view.schedule.error, null);
+    assert.equal(h.store.get(h.storageKey), undefined, "The stuck receipt is released for a fresh intent");
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+    h.render().view.schedule.onAction(); await tick();
+    const mutations = h.calls.filter(call => call.method === "POST");
+    assert.equal(mutations.length, 1);
+    assert.notEqual(JSON.parse(mutations[0].body).idempotencyKey, saved.input.idempotencyKey, "The released composer starts a genuinely new request");
+    assert.equal(h.render().view.schedule.message, "Post scheduled");
+    h.unmount();
+  }
+});
+
+test("a verified not-yet-scheduled mismatch keeps the original finish-then-POST receipt with the named detail", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const saved = { version: 1, owner: "owner", kind, input: { caption: "Earlier request", source: { kind: "media_asset", id: output.id }, targets: [{ connectionId: randomUUID(), platform: "instagram" }], scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
+    const h = schedulingHarness({ kind, saved, transport: async (url, init) => {
+      if (init?.method === "POST") return Response.json({ ok: false, message: "Could not create this schedule right now." }, { status: 500 });
+      if (url === "/api/schedules") return Response.json({ ok: true, schedules: [{ id: randomUUID(), mediaAssetId: saved.input.source.id, idempotencyKey: saved.input.idempotencyKey, status: "draft", scheduledFor: "2026-10-13T22:40:00.000Z", targets: [{ socialConnectionId: randomUUID(), platform: "instagram" }] }] });
+      return null;
+    } });
+    h.render(); await tick();
+    const screen = h.render();
+    assert.match(screen.view.schedule.error, /changed: posting accounts/, "The mismatch names the differing field");
+    assert.match(screen.view.schedule.error, /Your request is kept/);
+    assert.doesNotMatch(screen.view.schedule.error, /Could not schedule your post/);
+    const stored = JSON.parse(h.store.get(h.storageKey));
+    assert.equal(stored.input.idempotencyKey, saved.input.idempotencyKey, "An unfinished mismatch never releases the durable request");
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
     h.unmount();
   }
 });

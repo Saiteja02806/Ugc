@@ -1,6 +1,23 @@
 .gallery { display: flex; min-width: 0; flex-direction: column; gap: 20px; padding: 20px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 20px 16px; }
 .card { position: relative; min-width: 0; }
+.guestWorkspace { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; gap: 12px; padding: 16px; }
+@media (min-width: 1024px) {
+  /* Classic app frame: the page never scrolls; the reference pane and the sidebar content scroll inside. */
+  .guestWorkspace { grid-template-columns: 378px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 16px; row-gap: 12px; height: 100dvh; padding: 0 16px 16px; overflow: hidden; align-items: stretch; }
+  .guestWorkspace > aside { align-self: stretch; min-height: 0; }
+  .guestPanel { flex: 1; min-height: 0; overflow: hidden; }
+  .gallery { min-height: 0; height: 100%; overflow-y: auto; }
+}
+.guestWorkspace > header { grid-column: 1 / -1; }
+
+/* The gate shows the next reference posters blurred, mirroring the gallery grid above, with the Sign in action over them. */
+.guestGate { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 20px 16px; margin-top: 20px; }
+@media (max-width: 480px) { .guestGate { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.guestGateCard { position: relative; min-width: 0; aspect-ratio: 9 / 16; overflow: hidden; border-radius: 12px; pointer-events: none; }
+.guestGateCard img { width: 100%; height: 100%; object-fit: cover; filter: blur(12px); opacity: .6; transform: scale(1.15); }
+.guestGateOverlay { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(to bottom, color-mix(in srgb, var(--background) 78%, transparent), color-mix(in srgb, var(--background) 30%, transparent) 55%, color-mix(in srgb, var(--background) 12%, transparent)); }
+.guestGateOverlay p { margin: 0; color: var(--foreground); font-size: 14px; }
 .tabs { display: flex; flex: none; align-items: center; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--border); }
 .tabs[hidden] { display: none; }
 .tabs button { padding-block: 18px; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 500; }
@@ -32,3 +49,19 @@
 }
 .overviewHeader { display: flex; justify-content: flex-end; padding: 16px 20px 0; }
 @media (max-width: 480px) { .gallery { padding: 14px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+
+.guestPanel { display: flex; min-width: 0; flex-direction: column; }
+.guestPanel[hidden] { display: none; }
+/* Guest reference tiles reuse the real sidebar's .referenceButton look. */
+.guestTile { min-height: 104px; gap: 10px; }
+.guestTile svg { width: 22px; height: 22px; }
+.guestTile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.guestFields, .guestField { display: grid; min-width: 0; gap: 16px; }
+.guestField { gap: 6px; font-size: 14px; font-weight: 500; }
+.guestField select { padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.guestActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.guestAction { display: inline-flex; min-width: 0; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-size: 13px; }
+.guestPanel .guestAction:has(svg) { flex-direction: column; }
+.guestAction svg { width: 18px; height: 18px; }
+.guestPrimary { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; padding: 0 16px; background: var(--foreground-strong); color: var(--background); font-size: 14px; font-weight: 600; }
+.guestFooterAction { display: flex; width: 100%; align-items: center; justify-content: center; }

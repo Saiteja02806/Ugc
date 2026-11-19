@@ -11,19 +11,33 @@ const element = (type, props = {}) => typeof type === "function" ? type(props) :
 const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" ? [node, ...nodes(node.props?.children)] : [];
 const text = node => Array.isArray(node) ? node.map(text).join(" ") : node && typeof node === "object" ? text(node.props?.children) : !node || typeof node === "boolean" ? "" : String(node);
 
-test("five-second voice context keeps longer recordings whole and rejects shorter samples", async () => {
-  for (const duration of [1.996916, 4, 4.999, 5, 10, 30, 30.1]) {
+test("sample voices use the provider's two-second floor while saved recordings keep the five-second minimum", async () => {
+  for (const duration of [1.996916, 2, 4, 5, 10, 30, 30.1]) {
     const h = harness({ minDuration: 5, metadataDuration: duration });
     nodes(h.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
     await new Promise(setImmediate);
-    const accepted = duration >= 5 && duration <= 30;
+    const accepted = duration >= 2 && duration <= 30;
     assert.equal(h.choices.length, accepted ? 1 : 0);
     if (accepted) {
-      assert.equal(h.audio.asset.duration, duration, "do not trim longer samples to five seconds");
+      assert.equal(h.choices[0].options.minDuration, 2, "premade sample voices are exempt from the five-second upload minimum");
+      assert.equal(h.audio.asset.duration, duration, "do not trim longer samples to the minimum");
       assert.deepEqual([...new Uint8Array(await h.audio.asset.file.arrayBuffer())], [1, 2, 3]);
     } else {
       assert.equal(h.audio.asset.url, "blob:previous");
-      assert.match(h.audio.error, duration < 5 ? /at least 5 seconds/ : /up to 30 seconds/);
+      assert.match(h.audio.error, duration < 2 ? /at least 2 seconds/ : /up to 30 seconds/);
+    }
+  }
+  for (const duration of [4, 5]) {
+    const recording = { id: `recording-${duration}`, name: `${duration} second recording`, duration, purpose: "exact", status: "ready", testOnly: false };
+    const h = harness({ minDuration: 5, metadataDuration: duration, assets: [recording] });
+    nodes(h.render()).find(node => node.props["aria-label"] === `Choose saved audio ${duration} second recording`).props.onClick();
+    await new Promise(setImmediate);
+    if (duration >= 5) {
+      assert.equal(h.choices.length, 1);
+      assert.equal(h.choices[0].options.minDuration, 5, "saved recordings keep the product minimum");
+    } else {
+      assert.equal(h.choices.length, 0);
+      assert.match(h.audio.error, /at least 5 seconds/);
     }
   }
 });
@@ -60,6 +74,7 @@ function harness({ paid = true, accountAvailable = true, fetching = false, owner
     "react/jsx-runtime": { jsx: element, jsxs: element },
     "@tanstack/react-query": { useQuery: () => ({ data: { voices: [voice], assets, account: accountAvailable ? { paid } : null }, isSuccess: true, isFetching: fetching, refetch: () => calls.push({refresh:"library"}) }) },
     "lucide-react": Object.fromEntries(["AudioLines", "Bookmark", "Check", "LoaderCircle", "Pause", "Play", "RefreshCw"].map(name => [name,name])),
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "next/link": { default: "a" },
     "@/contexts/auth-context": { useAuth: () => ({ user: user ? {uid:user} : null, loading:false }) },
     "@/lib/audio/client": {
@@ -232,9 +247,13 @@ test("closing an interrupted saved selection keeps a visible error; choosing a n
   assert.equal(actual.audio.error, null);
 });
 
-test("preview-only voices and another owner's bookmarks cannot be attached", () => {
-  const preview = harness({paid:false});
-  assert.equal(nodes(preview.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.disabled, true);
+test("sample attachment no longer requires a paid voice account, and another owner's bookmarks cannot be attached", () => {
+  for (const paid of [true, false]) {
+    const actual = harness({ paid });
+    const button = nodes(actual.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`);
+    assert.equal(button.props.disabled, false);
+    assert.equal(button.props.title, "Attach this voice sample as a reference");
+  }
   for (const user of [null, "other-owner"]) {
     const actual = harness({user});
     assert.equal(nodes(actual.render()).filter(node => node.type === "button").length, 0);
@@ -258,23 +277,15 @@ test("remote soundtrack selection stays pending through download and hands off t
   assert.equal(actual.audio.loading, false);
 });
 
-test("sample selection explains provider eligibility separately from account lookup failure and can retry", () => {
+test("no heavy availability banner remains, unpaid accounts attach samples, and saved-choice errors stay retryable", async () => {
   for (const accountAvailable of [true, false]) {
     const h = harness({paid:false, accountAvailable});
     const tree = h.render();
-    const status = nodes(tree).find(node => node.props.role === 'status');
-    assert.match(text(status), accountAvailable ? /preview-only on the connected voice service/ : /account details could not be loaded/);
-    const retry = nodes(status).find(node => node.type === 'button');
-    assert.equal(retry.props.disabled, false);
-    retry.props.onClick();
-    assert.deepEqual(h.calls.map(call => call.refresh), ['bookmarks','selection','library']);
-    assert.equal(h.choices.length, 0);
-    assert.equal(h.audio.asset.url, 'blob:previous');
+    assert.equal(nodes(tree).some(node => node.props.className === 'availability'), false, "the long preview-only banner is gone");
+    const button = nodes(tree).find(node => node.props['aria-label'] === `Use ${voice.name} sample as voice reference`);
+    assert.equal(button.props.disabled, false);
+    button.props.onClick();
+    await new Promise(setImmediate);
+    assert.equal(h.choices.length, 1, "an unpaid or unconnected account still attaches the public sample");
   }
-  const eligible = harness();
-  assert.equal(nodes(eligible.render()).some(node => node.props.className === 'availability'), false);
-  assert.equal(nodes(eligible.render()).find(node => node.props['aria-label'] === `Use ${voice.name} sample as voice reference`).props.disabled, false);
-  const refreshing = harness({accountAvailable:false, fetching:true});
-  const retry = nodes(refreshing.render()).find(node => node.type === 'button' && text(node).includes('Checking voice service'));
-  assert.equal(retry.props.disabled, true);
 });

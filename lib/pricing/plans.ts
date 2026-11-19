@@ -1,4 +1,3 @@
-import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "../billing/free-trial-policy.ts";
 import { getVideoModelCreditsPerSecond } from "../billing/generation-credit-policy.ts";
 import { PAID_PLAN_MONTHLY_CREDITS } from "../billing/policy.ts";
 
@@ -70,7 +69,7 @@ export function parseBillingInterval(value: string | string[] | null | undefined
 }
 export function getPlanPricing(plan: PricingPlan, interval: BillingInterval): PlanPricing {
   if (plan.prices.monthly === 0) return {
-    billedAmount: 0, billingSummary: `${FREE_TRIAL_CONTENT_DAYS}-day free trial`, monthlyEquivalent: 0, savings: 0,
+    billedAmount: 0, billingSummary: "Free", monthlyEquivalent: 0, savings: 0,
   };
   if (interval === "monthly") return {
     billedAmount: plan.prices.monthly,
@@ -86,24 +85,6 @@ export function getPlanPricing(plan: PricingPlan, interval: BillingInterval): Pl
 }
 
 export const pricingPlans: PricingPlan[] = [
-  {
-    slug: "free", name: "Free trial", bestFor: "Try your content workflow",
-    description: "See what Vidmake can create for your business before choosing a plan.",
-    prices: { monthly: 0, yearly: 0 }, sharedMonthlyCredits: 0, oneTimeCredits: 0,
-    dailyContentPieces: `${FREE_TRIAL_DAILY_CONTENT_PIECES}/day for ${FREE_TRIAL_CONTENT_DAYS} days`,
-    instagramAccounts: 1,
-    capacityLabel: "No AI credits",
-    features: [
-      `Access to daily content workflows for ${FREE_TRIAL_CONTENT_DAYS} days`,
-      `${FREE_TRIAL_DAILY_CONTENT_PIECES} daily concepts for ${FREE_TRIAL_CONTENT_DAYS} days`,
-      "Daily slideshows; hooks & text-led videos in Explore",
-      "Review, edit & save your content",
-      "Download finished carousels and videos",
-      "Connect Instagram, TikTok & YouTube",
-      "Video editing and export",
-      "No credit card required",
-    ],
-  },
   {
     slug: "starter", name: "Starter", bestFor: "For your everyday content",
     description: "Daily content and custom AI generation for your growing brand.",

@@ -578,6 +578,9 @@ export async function reserveBillingCredits(params: {
   amount: number;
   freeVideoPassContext?: FreeVideoPassReservationContext;
   idempotencyKey: string;
+  /** Shown instead of the generic credits message when the account has no
+   * active plan and the workflow is excluded from the free video pass. */
+  insufficientPlanMessage?: string;
   jobType: string;
   userId: string;
 }) {
@@ -607,7 +610,10 @@ export async function reserveBillingCredits(params: {
         throw error;
       }
     }
-    throw new BillingAccessError("You do not have enough AI credits for this generation.");
+    throw new BillingAccessError(
+      params.insufficientPlanMessage ??
+        "You do not have enough AI credits for this generation.",
+    );
   }
   const { data, error } = await getClient().rpc("reserve_billing_credits", {
     p_amount: params.amount,

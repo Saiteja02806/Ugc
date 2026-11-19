@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "What is the cost of AI UGC for startups?",
-    answer: "Vidmake provides a seven-day free trial with no credit card required, followed by self-serve plans starting at $29 and $49 per month for monthly generation credits.",
+    answer: "Vidmake's self-serve plans start at $29 and $49 per month for monthly generation credits.",
   },
 ] as const;
 
@@ -197,7 +197,7 @@ export default function AiUgcForSaasStartupsPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with a 7-day trial. See full details on <ArticleLink href="/pricing">pricing</ArticleLink>.
+                  Choose a plan. See full details on <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
             },
@@ -214,7 +214,7 @@ export default function AiUgcForSaasStartupsPage() {
           { href: "/guides/saas-marketing", title: "SaaS Marketing Guide", description: "Build a repeatable acquisition system for your product." },
           { href: "/guides/product-demo-to-short-video", title: "Product Demo to Short Video", description: "Turn software screen recordings into vertical social clips." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for software demos and creator videos." },
-          { href: "/pricing", title: "Pricing & Free Trial", description: "Start your 7-day free trial with monthly credit plans." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Choose a monthly credit plan." },
         ]}
       />
     </VideoMarketingPage>

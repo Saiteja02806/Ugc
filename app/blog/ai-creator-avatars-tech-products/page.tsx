@@ -176,7 +176,7 @@ export default function AiCreatorAvatarsTechProductsPage() {
           { href: "/blog/talking-head-hook-generator-saas", title: "Talking Head Hook Generator for SaaS", description: "Stop the scroll in under 3 seconds." },
           { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to Choose a UGC Video Maker", description: "A 10-point checklist for output, avatar quality, and voice." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Generate creator videos directly from Claude and Codex." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating tech creator videos on the 7-day trial." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating tech creator videos on a paid plan." },
         ]}
       />
     </VideoMarketingPage>

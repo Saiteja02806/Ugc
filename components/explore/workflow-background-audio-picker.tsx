@@ -3,13 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import secondary from "@/components/explore/workflow-secondary-action.module.css";
 import { useQuery } from "@tanstack/react-query";
-import { LoaderCircle, Pause, Play } from "lucide-react";
+import {
+  Music2,
+  Pause,
+  Play,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { readBackgroundAudioFile } from "@/lib/explore/background-audio-client";
-import type { BackgroundAudioLibrary, BackgroundAudioTrack } from "@/lib/explore/background-audio-types";
+import type { BackgroundAudioLibrary, BackgroundAudioSource, BackgroundAudioTrack } from "@/lib/explore/background-audio-types";
 import type { WorkflowAttachment } from "./hook-workflow-media-controls";
 import quietScrollbar from "@/components/ui/quiet-scrollbar.module.css";
 
@@ -19,13 +25,25 @@ type Props = {
   onChoose: (file: File, playback: "once" | "repeat") => Promise<boolean>;
   disabled?: boolean;
   localPreview?: boolean;
+  /** When set, the library lists only these reviewed catalogues; unset keeps the combined list. */
+  sources?: readonly BackgroundAudioSource[];
 };
 
-export function WorkflowBackgroundAudioPicker(props: Props) {
-  return <BackgroundAudioLibrarySession key={`${props.ownerId}:${props.localPreview === true}`} {...props} />;
+/** The curated catalogue Hook Video and Talking Head share. */
+export const HOOK_BACKGROUND_AUDIO_SOURCES: readonly BackgroundAudioSource[] = ["hook"];
+
+/** Deterministic cover tint per track so the list reads as cards, not text rows. */
+function coverGradient(id: string) {
+  let hash = 7;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  return `linear-gradient(135deg, hsl(${hash} 58% 44%), hsl(${(hash + 42) % 360} 58% 26%))`;
 }
 
-function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled = false, localPreview = false }: Props) {
+export function WorkflowBackgroundAudioPicker(props: Props) {
+  return <BackgroundAudioLibrarySession key={`${props.ownerId}:${props.localPreview === true}:${props.sources?.join(",") ?? "all"}`} {...props} />;
+}
+
+function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled = false, localPreview = false, sources }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
@@ -116,8 +134,10 @@ function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled
     }
   }
   const tracks = library.data?.tracks ?? [];
+  const allowed = sources ? new Set(sources) : null;
+  const available = allowed ? tracks.filter(track => allowed.has(track.source)) : tracks;
   const filter = search.trim().toLowerCase();
-  const visible = tracks.filter(track => [track.name, track.source, track.energy, ...track.moods].join(" ").toLowerCase().includes(filter));
+  const visible = available.filter(track => [track.name, track.source, track.energy, ...track.moods].join(" ").toLowerCase().includes(filter));
   const busy = disabled || !!selecting || attachment.loading;
   const loadError = library.error instanceof Error ? library.error.message : null;
   return <Popover open={open} onOpenChange={next => { if (!next) stopPreview(); else setError(null); setOpen(next); }}>
@@ -131,15 +151,18 @@ function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled
           {library.data ? <>
             <input type="search" aria-label="Search background audio" placeholder="Search tracks, moods or energy…" value={search} onChange={event => setSearch(event.target.value)} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:border-white" />
             <p role="status" className="text-xs text-muted">{visible.length} {visible.length === 1 ? "track" : "tracks"}</p>
-            {visible.length ? <ul aria-label="Background music tracks" className={`${quietScrollbar.surface} max-h-72 space-y-1 overflow-auto`}>
-              {visible.map(track => { const key = `${track.source}:${track.id}`; return <li key={key} className="flex items-center gap-2 rounded-lg p-1">
-                <Button type="button" variant="ghost" size="icon-sm" disabled={busy} aria-label={`${playing === key || previewing === key ? "Stop" : "Preview"} ${track.name}`} onClick={() => void preview(track)}>
-                  {previewing === key ? <LoaderCircle className="size-4 animate-spin" /> : playing === key ? <Pause className="size-4" /> : <Play className="size-4" />}
+            {visible.length ? <ul aria-label="Background music tracks" className={`${quietScrollbar.surface} max-h-80 space-y-2 overflow-auto pr-0.5`}>
+              {visible.map(track => { const key = `${track.source}:${track.id}`; const active = playing === key || previewing === key; return <li key={key} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-2.5 transition-colors hover:bg-card">
+                <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg" style={{ background: coverGradient(track.id) }}>
+                  <Music2 className="size-4 text-white/90" />
+                </span>
+                <Button type="button" variant="ghost" size="icon-sm" disabled={busy} className="shrink-0" aria-label={`${active ? "Stop" : "Preview"} ${track.name}`} onClick={() => void preview(track)}>
+                  {previewing === key ? <BlocksSpinner className="size-4" /> : active ? <Pause className="size-4" /> : <Play className="size-4" />}
                 </Button>
-                <div className="min-w-0 flex-1"><p className="text-xs font-medium">{track.name}</p><p className="text-[11px] leading-4 text-muted">{Math.round(track.durationSeconds)}s · {track.moods.join(", ")} · {track.energy} energy{track.loopable ? " · Loopable" : ""}</p></div>
-                <Button type="button" variant="outline" size="sm" disabled={busy} aria-label={`Use ${track.name}`} onClick={() => void select(track)}>{selecting === key ? <LoaderCircle className="size-3.5 animate-spin" /> : null}Use</Button>
+                <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium" title={track.name}>{track.name}</p><div className="mt-1 flex flex-wrap items-center gap-1"><span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] font-medium text-muted">{Math.round(track.durationSeconds)}s</span>{track.moods.map(mood => <span key={mood} className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] text-muted">{mood}</span>)}<span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] text-muted">{track.energy} energy</span>{track.loopable ? <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] text-muted">Loopable</span> : null}</div></div>
+                <Button type="button" variant="outline" size="sm" disabled={busy} className="shrink-0" aria-label={`Use ${track.name}`} onClick={() => void select(track)}>{selecting === key ? <BlocksSpinner className="size-3.5" /> : null}Use</Button>
               </li>; })}
-            </ul> : <p className="text-xs leading-5 text-muted">{tracks.length ? "No tracks match your search." : "No background tracks are available right now. Refresh the library to try again."}</p>}
+            </ul> : <p className="text-xs leading-5 text-muted">{available.length ? "No tracks match your search." : "No background tracks are available right now. Refresh the library to try again."}</p>}
           </> : null}
           {loadError ? <p role="alert" className="text-xs leading-5 text-destructive">{loadError}</p> : null}
           {error || attachment.error ? <p role="alert" className="text-xs leading-5 text-destructive">{error ?? attachment.error}</p> : null}

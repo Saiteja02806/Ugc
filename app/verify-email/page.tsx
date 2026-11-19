@@ -2,11 +2,12 @@
 
 import {
   CheckCircle2,
-  LoaderCircle,
   MailCheck,
   RefreshCw,
   Send,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -171,8 +172,8 @@ function VerifyEmailContent() {
               })}
             >
               {isRefreshing ? (
-                <LoaderCircle
-                  className="size-4 animate-spin"
+                <BlocksSpinner
+                  className="size-4"
                   aria-hidden="true"
                 />
               ) : (
@@ -191,10 +192,7 @@ function VerifyEmailContent() {
               })}
             >
               {isResending ? (
-                <RefreshCw
-                  className="size-4 animate-spin"
-                  aria-hidden="true"
-                />
+                <BlocksSpinner className="size-4" />
               ) : (
                 <Send className="size-4" aria-hidden="true" />
               )}

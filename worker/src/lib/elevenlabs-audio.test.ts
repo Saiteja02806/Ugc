@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { audioCostMicros, isVoiceEligible, parseAudioSpeech, resolveAudioAccount } from "./audio-contract.ts";
+import { audioCostMicros, isVoiceEligible, parseAudioSpeech, providerCanGenerate, resolveAudioAccount } from "./audio-contract.ts";
 import { ElevenLabsAudio, ElevenLabsError, getElevenLabsApiKey, toAudioVoice } from "./elevenlabs-audio.ts";
 
 test("the canonical uppercase key takes precedence over the existing lowercase alias", () => {
@@ -25,6 +25,11 @@ test("Free remains noncommercial and cloning stays locked even with a stale capa
   assert.equal(resolveAudioAccount({ tier: "free", status: "active", can_use_instant_voice_cloning: true }).cloning, false);
   assert.equal(resolveAudioAccount({ tier: "starter", status: "inactive", can_use_instant_voice_cloning: true }).paid, false);
   assert.equal(resolveAudioAccount({ tier: "starter", status: "active", can_use_instant_voice_cloning: true }).cloning, true);
+  assert.equal(providerCanGenerate(resolveAudioAccount({ tier: "free", status: "active" })), true);
+  assert.equal(providerCanGenerate(resolveAudioAccount({ tier: "free", status: "past_due" })), false);
+  assert.equal(providerCanGenerate(resolveAudioAccount({ tier: "starter", status: "past_due" })), false);
+  assert.equal(providerCanGenerate(resolveAudioAccount({ tier: "starter", status: "active" })), true);
+  assert.equal(providerCanGenerate(null), false);
   for (const value of [NaN, 0, 2]) assert.throws(() => parseAudioSpeech({ script: "hello", voiceId: "voice", modelId: "eleven_flash_v2_5", speed: value }));
   assert.throws(() => parseAudioSpeech({ script: "a".repeat(1501), voiceId: "voice", modelId: "eleven_flash_v2_5" }));
 });

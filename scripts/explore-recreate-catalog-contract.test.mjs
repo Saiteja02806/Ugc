@@ -304,7 +304,7 @@ test("the slideshow-first gallery applies shared stable ordering after filters w
   assert.match(workspace, /useState<RecreateFormat>\("slideshow"\)/);
   assert.match(workspace, /initialGenerationMode = "images"/);
   assert.match(workspace, /useState<"images" \| "videos">\(initialGenerationMode\)/);
-  assert.match(workspace, /filterReferences\(references, format, selectedCategories\)/);
+  assert.match(workspace, /filterReferences\(gallery, format, selectedCategories\)/);
   assert.match(workspace, /orderReferenceGallery\(matching, format\)/);
   assert.match(workspace, /key=\{reference\.id\}/);
   assert.doesNotMatch(workspace, /Math\.random\(\)|\.sort\(\(\) =>/);

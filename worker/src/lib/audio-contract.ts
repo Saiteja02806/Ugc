@@ -7,7 +7,7 @@ export const AUDIO_MODEL_IDS = ["eleven_flash_v2_5", "eleven_multilingual_v2"] a
 export type AudioRequestKind = "speech" | "clone" | "upload";
 export type AudioVoice = { id: string; name: string; description: string; previewUrl: string | null; labels: Record<string, string>; category: string; private: boolean; available: boolean; profileId?: string };
 export type AudioModel = { id: string; name: string; languages: string[] };
-export type AudioAccount = { tier: string; paid: boolean; remaining: number; resetAt: number | null; cloning: boolean; voiceSlotsUsed: number; voiceLimit: number; operationsUsed: number; operationsLimit: number | null };
+export type AudioAccount = { tier: string; paid: boolean; subscriptionActive: boolean; remaining: number; resetAt: number | null; cloning: boolean; voiceSlotsUsed: number; voiceLimit: number; operationsUsed: number; operationsLimit: number | null };
 export type AudioAsset = { id: string; name: string; purpose: "generated" | "exact" | "reference"; status: string; duration: number | null; createdAt: string; generationId: string | null; testOnly: boolean };
 export type AudioRequest = { id: string; user_id: string; job_id: string; kind: AudioRequestKind; request_key: string; fingerprint: string; status: string; script: string; voice_id: string | null; model_id: string | null; speed: number; name: string; source_asset_id: string | null; output_asset_id: string | null; voice_profile_id: string | null; provider_request_id: string | null; provider_started_at: string | null; chunk_count: number; byte_count: number; error_message: string | null; test_only: boolean; quota_period: string; characters: number; cost_micros: number; credits: number; usage_released: boolean; created_at: string };
 
@@ -30,8 +30,13 @@ export function isAudioUuid(value: unknown): value is string { return typeof val
 export function parseAudioRequestKey(value: unknown) { if (!isAudioUuid(value)) throw new AudioError("A valid generation request ID is required."); return value; }
 export function resolveAudioAccount(value: Record<string, unknown>): AudioAccount {
   const tier = typeof value.tier === "string" ? value.tier : "free";
-  const paid = tier !== "free" && value.status === "active";
-  return { tier, paid, remaining: Math.max(0, Number(value.character_limit ?? 0) - Number(value.character_count ?? 0)), resetAt: typeof value.next_character_count_reset_unix === "number" ? value.next_character_count_reset_unix : null, cloning: paid && value.can_use_instant_voice_cloning === true, voiceSlotsUsed: Number(value.voice_slots_used ?? 0), voiceLimit: Number(value.voice_limit ?? 0), operationsUsed: Number(value.voice_add_edit_counter ?? 0), operationsLimit: typeof value.max_voice_add_edits === "number" ? value.max_voice_add_edits : null };
+  const subscriptionActive = value.status === "active";
+  const paid = tier !== "free" && subscriptionActive;
+  return { tier, paid, subscriptionActive, remaining: Math.max(0, Number(value.character_limit ?? 0) - Number(value.character_count ?? 0)), resetAt: typeof value.next_character_count_reset_unix === "number" ? value.next_character_count_reset_unix : null, cloning: paid && value.can_use_instant_voice_cloning === true, voiceSlotsUsed: Number(value.voice_slots_used ?? 0), voiceLimit: Number(value.voice_limit ?? 0), operationsUsed: Number(value.voice_add_edit_counter ?? 0), operationsLimit: typeof value.max_voice_add_edits === "number" ? value.max_voice_add_edits : null };
+}
+/** Active Free accounts generate noncommercial tests. A past-due paid account does not. */
+export function providerCanGenerate(account: AudioAccount | null) {
+  return Boolean(account && (account.paid || (account.tier === "free" && account.subscriptionActive)));
 }
 export function isVoiceEligible(voice: Record<string, unknown>, account: AudioAccount, now = Date.now()) {
   const sharing = voice.sharing as Record<string, unknown> | null;

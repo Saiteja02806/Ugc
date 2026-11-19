@@ -1,6 +1,9 @@
 "use client";
 
-import { Download, Loader2 } from "lucide-react";
+import {
+  Download,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { requestImageDownload, startMediaDownload } from "@/lib/media/video-download-client";
@@ -32,7 +35,7 @@ export function ImageDownloadButton({ assetId, userId, name, className, label }:
   }
   return <div className="min-w-0">
     <button type="button" className={className} disabled={busy || !userId} aria-label={`Download ${name}`} title="Download image" aria-busy={busy} onClick={() => void download()}>
-      {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+      {busy ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
       {label ? <span>{busy ? "Downloading…" : label}</span> : null}
     </button>
     {error ? <p role="alert" className="p-2 text-xs text-destructive">{error}</p> : null}

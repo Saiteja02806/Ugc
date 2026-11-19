@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import test from 'node:test';
+import {getHookReferenceReleaseItems} from '../worker/src/lib/explore-hook-reference-release.ts';
+import {getRecreateReference} from '../lib/explore/recreate-catalog.ts';import {getReferenceVideoPrompt} from '../lib/explore/reference-video-prompts.ts';
+import {createHookKeyframeDraft,updateHookKeyframeDraft} from '../lib/explore/hook-keyframe-draft.ts';import {getHookKeyframePromptPreview} from '../lib/explore/hook-keyframe-prompt-preview.ts';
+process.env.GCP_STORAGE_BUCKET??='ugcsaas-media';process.env.GCP_STORAGE_PUBLIC_BASE_URL??='https://storage.googleapis.com/ugcsaas-media';
+const checks={61:['raised gaze gives way to closed eyelids','eyes remain closed beneath the hand','mouth stays open'],72:['tongue remains visible beside them','eyes stay lowered toward the hand beneath lowered upper lids'],77:['upward gaze gives way to closed eyelids','eyes remain closed','pink phone stays upright'],94:['Near the end, lift the gaze upward toward screen-left again','lips stay closed with the corners drawn slightly down','lift the gaze upward toward screen-left again and hold with open lids']};
+for(const [number,phrases] of Object.entries(checks))test(`Hook ${number}: ending reaches source-video and starting-frame Recreate`,()=>{
+ const r=getHookReferenceReleaseItems().find(r=>r.title===`Hook ${number}`);assert.ok(r);const card=getRecreateReference(r.id);assert.ok(card);const prompts=[getReferenceVideoPrompt(r.id,card.videoUrl)];
+ for(const duration of [r.durationSeconds,undefined]){const draft=updateHookKeyframeDraft(createHookKeyframeDraft({ownerId:'owner',draftId:'00000000-0000-4000-8000-000000000061',referenceId:r.id,sourceSha256:r.videoSha256}),{sourceFrame:{index:0,timeSeconds:0,width:r.width,height:r.height,sha256:'a'.repeat(64)},generateAudio:false});const p=getHookKeyframePromptPreview(draft,'hook',undefined,undefined,undefined,duration);assert.equal(p.animationError,null);prompts.push(p.animationPrompt);}
+ for(const prompt of prompts){assert.ok(prompt);for(const phrase of phrases)assert.ok(prompt.includes(phrase),`Hook ${number} lost ${phrase}`);assert.doesNotMatch(prompt,/The eyes stay raised under the hand/);}
+});

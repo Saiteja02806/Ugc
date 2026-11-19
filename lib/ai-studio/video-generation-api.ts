@@ -31,6 +31,7 @@ import { getGenerationReferenceSoundtrack } from "@/worker/src/lib/explore-refer
 import { personReferenceRoles } from "@/lib/explore/person-reference";
 import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
 import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
+import { REFERENCE_PERFORMANCE_INTRO } from "@/lib/explore/reference-video-prompts";
 import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
 import { UPLOADED_STARTING_FRAME_PROJECT, uploadedStartingFrameRatio } from "@/lib/explore/uploaded-starting-frame";
 import { createHookSourceTimeline } from "@/worker/src/lib/hook-source-timeline";
@@ -443,7 +444,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const generateAudio = soundWorkflow ? body?.generateAudio === true : undefined;
   const firstFrame = startingFrame ?? uploadedFrame;
   const inputInstructions = firstFrame ? { intent: frameVoiceReference ? "image_voice_reference" : "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
-    imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
+    imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode,
+    compact: body?.exploreFormat === "hook" && useGalleryVideoReference });
   let generationPrompt: string;
   let hookSourceTimeline;
   const maxDurationSeconds = firstFrame ? hookStartingFrameVideoDurations(model).at(-1) : undefined;
@@ -461,7 +463,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       ...(frameVoiceReference ? { voiceReference: true, voiceIdentityPhotoCount: referenceImageUrls.length } : {}),
       ...(personPhotos && referenceImageUrls.length ? { identityPhotoCount: referenceImageUrls.length } : {}),
       ...(startingFrame?.receipt.version === 5 ? { removePhysicalText: true } : {}), ...(hookSourceTimeline ? { actionDurationSeconds: hookSourceTimeline.actionDurationSeconds } : {}) })
-      : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
+      : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${body?.exploreFormat === "hook" && useGalleryVideoReference
+        ? prompt.replace(`${REFERENCE_PERFORMANCE_INTRO}\n\n`, "") : prompt}` : prompt;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
   }
@@ -511,7 +514,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Use one audio reference in Vidmake.", ok: false }, { status: 400 });
   }
   const startingFramePhotoLimit = usesStartingFrame ? hookStartingFrameFaceReferenceLimit(body.model, body.startingFrameMode) : null;
-  const maxReferences = startingFramePhotoLimit ?? (directIdentityFrame ? 5 : referencePolicy.maxFiles);
+  const maxReferences = startingFramePhotoLimit === null ? (directIdentityFrame ? 5 : referencePolicy.maxFiles) : startingFramePhotoLimit + (frameVoiceReference ? 1 : 0);
   const maxImages = startingFramePhotoLimit ?? (directIdentityFrame ? 5 : referencePolicy.maxImages);
   if (referenceImageUrls.length > maxImages) {
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${maxImages} reference images in Vidmake. Remove an image or choose another model.`, ok: false }, { status: 400 });
@@ -816,6 +819,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           : null;
       await reserveBillingCredits({
         amount: getGenerationCreditCost("video", durationSeconds, model),
+        // The free video pass excludes Talking Head (paid-only workflow), so a
+        // pass holder attempting it gets a workflow-specific message instead of
+        // the generic credits error.
+        ...(resolvedWorkflow === "talking_head" || body?.talkingHeadScript !== undefined
+          ? { insufficientPlanMessage: "You are not allowed for talking head. Use another workflow." }
+          : {}),
         ...(eligibleFreeVideoFormat
           ? {
               freeVideoPassContext: {
@@ -824,6 +833,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
                 kind: "generation" as const,
                 model,
                 totalUnits: 1,
+                durationSeconds,
               },
             }
           : {}),

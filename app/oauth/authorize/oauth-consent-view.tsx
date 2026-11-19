@@ -10,7 +10,6 @@ import {
   Images,
   KeyRound,
   Link2,
-  LoaderCircle,
   LockKeyhole,
   type LucideIcon,
   ShieldCheck,
@@ -18,6 +17,7 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import type { ReactNode } from "react";
 
 import { ConsentBrandMark } from "./consent-brand-mark";
@@ -197,7 +197,7 @@ export function OAuthConsentView({
           <footer className={styles.footer}>
             {loading ? (
               <p className={styles.status} role="status" aria-live="polite">
-                <LoaderCircle className={styles.spinner} size={18} aria-hidden="true" />
+                <BlocksSpinner size={18} aria-hidden="true" />
                 Checking your Vidmake sign-in…
               </p>
             ) : !accountLabel ? (
@@ -216,7 +216,7 @@ export function OAuthConsentView({
                   Cancel
                 </button>
                 <button type="button" className={styles.allowButton} disabled={pending} aria-busy={busy} onClick={() => onDecision(true)}>
-                  {busy ? <LoaderCircle className={styles.spinner} size={17} aria-hidden="true" /> : <CircleCheck size={17} aria-hidden="true" />}
+                  {busy ? <BlocksSpinner size={17} aria-hidden="true" /> : <CircleCheck size={17} aria-hidden="true" />}
                   {busy ? "Connecting…" : "Allow access"}
                 </button>
               </div>

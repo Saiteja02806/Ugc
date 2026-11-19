@@ -4,9 +4,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ImageIcon,
-  Loader2,
   Sparkles,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/button";
@@ -233,7 +233,7 @@ export function ImageGenerationTester() {
         >
           {status === "loading" ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <BlocksSpinner className="mr-2 size-4" />
               Generating
             </>
           ) : (

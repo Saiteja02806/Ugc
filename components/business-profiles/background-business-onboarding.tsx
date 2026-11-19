@@ -10,9 +10,9 @@ import {
   CheckCircle2,
   Clock3,
   Link2,
-  LoaderCircle,
   RotateCcw,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -557,7 +557,7 @@ export function StreamlinedSourceStep({
         {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
 
         <Button type="submit" size="lg" disabled={isSaving} className="mt-8 h-11 min-w-48 px-5 text-sm font-semibold">
-          {isSaving ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+          {isSaving ? <BlocksSpinner data-icon="inline-start"  aria-hidden="true" /> : null}
           {isSaving ? "Starting…" : "Continue"}
         </Button>
 
@@ -775,9 +775,7 @@ function StreamlinedSetupTimeline({
                     <Check className="size-4 stroke-[3]" />
                   </span>
                 ) : isActive ? (
-                  <span className="flex size-9 items-center justify-center rounded-full border-[2px] border-muted-subtle border-t-primary border-r-primary animate-spin [animation-duration:1.1s] motion-reduce:animate-none">
-                    <span className="size-4 rounded-full bg-background" />
-                  </span>
+                  <BlocksSpinner className="size-9 text-primary" />
                 ) : isFailed ? (
                   <span className="flex size-9 items-center justify-center rounded-full border-2 border-destructive/50 bg-destructive/10 text-destructive">
                     <AlertCircle className="size-4" />
@@ -844,10 +842,10 @@ function getStreamlinedBusinessDomain(source: OnboardingDraft["sourceInput"] | u
 
 export function OnboardingAnalysisStatus({ draft, unavailable = false }: { draft: OnboardingAnalysisState; unavailable?: boolean }) {
   const failed = isOnboardingJobFailed(draft.analysisJob);
-  const Icon = unavailable || failed && !draft.analysisReady ? AlertCircle : draft.analysisReady ? CheckCircle2 : LoaderCircle;
+  const Icon = unavailable || failed && !draft.analysisReady ? AlertCircle : draft.analysisReady ? CheckCircle2 : BlocksSpinner;
   const label = getOnboardingAnalysisLabel(draft, unavailable).replaceAll("website", draft.sourceInput.intakeType === "website" ? "website" : "business").replaceAll("Website", draft.sourceInput.intakeType === "website" ? "Website" : "Business");
   return <div className="sticky top-3 z-20 mb-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm" role="status" aria-live="polite" aria-atomic="true">
-    <Icon className={`size-4 shrink-0 text-primary ${Icon === LoaderCircle ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden="true" />
+    <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
     <span>{label}</span>
   </div>;
 }

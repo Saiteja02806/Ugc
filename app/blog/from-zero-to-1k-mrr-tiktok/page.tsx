@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "What does it cost to run this organic strategy?",
-    answer: "Organic posting on TikTok and Reels is free. Vidmake offers a 7-day free trial with 20 daily content pieces and monthly self-serve plans starting at $29 and $49 with no lock-in contracts.",
+    answer: "Organic posting on TikTok and Reels is free. Vidmake's monthly self-serve plans start at $29 and $49 with no lock-in contracts.",
   },
 ] as const;
 
@@ -194,7 +194,7 @@ export default function FromZeroToOneKMrrTikTokPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day trial. View full details on{" "}
+                  Choose a plan. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -209,7 +209,7 @@ export default function FromZeroToOneKMrrTikTokPage() {
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for short-form software ads." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

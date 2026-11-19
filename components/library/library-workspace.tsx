@@ -6,11 +6,12 @@ import {
   Eye,
   FileVideo,
   Images,
-  Loader2,
   MoreHorizontal,
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -333,13 +334,7 @@ export function CarouselLibraryTab({
             title="Refresh Library content"
             className={iconActionClassName}
           >
-            <RefreshCw
-              className={cn(
-                "size-4",
-                isLoading && "animate-spin motion-reduce:animate-none",
-              )}
-              aria-hidden="true"
-            />
+            {isLoading ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -623,7 +618,7 @@ function LibraryCarouselCard({
               className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control px-2 text-xs font-semibold text-muted transition-colors hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
             >
               {removing ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                <BlocksSpinner className="size-3.5" aria-hidden="true" />
               ) : (
                 <Trash2 className="size-3.5" aria-hidden="true" />
               )}
@@ -721,7 +716,7 @@ function RemoveCarouselDialog({
             className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-semibold text-error-foreground transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
           >
             {removing ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              <BlocksSpinner className="size-4" aria-hidden="true" />
             ) : (
               <Trash2 className="size-4" aria-hidden="true" />
             )}

@@ -4,7 +4,7 @@ import { hookRemixBlockBudgets, assertSourceRelativeHookLength, HOOK_SOURCE_RELA
 
 const source = (...text: string[]) => ({ blocks: text.map(text => ({ text })) });
 test("short and long sources retain their own budgets, with no universal 80-character allowance", () => {
-  assert.equal(HOOK_SOURCE_RELATIVE_REMIX_VERSION, 9);
+  assert.equal(HOOK_SOURCE_RELATIVE_REMIX_VERSION, 14);
   assert.deepEqual(hookRemixBlockBudgets(source("Wait?!", "A".repeat(180)), {}), [6, 180]);
   assertSourceRelativeHookLength(["Wait?!", "A".repeat(180)], source("Wait?!", "A".repeat(180)), {});
   assert.throws(() => assertSourceRelativeHookLength(["Wait, this works?!", "A"], source("Wait?!", "A".repeat(180)), {}));

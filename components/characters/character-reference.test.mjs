@@ -32,6 +32,7 @@ function runtime(file, imports, globals = {}) {
   const modules = {
     react, "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "lucide-react": new Proxy({}, { get: (_, name) => name }),
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "@/components/ui/button": { Button: "Button" }, ...imports,
   };
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(file, import.meta.url), "utf8"), {

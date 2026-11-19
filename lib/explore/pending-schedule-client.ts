@@ -1,6 +1,7 @@
 import { isExploreUuid, type ExploreFinishDraft } from "../../worker/src/lib/explore-finishing-contract.ts";
 import { parseExplorePendingSchedule, stableExploreScheduleJson, type ExplorePendingScheduleInput, type ExplorePendingScheduleResult } from "./pending-schedule-contract.ts";
 import { normalizeScheduleTargetSettings } from "../scheduling/platform-settings.ts";
+import { ALREADY_SCHEDULED_ACK_STATUSES, ScheduleAckMismatchError } from "./schedule-ack.ts";
 
 export type ExploreScheduleComposition = {
   signature: string;
@@ -41,13 +42,38 @@ export function verifyExploreScheduleReply(raw: unknown, saved: SavedExploreSche
   // Compare the same provider contract the server persists. UI-only disclosure
   // controls are not stored provider options; real visibility/interaction and
   // AI disclosure settings remain part of this exact verification.
-  if (schedule.caption !== requested.caption?.trim() || schedule.timezone !== requested.timezone?.trim() ||
+  const mismatched = schedule.caption !== requested.caption?.trim() || schedule.timezone !== requested.timezone?.trim() ||
       requested.title?.trim() && schedule.title !== requested.title.trim() ||
       expectedTime !== null && (!Number.isFinite(expectedTime) || Date.parse(schedule.scheduledFor ?? "") !== expectedTime || Date.parse(String(schedule.metadata.plannedScheduledFor)) !== expectedTime) ||
       !Array.isArray(planned) || planned.length !== requestedTargets.length || requestedTargets.some(target => {
         const matching = planned.filter(value => value && value.connectionId === target.connectionId && value.platform === target.platform);
         return matching.length !== 1 || !target.platform || stableExploreScheduleJson(normalizeScheduleTargetSettings(target.platform, matching[0].settings)) !==
           stableExploreScheduleJson(normalizeScheduleTargetSettings(target.platform, target.settings));
-      })) throw new Error("The saved schedule details do not match your confirmation. Check the same saved request.");
-  return value;
+      });
+  if (!mismatched) return value;
+  // Name the exact differing fields instead of one generic mismatch message
+  // (UGC-SCH-20261110-SCHEDULE-VERIFY-MISMATCH). Verification still refuses to
+  // confirm or archive the row; only the explanation is new.
+  const mismatches: string[] = [];
+  if (schedule.caption !== requested.caption?.trim()) mismatches.push("caption");
+  if (requested.title?.trim() && schedule.title !== requested.title.trim()) mismatches.push("title");
+  if (schedule.timezone !== requested.timezone?.trim()) mismatches.push("time zone");
+  if (expectedTime !== null && (!Number.isFinite(expectedTime) || Date.parse(schedule.scheduledFor ?? "") !== expectedTime || Date.parse(String(schedule.metadata.plannedScheduledFor)) !== expectedTime))
+    mismatches.push("posting time");
+  if (!Array.isArray(planned)) {
+    mismatches.push("its saved posting details");
+  } else {
+    const missing = planned.length !== requestedTargets.length || requestedTargets.some(target => {
+      const matching = planned.filter(value => value && value.connectionId === target.connectionId && value.platform === target.platform);
+      return !target.platform || matching.length !== 1;
+    });
+    const settings = !missing && requestedTargets.some(target => {
+      const matching = planned.filter(value => value && value.connectionId === target.connectionId && value.platform === target.platform);
+      return matching.length !== 1 || !target.platform || stableExploreScheduleJson(normalizeScheduleTargetSettings(target.platform, matching[0].settings)) !==
+        stableExploreScheduleJson(normalizeScheduleTargetSettings(target.platform, target.settings));
+    });
+    if (missing) mismatches.push("posting accounts");
+    else if (settings) mismatches.push("account settings");
+  }
+  throw new ScheduleAckMismatchError(mismatches, ALREADY_SCHEDULED_ACK_STATUSES.includes(schedule.status));
 }

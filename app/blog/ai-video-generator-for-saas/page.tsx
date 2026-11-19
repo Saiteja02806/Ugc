@@ -186,7 +186,7 @@ export default function AiVideoGeneratorForSaasPage() {
               answer: (
                 <>
                   Render times average 2-4 minutes. Start with our{" "}
-                  <ArticleLink href="/pricing">free trial</ArticleLink>.
+                  <ArticleLink href="/pricing">plans</ArticleLink>.
                 </>
               ),
             },
@@ -200,7 +200,7 @@ export default function AiVideoGeneratorForSaasPage() {
           { href: "/blog/ugc-video-generator-examples", title: "UGC Video Examples", description: "Real public YouTube, Instagram Reel, and TikTok outputs." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to generate videos from prompts." },
           { href: "/free-hook-lines", title: "Free UGC Hook Lines", description: "110 tested opening lines for short-form software videos." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

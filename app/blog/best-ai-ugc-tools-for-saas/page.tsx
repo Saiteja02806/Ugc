@@ -89,7 +89,7 @@ export default function BestAiUgcToolsForSaasPage() {
                 <th scope="col" className="p-4 font-semibold">Best Suited For</th>
                 <th scope="col" className="p-4 font-semibold">Software UI Support</th>
                 <th scope="col" className="p-4 font-semibold">Social Carousel Maker</th>
-                <th scope="col" className="p-4 font-semibold">Pricing / Free Trial</th>
+                <th scope="col" className="p-4 font-semibold">Pricing / Plans</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +98,7 @@ export default function BestAiUgcToolsForSaasPage() {
                 <td className="p-4 align-top">SaaS founders, tech tools &amp; digital products</td>
                 <td className="p-4 align-top">Native hook-to-screen cutaway guidance</td>
                 <td className="p-4 align-top">Yes (Included <ArticleLink href="/instagram-carousel-maker">Carousel Maker</ArticleLink>)</td>
-                <td className="p-4 align-top">7-day free trial; plans from $29/mo</td>
+                <td className="p-4 align-top">paid plans from $29/mo</td>
               </tr>
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">2. Arcads</th>
@@ -197,7 +197,7 @@ export default function BestAiUgcToolsForSaasPage() {
           { href: "/blog/creatify-alternative-for-saas", title: "Creatify Alternative for Software", description: "Automated link scrapers vs dedicated SaaS video workflows." },
           { href: "/blog/heygen-alternative-for-ugc-hooks", title: "HeyGen Alternative for Social Hooks", description: "Social video vs corporate presenters." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

@@ -2,12 +2,12 @@
 
 import {
   Check,
-  Loader2,
   Sparkles,
   UserRound,
   Video,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -204,7 +204,7 @@ export function InfluencerVideoPickerDrawer({
             >
               <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 {loadingSurprise ? (
-                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  <BlocksSpinner className="size-4" aria-hidden="true" />
                 ) : (
                   <Sparkles className="size-4" aria-hidden="true" />
                 )}
@@ -272,7 +272,7 @@ export function InfluencerVideoPickerDrawer({
                   {selectedInfluencer?.name ?? "Videos"}
                 </h3>
                 {loadingVideos ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin text-muted motion-reduce:animate-none" aria-hidden="true" />
+                  <BlocksSpinner className="size-4 shrink-0 text-muted" aria-hidden="true" />
                 ) : null}
               </div>
 

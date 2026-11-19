@@ -4,6 +4,8 @@ import newBatch from "./explore-hook-reference-new-batch-release.json" with { ty
 import octoberBatch from "./explore-hook-reference-oct23-release.json" with { type: "json" };
 import octoberRefresh from "./explore-hook-reference-oct23-refresh-release.json" with { type: "json" };
 import wallReclassification from "./explore-hook-wall-reclassification-release.json" with { type: "json" };
+import notbeen3 from "./explore-hook-notbeen3-release.json" with { type: "json" };
+import notbeen2 from "./explore-hook-notbeen2-release.json" with { type: "json" };
 import type { HookSourcePlatform } from "./explore-instagram-source.ts";
 
 export type HookReferenceReleaseItem = {
@@ -55,6 +57,8 @@ export function getHookReferenceReleaseItems(): HookReferenceReleaseItem[] {
     ...publishedItems(octoberBatch as HookReferenceRelease),
     ...publishedItems(octoberRefresh as HookReferenceRelease),
     ...publishedItems(wallReclassification as HookReferenceRelease),
+    ...publishedItems(notbeen2 as HookReferenceRelease),
+    ...publishedItems(notbeen3 as HookReferenceRelease),
   ];
 }
 
@@ -70,6 +74,8 @@ export function getHookReferenceGalleryItems() {
     ...(octoberBatch.mediaStatus === "published" && octoberBatch.activation === "active" ? publishedItems(octoberBatch as HookReferenceRelease) : []),
     ...(octoberRefresh.mediaStatus === "published" && octoberRefresh.activation === "active" ? publishedItems(octoberRefresh as HookReferenceRelease) : []),
     ...(wallReclassification.mediaStatus === "published" && wallReclassification.activation === "active" ? publishedItems(wallReclassification as HookReferenceRelease) : []),
+    ...(notbeen3.mediaStatus === "published" && notbeen3.activation === "active" ? publishedItems(notbeen3 as HookReferenceRelease) : []),
+    ...(notbeen2.mediaStatus === "published" && notbeen2.activation === "active" ? publishedItems(notbeen2 as HookReferenceRelease) : []),
   ];
   const excluded = new Set([
     ...(release.activation === "active" ? release.excludedReferenceIds : []),
@@ -78,6 +84,8 @@ export function getHookReferenceGalleryItems() {
     ...(octoberBatch.activation === "active" ? octoberBatch.excludedReferenceIds : []),
     ...(octoberRefresh.activation === "active" ? octoberRefresh.excludedReferenceIds : []),
     ...(wallReclassification.activation === "active" ? wallReclassification.excludedReferenceIds : []),
+    ...(notbeen3.activation === "active" ? notbeen3.excludedReferenceIds : []),
+    ...(notbeen2.activation === "active" ? notbeen2.excludedReferenceIds : []),
   ]);
   return active.filter(item => !excluded.has(item.id));
 }

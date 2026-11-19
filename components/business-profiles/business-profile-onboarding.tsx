@@ -11,7 +11,6 @@ import {
   Download,
   Eye,
   ImagePlus,
-  Loader2,
   Megaphone,
   MessageCircleHeart,
   MousePointerClick,
@@ -25,6 +24,8 @@ import {
   UserPlus,
   UsersRound,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -1009,7 +1010,7 @@ export function BusinessInformationStep({
           <p className="mt-1 text-xs leading-5 text-muted-subtle">Nothing is published until you review and approve it.</p>
         </div>
         <Button type="submit" disabled={isSaving} size="lg" className="h-12 w-full px-6 font-semibold shadow-sm sm:w-auto">
-          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
+          {isSaving ? <BlocksSpinner data-icon="inline-start"  aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           <span aria-live="polite">{backgroundMode ? (isSaving ? "Starting setup…" : "Continue") : isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
         </Button>
       </footer>
@@ -1122,7 +1123,7 @@ export function BusinessIdentityStep({
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
         <Button type="submit" size="lg" className="h-12 px-8 font-semibold shadow-sm transition-transform active:scale-[0.99] sm:ml-auto sm:min-w-60" disabled={isSaving || !businessName.trim()}>
-          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
+          {isSaving ? <BlocksSpinner data-icon="inline-start"  aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
           {isSaving ? "Saving identity…" : "Continue"}
         </Button>
       </div>
@@ -1220,7 +1221,7 @@ export function PrimaryGoalStep({
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
         <Button type="submit" size="lg" className="h-12 font-semibold sm:min-w-60 shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSaving || primaryGoals.length === 0}>
-          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
+          {isSaving ? <BlocksSpinner data-icon="inline-start"  aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           {isSaving ? "Personalizing Trending…" : "Enter Trending"}
         </Button>
       </div>

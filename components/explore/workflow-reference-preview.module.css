@@ -39,5 +39,6 @@
 
 .picker.picker .action.startingFrameChange[data-state="selected"] { width: auto; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 11px; }
 .startingFrameCard.startingFrameCard { width: min(100%, calc(240px * var(--starting-frame-ratio, .5625))); max-width: 240px; min-height: 0; }
+.startingFrameCardShort.startingFrameCardShort { width: min(100%, calc(168px * var(--starting-frame-ratio, .5625))); max-width: 168px; }
 .picker[data-starting-frame] { aspect-ratio: var(--starting-frame-ratio, .5625); min-height: 0; margin-top: 0; }
 .picker[data-starting-frame] .thumbnailImage { object-fit: contain; }

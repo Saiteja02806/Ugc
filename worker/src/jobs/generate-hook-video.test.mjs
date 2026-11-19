@@ -402,7 +402,7 @@ test("explicit sound controls supersede gallery music and distinguish provider o
 
 test("each eligible Hook reaches audio postprocessing and silent references omit automatic soundtrack receipts", async () => {
   const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
-  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 106);
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 121);
   assert.ok(!references.some(row => row.id === "explore-paired-hook-e683292d4cd22b2a8b5a9cd8"));
   for (const reference of references) {
     const before = referenceAudioCalls.length;

@@ -1,6 +1,10 @@
 "use client";
 
-import { Loader2, Plus } from "lucide-react";
+import {
+  Plus,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import { Button } from "@/components/ui/button";
@@ -133,7 +137,7 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedU
         {pending.map(preview => <ReferenceUploadPreview key={preview.index} fillContainer kind={preview.kind} url={preview.url} name={preview.file.name} label="Reference" pending queued={preview.index > uploadIndex} />)}
         </div>
         <Button type="button" variant="muted" size="icon-sm" className={selections.length || pending.length ? "absolute right-1.5 bottom-1.5 z-10 size-6 rounded-full border border-white/20 bg-black/75 text-white" : "absolute inset-0 size-full border-0 bg-transparent text-muted"} aria-label={busy ? "Uploading reference files" : "Add reference files"} disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
-          {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
+          {busy ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
         </Button>
         </div>
         {selections.filter(selection => selection.kind === "audio").map(selection => <audio key={selection.asset.id} src={selection.asset.url} controls preload="none" aria-label={`Preview ${selection.asset.fileName || selection.asset.title}`} className="h-8 w-40" />)}

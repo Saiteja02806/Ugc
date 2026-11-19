@@ -46,6 +46,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "@/lib/explore/uploaded-starting-frame": uploadedStartingFrame,
     "./format-person-image-picker.module.css": { default: {} },
     "@/components/ui/button": { Button: "Button" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "@/components/ui/popover": { Popover: "Popover", PopoverContent: "PopoverContent", PopoverTitle: "PopoverTitle", PopoverTrigger: "PopoverTrigger" },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogTitle: "DialogTitle", DialogDescription: "DialogDescription", DialogTrigger: "DialogTrigger" },
     "@/components/explore/format-person-image-picker.module.css": { default: {} },

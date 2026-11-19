@@ -1,3 +1,5 @@
+import { sortReferenceViews } from "./video-reference-feed.ts";
+
 export const RECREATE_FORMATS = ["slideshow", "wall_text", "hook"] as const;
 export type RecreateFormat = (typeof RECREATE_FORMATS)[number];
 
@@ -26,6 +28,9 @@ export type RecreateReference = {
   videoUrl?: string;
   viewCount?: number;
   formattedViews?: string;
+  viewsRetrievedAt?: string;
+  viewsSource?: "user-reported";
+  viewsApproximate?: boolean;
   /** Canonical server-provided digest for packaged references without hashed URLs. */
   sourceSha256?: string;
   /** Private pilot membership, issued only by the authenticated creator catalogue. */
@@ -42,6 +47,8 @@ export type RecreateReference = {
   sourcePlatform?: "instagram" | "tiktok";
   sourceKind?: "post" | "profile";
   previewVideoUrl?: string;
+  /** Reviewed hook cut for reference playback. Keep the canonical video for source operations. */
+  hookPreviewVideoUrl?: string;
   /** Addressable for saved work, excluded from new-reference browsing. */
   archived?: true;
   /** Published upload batch metadata. New is scoped to the latest batch per workflow. */
@@ -51,6 +58,13 @@ export type RecreateReference = {
   pairedAudio?: { title: string; url: string; durationSeconds: number };
   slides: ReferenceSlide[];
 };
+
+/** A failed hook cut must never reveal the longer source, including its demo. */
+export function referencePlayback(reference: Pick<RecreateReference, "hookPreviewVideoUrl" | "previewVideoUrl" | "videoUrl">) {
+  return reference.hookPreviewVideoUrl
+    ? { url: reference.hookPreviewVideoUrl, fallbackUrl: undefined }
+    : { url: reference.previewVideoUrl ?? reference.videoUrl, fallbackUrl: reference.videoUrl };
+}
 
 /** Run after filtering/category mixing so the newest uploads stay at the top. */
 export function prioritizeRecentReferences(items: readonly RecreateReference[]): RecreateReference[] {
@@ -73,7 +87,7 @@ export function orderReferenceGallery(items: readonly RecreateReference[], forma
       if (index < bucket.length) mixed.push(bucket[index]);
     }
   }
-  return mixed;
+  return format === "hook" ? sortReferenceViews(mixed) : mixed;
 }
 
 export type ImportedReference = Omit<RecreateReference, "posterUrl" | "videoUrl" | "slides"> & {

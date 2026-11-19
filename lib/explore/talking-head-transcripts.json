@@ -1651,25 +1651,27 @@
       "referenceId": "talking-kamile-mirror-discovery",
       "sourceSha256": "d34547d2eb28cf8ed25ad89eae3393ea0265dcf2ddc60da1ebdd3a8342d2923d",
       "durationMs": 2433,
-      "provider": "manual",
-      "model": "on-screen-caption-review",
+      "provider": "whisper.cpp",
+      "model": "ggml-base.en",
       "extractedAt": "2026-11-08T13:37:32.403Z",
-      "transcriptSha256": "46a6462ae90858b0b9555d9a9cec0d6b451028c49aa3ed8fa5f2a7f9a90f2961",
-      "fullText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
-      "hookText": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+      "transcriptSha256": "5f6bb166b079c336c9f8b0b022ebadbf667229ad246648116456a6d01f802dc9",
+      "fullText": "No way.",
+      "hookText": "No way.",
       "hookStartMs": 0,
       "hookEndMs": 2433,
       "review": "cross_checked_draft",
-      "corrections": [],
-      "selectionSha256": "a61fa1dcf4f28280125cbe76eab8415a5726c89ded0140ca91deef1528be8a81",
-      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "corrections": [
+        "The earlier caption-only reading treated this clip as silent. The audio track has speech."
+      ],
+      "selectionSha256": "28284253321cc7dc4398179a2e98ad85e31a854f6f9c31f0dcec29a8f4ea78bd",
+      "reviewNotes": "Heard speech on the clip audio. Tiny and base English models agree on these words. The burned-in caption is on-screen text only and is not what she says. Do not render that caption.",
       "wordTimingWarnings": 0,
-      "hookWordCount": 12,
+      "hookWordCount": 2,
       "segments": [
         {
-          "text": "Been shopping at Lidl for 8 years and NOW I FIND THIS??",
+          "text": "No way.",
           "startMs": 0,
-          "endMs": 2433
+          "endMs": 2000
         }
       ]
     },
@@ -1677,27 +1679,27 @@
       "referenceId": "talking-kamile-kitchen-discovery",
       "sourceSha256": "c84230c6fb851792a8b210a43836dc2bb40718f3c7754673ea3f4ceaad151a5c",
       "durationMs": 4334,
-      "provider": "manual",
-      "model": "on-screen-caption-review",
+      "provider": "whisper.cpp",
+      "model": "ggml-small.en",
       "extractedAt": "2026-11-08T13:37:32.403Z",
-      "transcriptSha256": "20b974ee2a5cf5c9598da7ca06121082378b4d9b32aee9cf178cc5e7bd8d1167",
-      "fullText": "been shopping at Aldi for 8 years and NOW I FIND THIS",
-      "hookText": "been shopping at Aldi for 8 years and NOW I FIND THIS",
+      "transcriptSha256": "50adc2fac75f473df6ef322bf7fb50ac88a8b223a8d7c67fda8d45af6dfbf416",
+      "fullText": "Are you choking?",
+      "hookText": "Are you choking?",
       "hookStartMs": 0,
       "hookEndMs": 4334,
       "review": "cross_checked_draft",
       "corrections": [
-        "Source caption begins mid-sentence because the clip is trimmed; no leading word is visible."
+        "The earlier caption-only reading treated this clip as silent. The audio track has speech, and the two larger models agree."
       ],
-      "selectionSha256": "297ae836e7fee671db8d0c340dce41355eab058e4953305d881f6b775b7d1a98",
-      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "selectionSha256": "071a10c716403423df6e02060efe21fe8f9a5cc233e82cdbc05e41cf4f8d36d2",
+      "reviewNotes": "Base and small English models hear “Are you choking?” in the later part of the clip. The tiny model heard “Are you joking?” The first 1.6 seconds did not return a separate line. The burned-in caption is on-screen text only and is not what she says. Do not render that caption.",
       "wordTimingWarnings": 0,
-      "hookWordCount": 12,
+      "hookWordCount": 3,
       "segments": [
         {
-          "text": "been shopping at Aldi for 8 years and NOW I FIND THIS",
-          "startMs": 0,
-          "endMs": 4334
+          "text": "Are you choking?",
+          "startMs": 1600,
+          "endMs": 3000
         }
       ]
     },
@@ -1705,25 +1707,27 @@
       "referenceId": "talking-kamile-car-what",
       "sourceSha256": "1845b89a8b940dcffb7243548a344b33f2307452fa5b8ac8fb08f02c6db3d8c8",
       "durationMs": 2730,
-      "provider": "manual",
-      "model": "on-screen-caption-review",
+      "provider": "whisper.cpp",
+      "model": "ggml-base.en",
       "extractedAt": "2026-11-08T13:37:32.403Z",
-      "transcriptSha256": "bcb9045cd98da382de63b02a22e23a8fe8ef33b8f98d3570ab26d8c133b53d00",
-      "fullText": "I'm sorry but LIDL WHATTTTT?????",
-      "hookText": "I'm sorry but LIDL WHATTTTT?????",
+      "transcriptSha256": "a4949e2c96de26681c9519749e57bfb362bbac2a8f40c89b24c35d1de111336d",
+      "fullText": "What?",
+      "hookText": "What?",
       "hookStartMs": 0,
       "hookEndMs": 2730,
       "review": "cross_checked_draft",
-      "corrections": [],
-      "selectionSha256": "b7f48bcce29fa22012b74b423141043f872b9bc43d00617ba713a4fb38503f71",
-      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "corrections": [
+        "The earlier caption-only reading treated this clip as silent. The audio track has speech."
+      ],
+      "selectionSha256": "21a81701bd950c18561f09a93971b1d58255947233bf059862525efc63bbef34",
+      "reviewNotes": "Heard speech on the clip audio. Tiny and base English models agree on these words. The burned-in caption is on-screen text only and is not what she says. Do not render that caption.",
       "wordTimingWarnings": 0,
-      "hookWordCount": 5,
+      "hookWordCount": 1,
       "segments": [
         {
-          "text": "I'm sorry but LIDL WHATTTTT?????",
+          "text": "What?",
           "startMs": 0,
-          "endMs": 2730
+          "endMs": 2000
         }
       ]
     },
@@ -1731,25 +1735,79 @@
       "referenceId": "talking-kamile-lowlight-what",
       "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
       "durationMs": 2300,
-      "provider": "manual",
-      "model": "on-screen-caption-review",
+      "provider": "whisper.cpp",
+      "model": "ggml-base.en",
       "extractedAt": "2026-11-08T13:37:32.403Z",
-      "transcriptSha256": "d415fdd007e7d1cd0732b28bfc355b91e9ca97b4d2b004c5f7c608f385d5defe",
-      "fullText": "LIDL ARE YOU KIDDING ME???!?!?!",
-      "hookText": "LIDL ARE YOU KIDDING ME???!?!?!",
+      "transcriptSha256": "a4949e2c96de26681c9519749e57bfb362bbac2a8f40c89b24c35d1de111336d",
+      "fullText": "What?",
+      "hookText": "What?",
       "hookStartMs": 0,
       "hookEndMs": 2300,
       "review": "cross_checked_draft",
-      "corrections": [],
-      "selectionSha256": "9e9d0ef5583d2b275e6e01d57eb0b0d941022eb1b724e6c1569a0d5ec9f44fdd",
-      "reviewNotes": "No audible speech in this source. Hook text is read from the burned-in on-screen caption, not ASR; the clip is a silent mouthing performance. The caption is source provenance only: replace brand claims with your own message before generating.",
+      "corrections": [
+        "The earlier caption-only reading treated this clip as silent. The audio track has speech."
+      ],
+      "selectionSha256": "93b2670ae0546f768e787ffbfc9e689848216577d248ead936b0c997abc86f56",
+      "reviewNotes": "Heard speech on the clip audio. Tiny and base English models agree on these words. The burned-in caption is on-screen text only and is not what she says. Do not render that caption.",
       "wordTimingWarnings": 0,
-      "hookWordCount": 5,
+      "hookWordCount": 1,
       "segments": [
         {
-          "text": "LIDL ARE YOU KIDDING ME???!?!?!",
+          "text": "What?",
           "startMs": 0,
-          "endMs": 2300
+          "endMs": 2000
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-nicki-kitchen-reaction",
+      "sourceSha256": "48fe1d29d6a4a96ba2e5c284646fc31254b6d53913569c9f61e21802988fc54e",
+      "durationMs": 3628,
+      "provider": "whisper.cpp",
+      "model": "ggml-small.en",
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "transcriptSha256": "9c2e1cb6fee71eb410a143816ae85198426a985ad223422e4c647ab70e396f35",
+      "fullText": "Oh my gosh, are you kidding me?",
+      "hookText": "Oh my gosh, are you kidding me?",
+      "hookStartMs": 0,
+      "hookEndMs": 3628,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "4651a1f4ffd6881a701b05d3ac8f80abbe653467724cf08c44eb74e647435592",
+      "reviewNotes": "Both local base.en and small.en acoustic transcriptions agree on the words. Speech timing is approximate; base output exceeded file length and was not used for alignment. The video stream has97frames; the longer container includes the original audio tail. The burned-in supermarket caption is not the spoken line.",
+      "wordTimingWarnings": 1,
+      "hookWordCount": 7,
+      "segments": [
+        {
+          "text": "Oh my gosh, are you kidding me?",
+          "startMs": 700,
+          "endMs": 2650
+        }
+      ]
+    },
+    {
+      "referenceId": "talking-lowlight-instagram-what",
+      "sourceSha256": "0507e79442a29a2dc498e925ec38985ec537f9a4fc422f08a4ecc93bb7f35f6b",
+      "durationMs": 1834,
+      "provider": "whisper.cpp",
+      "model": "ggml-small.en",
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "transcriptSha256": "a4949e2c96de26681c9519749e57bfb362bbac2a8f40c89b24c35d1de111336d",
+      "fullText": "What?",
+      "hookText": "What?",
+      "hookStartMs": 0,
+      "hookEndMs": 1834,
+      "review": "cross_checked_draft",
+      "corrections": [],
+      "selectionSha256": "dda2425ba6d79c7d5a2494c1b35eacc046806511e142a1af57a4acdadbf41595",
+      "reviewNotes": "Both local base.en and small.en acoustic transcriptions identify one What. Whisper segment ends exceed the short clip and are not accepted as word alignment. Visible word delivery is approximately0.90–1.35s. The final phone swing removes the face from view; retained exactly, with no unapproved trim. The Instagram-update caption is not spoken.",
+      "wordTimingWarnings": 1,
+      "hookWordCount": 1,
+      "segments": [
+        {
+          "text": "What?",
+          "startMs": 900,
+          "endMs": 1350
         }
       ]
     }

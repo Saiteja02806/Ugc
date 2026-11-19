@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 export const TALKING_HEAD_SCRIPT_PROMPT_VERSION = 2;
+export const TALKING_HEAD_DURATION_PROMPT_VERSION = 3;
+export const TALKING_HEAD_REMIX_MAX_SECONDS = 30;
+const durationLimitedSources = new Set(["talking-warm-story", "talking-mug-story"]);
+
+export function hasTalkingHeadRemixDurationLimit(referenceId: string) {
+  return durationLimitedSources.has(referenceId);
+}
+
+export const TALKING_HEAD_DURATION_INSTRUCTIONS = "Use targetDurationSeconds as the available speaking time. For this adaptation, write a self-contained spoken hook for the business. The time and word budgets take priority over preserving every source idea or sentence. Keep the core opening angle and a natural ending, with any required closing bridge. Drop secondary examples or repeated beats. Stay comfortably below the word ceiling so there is time for natural pauses. Rewrite whole sentences for a natural speaking pace.";
 // Selected after the frozen six-case paired comparison and three-case v2 check.
 export const TALKING_HEAD_SCRIPT_MODEL = "gpt-6.1-terra";
 export const TalkingHeadScriptOutputSchema = z.object({ script: z.string().trim().min(1).max(6000) }).strict();
@@ -15,12 +24,21 @@ export function talkingHeadScriptWords(text: string) {
 export function talkingHeadScriptBudget(source: string) {
   return { maximumCharacters: Math.min(6000, Math.max(40, Math.ceil(source.length * 1.3))), maximumWords: Math.max(6, Math.ceil(talkingHeadScriptWords(source) * 1.25)) };
 }
-export function talkingHeadScriptRemixPayload(source: string, businessContext: unknown, instructions = "") {
-  return JSON.stringify({ sourceScript: source, businessContext, additionalInstructions: instructions, ...talkingHeadScriptBudget(source) });
-}
-export function validateTalkingHeadScriptOutput(value: unknown, source: string) {
-  const output = TalkingHeadScriptOutputSchema.parse(value);
+function durationBudget(source: string, targetDurationSeconds?: number) {
   const budget = talkingHeadScriptBudget(source);
+  return targetDurationSeconds === undefined ? budget : {
+    maximumCharacters: Math.min(budget.maximumCharacters, 600),
+    maximumWords: Math.min(budget.maximumWords, Math.floor(targetDurationSeconds * 14 / 5)),
+  };
+}
+export function talkingHeadScriptRemixPayload(source: string, businessContext: unknown, instructions = "", targetDurationSeconds?: number) {
+  return JSON.stringify({ sourceScript: source, businessContext, additionalInstructions: instructions, ...durationBudget(source, targetDurationSeconds),
+    ...(targetDurationSeconds === undefined ? {} : { targetDurationSeconds }) });
+}
+export function validateTalkingHeadScriptOutput(value: unknown, source: string, targetDurationSeconds?: number) {
+  const output = TalkingHeadScriptOutputSchema.parse(value);
+  const budget = durationBudget(source, targetDurationSeconds);
+  if (targetDurationSeconds !== undefined && estimateTalkingHeadSpeechSeconds(output.script) > targetDurationSeconds) throw Error("The rewrite exceeds the selected duration.");
   if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(output.script) || output.script.length > budget.maximumCharacters || talkingHeadScriptWords(output.script) > budget.maximumWords) throw Error("The remixed script is too long for this source. Your previous script is kept.");
   if (/let me show you[.!]?$/iu.test(source.trim()) && !/let me show you[.!]?$/iu.test(output.script)) throw Error("The remix lost the source's closing hook cue. Your previous script is kept.");
   return output;
@@ -28,5 +46,5 @@ export function validateTalkingHeadScriptOutput(value: unknown, source: string) 
 
 /** Estimate for UI/readiness, not measured speech or a guarantee of delivery. */
 export function estimateTalkingHeadSpeechSeconds(text: string) {
-  return Math.ceil(talkingHeadScriptWords(text) / 2.8 * 10) / 10;
+  return Math.ceil(talkingHeadScriptWords(text) * 25 / 7) / 10;
 }

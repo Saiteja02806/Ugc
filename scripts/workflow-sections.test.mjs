@@ -12,7 +12,7 @@ const schedule = read("workflow-scheduling-panel.tsx");
 const edit = read("workflow-composition-panel.tsx");
 const workspace = read("workflow-edit-workspace.tsx");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : ({ type, props });
-function load(source) {
+function load(source, extraImports = {}) {
   const imports = {
     "./workflow-feedback": { WorkflowFeedback: "workflow-feedback" },
     "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
@@ -20,6 +20,7 @@ function load(source) {
     "react-dom": { createPortal: children => children },
     "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } },
     "lucide-react": { Sparkles: "sparkles", Check: "check", Eye: "eye", EyeOff: "eye-off" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "spinner" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/scheduling/workflow-time-picker": { WorkflowTimePicker: "time-picker" },
@@ -33,6 +34,7 @@ function load(source) {
     "@/components/explore/workflow-section-layout.module.css": { default: {} },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
+    ...extraImports,
   };
   const exported = {};
   vm.runInNewContext(ts.transpileModule(source, { fileName: "sections.tsx", compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, { exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
@@ -256,7 +258,8 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(edit, /Demo sound/);
   assert.match(edit, /Demo audio/);
   assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
-  assert.match(edit, /including both segments; nothing is trimmed automatically/);
+  assert.match(edit, /including both segments/);
+  assert.match(edit, /Nothing is trimmed automatically/);
   assert.match(workspace, /demo.asset \? <>\{demoFraming \? <WorkflowDemoPreview/);
   assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demoPreview \?\? demo.asset\}/);
   assert.match(workspace, /className=\{creation.demoPlayer\}/);
@@ -264,8 +267,38 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(workspace, /draft.caption \|\|/);
 });
 
-test("the section implementation does not add requests, storage, prompts or affect Recreate", () => {
-  for (const source of [panel, schedule, edit, workspace]) assert.doesNotMatch(source, /\bfetch\(|localStorage|sessionStorage|use server|\.trigger\(|setInstructions|onInstructionsChange/);
+test("Schedule video is a white primary action on the videos overviews of Hook, Talking Head and Text on screen", () => {
+  const demoSection = read("format-demo-section.tsx");
+  assert.match(demoSection, /const overviewScheduleButton = <Button type="button" variant="neutral" className="h-11 font-semibold shadow-sm hover:shadow transition-shadow" disabled=\{scheduleDisabled\} onClick=\{onContinue\}>Schedule video<\/Button>/);
+  assert.doesNotMatch(demoSection, /const overviewScheduleButton = <Button type="button" variant="outline"/);
+  const editor = read("format-video-editor.tsx");
+  assert.match(editor, /variant=\{format === "wall_text" \? "neutral" : "outline"\}/, "Text on screen's schedule CTA is white; Hook/Talking Head keep their outline return affordance");
+  const preview = read("hook-workflow-preview.tsx");
+  assert.match(preview, /scheduleAction=\{<Button type="button" variant="neutral" className="h-11 px-5 font-semibold shadow-sm hover:shadow transition-shadow" disabled=\{!generationEnabled \|\| \(!clips\.source && !finish\.output\) \|\| finish\.edit\.busy \|\| finish\.edit\.processing\}/);
+  assert.match(preview, /\}>\{finish\.edit\.busy \|\| finish\.edit\.processing \? "Preparing video…" : "Schedule video"\}<\/Button>\} openingPreview=\{clips\.openingPreview\}/);
+  const { WorkflowEditWorkspace } = load(workspace, {
+    react: { useState(initial) { return [initial, () => {}]; }, useEffect() {}, useMemo: fn => fn },
+    "@/components/explore/hook-workflow-media-controls": { RemoveMediaButton: "remove-media", WorkflowFilePicker: "file-picker", WorkflowMediaPlayer: "player" },
+    "@/components/explore/workflow-sequence-preview": { WorkflowSequencePreview: "sequence-preview" },
+    "@/lib/explore/sequence-preview": { mapSequencePreviewDemoAudio: () => null, mapSequencePreviewDemoReference: () => null },
+    "@/lib/explore/reference-audio-preview": { getReferenceAudioPreview: () => null },
+    "@/lib/explore/workflow-default-music-client": { loadWorkflowDefaultMusic: async () => null },
+    "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "token" },
+    "@/components/explore/workflow-demo-controls": { WorkflowDemoPreview: "demo-preview" },
+    "@/components/explore/workflow-scheduling-panel": { SCHEDULE_PLATFORMS: ["instagram", "youtube"] },
+    "@/components/explore/talking-head-schedule-preview.module.css": { default: {} },
+  });
+  const attachment = { asset: null, loading: false, error: null, choose() {}, remove() {}, chooseRemote() {}, clearError() {} };
+  const action = element("button", { children: "Schedule video" });
+  const tree = WorkflowEditWorkspace({ kind: "hook", demo: attachment, demoAudio: attachment, scheduleAction: action });
+  const headingRow = nodes(tree).find(node => Array.isArray(node.props?.children) && nodes(node).some(node => node.type === "h2" && text(node) === "Your videos"));
+  assert.ok(nodes(headingRow).includes(action), "the Schedule action renders beside the overview title");
+  assert.equal(nodes(tree).filter(node => node.type === "button" && text(node) === "Schedule video").length, 1);
+  const plain = WorkflowEditWorkspace({ kind: "hook", demo: attachment, demoAudio: attachment });
+  assert.equal(nodes(plain).some(node => node.type === "button" && text(node) === "Schedule video"), false, "no schedule action renders without the prop");
+});
+
+test("the section implementation does not add requests, storage, prompts or affect Recreate", () => {  for (const source of [panel, schedule, edit, workspace]) assert.doesNotMatch(source, /\bfetch\(|localStorage|sessionStorage|use server|\.trigger\(|setInstructions|onInstructionsChange/);
   for (const path of ["recreate-workspace.tsx", "recreate-generation-panel.tsx"]) assert.doesNotMatch(read(path), /WorkflowSchedulingPanel|WorkflowEditWorkspace|WorkflowCreationPanel/);
   const styles = read("workflow-creation.module.css");
   assert.match(styles, /\.sectionPanel\[hidden\][^}]*display: none/);

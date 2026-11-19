@@ -6,10 +6,10 @@ import {
   Folder,
   FolderOpen,
   Layers3,
-  Loader2,
   RotateCcw,
   Video,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -468,8 +468,8 @@ export function CreativeAssetsVideoPicker({
                     </p>
                   </div>
                   {loadingGroupId === activeGroupId ? (
-                    <Loader2
-                      className="animate-spin motion-reduce:animate-none"
+                    <BlocksSpinner
+                      
                       aria-label="Loading group videos"
                     />
                   ) : null}
@@ -535,9 +535,9 @@ export function CreativeAssetsVideoPicker({
               onClick={() => void restoreDefaultSource()}
             >
               {saving === "default" ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                 />
               ) : (
                 <RotateCcw data-icon="inline-start" />
@@ -553,9 +553,9 @@ export function CreativeAssetsVideoPicker({
               onClick={() => void saveSource("group", activeGroup.id)}
             >
               {saving === "group" ? (
-                <Loader2
+                <BlocksSpinner
                   data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
+                  
                 />
               ) : (
                 <Layers3 data-icon="inline-start" />
@@ -573,9 +573,9 @@ export function CreativeAssetsVideoPicker({
             }
           >
             {saving === "asset" ? (
-              <Loader2
+              <BlocksSpinner
                 data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                
               />
             ) : (
               <Video data-icon="inline-start" />

@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Trend.io and Vidmake?",
-    answer: "Trend.io requires purchasing credit packages starting at $500 to $1,000+ upfront. Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, with self-serve subscriptions starting at $29 and $49 per month.",
+    answer: "Trend.io requires purchasing credit packages starting at $500 to $1,000+ upfront. Vidmake's self-serve subscriptions start at $29 and $49 per month.",
   },
   {
     question: "How long does a video take on Trend.io compared to Vidmake?",
@@ -94,7 +94,7 @@ export default function TrendIoAlternativeForSaasPage() {
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Minimum Upfront Cost</th>
                 <td className="p-4 align-top">$500 – $1,000+ package deposit</td>
-                <td className="p-4 align-top">$0 (7-day free trial; plans from $29/mo)</td>
+                <td className="p-4 align-top">$29/mo with paid plans</td>
               </tr>
               <tr className="border-t border-border">
                 <th scope="row" className="p-4 font-semibold text-foreground-strong">Turnaround Speed</th>
@@ -183,7 +183,7 @@ export default function TrendIoAlternativeForSaasPage() {
           { href: "/blog/cost-of-ugc-video-for-saas", title: "Cost of UGC Video for SaaS", description: "Creators vs agencies vs AI software unit economics." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

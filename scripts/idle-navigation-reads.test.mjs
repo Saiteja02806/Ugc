@@ -20,6 +20,9 @@ function fixture(kind, token, transport) {
     if (name === "@/contexts/auth-context") return { useAuth: () => ({ user: { uid: "owner-a" }, loading: false }) };
     if (name === "@tanstack/react-query") return { useQuery: value => { options = value; return value; } };
     if (name === "@/lib/billing/activation-state") return { shouldPollForSubscriptionActivation: () => false };
+    if (name === "@/components/explore/explore-free-video-pass-badge") return { syncFreeVideoPassUiCookie() {} };
+    if (name === "@/lib/billing/free-video-pass-badge") return { freeVideoPassShowsRemainingGeneration: () => false };
+    if (name === "@/lib/billing/subscription-snapshot") return { writeSubscriptionSnapshot() {} };
     throw Error(`Unexpected import ${name}`);
   } });
   if (kind === "billing") exports.useBillingSubscription();

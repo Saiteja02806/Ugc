@@ -1,5 +1,6 @@
 import { isExploreUuid } from "../../worker/src/lib/explore-finishing-contract.ts";
 import type { ScheduleCreateInput, ScheduledPost } from "../scheduling/types.ts";
+import { ALREADY_SCHEDULED_ACK_STATUSES, describeScheduleAckMismatch, ScheduleAckMismatchError } from "./schedule-ack.ts";
 
 // Only an explicit validation rejection permits editing a durable request.
 // Network failures and missing status reads still preserve the exact input.
@@ -50,7 +51,12 @@ export function verifySavedSchedule(value: unknown, saved: ScheduleReceipt): Sch
   if (!v?.ok || !s || !isExploreUuid(s.id) || (saved.scheduleId && s.id !== saved.scheduleId) ||
       (saved.input.source.kind === "library_item" ? s.libraryItemId : s.mediaAssetId) !== saved.input.source.id || s.idempotencyKey !== saved.input.idempotencyKey ||
       !["draft", "scheduling", "scheduled", "publishing", "published", "partially_failed", "failed", "cancelled"].includes(s.status) ||
-      !Array.isArray(s.targets) || s.targets.length !== saved.input.targets?.length || !saved.input.targets?.every(target => s.targets.some(t => t.socialConnectionId === target.connectionId && t.platform === target.platform))) throw new Error("The schedule response could not be verified. Keep and resume the saved request.");
+      !Array.isArray(s.targets)) throw new Error("The schedule response could not be verified. Keep and resume the saved request.");
+  if (s.targets.length !== saved.input.targets?.length || !saved.input.targets?.every(target => s.targets.some(t => t.socialConnectionId === target.connectionId && t.platform === target.platform)))
+    // The stored row is real (same idempotency key) but its details differ from
+    // the local request record. Never bind or archive it; explain the exact
+    // differing fields so the user can act instead of retrying a dead loop.
+    throw new ScheduleAckMismatchError(describeScheduleAckMismatch(saved.input, s), ALREADY_SCHEDULED_ACK_STATUSES.includes(s.status));
   return s;
 }
 export function scheduleReceiptMessage(schedule: ScheduledPost): string {

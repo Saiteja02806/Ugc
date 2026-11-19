@@ -3,8 +3,7 @@
   "mediaStatus": "published",
   "activation": "active",
   "excludedReferenceIds": [
-    "explore-paired-hook-e5870158a2ad1494edc92741",
-    "explore-paired-hook-6365d336034633aa5070eb48"
+    "explore-paired-hook-e5870158a2ad1494edc92741"
   ],
   "items": [
     {
@@ -265,20 +264,20 @@
       "title": "Hook 89",
       "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7634151927692922135",
       "sourcePlatform": "tiktok",
-      "videoStorageKey": "explore/paired-references/v1/8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245.mp4",
+      "videoStorageKey": "explore/paired-references/v1/f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f.mp4",
       "audioStorageKey": "explore/paired-references/v1/3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e.mp3",
-      "posterStorageKey": "explore/paired-references/v1/3cec9b7d0d0a028e26c218b67deab1bf14d8914f5acc8fbe76a0874eb55f12aa.webp",
-      "videoSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+      "posterStorageKey": "explore/paired-references/v1/4898afc5994f8d01907628a98522818c12ecbe373fc870863f238282625b2791.webp",
+      "previewStorageKey": "explore/paired-references/v1/1ff9dd6d91016333464f0bea3a2faf2fa1385bef265d48c3e873205776bb0f73.mp4",
+      "videoSha256": "f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f",
       "audioSha256": "3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e",
-      "posterSha256": "3cec9b7d0d0a028e26c218b67deab1bf14d8914f5acc8fbe76a0874eb55f12aa",
-      "durationSeconds": 2.9,
+      "posterSha256": "4898afc5994f8d01907628a98522818c12ecbe373fc870863f238282625b2791",
+      "previewSha256": "1ff9dd6d91016333464f0bea3a2faf2fa1385bef265d48c3e873205776bb0f73",
+      "durationSeconds": 2.633008,
       "audioDurationSeconds": 55.484063,
       "width": 576,
       "height": 1024,
-      "audioTitle": "ssstik.io_1792061385721 (2).mp3",
-      "sourceFolder": "New folder (13)",
-      "previewSha256": "3b10c05e488ba5ee2a922ecb26b03e6ca74fa4c86fa68fbb8252b141453c59ba",
-      "previewStorageKey": "explore/paired-references/v1/3b10c05e488ba5ee2a922ecb26b03e6ca74fa4c86fa68fbb8252b141453c59ba.mp4"
+      "audioTitle": "ssstik.io_1794220615709.mp3",
+      "sourceFolder": "notbeen3/New folder (user-selected version B)"
     },
     {
       "id": "explore-paired-hook-349e499826f7491d91f6b712",

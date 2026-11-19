@@ -1,7 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, LoaderCircle, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -145,8 +149,8 @@ function GuardLoadingState({ label }: { label: string }) {
         role="status"
         className="flex items-center gap-3 text-sm font-semibold text-muted"
       >
-        <LoaderCircle
-          className="size-5 animate-spin text-primary motion-reduce:animate-none"
+        <BlocksSpinner
+          className="size-5 text-primary"
           aria-hidden="true"
         />
         {label}

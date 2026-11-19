@@ -3,11 +3,11 @@
 import {
   BarChart3,
   Check,
-  LoaderCircle,
   RefreshCw,
   Route,
   Save,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -240,13 +240,7 @@ export function CarouselAdminSettings() {
           disabled={isRefreshing || isSaving}
           className="w-full sm:w-auto"
         >
-          <RefreshCw
-            data-icon="inline-start"
-            className={
-              isRefreshing ? "animate-spin motion-reduce:animate-none" : ""
-            }
-            aria-hidden="true"
-          />
+          {isRefreshing ? <BlocksSpinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" aria-hidden="true" />}
           Refresh
         </Button>
       </header>
@@ -339,9 +333,9 @@ export function CarouselAdminSettings() {
                 className="w-full sm:w-auto"
               >
                 {isSaving ? (
-                  <LoaderCircle
+                  <BlocksSpinner
                     data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
+                    
                     aria-hidden="true"
                   />
                 ) : (

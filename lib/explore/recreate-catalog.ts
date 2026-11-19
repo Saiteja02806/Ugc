@@ -44,7 +44,7 @@ const importedItems = importedCatalog.mediaStatus === "published"
 
 export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
   const hooks = getExploreHookVideos(includeArchivedHooks).map((item): RecreateReference => {
-    const views = getHookReferenceViews(item.id);
+    const views = getHookReferenceViews(item.id, item.sourceUrl ?? item.instagramUrl);
     return {
       category: null,
       categoryLabel: null,
@@ -54,7 +54,9 @@ export function getRecreateReferences(includeArchivedHooks = false): RecreateRef
       slides: [],
       title: "Hook",
       videoUrl: item.videoUrl,
-      ...(views ? { viewCount: views.viewCount, formattedViews: views.formattedViews } : {}),
+      ...(views ? { viewCount: views.viewCount, formattedViews: views.formattedViews, viewsRetrievedAt: views.retrievedAt,
+        ...(views.verificationMethod === "user-provided-workbook" ? { viewsSource: "user-reported" as const, viewsApproximate: views.approximate === true } : {}),
+      } : {}),
       ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
       ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
       ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),

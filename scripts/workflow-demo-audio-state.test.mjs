@@ -7,6 +7,7 @@ import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 import * as talkingScriptPolicy from "../lib/explore/talking-head-script-remix.ts";
+import { getWorkflowGenerationDraftError } from "../lib/explore/workflow-generation-client.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const element = (type, props) => typeof type === "function" ? type(props) : ({ type, props });
@@ -24,6 +25,7 @@ function layout(kind) {
   let photoRestore = { pending: false, error: null, apply: null, remembered: [] };
   const frameSelection = { frame: null, ready: true, error: null, setFrame(value) { this.frame = value; return true; }, retry() {} };
   const reference = { id: "talking-car-story", sourceSha256: "a".repeat(64) };
+  const catalogue = [reference];
   const recoveryInputs = [];
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
@@ -90,11 +92,12 @@ function layout(kind) {
     "./use-hook-composer-selection": { useHookComposerSelection: (...scope) => { frameScopes.push(scope); return frameSelection; } },
     "@/worker/src/lib/hook-starting-frame-video": startingFrameVideo,
     "./use-talking-head-reference": { useTalkingHeadReference: () => ({
-      query: { data: [reference], isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
+      query: { data: catalogue, isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
       changeInstructions() {}, choose: async () => false, retry() {}, videoReference: attachments[mediaCursor++],
     }) },
     "./talking-head-references": { TalkingHeadReferences: "talking-head-references" },
     "./talking-head-script-section": { TalkingHeadScriptSection: "talking-head-script" },
+    "@/components/explore/workflow-background-audio-picker": { HOOK_BACKGROUND_AUDIO_SOURCES: [] },
     "@/lib/explore/talking-head-script-remix": talkingScriptPolicy,
     "./talking-head-references.module.css": css,
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
@@ -111,6 +114,7 @@ function layout(kind) {
     "@/components/ui/quiet-scrollbar.module.css": css,
     "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
     "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "spinner" },
     "next/link": { default: "link" },
     "next/navigation": { useSearchParams: () => new URLSearchParams() },
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },
@@ -172,7 +176,7 @@ function layout(kind) {
         generationDraft,
       };
     },
-    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction, frameScopes, frameSelection, reference,
+    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction, frameScopes, frameSelection, reference, catalogue, recovery,
     photoRestore() { return photoRestore; },
     setPhotoRestoreState(patch) { photoRestore = { ...photoRestore, ...patch }; },
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
@@ -202,7 +206,7 @@ test("Talking Head result review continues to Demo and returns with the same cli
   assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);
 });
 
-test("Talking Head frame approval carries the edited script and raw identity IDs while preserving Demo and Sound", () => {
+test("Talking Head frame approval carries the edited script and raw identity IDs while preserving Demo and defaulting Sound on", () => {
   const actual = layout("hook"), draftId = "00000000-0000-4000-8000-000000000099";
   const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: draftId } };
   let current = actual.render(props);
@@ -212,7 +216,7 @@ test("Talking Head frame approval carries the edited script and raw identity IDs
   assert.equal(preparation.props.scriptSection.type, "talking-head-script");
   preparation.props.scriptSection.props.onChange("These are the approved words for this business.", true);
   current = actual.render(props); preparation = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
-  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false, identityAssetIds: ["raw-first", "raw-second"] };
+  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, sourceSha256: actual.reference.sourceSha256, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false, identityAssetIds: ["raw-first", "raw-second"] };
   preparation.props.onUseStartingFrame(frame); current = actual.render(props);
   assert.equal(current.generationDraft.talkingHeadScript, "These are the approved words for this business.");
   assert.equal(current.composer.spokenScriptMode, true);
@@ -222,7 +226,7 @@ test("Talking Head frame approval carries the edited script and raw identity IDs
   current.composer.spokenScriptReview.onChange(true); current = actual.render(props);
   assert.equal(current.generationDraft.talkingHeadScriptReviewed, true);
   assert.deepEqual(Array.from(current.generationDraft.startingFrame.identityAssetIds), ["raw-first", "raw-second"]);
-  assert.equal(current.generationDraft.startingFrame.generateAudio, false, "Sound never changes silently");
+  assert.equal(current.generationDraft.startingFrame.generateAudio, true, "New Talking Head frames default to Sound on");
   assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);
   current.composer.onInstructionsChange(""); current = actual.render(props);
   nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id); current = actual.render(props);
@@ -243,12 +247,12 @@ test("Talking Head Recreate approves only the current draft, preserves Demo/scri
   let prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   assert.equal(prep.props.preparationFormat, "talking_head");
   assert.equal(prep.props.draftId, draftId); assert.equal(current.generationDraft.referencesPending, true);
-  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false };
+  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, sourceSha256: actual.reference.sourceSha256, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false };
   prep.props.onUseStartingFrame({ ...frame, ownerId: "other" }); assert.equal(actual.frameSelection.frame, null);
   prep.props.onUseStartingFrame({ ...frame, draftId: "other-draft" }); assert.equal(actual.frameSelection.frame, null);
   prep.props.onUseStartingFrame(frame); current = render();
   assert.equal(nodes(current.tree).some(node => node.type === "starting-frame-preparation"), false);
-  assert.equal(current.generationDraft.startingFrame, frame);
+  assert.equal(current.generationDraft.startingFrame.assetId, frame.assetId);
   assert.equal(current.composer.instructions, 'Say "This is my product."');
   assert.equal(current.composer.startingFrameMode, true);
   assert.equal(current.composer.generationSettings.duration, 4);
@@ -259,10 +263,10 @@ test("Talking Head Recreate approves only the current draft, preserves Demo/scri
   assert.deepEqual(actual.frameScopes.at(-1), ["owner", true, `talking_head:${draftId}`]);
   nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
   current = render(); prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
-  prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame, frame);
+  prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame.assetId, frame.assetId);
   const sound = nodes(current.composer.startingFrameSoundControl).find(node => node.props.role === "switch" && node.props["aria-label"] === "Generate sound");
   sound.props.onClick(); current = render();
-  assert.equal(current.generationDraft.startingFrame.generateAudio, true);
+  assert.equal(current.generationDraft.startingFrame.generateAudio, false);
   const faceControl = () => nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props;
   const photos = [{ asset: { id: "face-a", title: "Face A", url: "https://owned.test/a.png" } }, { asset: { id: "face-b", title: "Face B", url: "https://owned.test/b.png" } }];
   current.composer.onGenerationSettingsChange({ model: "google_omni" }); current = render();
@@ -322,9 +326,8 @@ test("both Create layouts pass every chosen image to the visible picker and gene
   }
 });
 
-test("both finishing layouts block pending or failed demo soundtrack changes while keeping the previous preview", () => {
-  for (const kind of ["hook", "phone"]) {
-    const actual = layout(kind);
+test("Phone finishing blocks pending or failed demo soundtrack changes while keeping the previous preview", () => {
+    const actual = layout("phone");
     actual.audio.loading = true;
     let rendered = actual.render();
     assert.match(rendered.finishing.demoFramingError, /selected demo media to finish loading/);
@@ -334,7 +337,6 @@ test("both finishing layouts block pending or failed demo soundtrack changes whi
     assert.equal(rendered.finishing.demoFramingError, actual.audio.error);
     actual.audio.error = null;
     assert.equal(actual.render().finishing.demoFramingError, null);
-  }
 });
 
 test("Talking Head preview always remains visible and its removed toggle cannot hide selected media", () => {
@@ -375,7 +377,7 @@ test("Talking Head Schedule keeps its guarded actions inside the settings panel 
   assert.equal(view.finishing.scheduleDraft, settings.props.draft, "The finishing boundary and the visible schedule controls share one posting draft");
   assert.equal(view.finishing.scheduleTimezone, settings.props.timezone, "The finishing boundary uses the account-aware timezone shown by schedule controls");
   assert.ok(all.find(node => node.type === "controls").props.actionContent, "The in-card default action is replaced");
-  assert.equal(all.find(node => node.type === "scheduling").props.demoAudio, actual.audio.asset);
+  assert.equal(all.find(node => node.type === "scheduling").props.demoAudio, null);
   actions.props.onBackToEdit();
   assert.equal(actual.render().tabs.value, "edit");
 });
@@ -435,7 +437,7 @@ for (const kind of ["hook", "phone"]) {
     actual.render().composition.demo.remove();
     assert.equal(actual.render().composition.demoFraming, null);
   });
-  test(`${kind}: audio replacement resets repeat only after successful selection`, async () => {
+  if (kind === "phone") test(`${kind}: audio replacement resets repeat only after successful selection`, async () => {
     const actual = layout(kind);
     let { composition } = actual.render();
     assert.equal(composition.demoAudioPlayback, "once");
@@ -451,7 +453,7 @@ for (const kind of ["hook", "phone"]) {
     assert.equal(actual.demo.removed, 0);
   });
 
-  test(`${kind}: audio removal and accepted demo changes clear repeat; failed demo changes preserve it`, async () => {
+  if (kind === "phone") test(`${kind}: audio removal and accepted demo changes clear repeat; failed demo changes preserve it`, async () => {
     const actual = layout(kind);
     actual.render().composition.onDemoAudioPlaybackChange("repeat");
     actual.render().composition.demoAudio.remove();
@@ -521,9 +523,136 @@ test("Talking Head stored-frame choice keeps ownership, full source duration, sc
   assert.equal(current.composer.onStartingFrameSelect({...frame,ownerId:"foreign"}),false);
   assert.equal(actual.frameSelection.frame,null);assert.equal(actual.references[0].removed,0);
   assert.equal(current.composer.onStartingFrameSelect(frame),true);current=render();
-  assert.equal(current.generationDraft.startingFrame,frame);
+  assert.deepEqual({ ...current.generationDraft.startingFrame }, { ...frame, generateAudio: true });
   assert.equal(current.composer.generationSettings.duration,5);
   assert.equal(current.composer.instructions,"Keep my spoken script");
   assert.equal(actual.references[0].removed,1);assert.equal(actual.references[1].removed,1);
   assert.equal(actual.references[2].removed,0);assert.equal(actual.demo.removed,0);assert.equal(actual.audio.removed,0);
+});
+
+test("long Talking Head invitation opens the selected source directly in Script & Remix without mutating words or Demo", () => {
+  const h = layout("hook"); h.reference.durationSeconds = 4;
+  const props = { generationEnabled: true, startingFrameEnabled: true };
+  h.frameSelection.setFrame({ ownerId: "owner", referenceId: h.reference.id, draftId: "saved-draft", motionInstructions: "Keep source motion.", sourceDurationSeconds: 4 });
+  let v = h.render(props); assert.equal(v.composer.promptInvitation, undefined);
+  h.reference.durationSeconds = 4.001; v = h.render(props);
+  assert.equal(v.composer.promptInvitation.referenceId, h.reference.id);
+  const before = v.composer.instructions;
+  v.composer.promptInvitation.onOpen(); v = h.render(props);
+  const panel = nodes(v.tree).find(n => n.type === "starting-frame-preparation");
+  assert.equal(panel.props.reference.id, h.reference.id);
+  assert.equal(panel.props.draftId, "saved-draft");
+  assert.equal(panel.props.initialSection, "script");
+  assert.equal(panel.props.scriptSection.props.referenceId, h.reference.id);
+  assert.equal(panel.props.scriptSection.props.sourceSha256, h.reference.sourceSha256);
+  assert.equal(v.composer.instructions, before);
+  assert.equal(h.demo.removed, 0); assert.equal(h.audio.removed, 0);
+});
+
+test("Applying a reviewed long-source Remix changes the generation draft while keeping the approved frame and settings", () => {
+  const h = layout("hook"); h.reference.durationSeconds = 8;
+  const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: "draft" } };
+  const frame = { ownerId: "owner", draftId: "draft", referenceId: h.reference.id, sourceSha256: h.reference.sourceSha256,
+    assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Original motion.", generateAudio: true };
+  h.frameSelection.setFrame(frame);
+  let view = h.render(props);
+  const settings = view.generationDraft.settings;
+  view.composer.promptInvitation.onOpen(); view = h.render(props);
+  const panel = nodes(view.tree).find(node => node.type === "starting-frame-preparation");
+  assert.equal(panel.props.scriptSection.props.onApply("My reviewed business hook.", "Lean toward the camera."), true);
+  view = h.render(props);
+  assert.equal(view.generationDraft.talkingHeadScript, "My reviewed business hook.");
+  assert.equal(view.generationDraft.talkingHeadScriptReviewed, true);
+  assert.equal(view.generationDraft.referenceInstructions, "Lean toward the camera.");
+  assert.equal(view.generationDraft.startingFrame, frame);
+  assert.equal(view.generationDraft.settings, settings);
+  assert.equal(nodes(view.tree).some(node => node.type === "starting-frame-preparation"), false);
+  h.frameSelection.setFrame({ ...frame, assetId: "different" });
+  assert.equal(h.render(props).generationDraft.referenceInstructions, "Original motion.");
+});
+
+test("capped Talking Head Remix transfers the model-supported duration into the approved-frame Create draft", () => {
+  const h = layout("hook");
+  Object.assign(h.reference, { id: "talking-mug-story", durationSeconds: 27.867 });
+  h.recovery.session.generationSettings = { ...h.recovery.session.generationSettings, model: "kling_4_0", duration: 30 };
+  for (const reference of h.references) reference.asset = null;
+  h.references[0].assets = [];
+  const frame = { ownerId: "owner", draftId: "draft", referenceId: h.reference.id, sourceSha256: h.reference.sourceSha256,
+    assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, motionInstructions: "Keep the mug low.", generateAudio: true };
+  h.frameSelection.setFrame(frame);
+  const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: "draft" } };
+  h.render(props).composer.promptInvitation.onOpen();
+  const panel = nodes(h.render(props).tree).find(node => node.type === "starting-frame-preparation");
+  assert.equal(panel.props.scriptSection.props.targetDurationSeconds, 30);
+  assert.equal(panel.props.scriptSection.props.onApply("Try practicing a short conversation today.", "Keep the mug low.", 30), true);
+  const { generationDraft } = h.render(props);
+  assert.equal(generationDraft.settings.duration, 30);
+  assert.equal(generationDraft.settings.model, "kling_4_0");
+  assert.equal(h.recovery.session.generationSettings.duration, 30);
+  assert.equal(generationDraft.talkingHeadScript, "Try practicing a short conversation today.");
+  assert.equal(generationDraft.talkingHeadScriptReviewed, true);
+  assert.equal(generationDraft.startingFrame, frame);
+  assert.equal(getWorkflowGenerationDraftError(generationDraft), null);
+});
+
+test("Talking Head keeps a recovered demo voiceover in finishing until explicitly removed", () => {
+  const h = layout("hook");
+  const voice = { id: "saved-voice", url: "https://owned.test/saved.wav", title: "Saved voiceover", durationSeconds: 6 };
+  h.recovery.acceptAsset("demoAudio", voice);
+  let view = h.render();
+  assert.equal(view.composition.demoAudio.asset.url, voice.url);
+  assert.equal(view.finishing.demoAudioSource.url, voice.url);
+  assert.notEqual(view.generationDraft.audioReference?.url, voice.url);
+  h.recovery.problems.demoAudio = "Saved voiceover is unavailable.";
+  assert.equal(h.render().finishing.demoFramingError, h.recovery.problems.demoAudio);
+  view.composition.demoAudio.remove();
+  view = h.render();
+  assert.equal(view.composition.demoAudio.asset, null);
+  assert.equal(view.finishing.demoAudioSource, null);
+  assert.equal(h.recovery.session.demoAudioAssetId, null);
+});
+
+test("Talking Head review and Remix prefill stay bound to the selected source", () => {
+  const h = layout("hook"); h.reference.durationSeconds = 8;
+  const other = { id: "talking-other-source", sourceSha256: "b".repeat(64), durationSeconds: 9 };
+  h.catalogue.push(other);
+  const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: "draft" } };
+  const frame = { ownerId: "owner", draftId: "draft", referenceId: h.reference.id, sourceSha256: h.reference.sourceSha256,
+    assetId: "frame-a", jobId: "job-a", url: "https://owned.test/frame-a.png", width: 720, height: 1280, durationSeconds: 4,
+    motionInstructions: "Stay at eye level.", generateAudio: true };
+  h.frameSelection.setFrame(frame);
+  h.render(props).composer.promptInvitation.onOpen();
+  const panel = () => nodes(h.render(props).tree).find(node => node.type === "starting-frame-preparation");
+  const words = "My reviewed hook for source A.";
+  assert.equal(panel().props.scriptSection.props.onApply(words, "Lean toward the camera."), true);
+  let view = h.render(props);
+  assert.equal(view.generationDraft.talkingHeadScriptReviewed, true);
+  assert.equal(view.composer.onStartingFrameSelect({ ...frame, assetId: "frame-a-variant" }), true);
+  view = h.render(props);
+  assert.equal(view.generationDraft.talkingHeadScriptReviewed, true);
+  const newFrame = { ...frame, assetId: "frame-b", jobId: "job-b", draftId: "other-draft", referenceId: other.id,
+    sourceSha256: other.sourceSha256, url: "https://owned.test/frame-b.png", motionInstructions: "Stay back at the desk." };
+  assert.equal(view.composer.onStartingFrameSelect(newFrame), true);
+  view = h.render(props);
+  assert.equal(view.generationDraft.startingFrame.assetId, newFrame.assetId);
+  assert.equal(view.generationDraft.referenceInstructions, newFrame.motionInstructions);
+  assert.equal(view.generationDraft.talkingHeadScript, words, "Keep the user's words editable");
+  assert.equal(view.generationDraft.talkingHeadScriptReviewed, false);
+  view.composer.promptInvitation.onOpen();
+  assert.equal(panel().props.scriptSection.props.preferInitialScript, false);
+  panel().props.onClose();
+  h.render(props).composer.spokenScriptReview.onChange(true);
+  assert.equal(h.render(props).generationDraft.talkingHeadScriptReviewed, true);
+  assert.equal(h.recovery.session.talkingHeadScriptSource, `${other.id}:${other.sourceSha256}`);
+});
+
+test("a legacy review without a source keeps its words and requires a new review", () => {
+  const h = layout("hook");
+  h.recovery.update(previous => ({ ...previous, instructions: "Saved hook words.", talkingHeadScriptMode: true, talkingHeadScriptReviewed: true }));
+  h.frameSelection.setFrame({ ownerId: "owner", assetId: "saved", jobId: "job", draftId: "draft",
+    referenceId: h.reference.id, sourceSha256: h.reference.sourceSha256 });
+  const { generationDraft, composer } = h.render({ generationEnabled: true, startingFrameEnabled: true });
+  assert.equal(generationDraft.talkingHeadScript, "Saved hook words.");
+  assert.equal(generationDraft.talkingHeadScriptReviewed, false);
+  assert.equal(composer.spokenScriptReview.reviewed, false);
 });

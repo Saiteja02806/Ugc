@@ -66,7 +66,7 @@ test("recreate-catalog and creator-slideshows attach views to slideshow referenc
 test("ReferenceCard renders views badge without colliding with bottom-left slide count badge", () => {
   const workspaceSource = fs.readFileSync(path.resolve("components/explore/recreate-workspace.tsx"), "utf8");
   // Views badge is rendered conditionally ONLY when formattedViews exists
-  assert.match(workspaceSource, /reference\.formattedViews\s*\?\s*<span data-reference-views/);
+  assert.match(workspaceSource, /viewLabel\s*\?\s*<span data-reference-views/);
   assert.match(workspaceSource, /studio\.referenceViewsBadge/);
   assert.match(workspaceSource, /EyeIcon/);
   assert.match(workspaceSource, /reference\.formattedViews/);

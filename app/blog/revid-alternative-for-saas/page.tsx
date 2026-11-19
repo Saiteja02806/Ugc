@@ -30,7 +30,7 @@ const faqs = [
   {
     question: "How much does Vidmake cost?",
     answer:
-      "Vidmake has a seven-day trial with 20 daily content pieces and no credit card. Paid plans are Starter at $29 a month (200 AI credits), Growth at $49 (600 credits) and Startup at $99 (1,200 credits).",
+      "Vidmake's paid plans are Starter at $29 a month (200 AI credits), Growth at $49 (600 credits) and Startup at $99 (1,200 credits).",
   },
   {
     question: "Can both tools publish to social platforms?",
@@ -97,7 +97,7 @@ export default function RevidAlternativePage() {
           <li><strong className="text-foreground-strong">Business context:</strong> the creative work starts from your website and offer, not a blank prompt.</li>
           <li><strong className="text-foreground-strong">Formats:</strong> <ArticleLink href="/ai-ugc-video-generator">AI UGC video</ArticleLink>, <ArticleLink href="/guides/talking-head-with-saas-demo">talking-head plus demo</ArticleLink>, text-led video, <ArticleLink href="/guides/wall-of-text-video-for-saas">text on screen</ArticleLink>, slideshows and the <ArticleLink href="/instagram-carousel-maker">Instagram carousel maker</ArticleLink>.</li>
           <li><strong className="text-foreground-strong">Review:</strong> inspect the result, compare versions and download the approved asset.</li>
-          <li><strong className="text-foreground-strong">Price:</strong> 7-day trial with 20 daily content pieces; Starter $29 (200 credits), Growth $49 (600), Startup $99 (1,200).</li>
+          <li><strong className="text-foreground-strong">Price:</strong> paid plans with monthly credits; Starter $29 (200 credits), Growth $49 (600), Startup $99 (1,200).</li>
           <li><strong className="text-foreground-strong">Boundary:</strong> generated footage is not product proof; real demos stay real recordings.</li>
         </ul>
 
@@ -117,7 +117,7 @@ export default function RevidAlternativePage() {
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Starts from</th><td className="p-4 align-top">Prompt, link, media, trend</td><td className="p-4 align-top">Website and business context</td></tr>
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Editing</th><td className="p-4 align-top">Built-in editor</td><td className="p-4 align-top">Format-specific review before download</td></tr>
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Publishing</th><td className="p-4 align-top">TikTok, Instagram, YouTube, X</td><td className="p-4 align-top">Asset creation and review; verify scheduling support for your platforms</td></tr>
-              <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Entry price</th><td className="p-4 align-top">$39/mo, 2,000 credits (public FAQ)</td><td className="p-4 align-top">7-day trial; $29/mo Starter</td></tr>
+              <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Entry price</th><td className="p-4 align-top">$39/mo, 2,000 credits (public FAQ)</td><td className="p-4 align-top">Paid plans; $29/mo Starter</td></tr>
               <tr className="border-t border-border"><th scope="row" className="p-4 font-semibold text-foreground-strong">Developer surface</th><td className="p-4 align-top">API, MCP, CLI advertised</td><td className="p-4 align-top">MCP server and tools reference</td></tr>
             </tbody>
           </table>
@@ -146,7 +146,7 @@ export default function RevidAlternativePage() {
           <li>Decide on your evidence, not on a feature table.</li>
         </ol>
         <p>
-          The <ArticleLink href="/blog/ai-ugc-video-generator-free-trial">trial checklist article</ArticleLink> turns that
+          The <ArticleLink href="/blog/ai-ugc-video-generator-free-trial">pre-purchase checklist article</ArticleLink> turns that
           into a pass/fail scorecard, and the <ArticleLink href="/guides/product-demo-to-short-video">product demo
           guide</ArticleLink> covers the demonstration itself.
         </p>
@@ -156,8 +156,8 @@ export default function RevidAlternativePage() {
       <VideoRelatedLinks
         links={[
           { href: "/blog/postjet-alternative-for-saas", title: "Postjet alternative for SaaS", description: "Compare the slideshow-autopilot workflow with a review-first studio." },
-          { href: "/blog/ai-ugc-video-generator-free-trial", title: "Free trial checklist", description: "Test either tool against a real brief." },
-          { href: "/pricing", title: "Vidmake pricing", description: "Current trial, credits and plan details." },
+          { href: "/blog/ai-ugc-video-generator-free-trial", title: "Pre-purchase checklist", description: "Test either tool against a real brief." },
+          { href: "/pricing", title: "Vidmake pricing", description: "Current credits and plan details." },
           { href: "/guides/product-demo-to-short-video", title: "Product demo to short video", description: "Keep the demonstration honest." },
           { href: "/blog/best-ai-ugc-tools-for-saas", title: "Best AI UGC tools for SaaS", description: "A broader comparison of the category." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "The Vidmake workflow this page compares." },

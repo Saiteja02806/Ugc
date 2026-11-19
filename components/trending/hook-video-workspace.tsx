@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, Loader2, RefreshCw, UserRound, Video } from "lucide-react";
+import {
+  AlertCircle,
+  RefreshCw,
+  UserRound,
+  Video,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { HookVideoComposer } from "@/components/trending/hook-video-composer";
@@ -485,7 +491,7 @@ function HookWorkspaceLoading() {
   return (
     <div className="flex min-h-[430px] items-center justify-center px-5 py-8">
       <div className="text-center">
-        <Loader2 className="mx-auto size-5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+        <BlocksSpinner className="mx-auto size-5 text-primary" aria-hidden="true" />
         <p className="mt-3 text-sm font-semibold text-muted">
           Loading influencer videos
         </p>

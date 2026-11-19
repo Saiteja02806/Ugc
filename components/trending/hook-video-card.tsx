@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, Loader2, Play, Video } from "lucide-react";
+import {
+  AlertCircle,
+  Play,
+  Video,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
@@ -169,7 +175,7 @@ export function HookVideoCard({
       {previewLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/48 text-white">
           <span className="flex size-11 items-center justify-center rounded-full bg-black/55">
-            <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <BlocksSpinner className="size-5" aria-hidden="true" />
           </span>
         </div>
       ) : null}

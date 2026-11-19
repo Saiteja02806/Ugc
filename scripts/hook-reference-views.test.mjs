@@ -31,7 +31,7 @@ test("references with NO link do not have view counts (zero hallucinated views)"
   assert.equal(hook56, undefined);
 });
 
-test("getHookReferenceViews retrieves exact live real-time views for verified videos", () => {
+test("getHookReferenceViews retrieves exact recorded view snapshots for verified videos", () => {
   // Hook 100 (Instagram Reel DeacvdqpkvR)
   const hook100 = getHookReferenceViews("explore-paired-hook-fc44f6214b6e17413600ec13");
   assert.ok(hook100);
@@ -51,9 +51,9 @@ test("getHookReferenceViews retrieves exact live real-time views for verified vi
   assert.equal(hook103.formattedViews, "3M");
 });
 
-test("ReferenceCard component renders data-reference-views badge and EyeIcon ONLY when formattedViews exists", () => {
+test("ReferenceCard component renders data-reference-views badge and EyeIcon only when source-bound numeric views exist", () => {
   const workspaceSource = fs.readFileSync(path.resolve("components/explore/recreate-workspace.tsx"), "utf8");
-  assert.match(workspaceSource, /reference\.formattedViews\s*\?\s*<span data-reference-views/);
+  assert.match(workspaceSource, /viewLabel\s*\?\s*<span data-reference-views/);
   assert.match(workspaceSource, /studio\.referenceViewsBadge/);
   assert.match(workspaceSource, /EyeIcon/);
   assert.match(workspaceSource, /reference\.formattedViews/);

@@ -1,0 +1,5 @@
+.gate { position: relative; display: flex; align-items: center; flex-direction: column; gap: 12px; margin-top: 20px; padding: 72px 16px 28px; text-align: center; color: var(--foreground); font-size: 14px; }
+.fade { position: absolute; inset: 0 0 auto; height: 64px; display: flex; gap: 16px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(to bottom, #000, transparent); }
+.fade span { flex: 1; border-radius: 12px; background: var(--card-muted); opacity: .5; }
+.action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 24px; border: 1px solid var(--border); border-radius: 10px; background: var(--foreground); color: var(--background); font-size: 14px; font-weight: 600; }
+.action:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }

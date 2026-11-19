@@ -3,7 +3,15 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Check, FolderPlus, Images, LoaderCircle, RefreshCw, Upload } from "lucide-react";
+import {
+  Archive,
+  Check,
+  FolderPlus,
+  Images,
+  RefreshCw,
+  Upload,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
@@ -171,7 +179,7 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
       {mode === "manage" && !collectionId ? <label><input type="checkbox" checked={archived} disabled={locked} onChange={event => { setArchived(event.target.checked); setSelected([]); }} />Archived</label> : null}
     </form>
     {active.isError && active.data ? <p role="alert">Could not refresh your images. Showing the saved list. <Button type="button" variant="link" onClick={() => void active.refetch()}>Retry images</Button></p> : null}
-    {active.isPending ? <p role="status" className={styles.empty}><LoaderCircle className="animate-spin" aria-hidden="true" />Loading your images…</p> : active.isError && !active.data ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
+    {active.isPending ? <p role="status" className={styles.empty}><BlocksSpinner  aria-hidden="true" />Loading your images…</p> : active.isError && !active.data ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
       {visible.length ? <div className={styles.grid}>{visible.map(asset => <button type="button" className={styles.tile} key={asset.id} aria-label={`Select image ${asset.title}`} aria-pressed={selectedIds ? selected.includes(asset.id) : collectionSelected || selected.includes(asset.id)} disabled={locked || (!selected.includes(asset.id) && multiple && selected.length >= limit)} onClick={() => toggle(asset.id)}>
         <img src={imagePickerThumbnailUrl(asset.thumbnailUrl ?? asset.url)} alt="" width={180} height={225} loading="lazy" decoding="async" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
       </button>)}</div> : <div className={styles.empty}><Images aria-hidden="true" /><p>{search ? "No matching images. Try another search." : collectionId ? "This collection is empty. Upload images here or add images from All images." : archived ? "No archived images." : "Upload JPG, PNG or WebP images, up to 25 MB each."}</p></div>}

@@ -25,7 +25,7 @@ const faqs = [
   },
   {
     question: "Is there a free UGC video maker?",
-    answer: "Many tools have free trials. Vidmake has a seven-day free trial with no credit card and 20 daily content pieces.",
+    answer: "Many tools have free trials. Vidmake is paid-only, with plans starting at $29 a month.",
   },
   {
     question: "What's the difference between a UGC video creator and an AI UGC video generator?",
@@ -152,7 +152,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
         <ArticleH3>7. Clear pricing</ArticleH3>
         <p>Look for public prices, what a &quot;credit&quot; buys, and what happens when you run out. Avoid tools that hide pricing behind a sales call if you&apos;re a small team.</p>
         <p>
-          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> seven-day free trial with no card and 20 daily content pieces; Starter at $29 a month with 200 credits; Growth at $49 a month with 600 credits. Annual options are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
+          <strong className="font-semibold text-foreground-strong">Vidmake:</strong> paid plans only; Starter at $29 a month with 200 credits; Growth at $49 a month with 600 credits. Annual options are on the <ArticleLink href="/pricing">pricing page</ArticleLink>.
         </p>
 
         <ArticleH3>8. Rights and honesty</ArticleH3>
@@ -226,7 +226,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
           { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
-          { href: "/pricing", title: "Pricing", description: "Current trial and paid plan details." },
+          { href: "/pricing", title: "Pricing", description: "Current paid plan details." },
         ]}
       />
     </VideoMarketingPage>

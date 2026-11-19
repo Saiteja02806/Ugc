@@ -6,10 +6,13 @@ import { getAIStudioAccessMessage } from "./access-policy.ts";
 
 test("distinguishes access-check failures from a locked account", () => {
   assert.match(getAIStudioAccessMessage("error") ?? "", /could not be verified/i);
+  // User decision, 2026-11-12: paid-only — the locked message must not imply
+  // free generation credits.
   assert.match(
     getAIStudioAccessMessage("locked") ?? "",
-    /free generation credits.*Starter or Growth/i,
+    /Starter or Growth.*AI credits/i,
   );
+  assert.doesNotMatch(getAIStudioAccessMessage("locked") ?? "", /free/i);
   assert.equal(getAIStudioAccessMessage("pro"), null);
 });
 

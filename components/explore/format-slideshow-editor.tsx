@@ -3,7 +3,17 @@
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioImageResult } from "@/lib/ai-studio/media-results";
@@ -105,6 +115,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const [restoring, setRestoring] = useState(!localPreview);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
+  // Fitted local previews for uploads still in flight. Rendered only in the
+  // slide rail; browser storage keeps owned asset identities only.
+  const [uploadPreviews, setUploadPreviews] = useState<Array<{ id: string; url: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<SlideshowOutput | null>(null);
   const [pending, setPending] = useState<SlideshowSaveRequest | null>(null);
@@ -463,24 +476,76 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     if (replace && (!targetKey || files.length !== 1) || !replace && current.length + files.length > MAX_SLIDESHOW_SLIDES) { setError("A slideshow can contain up to 10 images. Replace one image or choose fewer files."); return; }
     if (files.some(file => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size <= 0 || file.size > 25 * 1024 * 1024)) { setError("Choose JPG, PNG or WebP images, up to 25 MB each."); return; }
     working.current = true; setUploading(true); setUploadProgress({ completed: 0, total: files.length }); setError(null); setOutput(null); onDirty();
-    const selectedRevision = revision.current;
+    const previewTarget = replace ? previewIndex : current.length;
+    // Appends bump the revision themselves; the batch tracks its own version so
+    // any real change elsewhere still aborts the remaining files.
+    const batchRevision = { value: revision.current };
+    // Fitted local previews for files whose owned asset is not attached yet,
+    // positioned by file index so the rail shows each in file order.
+    const slots = new Set<{ id: string; url: string; index: number }>();
+    // undefined is still pending; null is a failed file that must not block
+    // later successful uploads from joining the sequence.
+    const settledImages = new Array<AIStudioImageResult | null | undefined>(files.length);
+    let appended = 0;
+    const dropSlot = (slot: { id: string; url: string; index: number }) => {
+      slots.delete(slot);
+      URL.revokeObjectURL(slot.url);
+      setUploadPreviews([...slots].map(({ id: slotId, url }) => ({ id: slotId, url })));
+    };
+    const appendSettledImages = () => {
+      const joined: EditorSlide[] = [];
+      while (appended < files.length && settledImages[appended] !== undefined) {
+        const image = settledImages[appended];
+        if (image) joined.push({ referenceSlideId: crypto.randomUUID(), mediaAssetId: image.id, image });
+        for (const slot of [...slots]) if (slot.index === appended) dropSlot(slot);
+        appended += 1;
+      }
+      if (joined.length) change([...slideRef.current, ...joined], previewTarget);
+      batchRevision.value = revision.current;
+    };
     try {
-      const settled = await prepareSlideshowSequence(files, async file => {
+      const settled = await prepareSlideshowSequence(files, async (file, index) => {
+        let slot: { id: string; url: string; index: number } | null = null;
         try {
           const fitted = await fitSlideshowUpload(file);
-          if (!alive.current || revision.current !== selectedRevision) throw new Error("The slideshow changed while preparing this image.");
-          return { status: "fulfilled" as const, value: imageFromAsset((await uploadAIStudioReferenceMedia(fitted, "image", 3, owner, { purpose: "explore-slides" })).asset) };
-        } catch (reason) { return { status: "rejected" as const, reason }; }
-      }, (completed, total) => { if (alive.current) setUploadProgress({ completed, total }); });
-      if (!alive.current || revision.current !== selectedRevision) return;
+          if (!alive.current || revision.current !== batchRevision.value) throw new Error("The slideshow changed while preparing this image.");
+          if (!replace) {
+            slot = { id: crypto.randomUUID(), url: URL.createObjectURL(fitted), index };
+            slots.add(slot); setUploadPreviews([...slots].map(({ id: slotId, url }) => ({ id: slotId, url })));
+          }
+          const image = imageFromAsset((await uploadAIStudioReferenceMedia(fitted, "image", 3, owner, { purpose: "explore-slides" })).asset);
+          if (!alive.current || revision.current !== batchRevision.value) throw new Error("The slideshow changed while preparing this image.");
+          if (replace) {
+            const next = [...slideRef.current];
+            const target = next.findIndex(slide => slide.referenceSlideId === targetKey);
+            if (target >= 0) next[target] = { ...next[target], mediaAssetId: image.id, image, previous: next[target].image ?? undefined, error: undefined };
+            change(next, previewIndex);
+          } else {
+            // Completed slides join the sequence only in file order, so a
+            // later upload never arrives before its predecessor.
+            settledImages[index] = image;
+            appendSettledImages();
+          }
+          batchRevision.value = revision.current;
+          return { status: "fulfilled" as const, value: image };
+        } catch (reason) {
+          if (slot) dropSlot(slot);
+          if (!replace && alive.current && revision.current === batchRevision.value) {
+            settledImages[index] = null;
+            appendSettledImages();
+          }
+          return { status: "rejected" as const, reason };
+        }
+      }, (completed, total) => { if (alive.current) setUploadProgress({ completed, total }); }, 4);
+      if (!alive.current || revision.current !== batchRevision.value) return;
       const images = settled.flatMap(value => value.status === "fulfilled" ? [value.value] : []);
-      const next = [...slideRef.current];
-      if (replace && images[0]) { const index = next.findIndex(slide => slide.referenceSlideId === targetKey); if (index >= 0) next[index] = { ...next[index], mediaAssetId: images[0].id, image: images[0], previous: next[index].image ?? undefined, error: undefined }; }
-      else for (const image of images) next.push({ referenceSlideId: crypto.randomUUID(), mediaAssetId: image.id, image });
-      if (images.length) change(next, replace ? previewIndex : current.length);
       const failed = settled.find(value => value.status === "rejected");
       if (failed?.status === "rejected") setError(`${images.length ? `${images.length} image${images.length === 1 ? "" : "s"} added. ` : ""}${failed.reason instanceof Error ? failed.reason.message : "Some images could not be uploaded. Try them again."}`);
-    } finally { working.current = false; if (alive.current) { setUploading(false); setUploadProgress(null); } }
+    } finally {
+      working.current = false;
+      for (const slot of [...slots]) dropSlot(slot);
+      if (alive.current) { setUploading(false); setUploadProgress(null); }
+    }
   }
   async function save(continueAfterSave = false) {
     if (!owner || localPreview || !savingEnabled || working.current || restoring || uploading || generationBusy) return;
@@ -640,17 +705,22 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     </div> : <p className="text-sm text-destructive">This image is unavailable. Replace it or remove this slide.</p>}<div className={textStyles.previewNavigation}><Button type="button" variant="ghost" disabled={previewIndex === 0} onClick={() => setPreviewIndex(index => index - 1)}><ArrowLeft aria-hidden="true" />Previous</Button><span>{previewIndex + 1} / {previewUrls.length}</span><Button type="button" variant="ghost" disabled={previewIndex >= previewUrls.length - 1} onClick={() => setPreviewIndex(index => index + 1)}>Next<ArrowRight aria-hidden="true" /></Button></div></> : <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center"><h3 className="text-lg font-semibold">{restoring ? "Restoring your slides…" : "Your slides will appear here"}</h3><p className="max-w-md text-sm leading-6 text-muted">Generate your own images in Create or upload finished slide images. Then arrange them here before scheduling.</p></div>}
     </div>
     <section className={textStyles.sequence} aria-label="Slide sequence" aria-busy={uploading}>
-      <div className={textStyles.sequenceHeading}><div><h3>Your slides</h3><span>{slides.length} / 10</span></div><div><Button type="button" variant="outline" aria-busy={uploading} disabled={locked || generationBusy || slides.length >= 10} onClick={() => { startNewSlide(); setAddSlidesOpen(true); }}>{uploading ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus aria-hidden="true" />}{uploading ? "Uploading…" : "Add slides"}</Button></div></div>
+      <div className={textStyles.sequenceHeading}><div><h3>Your slides</h3><span>{slides.length} / 10</span></div><div><Button type="button" variant="outline" aria-busy={uploading} disabled={locked || generationBusy || slides.length >= 10} onClick={() => { startNewSlide(); setAddSlidesOpen(true); }}>{uploading ? <BlocksSpinner  aria-hidden="true" /> : <Plus aria-hidden="true" />}{uploading ? "Uploading…" : "Add slides"}</Button></div></div>
       {uploadProgress ? <p role="status" aria-live="polite">Uploading slides… {uploadProgress.completed} of {uploadProgress.total} processed</p> : null}
-      {slides.length ? <><div className={textStyles.filmstripRow}>
+      {(slides.length || uploadPreviews.length) ? <><div className={textStyles.filmstripRow}>
         {slides.length > 3 ? <Button type="button" variant="ghost" size="sm" className={textStyles.scrollSlides} aria-label="Scroll slides left" onClick={() => slideDrag.railRef.current?.scrollBy({ left: -180, behavior: "smooth" })}><ChevronLeft aria-hidden="true" /></Button> : null}
         <div ref={slideDrag.railRef} role="group" aria-label="Choose a slide" data-reordering={Boolean(slideDrag.drag) || undefined} className={textStyles.filmstrip}>{slides.map((slide, index) => <div key={slide.referenceSlideId} data-slideshow-slide={slide.referenceSlideId} data-selected={previewIndex === index || undefined} data-dragging={slideDrag.drag?.id === slide.referenceSlideId || undefined} data-drop={slideDrag.drag?.target === index && slideDrag.drag.id !== slide.referenceSlideId ? (index < slides.findIndex(item => item.referenceSlideId === slideDrag.drag?.id) ? "before" : "after") : undefined} className={textStyles.thumbnail}>
         <button type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => setPreviewIndex(index)} className={textStyles.thumbnailPreview}>{slide.image ? <img src={imagePickerThumbnailUrl(slide.image.url)} alt="" draggable={false} width={1080} height={1350} loading="lazy" decoding="async" /> : <span className={textStyles.unavailable}>Unavailable</span>}<span>{index + 1}</span></button>
         <button type="button" aria-label={`Reorder slide ${index + 1}`} aria-describedby={arrangementHelpId} title="Drag to reorder · or use arrow keys" disabled={locked || generationBusy || slides.length < 2} className={textStyles.dragHandle} {...slideDrag.handleProps(slide.referenceSlideId)}><GripVertical aria-hidden="true" /></button>
         <button type="button" aria-label={`Remove slide ${index + 1}`} title={`Remove slide ${index + 1} from this slideshow`} disabled={locked || generationBusy} className={textStyles.deleteSlide} onClick={() => removeSlide(slide.referenceSlideId)}><Trash2 aria-hidden="true" /></button>
-      </div>)}</div>
+      </div>)}
+        {uploadPreviews.map((slot, index) => <div key={slot.id} className={textStyles.thumbnail} data-slideshow-upload-pending={slot.id}>
+          <span className={textStyles.thumbnailPreview}><img src={slot.url} alt="" width={1080} height={1350} decoding="async" /><span>Uploading</span></span>
+          <span className="sr-only" role="status">Uploading image {slides.length + index + 1}</span>
+        </div>)}
+        </div>
         {slides.length > 3 ? <Button type="button" variant="ghost" size="sm" className={textStyles.scrollSlides} aria-label="Scroll slides right" onClick={() => slideDrag.railRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight aria-hidden="true" /></Button> : null}
-      </div><div className={textStyles.sequenceFooter}><p id={arrangementHelpId}>Drag to reorder. Use the bin to remove.<span className="sr-only"> Reorder handles also support Up, Down, Left and Right arrow keys, Home and End.</span></p>{selected ? <details className={textStyles.arrangement}><summary>Reorder slides</summary><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex - 1]?.referenceSlideId)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex + 1]?.referenceSlideId)}><ArrowRight aria-hidden="true" />Later</Button></div></details> : null}</div><span role="status" className="sr-only">{slideDrag.announcement}</span></> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
+      </div><div className={textStyles.sequenceFooter}><p id={arrangementHelpId}>{slides.length ? "Drag to reorder. Use the bin to remove." : "Uploaded slides appear as each upload finishes."}<span className="sr-only"> Reorder handles also support Up, Down, Left and Right arrow keys, Home and End.</span></p>{selected ? <details className={textStyles.arrangement}><summary>Reorder slides</summary><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex - 1]?.referenceSlideId)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex + 1]?.referenceSlideId)}><ArrowRight aria-hidden="true" />Later</Button></div></details> : null}</div><span role="status" className="sr-only">{slideDrag.announcement}</span></> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
     </section>
     <div className={textStyles.previewActions}>{!active && onEdit ? <Button type="button" variant="outline" onClick={onEdit}>Edit slides</Button> : onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to Create</Button> : null}{actions}</div>
   </section>, resultsTarget) : null}</>;

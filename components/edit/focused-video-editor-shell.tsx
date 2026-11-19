@@ -6,9 +6,10 @@ import {
   CheckCircle2,
   Cloud,
   ExternalLink,
-  Loader2,
   Save,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -548,7 +549,7 @@ export function FocusedVideoEditorShell({
 
         {isLoading ? (
           <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-card border border-border bg-card">
-            <Loader2 className="size-6 animate-spin text-primary" aria-label="Loading video" />
+            <BlocksSpinner className="size-6 text-primary" aria-label="Loading video" />
           </div>
         ) : video ? (
           <FocusedVideoEditor
@@ -625,7 +626,7 @@ function EditorTopBar({
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border-strong bg-card-muted text-foreground-strong shadow-sm transition-colors hover:border-white/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
           {isReturning ? (
-            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <BlocksSpinner  aria-hidden="true" />
           ) : (
             <ArrowLeft aria-hidden="true" />
           )}
@@ -651,7 +652,7 @@ function EditorTopBar({
           className="mr-1 inline-flex h-10 items-center gap-2 text-xs font-semibold text-muted"
         >
           {saveState === "saving" ? (
-            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <BlocksSpinner  aria-hidden="true" />
           ) : saveState === "failed" ? (
             <AlertCircle className="text-error" aria-hidden="true" />
           ) : saveState === "saved" ? (
@@ -688,7 +689,7 @@ function EditorTopBar({
             })}
           >
             {isRendering ? (
-              <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <BlocksSpinner  aria-hidden="true" />
             ) : (
               <Save aria-hidden="true" />
             )}

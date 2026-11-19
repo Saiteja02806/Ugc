@@ -231,6 +231,20 @@
       "sourceSha256": "02438cb46d6db746f4a0ce4602d360ec8a2dd8eed6101fd500026c9fedb64b0d",
       "width": 576,
       "height": 1024
+    },
+    {
+      "id": "talking-nicki-kitchen-reaction",
+      "sourceSha256": "48fe1d29d6a4a96ba2e5c284646fc31254b6d53913569c9f61e21802988fc54e",
+      "file": "/explore/talking-head-references/v1/talking-nicki-kitchen-reaction.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-lowlight-instagram-what",
+      "sourceSha256": "0507e79442a29a2dc498e925ec38985ec537f9a4fc422f08a4ecc93bb7f35f6b",
+      "file": "/explore/talking-head-references/v1/talking-lowlight-instagram-what.mp4",
+      "width": 720,
+      "height": 1280
     }
   ]
 }

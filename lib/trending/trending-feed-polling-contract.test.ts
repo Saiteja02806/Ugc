@@ -72,7 +72,7 @@ test("offers a user-initiated retry when only part of the visible feed failed", 
   );
 });
 
-test("stops the generation spinner when an existing free-trial feed requires an upgrade", () => {
+test("shows a neutral paused state and stops the generation spinner when an existing free-trial feed requires an upgrade", () => {
   assert.match(workspace, /upgradeRequired\?: boolean/);
   assert.match(
     workspace,
@@ -80,12 +80,17 @@ test("stops the generation spinner when an existing free-trial feed requires an 
   );
   assert.match(
     workspace,
-    /items\.length === 0 && upgradeRequired[\s\S]*TrendingUpgradeRequiredEmptyState/,
+    /items\.length === 0 && upgradeRequired[\s\S]*TrendingPausedEmptyState/,
   );
   assert.match(
     workspace,
-    /\) : upgradeRequired \? \([\s\S]*TrendingUpgradeRequiredEmptyState[\s\S]*\) : pendingSlotCount > 0/,
+    /\) : upgradeRequired \? \([\s\S]*TrendingPausedEmptyState[\s\S]*\) : pendingSlotCount > 0/,
   );
-  assert.match(workspace, /Your free trial has ended/);
-  assert.match(workspace, /Upgrade to generate the remaining daily content pieces/);
+  assert.match(workspace, /Daily content is paused/);
+  // The upgrade marketing line was removed per user decision, 2026-11-12:
+  // the free-trial-ended screen no longer renders "Upgrade to generate..."
+  // or a View plans link, and the component no longer exists at all.
+  assert.doesNotMatch(workspace, /Upgrade to generate the remaining daily content pieces/);
+  assert.doesNotMatch(workspace, /View plans/);
+  assert.doesNotMatch(workspace, /TrendingUpgradeRequiredEmptyState/);
 });

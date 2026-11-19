@@ -3,10 +3,10 @@
 import {
   AlertCircle,
   CheckCircle2,
-  Loader2,
   Scissors,
   Video,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -148,7 +148,7 @@ function StatusMessage({
         ) : status === "success" ? (
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
         ) : working ? (
-          <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin" />
+          <BlocksSpinner className="mt-0.5 size-4 shrink-0" />
         ) : null}
         <p>{message}</p>
       </div>
@@ -191,7 +191,7 @@ function VideoPreview({
         </div>
       ) : working ? (
         <div className="text-center">
-          <Loader2 className="mx-auto size-8 animate-spin text-primary" />
+          <BlocksSpinner className="mx-auto size-8 text-primary" />
           <p className="mt-4 text-sm font-semibold text-muted">{label}</p>
         </div>
       ) : (
@@ -489,7 +489,7 @@ export function VideoGenerationPanel({
         >
           {isWorking(hookStatus) ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <BlocksSpinner className="mr-2 size-4" />
               Generating
             </>
           ) : (

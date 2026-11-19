@@ -35,8 +35,8 @@ const faqs = [
     answer: "In top-of-funnel paid and organic social video, yes. Viewers on TikTok and Reels care primarily about whether the problem hook is relatable and whether the product proof is compelling, not the legal identity of the actor.",
   },
   {
-    question: "Can I try this workflow for free?",
-    answer: "Yes. Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
+    question: "Can I try this workflow before paying?",
+    answer: "No. Vidmake is paid-only; choose a plan from $29/mo, run the checklist below on a real brief, and keep only the assets you approve.",
   },
 ] as const;
 
@@ -155,7 +155,7 @@ export default function OvercomingFounderCameraAnxietyPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day trial. View full details on{" "}
+                  Choose a plan. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -170,7 +170,7 @@ export default function OvercomingFounderCameraAnxietyPage() {
           { href: "/blog/from-zero-to-1k-mrr-tiktok", title: "From $0 to $1k MRR on TikTok", description: "The solo SaaS founder acquisition blueprint." },
           { href: "/blog/market-side-project-30-minutes-a-week", title: "Market a Side Project in 30 Minutes", description: "The ultra-lean video routine for busy engineers." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for short-form software ads." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

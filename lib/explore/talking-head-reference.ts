@@ -7,7 +7,7 @@ export type TalkingHeadReference = RecreateReference & { durationSeconds: number
 
 /** Discovery only: keep the packaged sources and saved-reference recovery intact. */
 export function visibleTalkingHeadReferences<T extends { id: string }>(items: T[]): T[] {
-  const replaced = new Set(["talking-discovery-full", "talking-bittenbyaturtle", "talking-carla-eatsss", "talking-taliameals"]);
+  const replaced = new Set(["talking-discovery-full", "talking-bittenbyaturtle", "talking-carla-eatsss", "talking-taliameals", "talking-studywithsab"]);
   return items.filter(item => !replaced.has(item.id) && item.id !== "talking-outdoor-discovery" && item.id !== "talking-outdoor-reaction" && item.id !== "talking-car-story" && item.id !== "talking-room-explainer" && item.id !== "talking-discovery" && item.id !== "talking-surprised-story");
 }
 

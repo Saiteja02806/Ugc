@@ -178,7 +178,7 @@ export default function AiUgcVideoMakerSoftwarePage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/blog/cost-of-ugc-video-for-saas", title: "Cost of UGC Video for SaaS", description: "Creators vs agencies vs AI software unit economics." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating software videos on the 7-day trial." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating software videos on a paid plan." },
         ]}
       />
     </VideoMarketingPage>

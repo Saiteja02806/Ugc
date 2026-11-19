@@ -1,6 +1,11 @@
 "use client";
 
-import { Check, Copy, Loader2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useRef, useState } from "react";
 import { copyAIStudioImage, copyAIStudioPrompt, getAIStudioClipboardError } from "@/lib/ai-studio/clipboard";
 import { cn } from "@/lib/utils";
@@ -43,7 +48,7 @@ export function AiStudioCopyButton({ kind, value, className }: {
         onClick={() => void handleCopy()}
         className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait motion-reduce:transition-none", className)}
       >
-        {status === "copying" ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        {status === "copying" ? <BlocksSpinner className="size-3.5" aria-hidden="true" />
           : status === "copied" ? <Check className="size-3.5 text-foreground" aria-hidden="true" />
             : <Copy className="size-3.5" aria-hidden="true" />}
       </button>

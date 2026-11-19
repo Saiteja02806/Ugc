@@ -5,9 +5,10 @@ import {
   ArrowLeft,
   CalendarClock,
   Check,
-  Loader2,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -671,8 +672,8 @@ export function HookVideoScheduleDrawer({
               role="status"
               className="mt-4 flex items-start gap-2 rounded-[10px] border border-white/30 px-3 py-2.5 text-xs font-semibold leading-5 text-primary"
             >
-              <Loader2
-                className="mt-0.5 size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+              <BlocksSpinner
+                className="mt-0.5 size-3.5 shrink-0"
                 aria-hidden="true"
               />
               <span>
@@ -723,7 +724,7 @@ export function HookVideoScheduleDrawer({
             className="h-10 w-full rounded-[10px]"
           >
             {submitting ? (
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <BlocksSpinner className="size-4" aria-hidden="true" />
             ) : stage === "review" ? (
               <CalendarClock data-icon="inline-start" aria-hidden="true" />
             ) : (

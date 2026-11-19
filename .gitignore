@@ -142,3 +142,6 @@ next-env.d.ts
 
 # Private source-bound recreation prompt package (ciphertext is releasable).
 /lib/explore/creator-middle-frame-prompts.json
+
+# Local Vidmake launch-video review renders; never release artifacts.
+/vidmake-launch*.mp4

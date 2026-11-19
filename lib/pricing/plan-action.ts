@@ -1,11 +1,11 @@
 import type { BillingSubscription } from "@/components/billing/use-billing-subscription";
-import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import type { BillingInterval, PricingPlan } from "@/lib/pricing/plans";
 
-type SubscriptionForPricing = Pick<
+export type SubscriptionForPricing = Pick<
   BillingSubscription,
-  "accessSource" | "billingInterval" | "isActive" | "isDodoManaged" | "planKey" | "status" | "trial"
->;
+  "accessSource" | "billingInterval" | "isActive" | "isDodoManaged" | "planKey" | "status"
+> & { trial: Pick<BillingSubscription["trial"], "status"> };
+export type PricingSubscription = SubscriptionForPricing;
 
 export type PricingPlanAction = {
   badgeLabel: string | null;
@@ -36,7 +36,7 @@ export function resolvePricingPlanAction(params: {
       ...base,
       destination: "sign-in",
       disabled: false,
-      label: plan.slug === "free" ? `Start ${FREE_TRIAL_CONTENT_DAYS}-day trial` : `Get ${plan.name}`,
+      label: plan.slug === "free" ? "Start free" : `Get ${plan.name}`,
     };
   }
 
@@ -90,11 +90,9 @@ export function resolvePricingPlanAction(params: {
   }
 
   if (plan.slug === "free") {
-    const currentTrial = !subscription.isActive && subscription.trial.status === "active";
-    const expiredTrial = !subscription.isActive && subscription.trial.status === "expired";
     return {
-      badgeLabel: currentTrial ? "Trial active" : expiredTrial ? "Trial ended" : null,
-      badgeTone: expiredTrial ? "neutral" : "success",
+      badgeLabel: null,
+      badgeTone: "success",
       destination: "workspace",
       disabled: false,
       label: "Open workspace",

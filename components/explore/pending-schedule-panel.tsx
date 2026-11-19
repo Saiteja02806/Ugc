@@ -16,6 +16,7 @@ import { isScheduleTimeout, requestWorkflowSchedule } from "@/lib/explore/workfl
 import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "@/lib/explore/pending-schedule-contract";
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
 import { isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
+import { isScheduleAckMismatch, ScheduleAckMismatchError } from "@/lib/explore/schedule-ack";
 import styles from "@/components/explore/workflow-schedule-review.module.css";
 import { pollInForeground } from "@/lib/http/foreground-polling";
 
@@ -40,6 +41,10 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState("Checking your publishing settings…");
   const [restored, setRestored] = useState(false);
+  // The verified "post was already scheduled (details differ)" receipt from the
+  // UGC-SCH-20261110-SCHEDULE-VERIFY-MISMATCH self-heal, shown with its
+  // Scheduling link while the composer is released for the next post.
+  const [ack, setAck] = useState<string | null>(null);
   const current = useRef(composition), working = useRef(false), alive = useRef(true);
   const scheduledCallback = useRef(onScheduled);
   useEffect(() => { scheduledCallback.current = onScheduled; }, [onScheduled]);
@@ -61,31 +66,56 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     if (next.confirmed) localStorage.setItem(storageKey, JSON.stringify(next));
     if (value.preparation.state === "scheduled" && value.schedule) scheduledCallback.current?.();
   }, [storageKey, owner, queryClient]);
+  // A verified scheduled/publishing/published row whose details differ from the
+  // local record is real evidence that the earlier request is scheduled: release
+  // the composer for the next post instead of looping on the mismatch. The
+  // archived copy preserves the exact recovery evidence under the same key so
+  // repeat-intent identity stays truthful (archive is write-only).
+  const releaseScheduleAck = useCallback((entry: SavedExploreSchedule, error: ScheduleAckMismatchError): boolean => {
+    if (!error.alreadyScheduled) return false;
+    if (!alive.current || currentIdentity.current.storageKey !== storageKey) return false;
+    if (readSavedExploreSchedule(localStorage.getItem(storageKey), owner)?.input.requestKey !== entry.input.requestKey) return false;
+    archiveConfirmedSchedule(localStorage, storageKey, entry.input.requestKey, entry);
+    setSaved(null); setResult(null); setError(null);
+    setAck(error.message);
+    return true;
+  }, [storageKey, owner]);
   useEffect(() => {
     let stopped = false;
     void Promise.resolve().then(async () => {
       if (stopped) return;
       setSaved(null); setResult(null); setError(null); setRestored(false);
+      let entry: SavedExploreSchedule | null = null;
       try {
-        const entry = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
+        entry = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
         if (!entry || stopped) return;
         setSaved(entry);
         const value = await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(entry.input.requestKey)}`);
         if (!stopped) accept(entry, value);
-      } catch (e) { if (!stopped) setError(e instanceof Error ? e.message : "Could not restore the saved request."); }
+      } catch (e) {
+        if (!stopped) {
+          if (entry && isScheduleAckMismatch(e)) { if (releaseScheduleAck(entry, e)) return; setError(e.message); }
+          else setError(e instanceof Error ? e.message : "Could not restore the saved request.");
+        }
+      }
       finally { if (!stopped) setRestored(true); }
     });
     return () => { stopped = true; };
-  }, [owner, storageKey, accept]);
+  }, [owner, storageKey, accept, releaseScheduleAck]);
   useEffect(() => {
     if (!active || !saved || result?.preparation.state !== "preparing") return;
     let stopped = false;
     const stop = pollInForeground({ poll: async () => {
       try { const value = await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(saved.input.requestKey)}`); if (!stopped) accept(saved, value); }
-      catch (e) { if (!stopped) setError(e instanceof Error ? e.message : "Could not refresh preparation."); }
+      catch (e) {
+        if (!stopped) {
+          if (isScheduleAckMismatch(e)) { if (releaseScheduleAck(saved, e)) return; setError(e.message); }
+          else setError(e instanceof Error ? e.message : "Could not refresh preparation.");
+        }
+      }
     }, intervalMs: 5000 });
     return () => { stopped = true; stop(); };
-  }, [active, saved, result?.preparation.state, owner, accept]);
+  }, [active, saved, result?.preparation.state, owner, accept, releaseScheduleAck]);
   const matchesDestinations = (entry: SavedExploreSchedule) => {
     const keys = (values: readonly { platform?: string; connectionId: string }[]) => values.map(target => `${target.platform}:${target.connectionId}`).sort().join("|");
     return keys(entry.input.schedule.targets ?? []) === keys(targets);
@@ -96,7 +126,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const unresolved = !!saved && !saved.confirmed && !saved.timeRejected;
   async function startAnother() {
     if (!active || !restored || !saved?.confirmed || working.current) return;
-    working.current = true; setBusy(true); setError(null);
+    working.current = true; setBusy(true); setError(null); setAck(null);
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
       await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
@@ -121,6 +151,10 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
         localStorage.setItem(storageKey, JSON.stringify(rejected)); setSaved(rejected); setResult(null);
         throw error;
       }
+      if (isScheduleAckMismatch(error)) {
+        if (releaseScheduleAck(entry, error)) return;
+        throw error;
+      }
       // A lost response is reconciled silently. Only a verified server receipt
       // can show success; this read never creates a second post.
       setProgress("Checking whether your post was saved…");
@@ -131,14 +165,20 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
         if (isScheduleSubmissionRejected(error) && !entry.confirmed && alive.current && currentIdentity.current.storageKey === storageKey && readSavedExploreSchedule(localStorage.getItem(storageKey), owner)?.input.requestKey === entry.input.requestKey) {
           localStorage.removeItem(storageKey); setSaved(null); setResult(null); setProgress("Review your updated choices, then click Schedule post."); rejected = true;
         }
-      } catch { /* Keep the exact durable request for the single Try again action. */ }
+      } catch (verifyError) {
+        if (isScheduleAckMismatch(verifyError)) {
+          if (releaseScheduleAck(entry, verifyError)) return;
+          throw verifyError;
+        }
+        /* Keep the exact durable request for the single Try again action. */
+      }
       if (rejected) throw error;
       throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
   async function schedule() {
     if (!active || !restored || working.current || confirmed || composition.error || !composition.draft) return;
-    working.current = true; setBusy(true); setError(null); setProgress("Checking your publishing settings…");
+    working.current = true; setBusy(true); setError(null); setProgress("Checking your publishing settings…"); setAck(null);
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
       await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
@@ -146,17 +186,34 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
         const prior = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
         if (prior && !prior.confirmed && !prior.timeRejected) {
           setSaved(prior);
-          const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
-          if (checked.preparation.state !== "unconfirmed") { accept(prior, checked); return; }
+          try {
+            const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
+            if (checked.preparation.state !== "unconfirmed") { accept(prior, checked); return; }
+          } catch (verifyError) {
+            if (isScheduleAckMismatch(verifyError)) { if (releaseScheduleAck(prior, verifyError)) return; throw verifyError; }
+            throw verifyError;
+          }
           await send(prior); return;
         }
         if (prior?.timeRejected) {
-          const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
-          if (checked.preparation.state !== "unconfirmed") { accept(prior, checked); return; }
+          const rejectedPrior = prior;
+          try {
+            const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(rejectedPrior.input.requestKey)}`), rejectedPrior);
+            if (checked.preparation.state !== "unconfirmed") { accept(rejectedPrior, checked); return; }
+          } catch (verifyError) {
+            if (isScheduleAckMismatch(verifyError)) { if (releaseScheduleAck(rejectedPrior, verifyError)) return; throw verifyError; }
+            throw verifyError;
+          }
         }
         if (prior?.confirmed && prior.signature === composition.signature && matchesDestinations(prior)) {
-          const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
-          if (checked.preparation.state !== "failed" || checked.schedule?.targets.length !== 0) { accept(prior, checked); return; }
+          const confirmedPrior = prior;
+          try {
+            const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(confirmedPrior.input.requestKey)}`), confirmedPrior);
+            if (checked.preparation.state !== "failed" || checked.schedule?.targets.length !== 0) { accept(confirmedPrior, checked); return; }
+          } catch (verifyError) {
+            if (isScheduleAckMismatch(verifyError)) { if (releaseScheduleAck(confirmedPrior, verifyError)) return; throw verifyError; }
+            throw verifyError;
+          }
           // A verified preparation failure with no publishing targets can be
           // replaced only by this new explicit confirmation, never by polling.
         }
@@ -179,6 +236,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not schedule your post. Try again."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
+
   const preparationState = boundResult?.preparation.state;
   const actionHelp = saved?.timeRejected && !saved.confirmed ? SCHEDULE_TIME_REJECTED_MESSAGE
     : preparationState === "failed" ? "Video preparation failed. You can try scheduling again."
@@ -190,6 +248,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     {accountProblem && composition.error ? <p role="alert" className="text-xs text-destructive">{accountProblem}</p> : null}
     {composition.error && composition.retryLoad ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={composition.retryLoad}>Retry loading saved edits</Button> : null}
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
+    {ack && !error ? <p role="status" className="text-xs leading-5 text-muted">{ack} <Link href="/scheduling" className={styles.schedulingLink}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link></p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={styles.reviewAction}><div className={`${styles.actionHelp} ${styles.confirmation}`}><p role="status">{busy ? progress : actionHelp}</p>{confirmed ? <Link href="/scheduling" className={`${styles.schedulingLink} ${styles.compactSchedulingLink}`}>View in Scheduling<ArrowRight size={14} aria-hidden="true" /></Link> : null}</div>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>

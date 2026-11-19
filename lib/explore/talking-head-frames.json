@@ -331,6 +331,26 @@
       "height": 1024,
       "frameIndex": 0,
       "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-nicki-kitchen-reaction",
+      "sourceSha256": "48fe1d29d6a4a96ba2e5c284646fc31254b6d53913569c9f61e21802988fc54e",
+      "frameSha256": "56860ff7b635aefb3ad671bd4152c9969a41de50d8d33f7d384eff6a9a0617f3",
+      "path": "/explore/talking-head-frames/v1/talking-nicki-kitchen-reaction.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-lowlight-instagram-what",
+      "sourceSha256": "0507e79442a29a2dc498e925ec38985ec537f9a4fc422f08a4ecc93bb7f35f6b",
+      "frameSha256": "571bfab589e8726378522577916a6347b94124c03800820f0c2dd4b56e58ef79",
+      "path": "/explore/talking-head-frames/v1/talking-lowlight-instagram-what.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
     }
   ]
 }

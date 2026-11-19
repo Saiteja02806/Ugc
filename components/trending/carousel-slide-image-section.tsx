@@ -1,6 +1,10 @@
 "use client";
 
-import { ImagePlus, Loader2, RefreshCw } from "lucide-react";
+import {
+  ImagePlus,
+  RefreshCw,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -92,7 +96,7 @@ export function CarouselSlideImageSection({
       fileTargetRef.current = { id: slide.slideId, number: slide.slideNumber };
       inputRef.current?.click();
     }}>
-      {uploadingSlide !== null ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
+      {uploadingSlide !== null ? <BlocksSpinner className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
       {uploadingSlide !== null ? `Uploading slide ${uploadingSlide}…` : `Upload image for slide ${slide.slideNumber}`}
     </Button>
     <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" tabIndex={-1}

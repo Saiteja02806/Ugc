@@ -4,7 +4,16 @@ import { buildOriginalOpeningImagePrompt } from "@/lib/explore/hook-keyframe-ima
 
 /* eslint-disable @next/next/no-img-element */
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, ImageIcon, Loader2, RefreshCw, Scan, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  ImageIcon,
+  RefreshCw,
+  Scan,
+  UserRound,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
@@ -52,13 +61,14 @@ export type HookKeyframePreviewRuntime = {
   submit: (body: Record<string, unknown>) => Promise<{ ok: boolean; status: number; value: Record<string, unknown> }>;
 };
 /** Admission remains behind the server release gate; opening never submits inference. */
-export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime, presentation = "dialog", preparationFormat = "hook", scriptSection }: {
+export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime, presentation = "dialog", preparationFormat = "hook", scriptSection, initialSection = "frame" }: {
   reference: RecreateReference; ownerId: string | null; draftId: string; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
   presentation?: "dialog" | "workspace" | "recreation";
   preparationFormat?: StartingFrameWorkflow;
   scriptSection?: React.ReactNode;
+  initialSection?: "frame" | "script";
 }) {
   const sourceSha256 = hookSourceSha256(reference.videoUrl) ?? (/^[a-f0-9]{64}$/.test(reference.sourceSha256 ?? "") ? reference.sourceSha256! : null);
   const scope = useMemo(() => ownerId && sourceSha256 ? { ownerId, draftId, referenceId: reference.id, sourceSha256 } : null,
@@ -66,7 +76,7 @@ export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClos
   if (!ownerId) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="status">Sign in to choose your influencer and prepare a starting image.</p></PreparationDialog>;
   if (!sourceSha256) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="alert">Choose an available Hook reference to prepare its opening frame.</p></PreparationDialog>;
   return <OwnedPreparation key={`${ownerId}:${draftId}:${reference.id}:${sourceSha256}`} reference={reference}
-    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame} presentation={presentation} preparationFormat={preparationFormat} scriptSection={scriptSection}
+    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame} presentation={presentation} preparationFormat={preparationFormat} scriptSection={scriptSection} initialSection={initialSection}
     previewRuntime={process.env.NODE_ENV === "development" ? previewRuntime : undefined} />;
 }
 
@@ -95,17 +105,18 @@ function PreparationDialog({ children, footer, navigation, onClose, presentation
   </Dialog>;
 }
 
-function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime, presentation, preparationFormat, scriptSection }: {
+function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime, presentation, preparationFormat, scriptSection, initialSection }: {
   reference: RecreateReference; scope: HookKeyframeScope; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
   presentation?: "dialog" | "workspace" | "recreation";
   preparationFormat: StartingFrameWorkflow;
   scriptSection?: React.ReactNode;
+  initialSection: "frame" | "script";
 }) {
   const [draft, setDraft] = useState<HookKeyframeDraft>(() => createHookKeyframeDraft(scope));
   // Visibility alone changes: job polling, admitted batches and the script stay mounted.
-  const [activeSection, setActiveSection] = useState<"frame" | "script">("frame");
+  const [activeSection, setActiveSection] = useState<"frame" | "script">(preparationFormat === "talking_head" && scriptSection ? initialSection : "frame");
   const hasScriptSection = preparationFormat === "talking_head" && Boolean(scriptSection);
   const sectionId = `preparation-${scope.draftId}-${scope.referenceId}`;
   const [savedPrompt, setSavedPrompt] = useState<{ text: string; useDefault: boolean } | null>(null);
@@ -499,7 +510,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     onUseStartingFrame({ ...scope, assetId: verified.output.mediaAssetId, jobId: verified.id,
       url: previewRuntime?.outputPreviewUrls?.[verified.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? verified.output.url,
       width: verified.output.width, height: verified.output.height, durationSeconds: promptPreview.durationSeconds === 6 ? 6 : promptPreview.durationSeconds === 8 ? 8 : 4,
-      identityAssetIds: [...approved.imageAssetIds], sourceDurationSeconds: reference.durationSeconds, motionInstructions: promptPreview.directions, generateAudio: preparedDraft.generateAudio });
+      identityAssetIds: [...approved.imageAssetIds], sourceDurationSeconds: reference.durationSeconds, motionInstructions: promptPreview.directions, generateAudio: preparationFormat === "talking_head" ? true : preparedDraft.generateAudio });
   }
   const busy = pending || choosingInfluencer || !restored || submittingImage;
   // Upload/lookup warnings must not discard already accepted, owned photos.
@@ -578,7 +589,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           <StartingFrameImage key={`${outputPreviewUrl(imageJob.output)}:${previewAttempts[imageJob.output.mediaAssetId] ?? 0}`} assetId={imageJob.output.mediaAssetId} url={outputPreviewUrl(imageJob.output)} width={imageJob.output.width} height={imageJob.output.height} alt="Generated starting frame to review before animation" onStateChange={reportPreviewState} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
           </button></div>
           {!matchingImage ? <p className={styles.notice} role="status">Your photos, model or image instructions have changed. Generate a new image before using it.</p> : null}
-        </> : <div className={`${styles.imageStatus} relative overflow-hidden`} role="status" aria-busy={waitingForSelectedImage}>{waitingForSelectedImage ? <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" /> : null}{waitingForSelectedImage ? <Loader2 className="relative z-10 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ImageIcon aria-hidden="true" />}{!resultError ? <p className="relative z-10">{historyCollapsed && imageJob?.isTerminal ? "Your generated starting frame will appear here." : !checkpoint ? "Your generated starting frame will appear here." : selectedImageStatus}</p> : null}</div>}
+        </> : <div className={`${styles.imageStatus} relative overflow-hidden`} role="status" aria-busy={waitingForSelectedImage}>{waitingForSelectedImage ? <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" /> : null}{waitingForSelectedImage ? <BlocksSpinner className="relative z-10" aria-hidden="true" /> : <ImageIcon aria-hidden="true" />}{!resultError ? <p className="relative z-10">{historyCollapsed && imageJob?.isTerminal ? "Your generated starting frame will appear here." : !checkpoint ? "Your generated starting frame will appear here." : selectedImageStatus}</p> : null}</div>}
         {!historyCollapsed && imageJob?.output && previewStates[imageJob.output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" disabled={imageJobQuery?.isFetching} onClick={() => { if (!imageJob.output) return; const assetId = imageJob.output.mediaAssetId; reportPreviewState(assetId, outputPreviewUrl(imageJob.output), "loading"); setPreviewAttempts(current => ({ ...current, [assetId]: (current[assetId] ?? 0) + 1 })); void imageJobQuery?.refetch(); }}>Retry preview</Button> : null}
         {resultError ? <p role="alert" className="text-destructive">{resultError}</p> : null}
         {restoredRequests.current.size > 0 ? <Button type="button" variant="ghost" size="sm" aria-expanded={showPreviousGenerations} onClick={() => setShowPreviousGenerations(value => !value)}>{showPreviousGenerations ? "Hide previous generations" : "Previous generations"}</Button> : null}
@@ -590,7 +601,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
               aria-describedby={!job?.output ? `${scope.draftId}-variation-status-${index}` : undefined}
               aria-pressed={entry.checkpoint.requestKey === checkpoint?.requestKey} disabled={submittingImage || entry.state === "submitting"}
               onClick={() => void chooseVariation(entry.checkpoint.requestKey)}>
-              {job?.output ? <img src={previewRuntime?.outputPreviewUrls?.[job.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? job.output.url} alt="" width={38} height={52} /> : presentation === "recreation" ? <>{!job?.isTerminal && !imageJobQueries[index]?.error ? <Loader2 className="mx-auto size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}<span id={`${scope.draftId}-variation-status-${index}`} className="sr-only">{imageJobQueries[index]?.error ? "Status could not be checked. Your request is preserved." : job?.isTerminal ? "Failed" : "Pending"}</span></> : job?.isTerminal ? "Failed" : "…"}<span>{index + 1}</span>
+              {job?.output ? <img src={previewRuntime?.outputPreviewUrls?.[job.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? job.output.url} alt="" width={38} height={52} /> : presentation === "recreation" ? <>{!job?.isTerminal && !imageJobQueries[index]?.error ? <BlocksSpinner className="mx-auto size-4" aria-hidden="true" /> : null}<span id={`${scope.draftId}-variation-status-${index}`} className="sr-only">{imageJobQueries[index]?.error ? "Status could not be checked. Your request is preserved." : job?.isTerminal ? "Failed" : "Pending"}</span></> : job?.isTerminal ? "Failed" : "…"}<span>{index + 1}</span>
             </button>;
           })}
         </div> : null}
@@ -615,7 +626,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           setActiveSection(next === 0 ? "frame" : "script");
           (event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next])?.focus();
         }}><span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>{label}
-        {section === "frame" && creatingImage ? <Loader2 aria-label="Generating" className="animate-spin motion-reduce:animate-none" /> : null}
+        {section === "frame" && creatingImage ? <BlocksSpinner aria-label="Generating"  /> : null}
       </button>)}
     </div>
     <p role="status" className={styles.preparationProgress}>{creatingImage ? "Your starting frame is generating. You can work on your script." : imageJob?.output ? "Your starting frame is ready to review in Starting frame." : "Generate your frame and adapt your script in either order."}</p>
@@ -638,7 +649,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
               setEnlargedImage({ url: frameUrl, title: "Source frame", alt: `Selected source frame of ${reference.title}`, width: frameQuery.data.frame.width, height: frameQuery.data.frame.height }); }}>
             <img src={frameUrl ?? undefined} alt={`Selected source frame of ${reference.title}`} width={frameQuery.data.frame.width} height={frameQuery.data.frame.height} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
           </button>
-            : frameQuery.isPending ? <p role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Preparing the source frame…</p>
+            : frameQuery.isPending ? <p role="status"><BlocksSpinner  aria-hidden="true" />Preparing the source frame…</p>
             : <div role="alert"><p>{preparation.error || frameQuery.error?.message || "The source frame could not be prepared."}</p><Button type="button" variant="outline" onClick={() => void frameQuery.refetch()}><RefreshCw aria-hidden="true" />Try again</Button></div>}
         </div>
         <p className={styles.caption}>{draft.referenceOptions?.background === "photo" || draft.referenceOptions?.outfit === "photo" || draft.referenceOptions?.hairstyle === "photo"

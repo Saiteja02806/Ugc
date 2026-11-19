@@ -135,7 +135,7 @@ export default function ProductHuntLaunchVideoStrategyPage() {
             <strong className="font-semibold text-foreground-strong">Seconds 25–35 (The Differentiator):</strong> Explain why your tool is faster, cheaper, or simpler than legacy tools.
           </li>
           <li>
-            <strong className="font-semibold text-foreground-strong">Seconds 35–45 (The Founder Ask):</strong> Call to action inviting hunters to try the free trial and share their honest feedback in the comments.
+            <strong className="font-semibold text-foreground-strong">Seconds 35–45 (The Founder Ask):</strong> Call to action inviting hunters to choose a plan and share their honest feedback in the comments.
           </li>
         </ol>
 
@@ -193,7 +193,7 @@ export default function ProductHuntLaunchVideoStrategyPage() {
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for software demos and creator videos." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

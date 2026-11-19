@@ -1,11 +1,27 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, mock, test } from "node:test";
 import { registerHooks } from "node:module";
+import { existsSync } from "node:fs";
 
 // Exercise the real client and real API handler, with all external writes replaced.
 registerHooks({ resolve(specifier, context, nextResolve) {
+  // Execute the current worker source without building or importing stale dist.
+  if (specifier.startsWith("./") && specifier.endsWith(".js") && context.parentURL?.includes("/worker/src/")) {
+    const source = new URL(specifier.slice(0, -3) + ".ts", context.parentURL);
+    if (existsSync(source)) return nextResolve(source.href, context);
+  }
   return nextResolve(specifier === "next/server" ? "next/server.js" : specifier, context);
 } });
+const { buildReapiVideoRequest } = await import("../worker/src/lib/reapi-video.ts");
+function providerRequestForJob(input) {
+  // Match the worker's optional-field normalization before provider formatting.
+  // Saved job JSON may contain null; the provider adapter expects undefined.
+  return buildReapiVideoRequest({ ...input, prompt: input.hookIdea,
+    referenceVideoUrl: input.referenceVideoUrl ?? undefined,
+    referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? undefined,
+    referenceVideoMode: input.referenceVideoMode === "edit" ? "edit" : undefined,
+  });
+}
 class FirebaseAuthRequestError extends Error { status = 401; }
 class BillingAccessError extends Error { status = 403; }
 const jobs = new Map(), reservations = new Map(), uploads = [];
@@ -246,6 +262,12 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.match(job.input.hookIdea, /own script/);
     assert.match(job.input.hookIdea, /natural talking-head performance/i);
     assert.match(job.input.hookIdea, /SOUND SETTING: ON/);
+    assert.match(job.input.hookIdea, /VOICE DELIVERY: Keep one natural human voice/);
+    assert.doesNotMatch(job.input.hookIdea, /VOICE DELIVERY: Follow Audio 1/);
+    const providerRequest = providerRequestForJob(job.input);
+    assert.equal(providerRequest.prompt, job.input.hookIdea);
+    assert.deepEqual(providerRequest.image_urls, [frame.url]);
+    assert.equal("audio_urls" in providerRequest, false);
     assert.equal(job.input.referenceId, "talking-car-story");
     assert.equal(job.input.startingFrameImageUrl, frame.url);
     assert.equal(job.input.provider, "reapi");
@@ -261,8 +283,8 @@ test("Talking Head sends approved opening and optional face photos through real 
     assert.equal(wanJob.input.model, "wan_3_0");
     assert.equal(wanJob.input.startingFrameImageUrl, frame.url);
     assert.deepEqual(wanJob.input.referenceImageUrls, ["https://storage.example.com/1.png", "https://storage.example.com/2.png"]);
-    assert.match(wanJob.input.hookIdea, /Image 2 is the main face identity image/);
-    assert.match(wanJob.input.hookIdea, /Image 3 is an additional face identity image/);
+    assert.match(wanJob.input.hookIdea, /Image 2 is the main face identity reference/);
+    assert.match(wanJob.input.hookIdea, /Images 3–3 support that identity/);
     assert.equal(jobs.size, count + 1);
     // Kling 3.0 has no reference mode: the approved frame animates alone and the
     // unused photos are not uploaded.
@@ -289,6 +311,7 @@ test("reviewed Talking Head script crosses client, real API and durable worker i
     assert.equal(job.input.talkingHeadScript, words);
     assert.equal(job.input.talkingHeadScriptReviewed, true);
     assert.equal(job.input.hookIdea.split(JSON.stringify(words)).length - 1, 1);
+    assert.match(job.input.hookIdea, /VOICE DELIVERY: Keep one natural human voice/);
     assert.doesNotMatch(job.input.hookIdea, /Your instructions:/u);
     assert.match(job.input.hookIdea, /Keep the camera stable/u);
     assert.equal(job.input.provider, "reapi");
@@ -315,10 +338,27 @@ test("Talking Head image plus owned voice reaches real admission in reference mo
       assert.equal(job.input.startingFrameImageUrl,undefined);assert.equal(job.input.startingFrameReceipt,undefined);
       assert.equal(job.input.startingImageReference.assetId,frame.assetId);assert.equal(job.input.startingImageReference.mode,"image_voice_reference");
       assert.equal(job.input.startingImageReference.sourceFrameIndex,0);assert.equal(job.input.generateAudio,true);assert.equal(job.input.provider,"reapi");
-      assert.match(job.input.hookIdea,/Audio 1 is a voice reference/);assert.match(job.input.hookIdea,/My product saves time/);assert.match(job.input.hookIdea,/not a strict first-frame input/);
+      assert.match(job.input.hookIdea,/Audio 1 guides voice and delivery only/);assert.match(job.input.hookIdea,/My product saves time/);assert.match(job.input.hookIdea,/Image 1 guides .* as a visual reference/);
+      assert.match(job.input.hookIdea,/VOICE DELIVERY: Follow Audio 1's vocal character, rhythm, emphasis, pauses and emotional delivery/);
+      assert.doesNotMatch(job.input.hookIdea,/VOICE DELIVERY: Keep/);
+      const providerRequest = providerRequestForJob(job.input);
+      assert.equal(providerRequest.prompt, job.input.hookIdea);
+      assert.deepEqual(providerRequest.audio_urls, job.input.referenceAudioUrls);
+      assert.deepEqual(providerRequest.image_urls, job.input.referenceImageUrls);
+      assert.equal(model === "wan_3_0" ? providerRequest.audio : providerRequest.generate_audio, true);
       assert.equal(job.input.personReference,undefined);
-      if(withFace)assert.match(job.input.hookIdea,/Image 2 is the main face identity image/);
+      if(withFace)assert.match(job.input.hookIdea,/Image 2 is the main face identity reference/);
     }
+    const frozenVoiceJob = [...jobs.values()][0], frozenVoicePrompt = frozenVoiceJob.input.hookIdea;
+    await client({ createIdempotencyKey: () => "voice-cleared" }).generate(draft({ workflow: "talking_head", instructions: 'Say "My product saves time."', startingFrame: frame, startingFramePhotos: [], audioReference: null, settings: normalizeWorkflowGenerationSettings({model: "wan_3_0", duration: 4, quantity: 1}, true) }));
+    const clearedJob = [...jobs.values()].at(-1);
+    assert.match(clearedJob.input.hookIdea, /VOICE DELIVERY: Keep one natural human voice/);
+    assert.doesNotMatch(clearedJob.input.hookIdea, /Audio 1/);
+    assert.equal(clearedJob.input.startingFrameImageUrl, frame.url);
+    const clearedRequest = providerRequestForJob(clearedJob.input);
+    assert.equal(clearedRequest.prompt, clearedJob.input.hookIdea);
+    assert.equal("audio_urls" in clearedRequest, false);
+    assert.equal(frozenVoiceJob.input.hookIdea, frozenVoicePrompt, "clearing the current voice cannot rewrite the previous job");
     const base={prompt:'Say "My product saves time."',model:"wan_3_0",durationSeconds:4,quantity:1,resolution:"720p",aspectRatio:"9:16",generateAudio:true,exploreFormat:"hook",startingFrameMode:"image_voice_reference",startingFrameAssetId:frame.assetId,startingFrameJobId:frame.jobId,referenceId:frame.referenceId,referenceAudioUrls:["https://storage.example.com/audio.media"],referenceAudioAssetIds:[audioId]};
     for(const change of [{model:"google_omni"},{generateAudio:false},{startingFrameMode:"unknown"},{referenceAudioUrls:[]},{referenceAudioAssetIds:[]},{referenceId:"different-reference"}]){
       jobs.clear();reservations.clear();const result=await handleAIStudioVideoGeneration(new Request("https://www.getugcpilot.com/api/ai-studio/videos/generate",{method:"POST",headers:{Authorization:"Bearer fake-owner-token","Content-Type":"application/json","Idempotency-Key":"negative"},body:JSON.stringify({...base,...change})}));

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PricingCard } from "@/components/pricing/pricing-card";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { readSubscriptionSnapshot } from "@/lib/billing/subscription-snapshot";
+import type { PricingSubscription } from "@/lib/pricing/plan-action";
+import { useAuth } from "@/contexts/auth-context";
 import {
   displayedPricingPlans,
   type BillingInterval,
@@ -18,15 +21,42 @@ type PricingCatalogProps = {
   initialBillingInterval: BillingInterval;
 };
 
+const SNAPSHOT_SUBSCRIBE = () => () => undefined;
+
+let snapshotOwner: string | null | undefined;
+let snapshotForOwner: PricingSubscription | null = null;
+/** Reads the browser's own pricing plan snapshot. Keys the in-memory value by
+ * owner so signing out or into another account re-reads the correct record. */
+function planSnapshotForOwner(
+  owner: string | null | undefined,
+): PricingSubscription | null {
+  if (snapshotOwner !== owner) {
+    snapshotOwner = owner;
+    snapshotForOwner = readSubscriptionSnapshot(owner);
+  }
+  return snapshotForOwner;
+}
+
 export function PricingCatalog({
   initialBillingInterval,
 }: PricingCatalogProps) {
   const searchParams = useSearchParams();
   const [allowanceView, setAllowanceView] = useState<PlanAllowanceView>("hooks");
+  const { user } = useAuth();
   const billingInterval = searchParams
     ? parseBillingInterval(searchParams.get("billing"))
     : initialBillingInterval;
   const subscriptionQuery = useBillingSubscription({ freshOnMount: true, refreshOnFocus: true });
+  // Last known plan action from the user's own browser storage. It hydrates the
+  // CTAs while the periodic refetch runs; the fresh response always wins.
+  const cachedPlan = useSyncExternalStore(
+    SNAPSHOT_SUBSCRIBE,
+    () => planSnapshotForOwner(user?.uid),
+    () => null,
+  );
+  const subscription = subscriptionQuery.data ?? cachedPlan;
+  const isSubscriptionError = subscriptionQuery.isError && !subscription;
+  const isSubscriptionLoading = !subscription;
 
   function updateBillingInterval(nextInterval: BillingInterval) {
     const url = new URL(window.location.href);
@@ -117,7 +147,7 @@ export function PricingCatalog({
         </div>
       </div>
 
-      {subscriptionQuery.isError ? (
+      {isSubscriptionError ? (
         <div
           role="alert"
           className="mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"
@@ -145,10 +175,10 @@ export function PricingCatalog({
             key={plan.slug}
             allowanceView={allowanceView}
             billingInterval={billingInterval}
-            isSubscriptionError={subscriptionQuery.isError}
-            isSubscriptionLoading={subscriptionQuery.isPending || subscriptionQuery.isFetching}
+            isSubscriptionError={isSubscriptionError}
+            isSubscriptionLoading={isSubscriptionLoading}
             plan={plan}
-            subscription={subscriptionQuery.data ?? null}
+            subscription={subscription}
           />
         ))}
       </div>

@@ -1,6 +1,11 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, LoaderCircle, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -84,8 +89,8 @@ export function BillingActivationStatus() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      <LoaderCircle
-        className="animate-spin text-primary motion-reduce:animate-none"
+      <BlocksSpinner
+        className=" text-primary"
         aria-hidden="true"
       />
       <h1 className="mt-5 text-2xl font-bold text-foreground-strong">

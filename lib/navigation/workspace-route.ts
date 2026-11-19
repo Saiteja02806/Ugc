@@ -36,7 +36,12 @@ const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
 export function getWorkspaceRouteConfig(
   pathname: string,
 ): WorkspaceRouteConfig | null {
-  if (pathname.replace(/\/$/, "") === "/explore") {
+  // The root address "/e.g. "/", with the trailing slash stripped, is the
+  // empty string and never collides with a named marketing page.
+  const normalized = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
+  // The production proxy serves Explore at the public root while the address
+  // stays "/", so the app shell must mount exactly like "/explore".
+  if (normalized === "/" || normalized === "/explore") {
     return {
       access: "none",
       activeKey: "explore",

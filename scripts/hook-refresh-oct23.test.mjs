@@ -6,7 +6,6 @@ import { getHookReferenceGalleryItems } from "../worker/src/lib/explore-hook-ref
 import { validateHookAdditionRelease } from "./hook-reference-addition-release-readiness.mjs";
 import { getRecreateReferences } from "../lib/explore/recreate-catalog.ts";
 import { getReferenceText } from "../lib/explore/reference-text-store.ts";
-import { orderReferenceGallery } from "../lib/explore/recreate-types.ts";
 import { getHookKeyframeMotionReviewDraft, buildHookAnimationPrompt, hookMotionPlanDirections } from "../lib/explore/hook-keyframe-motion.ts";
 import { createHookKeyframeDraft, updateHookKeyframeDraft } from "../lib/explore/hook-keyframe-draft.ts";
 import { getHookKeyframePromptPreview } from "../lib/explore/hook-keyframe-prompt-preview.ts";
@@ -34,10 +33,13 @@ test("refresh registers exactly eight reaction-only sources and preserves the du
   assert.equal(release.mediaStatus, "published"); assert.equal(release.activation, "active");
   assert.equal(release.items.length, 8);
   const { eligible, assets } = validateHookAdditionRelease(release, text);
-  assert.equal(eligible.length, 8); assert.equal(assets.length, 32);
+  const gallery = getHookReferenceGalleryItems();
+  assert.equal(eligible.length, 7); assert.equal(assets.length, 32);
+  assert.deepEqual(release.excludedReferenceIds, ["explore-paired-hook-ddcfb2950d40f37771058b73"]);
+  assert.equal(gallery.some(item => item.id === "explore-paired-hook-ddcfb2950d40f37771058b73"), false);
+  assert.equal(gallery.some(item => item.sourceUrl === "https://www.instagram.com/reel/DeQwSJTxiza/"), false);
   assert.deepEqual(release.items.map(item => [item.sourceFolder, item.videoSha256]), expected.map(([folder, hash]) => [`New folder (${folder})`, hash]));
   assert.equal(release.items.some(item => item.sourceFolder === "New folder (4)"), false);
-  const gallery = getHookReferenceGalleryItems();
   const samePost = gallery.filter(item => item.sourceUrl === "https://www.tiktok.com/@salem_raena.ai/video/7457211945104575752");
   assert.equal(samePost.length, 1);
   assert.equal(samePost[0].id, "explore-paired-hook-607bfccda5e91e0d8731fa94");
@@ -76,16 +78,17 @@ test("folder two uses the approved default track while the other pairs preserve 
   }
 });
 
-test("the latest Hook batch leads within each platform, retires the October refresh badge and leaves slideshow badges intact", () => {
-  const latest = json("../worker/src/lib/explore-hook-wall-reclassification-release.json");
+test("the approved latest Hook batch retains its badge within each platform, retires the October refresh badge and leaves slideshow badges intact", () => {
+  const latest = json("../worker/src/lib/explore-hook-notbeen3-release.json");
   const refs = getRecreateReferences();
-  const hooks = orderReferenceGallery(refs.filter(item => item.format === "hook"), "hook");
+  const hooks = refs.filter(item => item.format === "hook" && !item.archived);
   for (const platform of ["instagram", "tiktok", null]) {
     const expectedIds = latest.items.filter(item => (item.sourcePlatform ?? null) === platform).map(item => item.id);
     if (!expectedIds.length) continue;
-    assert.deepEqual(hooks.filter(item => (item.sourcePlatform ?? null) === platform).slice(0, expectedIds.length).map(item => item.id), expectedIds);
+    assert.deepEqual(new Set(hooks.filter(item => item.isNew && (item.sourcePlatform ?? null) === platform).map(item => item.id)), new Set(expectedIds));
   }
   assert.deepEqual(new Set(hooks.filter(item => item.isNew).map(item => item.id)), new Set(latest.items.map(item => item.id)));
+  assert.equal(hooks.some(item => item.sourceUrl === "https://www.tiktok.com/@taliameals/video/7680426189508431118"), false);
   assert.equal(hooks.find(item => item.id === release.items[0].id).isNew, undefined);
   assert.equal(hooks.find(item => item.id === "explore-paired-hook-17133540b2315e0a3a05bfbd").isNew, undefined);
   assert.equal(refs.filter(item => item.format === "slideshow" && item.isNew).length, 4);
@@ -94,23 +97,23 @@ test("the latest Hook batch leads within each platform, retires the October refr
 test("every new Hook connects actual Remix source to v4 starting-image and separate motion prompt previews", () => {
   assert.equal(HOOK_KEYFRAME_IMAGE_PROMPT_VERSION, 4);
   const uuid = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-  for (const item of release.items) {
+  for (const item of release.items.filter(item => !release.excludedReferenceIds.includes(item.id))) {
     const draft = createHookKeyframeDraft({ ownerId: "test-owner", draftId: uuid(1), referenceId: item.id, sourceSha256: item.videoSha256 });
     const initial = getHookKeyframePromptPreview(draft);
     assert.equal(initial.sourceMatched, true); assert.equal(initial.imagePrompt, null);
     assert.equal(initial.requiresDecision, false); assert.equal(initial.animationError, null);
     const photos = updateHookKeyframeDraft(draft, { imageAssetIds: [uuid(2), uuid(3)] });
     const preview = getHookKeyframePromptPreview(photos);
-    const motion = getHookKeyframeMotionReviewDraft(item.id, item.videoSha256);
-    assert.match(preview.imagePrompt, /^Generate a new photograph of my influencer shown in Image 2/);
-    assert.match(preview.imagePrompt, /Image 1 \(VISUAL_REFERENCE\)/);
-    assert.match(preview.imagePrompt, /SUPPORTING VIEWS — Image 3/);
-    assert.ok(preview.imagePrompt.includes(`VERIFIED OPENING SCENE — ${motion.candidatePlan.openingState}`));
-    assert.match(preview.imagePrompt, /Omit creator-added captions, hook text, subtitles, emojis and graphic overlays/);
+    assert.match(preview.imagePrompt, /^Recreate Image1's original video opening at t=0/);
+    assert.match(preview.imagePrompt, /Image1's original video opening/);
+    assert.match(preview.imagePrompt, /supporting views of the SAME person/);
+    assert.match(preview.imagePrompt, /Image1 controls camera angle/);
+    assert.match(preview.imagePrompt, /Remove creator captions, subtitles, hook words, emojis/);
     assert.doesNotMatch(preview.imagePrompt, /ENDING STATE:|MIDDLE:/);
     assert.equal(preview.requiresDecision, false); assert.equal(preview.animationError, null);
-    assert.match(preview.animationPrompt, /4-second video/);
-    assert.doesNotMatch(preview.animationPrompt, /@Video|Image 2|MY_INFLUENCER|original performance/);
+    assert.match(preview.animationPrompt, /as frame 0 for 4s/);
+    assert.match(preview.animationPrompt, /Image 2=main face proportions; Image 3=same-person support/);
+    assert.doesNotMatch(preview.animationPrompt, /@Video|MY_INFLUENCER|original performance/);
     // These are nonbillable previews; no generated image or paid receipt is manufactured.
     assert.equal(preview.canSubmitPaidAnimation, false);
     assert.equal(photos.generatedImage, null); assert.equal(photos.approval, null);

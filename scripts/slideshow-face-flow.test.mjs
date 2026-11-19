@@ -21,7 +21,7 @@ function component(file, name, dependencies) {
     useEffect(fn, deps) { const index = cursor++; if (!(index in slots) || deps.some((value, i) => value !== slots[index][i])) { slots[index] = deps; effects.push(fn); } },
   };
   const exported = {};
-  const imports = { react, "react/jsx-runtime": { jsx: element, jsxs: element }, "lucide-react": new Proxy({}, { get: () => "icon" }), "@/components/ui/button": { Button: "Button" }, ...dependencies };
+  const imports = { react, "react/jsx-runtime": { jsx: element, jsxs: element }, "lucide-react": new Proxy({}, { get: () => "icon" }), "@/components/ui/button": { Button: "Button" }, "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" }, ...dependencies };
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported, Error, require(key) { assert.ok(key in imports, key); return imports[key]; },
   });

@@ -283,7 +283,7 @@ export function homepageJsonLd(description: string) {
           price: "0",
           priceCurrency: "USD",
           url: `${publicOrigin}/pricing`,
-          description: "Seven-day trial with two one-time AI Studio credits. Paid plans start at $19 per month.",
+          description: "Paid plans with monthly AI Studio credits. Plans start at $19 per month.",
         },
       },
     ],

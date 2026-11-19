@@ -69,9 +69,17 @@ export function createAuthEmailHandlers(deps: AuthEmailDependencies) {
         if (!identity.email) throw new AuthEmailError("Your account does not have an email address.", 400);
         deps.ensureConfigured();
         await deps.consumeLimit(request, "verification", identity.uid);
-        await deps.deliver("verification", normalizeAuthEmail(identity.email), {
-          plan: typeof body.plan === "string" ? body.plan : undefined,
-          billing: typeof body.billing === "string" ? body.billing : undefined,
+        const email = normalizeAuthEmail(identity.email);
+        // Respond before delivery, exactly like password reset above. The
+        // /verify-email page already offers a rate-limited resend, so a
+        // background delivery failure stays recoverable without re-paying the
+        // whole inline chain on the click that created the account.
+        deps.schedule(async () => {
+          try { await deps.deliver("verification", email, {
+            plan: typeof body.plan === "string" ? body.plan : undefined,
+            billing: typeof body.billing === "string" ? body.billing : undefined,
+          }); }
+          catch { deps.reportFailure("verification"); }
         });
         return json({ sent: true });
       } catch (error) {

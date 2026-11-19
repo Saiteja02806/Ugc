@@ -36,7 +36,8 @@ const OUTPUTS = AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({ value: String(
 const RATIOS = AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
 
 export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
-  referenceInstructions?: { value: string; onChange: (value: string) => void };
+  promptInvitation?: { referenceId: string; onOpen: () => void; disabled?: boolean };
+  referenceInstructions?: { value: string; onChange: (value: string) => void; defaultValue?: string };
   instructions: string;
   onInstructionsChange: (value: string) => void;
   creator: WorkflowAttachment;
@@ -57,10 +58,11 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, directIdentityFrame, onDirectIdentityFrameChange, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, promptInvitation, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, directIdentityFrame, onDirectIdentityFrameChange, onGenerationSettingsChange, startingFrameControl, onStartingFrameSelect, onStartingFramePendingChange, onStartingFrameErrorChange, startingFrameMode = false, startingFrameSoundControl, spokenScriptMode = false, spokenScriptReview }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
+  const [dismissedPromptFor, setDismissedPromptFor] = useState<Set<string>>(new Set());
   const promptId = useId();
   const helperId = useId();
   const { model, duration, quantity, resolution, aspectRatio } = generationSettings;
@@ -112,14 +114,23 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
     {creator.loading || videoReference.loading || audio.loading ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
     {creator.error || videoReference.error || audio.error ? <p role="alert" className="text-xs leading-5 text-destructive">{creator.error || videoReference.error || audio.error}</p> : null}
 
-    {referenceInstructions ? <section className="space-y-2 rounded-xl border border-border p-3" aria-label="Reference instructions">
-      <label htmlFor={`${promptId}-reference`} className="text-sm font-medium">Reference instructions</label>
-      <p className="text-xs leading-5 text-muted">These directions are sent together with your instructions. Edit them to guide your version.</p>
-      <textarea id={`${promptId}-reference`} rows={4} maxLength={8000} value={referenceInstructions.value} onChange={event => referenceInstructions.onChange(event.target.value)} className="w-full rounded-lg border border-border bg-background p-3 text-sm leading-5" />
-    </section> : null}
+    {promptInvitation ? !dismissedPromptFor.has(promptInvitation.referenceId) ? <section aria-label="Personalize this Talking Head" className="relative rounded-xl border border-border p-3 pr-10">
+      <button type="button" aria-label="Dismiss prompt suggestion" className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-md text-muted hover:text-foreground" onClick={() => setDismissedPromptFor(new Set([...dismissedPromptFor, promptInvitation.referenceId]))}><X className="size-3.5" aria-hidden="true" /></button>
+      <Button type="button" variant="outline" size="sm" disabled={promptInvitation.disabled} onClick={promptInvitation.onOpen}>Remix source hook</Button>
+      <p className="mt-2 text-xs leading-5 text-muted">Open Script &amp; Remix to adapt this video&apos;s spoken hook for your business.</p>
+    </section> : null : referenceInstructions ? <div className={cn(creation.instructionsField, creation.referencePromptSection)} aria-label="Reference instructions">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={`${promptId}-reference`} className="text-sm font-medium">Reference instructions</label>
+        <span className="flex items-center gap-2">
+          {referenceInstructions.defaultValue && referenceInstructions.value !== referenceInstructions.defaultValue ? <button type="button" className={creation.referencePromptAction} aria-label="Restore default instructions" onClick={() => referenceInstructions.onChange(referenceInstructions.defaultValue ?? "")}>Restore default</button> : null}
+          {referenceInstructions.value ? <button type="button" className={creation.referencePromptAction} aria-label="Clear default instructions" onClick={() => referenceInstructions.onChange("")}><X className="size-3.5" aria-hidden="true" /></button> : null}
+        </span>
+      </div>
+      <textarea id={`${promptId}-reference`} maxLength={8000} value={referenceInstructions.value} onChange={event => referenceInstructions.onChange(event.target.value)} placeholder="Write your own scene instructions." className={cn(creation.prompt, creation.referencePrompt)} />
+    </div> : null}
     <div className={creation.instructionsField}>
       <label htmlFor={promptId} className="block text-sm font-medium">{spokenScriptMode ? "Talking Head script" : "Your instructions"}</label>
-      {spokenScriptMode ? <p className="text-xs leading-5 text-muted">Only these words will be spoken. Keep scene directions above; use Sound on and enough duration.</p> : null}
+      {spokenScriptMode ? <p className="text-xs leading-5 text-muted">Only these words will be spoken. Use Sound on and choose enough time for the full hook.</p> : null}
       {kind === "hook" ? <p id={helperId} className="sr-only">Describe the words, delivery and setting. Text-only prompts are supported; reference images are optional.</p> : null}
       <div data-prompt-editor className={cn("relative", startingFrameSoundControl && creation.promptWithAction)}>
       <textarea id={promptId} name={`${kind}Instructions`} autoComplete="off" rows={4} value={instructions}

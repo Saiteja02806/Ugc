@@ -10,6 +10,7 @@ const imports={
   'react/jsx-runtime':{jsx,jsxs:jsx},
   'next/image':{default:'Image'},
   'lucide-react':{Bookmark:'Bookmark'},
+  '@/components/ui/blocks-spinner':{BlocksSpinner:'BlocksSpinner'},
   '@/lib/characters/studio-showcase':{STUDIO_HERO_FAN_CARDS,STUDIO_SHOWCASE_ITEMS},
   './image-download-button':{ImageDownloadButton:'Download'},
   './influencer-studio.module.css':{default:new Proxy({},{get:(_,key)=>key})},

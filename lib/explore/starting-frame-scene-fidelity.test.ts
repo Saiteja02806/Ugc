@@ -19,6 +19,20 @@ test("new source opening preserves expression, spatial sides and physical lighti
   assert.match(selected, /BACKGROUND: Use Image2's environment/); assert.match(selected, /OUTFIT: Use Image2's clothing/);
   assert.match(selected, /HAIRSTYLE: Use Image2's hairstyle/);
 });
+test("Hook 37 starting frame keeps the slight screen-left tilt from the source opening", () => {
+  const hook37 = {
+    referenceId: "explore-paired-hook-1280571372ff2cd67af995f3",
+    sourceSha256: "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+  };
+  const still = buildOriginalOpeningImagePrompt({ ...hook37, personImageCount: 2 });
+  assert.match(still.prompt, /camera stays straight/);
+  assert.match(still.prompt, /head is slightly tilted toward screen-left/);
+  assert.match(still.prompt, /eyes are toward screen-left, off the lens/);
+  assert.match(still.prompt, /lips are closed/);
+  assert.match(still.prompt, /Do not level the head/);
+  assert.equal(reviewedStartingFrameScene(hook37.referenceId, "a".repeat(64)), "");
+  assert.doesNotMatch(buildOriginalOpeningImagePrompt({ personImageCount: 1 }).prompt, /slightly tilted toward screen-left/);
+});
 test("source-specific description is bound to the reviewed video bytes and never leaks to a different reference", () => {
   assert.equal(reviewedStartingFrameScene(source.referenceId, "a".repeat(64)), "");
   assert.equal(reviewedStartingFrameScene("another-reference", source.sourceSha256), "");

@@ -1,11 +1,12 @@
-import { AI_STUDIO_KLING_PROMPT_MAX_LENGTH, AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH, getAIStudioPromptLengthError, normalizeAIStudioPrompt } from "../ai-studio/prompt-policy";
+import { AI_STUDIO_KLING_PROMPT_MAX_LENGTH, AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH, getAIStudioPromptLengthError, getAIStudioVideoPromptMaxLength, normalizeAIStudioPrompt } from "../ai-studio/prompt-policy";
 import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } from "./workflow-generation-settings";
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 import { uploadedStartingFrameRatio, type StartingFrameSelection } from "./uploaded-starting-frame";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider } from "../../worker/src/lib/hook-starting-frame-video";
 import { startingFrameFaceReferenceError, startingFrameForwardsPhotos } from "./starting-frame-animation-input";
 import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline";
 import { talkingHeadScriptInputError } from "./talking-head-script-input";
+import { buildTalkingHeadAnimationPrompt } from "./talking-head-animation-prompt";
 
 export const WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -41,10 +42,11 @@ export type WorkflowGenerationBatch = {
 const JOB_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 
-export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions" | "talkingHeadScript">) {
+export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions" | "talkingHeadScript" | "workflow" | "startingFrame">) {
   if (draft.talkingHeadScript !== undefined) return normalizeAIStudioPrompt(draft.referenceInstructions ?? "") || "Perform the approved talking-head script naturally in the approved scene. Keep the camera stable with subtle gestures.";
   const own = normalizeAIStudioPrompt(draft.instructions);
   const reference = normalizeAIStudioPrompt(draft.referenceInstructions ?? "");
+  if (!own && draft.workflow === "talking_head" && draft.startingFrame) return reference;
   return reference ? `Reference instructions:\n${reference}\n\nYour instructions:\n${own}` : own;
 }
 
@@ -58,7 +60,8 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   // A failed replacement may retain the prior preview. Do not submit that
   // stale reference until the user replaces or removes the rejected input.
   if (draft.referencesError) return draft.referencesError;
-  if (!normalizeAIStudioPrompt(draft.instructions)) return "Write your instructions before generating a video.";
+  const hasFrameDirections = draft.workflow === "talking_head" && draft.startingFrame && normalizeAIStudioPrompt(draft.referenceInstructions ?? "");
+  if (!normalizeAIStudioPrompt(draft.instructions) && (!hasFrameDirections || draft.talkingHeadScript !== undefined)) return "Write your instructions before generating a video.";
   if (draft.talkingHeadScript !== undefined) {
     if (draft.talkingHeadScriptReviewed !== true) return "Review the spoken words and confirm demo narration is excluded before generating.";
     if (draft.workflow !== "talking_head" || !draft.startingFrame) return "Choose an approved Talking Head starting frame for this script.";
@@ -95,10 +98,18 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     if (draft.videoReference || draft.creator || draft.referenceImages?.length || draft.appScreen) return "Remove other generation references before animating your approved starting frame.";
     const photos = draft.startingFramePhotos ?? [];
     if (photos.some(photo => !photo.assetId || !photo.url.startsWith("https://"))) return "Choose owned ready face photos before generating.";
-    const faceError = draft.audioReference
-      ? photos.length + 1 > getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: true }).maxImages ? "Use fewer identity photos with this image and voice reference." : null
-      : startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })), draft.startingFrameMode);
+    const faceError = startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })), draft.startingFrameMode);
     if (faceError) return faceError;
+    if (draft.workflow === "talking_head") {
+      if (prompt.length > 6000) return "Describe the video within 6,000 characters.";
+      const provider = hookStartingFrameVideoProvider(draft.settings.model, draft.startingFrameMode) ?? undefined;
+      const limit = getAIStudioVideoPromptMaxLength({ model: draft.settings.model, provider });
+      const composed = buildTalkingHeadAnimationPrompt({ directions: prompt, durationSeconds: draft.settings.duration, generateAudio: draft.startingFrame.generateAudio,
+        spokenScript: draft.talkingHeadScript, voiceReference: Boolean(draft.audioReference), voiceIdentityPhotoCount: photos.length,
+        identityPhotoCount: startingFrameForwardsPhotos(draft.settings.model, draft.startingFrameMode) ? photos.length : 0, removePhysicalText: Boolean(draft.startingFrame.jobId) });
+      const composedError = getAIStudioPromptLengthError(composed, limit);
+      if (composedError) return composedError;
+    }
     return null;
   }
   // Reject before uploading or spending. Never quietly discard an attached input.

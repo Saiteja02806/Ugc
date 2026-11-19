@@ -75,7 +75,7 @@ test("identity photos are accepted with a starting frame on every animation mode
   }
   assert.equal(startingFrameFaceReferenceError("google_omni", frame, photos, "first_frame_with_identity"), null);
   // Omni's direct identity route is opt-in; without it the limit is zero.
-  assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /Gemini Omni route/);
+  assert.match(startingFrameFaceReferenceError("google_omni", frame, photos), /Identity photos can't be attached with this starting-frame model/);
   assert.match(startingFrameFaceReferenceError("wan_3_0", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`))), /up to 5 face references/);
   assert.match(startingFrameFaceReferenceError("google_omni", frame, Array.from({length:6},(_,i)=>photo(`face-${i}`)), "first_frame_with_identity"), /up to 5 face references/);
   assert.match(startingFrameFaceReferenceError("wan_3_0", frame, [{ asset: { id: frame.assetId, url: frame.url } }]), /separate clear face photo/);

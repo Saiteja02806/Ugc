@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How does Vidmake pricing work?",
-    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans starting at $29 and $49 per month.",
+    answer: "Vidmake's self-serve plans start at $29 and $49 per month.",
   },
 ] as const;
 
@@ -117,9 +117,9 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
                 <td className="p-4 align-top">multi-tool OAuth MCP server for Claude Desktop &amp; Codex</td>
               </tr>
               <tr className="border-t border-border">
-                <th scope="row" className="p-4 font-semibold text-foreground-strong">Free Trial &amp; Plans</th>
+                <th scope="row" className="p-4 font-semibold text-foreground-strong">Pricing &amp; Plans</th>
                 <td className="p-4 align-top">Paid plans per video</td>
-                <td className="p-4 align-top">7-day free trial with 20 daily content pieces; plans from $29/mo</td>
+                <td className="p-4 align-top">paid plans with monthly credits; plans from $29/mo</td>
               </tr>
             </tbody>
           </table>
@@ -181,7 +181,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day free trial. See{" "}
+                  Choose a plan. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -196,7 +196,7 @@ export default function MakeUgcAlternativeForB2bSaasPage() {
           { href: "/blog/creatify-alternative-for-saas", title: "Creatify Alternative for Software", description: "Automated link scrapers vs dedicated SaaS video workflows." },
           { href: "/blog/ai-creator-avatars-tech-products", title: "AI Creator Avatars for Tech", description: "Personas that developers and software buyers trust." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

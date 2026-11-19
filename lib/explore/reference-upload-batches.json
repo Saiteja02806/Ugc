@@ -29,7 +29,6 @@
       "status": "published",
       "referenceIds": [
         "explore-paired-hook-fc44f6214b6e17413600ec13",
-        "explore-paired-hook-ddcfb2950d40f37771058b73",
         "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
         "explore-paired-hook-20d3e0c0a3051477008bd86b",
         "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
@@ -74,6 +73,57 @@
         "talking-kamile-kitchen-discovery",
         "talking-kamile-car-what",
         "talking-kamile-lowlight-what"
+      ]
+    },
+    {
+      "id": "explore-20261109-hook-notbeen2",
+      "format": "hook",
+      "sequence": 4,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-hook-58afc36bd5ed01471dacbde8",
+        "explore-paired-hook-c2fcbca934c26f8784f7ae51",
+        "explore-paired-hook-a9835169c265dda2a517d905",
+        "explore-paired-hook-b6546c94d061472815cb5b47",
+        "explore-paired-hook-cff843c327d6574b6c402937",
+        "explore-paired-hook-5ff13d95c5d500d082396654",
+        "explore-paired-hook-67a4dfa083841f0ed47aa672",
+        "explore-paired-hook-1ab171e057013facbab6f1d0",
+        "explore-paired-hook-463165a281dab247a37fd485",
+        "explore-paired-hook-457f2c213909e385e7ca9463",
+        "explore-paired-hook-46c32b75bdeb763839864286",
+        "explore-paired-hook-377dc8c56feaea78432c5c28",
+        "explore-paired-hook-7c124982b13fd6b847d447b4",
+        "explore-paired-hook-8d1bbacd825c45f74e3eb78a",
+        "explore-paired-hook-55cbf33a0f0d56548cbe2818",
+        "explore-paired-hook-ff0b0f9fa6d78a532749579f",
+        "explore-paired-hook-4554cba41f382eeaaf0b6569",
+        "explore-paired-hook-37ff10bf5f70a58eb9cd263b"
+      ]
+    },
+    {
+      "id": "explore-20261111-talking-head-notbeen3",
+      "format": "talking_head",
+      "sequence": 2,
+      "status": "published",
+      "referenceIds": [
+        "talking-nicki-kitchen-reaction",
+        "talking-lowlight-instagram-what"
+      ]
+    },
+    {
+      "id": "explore-20261111-hook-notbeen3",
+      "format": "hook",
+      "sequence": 5,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-hook-f525568f0bb9b496bb4545fb",
+        "explore-paired-hook-3aa8cc9e54d14297eee33173",
+        "explore-paired-hook-5675231d7816b695470d44db",
+        "explore-paired-hook-f7f9e04735c13625bea6edbe",
+        "explore-paired-hook-4761ac251b85f086dacb20fd",
+        "explore-paired-hook-0c9e57769a98cec980e726a1",
+        "explore-paired-hook-a557969f8da32f3985ecf55e"
       ]
     }
   ]

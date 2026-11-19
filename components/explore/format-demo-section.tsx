@@ -8,7 +8,7 @@ import { WorkflowFilePicker } from "@/components/explore/hook-workflow-media-con
 import { WorkflowVideoAssetPicker } from "@/components/explore/workflow-video-asset-picker";
 import { WorkflowClipSourceActions } from "@/components/explore/workflow-clip-source-actions";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
-import { WorkflowBackgroundAudioPicker } from "@/components/explore/workflow-background-audio-picker";
+import { WorkflowBackgroundAudioPicker, HOOK_BACKGROUND_AUDIO_SOURCES } from "@/components/explore/workflow-background-audio-picker";
 import { ClipPreviewControls } from "./clip-preview-controls";
 import { ClipTrimTimeline } from "./clip-trim-timeline";
 import editorStyles from "./format-video-editor.module.css";
@@ -501,7 +501,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         <section className={creation.editGroup} aria-label="Background audio settings">
           {referenceAudio ? <p className="text-xs leading-5 text-muted">Reference audio: {referenceAudio.title}. This track continues across your video. Demo speech stays audible.</p> : <div className={creation.finishRow}><span className="text-sm font-medium">Background audio</span><button type="button" role="switch" aria-label="Background audio" aria-checked={draft.backgroundMusic === true} disabled={busy} className={styles.backgroundAudioSwitch} onClick={() => { if (!busy) change({ ...draft, backgroundMusic: !draft.backgroundMusic }); }}><span className={styles.backgroundAudioTrack} aria-hidden="true"><span className={styles.backgroundAudioThumb}/></span></button></div>}
           {!referenceAudio ? <div className={styles.backgroundChoices}>
-            <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={backgroundAttachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={busy} /><WorkflowBackgroundAudioPicker ownerId={owner} attachment={backgroundAttachment} onChoose={chooseBackgroundAudio} disabled={busy} localPreview={localPreview} /></div>
+            <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={backgroundAttachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={busy} /><WorkflowBackgroundAudioPicker ownerId={owner} attachment={backgroundAttachment} onChoose={chooseBackgroundAudio} disabled={busy} localPreview={localPreview} sources={format === "hook" ? HOOK_BACKGROUND_AUDIO_SOURCES : undefined} /></div>
             {draft.backgroundAudioId || backgroundAudio.asset ? <><p className="break-words text-xs text-muted">{backgroundQuery.data?.title ?? backgroundAudio.asset?.name ?? "Loading your audio…"}</p><audio controls src={backgroundQuery.data?.url ?? backgroundAudio.asset?.url} className="h-8 w-full" aria-label="Selected background audio" /><div className="flex items-center justify-between gap-2"><label className="text-xs text-muted">Playback<select aria-label="Background audio playback" value={draft.backgroundPlayback ?? "repeat"} onChange={event => change({ ...draft, backgroundPlayback: event.target.value as "once" | "repeat" })} className={field}><option value="once">Play once</option><option value="repeat">Repeat to fit</option></select></label><Button type="button" size="sm" variant="ghost" onClick={backgroundAttachment.remove}>Remove audio</Button></div></> : null}
             <p className="text-xs leading-5 text-muted">Plays across your video. Turn on to use the default track, or choose your own.</p>
             {backgroundError || backgroundAudio.error ? <p role="alert" className="text-xs text-destructive">{backgroundError ?? backgroundAudio.error}</p> : null}
@@ -604,7 +604,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     </section>;
     const scheduleDisabled = pendingSource || selection.busy || !sourcePreview && !opening && !demo || Boolean(validation && preview);
     const scheduleButton = <Button type="button" className="h-11 w-full font-semibold shadow-sm hover:shadow transition-shadow" disabled={scheduleDisabled} onClick={onContinue}>Schedule video</Button>;
-    const overviewScheduleButton = <Button type="button" variant="outline" className="h-11 font-medium" disabled={scheduleDisabled} onClick={onContinue}>Schedule video</Button>;
+    const overviewScheduleButton = <Button type="button" variant="neutral" className="h-11 font-semibold shadow-sm hover:shadow transition-shadow" disabled={scheduleDisabled} onClick={onContinue}>Schedule video</Button>;
     const actions = <div className="space-y-2">{scheduleButton}
     {opening && !draft.backgroundMusic ? <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={skip}>Continue without demo</Button> : null}
   </div>;

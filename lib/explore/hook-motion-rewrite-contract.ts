@@ -30,6 +30,8 @@ export function parseHookMotionRewrite(value: unknown, source: HookMotionCatalog
   if (!object(value) || value.referenceId !== source.referenceId || value.sourceSha256 !== source.sourceSha256 ||
     !object(value.plan) || !object(value.review)) return null;
   const plan = value.plan, review = value.review;
+  if (plan.summariesInTimeline !== undefined && (!Array.isArray(plan.summariesInTimeline) ||
+    !plan.summariesInTimeline.every(field => field === "camera" || field === "ending"))) return null;
   const beats = plan.beats;
   const samples = review.sampledFrameIndices;
   const previewDuration = value.previewDurationSeconds ?? 4;

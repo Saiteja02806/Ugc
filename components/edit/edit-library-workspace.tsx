@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
@@ -103,10 +104,7 @@ export function EditLibraryWorkspace() {
             })}
             aria-label="Refresh edit library"
           >
-            <RefreshCw
-              className={loading ? "size-4 animate-spin" : "size-4"}
-              aria-hidden="true"
-            />
+            {loading ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
           </button>
           <Link
             href="/avatars?tab=videos"

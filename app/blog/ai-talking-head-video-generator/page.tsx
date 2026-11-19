@@ -146,8 +146,8 @@ export default function AiTalkingHeadVideoGeneratorPage() {
           <ArticleLink href="/instagram-carousel-maker">carousel maker</ArticleLink> is the better format.
         </p>
         <p>
-          A free trial runs for seven days with 20 daily content pieces and no credit card; paid plans start at $29 a
-          month. See <ArticleLink href="/pricing">pricing</ArticleLink> for the current details.
+          Paid plans start at $29 a
+          month with monthly AI credits. See <ArticleLink href="/pricing">pricing</ArticleLink> for the current details.
         </p>
 
         <FaqList items={faqs} />
@@ -158,8 +158,9 @@ export default function AiTalkingHeadVideoGeneratorPage() {
           { href: "/guides/talking-head-caption-conflicts", title: "Caption conflicts", description: "Keep speech, captions and UI from colliding." },
           { href: "/guides/talking-head-problem-to-action", title: "Problem to action", description: "Structure a presenter opening that earns the demo." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "The full Vidmake workflow." },
-          { href: "/pricing", title: "Pricing and trial", description: "Current plan and credit details." },
-          { href: "/blog/ai-ugc-video-generator-free-trial", title: "Free trial checklist", description: "Test a generator against a real brief." },
+          { href: "/pricing", title: "Pricing and plans", description: "Current plan and credit details." },
+          { href: "/blog/ai-ugc-video-generator-free-trial", title: "Pre-purchase checklist", description: "Test a generator against a real brief." },
+          { href: "/blog/talking-head-hook-generator-saas", title: "Talking head hook generator", description: "The hook-focused companion to this checklist." },
         ]}
       />
     </VideoMarketingPage>

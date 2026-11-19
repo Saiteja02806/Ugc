@@ -82,6 +82,9 @@
   height: 72px;
   resize: none;
   overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   border-radius: 8px;
   background: var(--card-muted);
@@ -91,11 +94,12 @@
   color: var(--foreground);
   scrollbar-width: thin;
 }
-.prompt::placeholder { color: var(--muted); }
+.prompt::placeholder { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Example hints are desktop-only in both workflows; typed instructions stay unchanged. */
 .composer .prompt::placeholder { font-size: 0; opacity: 0; }
 .prompt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .composer .instructionsField .promptWithAttachments { min-height: 144px; height: 160px; padding-bottom: 72px; }
+.composer .instructionsField .referencePrompt { height: 140px; min-height: 120px; }
 
 /* One prompt field, with a reserved footer for attachments and the rewrite action. */
 .promptWithAction {
@@ -352,6 +356,15 @@
   .scheduling { gap: 10px; }
   .scheduling .prompt { height: 80px; }
   .actionFooter { padding-block: 8px 12px; }
+}
+/* Guest workflow cards reuse this frame: like the signed-in Create panel, spare height goes to the
+   instructions prompt so the Create/Demo/Schedule card fits the viewport without inner scrolling. */
+@media (min-width: 1024px) {
+  .controls[data-guest-workflow] .controlContent { flex: 1; min-height: 0; overflow-y: auto; }
+  .controls[data-guest-workflow] .composer, .controls[data-guest-workflow] .generationFields, .controls[data-guest-workflow] .instructionsField { flex: 1; min-height: 0; }
+  .controls[data-guest-workflow] .instructionsField .promptWithAction { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .controls[data-guest-workflow] .instructionsField .prompt,
+  .controls[data-guest-workflow] .instructionsField .promptWithAction .prompt { flex: 1; height: auto; min-height: 96px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sectionPanel:not([hidden]) { animation: none; }

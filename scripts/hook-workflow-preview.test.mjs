@@ -68,7 +68,7 @@ test("user-owned references and audio intent are separate from demo background a
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
   assert.match(audioReference, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audioReference, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
+  assert.match(audioReference, /Seedance 2\.5 accepts 5\u201330 seconds; WAN 3\.0 accepts 1\u201315/);
   assert.match(workspace, /audioReference: hookAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
@@ -105,13 +105,13 @@ test("the creation form has visible labels and reflows without remounting settin
   assert.doesNotMatch(composer, /ResizeObserver|SettingsStrip/);
 });
 
-test("video/audio controls are permanent and demo changes clear background audio", () => {
+test("demo changes clear a historical separate voiceover through the saved media handlers", () => {
   assert.match(workspace, /<WorkflowCreationPanel kind="hook"/);
   assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('aria-label="Hook creation workspace"'));
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*demoRevision\.current\+\+; audioRevision\.current\+\+;\s*setDemoFraming\(null\);\s*localDemoAudio\.remove\(\); localDemo\.remove\(\)/);
-  assert.match(workspace, /localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*demoRevision\.current\+\+;\s*setDemoFraming\(null\);\s*localDemo\.remove\(\);\s*recovery\.clearMedia\("demo"\)/);
+  assert.match(workspace, /recovery\.acceptAsset\("demo", result\.asset\)[\s\S]*?setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true/);
 });
 
 test("local media is detached before cleanup and Creator selection adds no prompts", () => {

@@ -4,9 +4,9 @@ import {
   ArrowLeft,
   CalendarClock,
   ChevronRight,
-  Loader2,
   Save,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useRef } from "react";
 
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
@@ -150,8 +150,8 @@ export function WallTextDetailView({
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary-foreground/12">
                     {actionState.status === "scheduling" ? (
-                      <Loader2
-                        className="size-4 animate-spin motion-reduce:animate-none"
+                      <BlocksSpinner
+                        className="size-4"
                         aria-hidden="true"
                       />
                     ) : (
@@ -183,8 +183,8 @@ export function WallTextDetailView({
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background/45 text-muted transition-colors group-hover:text-foreground-strong">
                     {actionState.status === "saving" ? (
-                      <Loader2
-                        className="size-4 animate-spin motion-reduce:animate-none"
+                      <BlocksSpinner
+                        className="size-4"
                         aria-hidden="true"
                       />
                     ) : (

@@ -1,6 +1,7 @@
 import { hookRemixBlockBudgets, assertSourceRelativeHookLength } from "../../worker/src/lib/hook-remix-source-relative.ts";
 import { z } from "zod";
 import { RemixOutputSchema, validateRemixOutput, type ReferenceText, type RemixOutput } from "./reference-text.ts";
+import { hookRemixBusinessBrief } from "./hook-remix-business-brief.ts";
 
 export const HOOK_REMIX_REVIEW_VERSION = 1;
 const verdict = z.enum(["pass", "fail", "not_applicable"]);
@@ -32,7 +33,7 @@ Return only the requested review JSON. checks apply to your FINAL output, not th
 
 export function hookRemixReviewPayload(source: ReferenceText, businessContext: unknown, instructions: string, draft: RemixOutput, reviewVersion = 2) {
   if (source.format !== "hook") throw new HookRemixQualityError("wrong_format");
-  return JSON.stringify({ source: source.blocks.map(block => block.text), businessFacts: businessContext, userPreferences: instructions, draft,
+  return JSON.stringify({ source: source.blocks.map(block => block.text), businessFacts: reviewVersion >= 4 ? hookRemixBusinessBrief(businessContext) : businessContext, userPreferences: instructions, draft,
     ...(reviewVersion >= 3 ? { maxTotalCharacters: hookRemixBlockBudgets(source, businessContext).reduce((sum, value) => sum + value, 0), blockCharacterBudgets: hookRemixBlockBudgets(source, businessContext) }
       : { maxTotalCharacters: Math.max(80, Math.ceil(source.blocks.reduce((sum, block) => sum + block.text.length, 0) * 1.3)) }), maxCharactersPerBlock: 600 });
 }

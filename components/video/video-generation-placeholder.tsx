@@ -1,6 +1,6 @@
-import { Loader2 } from "lucide-react";
 import type { AIStudioVideoAspectRatio } from "@/lib/ai-studio/generation-settings";
 import { LidarPointCloudCanvas } from "@/components/video/lidar-point-cloud-canvas";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 
 /** Shared waiting visual for AI Studio and connected Explore video workflows. */
 export function VideoGenerationPlaceholder({ aspectRatio = "9:16", referenceImageUrl, referenceImageLabel, label = "Creating your video" }: {
@@ -18,7 +18,7 @@ export function VideoGenerationPlaceholder({ aspectRatio = "9:16", referenceImag
     <LidarPointCloudCanvas className="absolute inset-0 size-full pointer-events-none" />
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-3 text-center pointer-events-none" role="status" aria-live="polite">
       <span className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/45 backdrop-blur-sm text-amber-400 shadow-lg">
-        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        <BlocksSpinner className="size-4" aria-hidden="true" />
       </span>
       <div className="space-y-1">
         <p className="text-xs font-semibold text-white drop-shadow-sm">{label}</p>

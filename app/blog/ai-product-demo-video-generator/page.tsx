@@ -167,6 +167,7 @@ export default function AiProductDemoVideoGeneratorPage() {
           { href: "/guides/customer-question-to-demo-video", title: "Customer question to demo", description: "Turn a real question into one task." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Create the opening in Vidmake." },
           { href: "/blog/ai-video-generator-for-mobile-apps", title: "AI video for mobile apps", description: "Store preview versus social video." },
+          { href: "/blog/saas-product-demo-video-generator", title: "SaaS product demo video generator", description: "The hook-to-UI cutaway workflow this page complements." },
         ]}
       />
     </VideoMarketingPage>

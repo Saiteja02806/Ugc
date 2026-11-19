@@ -1,4 +1,5 @@
-import { Loader2 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 
 export default function AvatarEditorLoading() {
   return (
@@ -6,8 +7,8 @@ export default function AvatarEditorLoading() {
       <div className="mx-auto flex w-full max-w-[1560px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-6 py-12 text-center shadow-card">
         <div className="max-w-sm">
           <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-card-muted">
-            <Loader2
-              className="size-5 animate-spin text-primary"
+            <BlocksSpinner
+              className="size-5 text-primary"
               aria-hidden="true"
             />
           </div>

@@ -11,9 +11,12 @@ const source: ReferenceText = { referenceId:"explore-paired-hook-fc44f6214b6e174
 test("Claude example sends the exact business name with an explicit named-tool rule and accepts the intended minimal edit",()=>{
   const context={businessName:"UGCPilot",productSummary:"Marketing content for SaaS founders"};
   const prompt=hookBrandRemixSystemPrompt(source);
-  assert.equal(HOOK_BRAND_REMIX_PROMPT_VERSION,9);
-  assert.match(prompt,/replace it with exact businessName/);
-  assert.match(prompt,/leave EVERYTHING ELSE unchanged/);
+  assert.equal(HOOK_BRAND_REMIX_PROMPT_VERSION,14);
+  assert.match(prompt,/MUST replace only that tool with exact businessName/);
+  assert.match(prompt,/KEEP .* exactly/);
+  const contextualPrompt = hookBrandRemixSystemPrompt(source, context);
+  assert.ok(contextualPrompt.includes(JSON.stringify(["POV: you finally understand\nhow to use UGCPilot\nfor marketing"])));
+  assert.match(contextualPrompt, /If the candidate transfers any unsupported usage history or result, reject the candidate/);
   assert.deepEqual(JSON.parse(remixTextPrompt(source,context,"")),{format:"hook",referenceText:[source.blocks[0].text],businessContext:context,additionalInstructions:""});
   const desired={blocks:["POV: you finally understand\nhow to use UGCPilot\nfor marketing"],heading:"",body:""};
   assert.deepEqual(validateRemixOutput(desired,source),desired);
@@ -21,7 +24,7 @@ test("Claude example sends the exact business name with an explicit named-tool r
 });
 test("new rule preserves human roles, generic hooks, unsupported-claim protection and explicit no-brand instructions",()=>{
   const prompt=hookBrandRemixSystemPrompt(source);
-  for(const fragment of ["Keep human characters human", "UNSUPPORTED CLAIMS", "copy it EXACTLY unchanged", "Honor explicit language, brand and emoji preferences", "Do not spend leftover characters"])
+  for(const fragment of ["relationship joke about a HUMAN", "remove the entire unsupported claim", "Keep an existing appropriate audience callout", "honor explicit language, brand and emoji requests", "shorter drafting targets"])
     assert.ok(prompt.includes(fragment),fragment);
   assert.ok(!hookRoleRemixSystemPrompt(source).includes("Named tools:"),"Historical v7 prompt remains reproducible");
   const two={...source,blocks:[...source.blocks,...source.blocks]};

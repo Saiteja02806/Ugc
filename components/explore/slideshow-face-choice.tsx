@@ -1,7 +1,12 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Loader2, Upload, UserRound } from "lucide-react";
+import {
+  Upload,
+  UserRound,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -104,7 +109,7 @@ export function SlideshowFaceChoice({ ownerId, selected, disabled, onSelect, onB
     <div className="flex items-center justify-between gap-2">
 
       <Button type="button" variant="outline" size="sm" disabled={disabled || uploading || !ownerId || selectedPhotos.length >= MAX_SLIDESHOW_FACE_PHOTOS} onClick={() => input.current?.click()}>
-        {uploading ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload className="size-3.5" aria-hidden="true" />}
+        {uploading ? <BlocksSpinner className="size-3.5" aria-hidden="true" /> : <Upload className="size-3.5" aria-hidden="true" />}
         Upload photo
       </Button>
       <input ref={input} className="sr-only" type="file" multiple tabIndex={-1} disabled={disabled || uploading || !ownerId} accept="image/png,image/jpeg,image/webp" aria-label="Upload face photos" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); if (files.length) void upload(files); }} />

@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { TALKING_HEAD_REMIX_MAX_SECONDS } from "./talking-head-script-remix.ts";
 const scriptText = z.string().max(6000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u);
-export const TalkingHeadScriptRequestSchema = z.object({ requestKey: z.uuid(), referenceId: z.string().regex(/^talking-[a-z0-9-]{1,80}$/), sourceSha256: z.string().regex(/^[a-f0-9]{64}$/), transcriptSha256: z.string().regex(/^[a-f0-9]{64}$/), selectionSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), businessProfileVersion: z.number().int().nonnegative(), script: scriptText.trim().min(1), reviewed: z.literal(true) }).strict();
+const targetDuration = z.number().int().min(3).max(TALKING_HEAD_REMIX_MAX_SECONDS).optional();
+export const TalkingHeadScriptRequestSchema = z.object({ requestKey: z.uuid(), referenceId: z.string().regex(/^talking-[a-z0-9-]{1,80}$/), sourceSha256: z.string().regex(/^[a-f0-9]{64}$/), transcriptSha256: z.string().regex(/^[a-f0-9]{64}$/), selectionSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), businessProfileVersion: z.number().int().nonnegative(), script: scriptText.trim().min(1), reviewed: z.literal(true), targetDurationSeconds: targetDuration }).strict();
 const fingerprint = z.string().regex(/^[a-f0-9]{64}$/);
-const videoPrompt = z.object({ version: z.literal(1), text: z.string().max(24000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u), script: scriptText, sceneDirections: scriptText, selectionSha256: fingerprint, durationSeconds: z.number().int().positive(), businessProfileVersion: z.number().int().nonnegative().optional(), requestKey: z.uuid().optional() }).strict();
+const videoPrompt = z.object({ version: z.literal(1), text: z.string().max(24000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u), script: scriptText, sceneDirections: scriptText, selectionSha256: fingerprint, durationSeconds: z.number().int().positive(), targetDurationSeconds: targetDuration, businessProfileVersion: z.number().int().nonnegative().optional(), requestKey: z.uuid().optional() }).strict();
 const pendingPrompt = z.object({ requestKey: z.uuid(), sceneDirections: scriptText.min(1), selectionSha256: fingerprint, hookEndMs: z.number().int().positive() }).strict();
-const draft = z.object({ version: z.literal(1), script: scriptText.nullable(), reviewed: z.boolean(), reviewedSelectionSha256: fingerprint.optional(), pending: TalkingHeadScriptRequestSchema.nullable(), pendingPrompt: pendingPrompt.optional(), videoPrompt: videoPrompt.optional(), earlierPrompt: videoPrompt.optional() }).strict();
+const draft = z.object({ version: z.literal(1), script: scriptText.nullable(), createScriptAtOpen: scriptText.nullable().optional(), reviewed: z.boolean(), reviewedSelectionSha256: fingerprint.optional(), pending: TalkingHeadScriptRequestSchema.nullable(), pendingPrompt: pendingPrompt.optional(), videoPrompt: videoPrompt.optional(), earlierPrompt: videoPrompt.optional() }).strict();
 export function readTalkingHeadScriptDraft(raw: string | null, referenceId: string, sourceSha256: string) {
   if (raw === null) return null;
   if (!raw || raw.length > 256000) throw Error("Saved script draft is invalid.");

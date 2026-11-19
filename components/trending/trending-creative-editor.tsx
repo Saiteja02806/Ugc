@@ -15,12 +15,13 @@ import {
   Folder,
   FolderOpen,
   ImagePlus,
-  Loader2,
   Move,
   RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import {
   useCallback,
   useEffect,
@@ -1177,9 +1178,9 @@ export function TrendingCreativeEditor({
             onClick={() => void saveEdit()}
           >
             {saving || renderPending ? (
-              <Loader2
+              <BlocksSpinner
                 data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                
               />
             ) : (
               <Check data-icon="inline-start" />
@@ -2334,8 +2335,8 @@ function HyperHookLibrarySection({
           </p>
         </div>
         {loading ? (
-          <Loader2
-            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+          <BlocksSpinner
+            className="size-4 text-muted-foreground"
             aria-label="Loading Hook library"
           />
         ) : null}
@@ -2523,7 +2524,7 @@ function AppScreenshotsSection({
           onClick={onUpload}
         >
           {uploading ? (
-            <Loader2 className="animate-spin motion-reduce:animate-none" />
+            <BlocksSpinner  />
           ) : (
             <Upload />
           )}
@@ -2732,8 +2733,8 @@ function CreativeAssetsSection({
           </p>
         </div>
         {loading ? (
-          <Loader2
-            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+          <BlocksSpinner
+            className="size-4 text-muted-foreground"
             aria-label="Loading Creative Assets"
           />
         ) : null}
@@ -2841,8 +2842,8 @@ function CreativeAssetsSection({
                   </p>
                 </div>
                 {loadingGroupId === activeGroupId && activeGroupId ? (
-                  <Loader2
-                    className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
+                  <BlocksSpinner
+                    className="size-3.5 text-muted-foreground"
                     aria-label="Loading group videos"
                   />
                 ) : null}

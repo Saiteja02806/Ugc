@@ -1,0 +1,311 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "referenceId": "explore-paired-hook-58afc36bd5ed01471dacbde8",
+      "slideId": null,
+      "sourceSha256": "0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found a game where you\nhave to go through a\nmissing girls phone and\nfind out what happened to\nher",
+          "startMs": 0,
+          "endMs": 2133
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 64 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c2fcbca934c26f8784f7ae51",
+      "slideId": null,
+      "sourceSha256": "8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "only people in their 20s will\nunderstand this one...\nkeeping your budget on your\nhome screen",
+          "startMs": 0,
+          "endMs": 2933
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 88 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-a9835169c265dda2a517d905",
+      "slideId": null,
+      "sourceSha256": "d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV you found the most\ncuteeeee way to do your\nphoto dump on your insta\nstory",
+          "startMs": 0,
+          "endMs": 1963
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 53 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-b6546c94d061472815cb5b47",
+      "slideId": null,
+      "sourceSha256": "9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i'm sorry since WHEN was this ai created for\nspreadsheets????",
+          "startMs": 0,
+          "endMs": 5067
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 146 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-cff843c327d6574b6c402937",
+      "slideId": null,
+      "sourceSha256": "d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "youtube + ai\n= 💰💰💰",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 93 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-5ff13d95c5d500d082396654",
+      "slideId": null,
+      "sourceSha256": "76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "ive been studying for\n4YEARS and i just found\nthis now... like wtf 😭",
+          "startMs": 0,
+          "endMs": 3867
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 116 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-67a4dfa083841f0ed47aa672",
+      "slideId": null,
+      "sourceSha256": "db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "not to be dramatic but this random boy in my\nhostel just showed me this and.. i'm never\nstaying in a hostel again lol",
+          "startMs": 0,
+          "endMs": 4533
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 136 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-1ab171e057013facbab6f1d0",
+      "slideId": null,
+      "sourceSha256": "f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "3 years solo traveling and NOW i find this? 💀",
+          "startMs": 0,
+          "endMs": 3033
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 91 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-463165a281dab247a37fd485",
+      "slideId": null,
+      "sourceSha256": "12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "sorry but ig's new update\nis crazyyyy",
+          "startMs": 0,
+          "endMs": 3400
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 102 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-457f2c213909e385e7ca9463",
+      "slideId": null,
+      "sourceSha256": "aa3ca681de14f390e0e0893e5a7b7ed91941025d9a3417f7f25233af2e1b84c3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you have an exam\nTOMORROW and JUST\nfound this now 💀",
+          "startMs": 0,
+          "endMs": 3967
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 119 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-46c32b75bdeb763839864286",
+      "slideId": null,
+      "sourceSha256": "c103e3e55b1a3c0348899ad4f579e399bb71a6a050470964deb717dd854fffc7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I love gen z bc wdym\nsomeone built this app\nthat makes u look GOOD\nin 30 secs",
+          "startMs": 0,
+          "endMs": 3700
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 111 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-377dc8c56feaea78432c5c28",
+      "slideId": null,
+      "sourceSha256": "3464e6cae56d5d99f1646dbf94786dc8b20b9c163672e9b2baf84aa44f1f3624",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally KISS my\nprofessor for showing\nme this 😭",
+          "startMs": 0,
+          "endMs": 2433
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 73 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-7c124982b13fd6b847d447b4",
+      "slideId": null,
+      "sourceSha256": "701ed3ce64de395aa737b33f67913501043d03b5d2fc240f4751525ac22c7a7e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could kiss the person\nwho showed me this 😘💋❤️",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 90 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-8d1bbacd825c45f74e3eb78a",
+      "slideId": null,
+      "sourceSha256": "8caa12e6de5bc31c4d5393369bb6635dde87918dc2e146ac048b286afee56cf4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "COSTCO ARE YOU KIDDING ME??!!?\n😩💀",
+          "startMs": 0,
+          "endMs": 2600
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 78 retained decoded frames verified through the 2.600s cut. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-55cbf33a0f0d56548cbe2818",
+      "slideId": null,
+      "sourceSha256": "4a6e5196b8a7ad8e88488d31a07e79e227ac78ce0034437f051f7b97ad16fcc5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "15 years with my ipad\nand i just discovered\nthis NOW?",
+          "startMs": 0,
+          "endMs": 2400
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 72 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ff0b0f9fa6d78a532749579f",
+      "slideId": null,
+      "sourceSha256": "6fb3f52cc77e1a227918763a0d738e95f8a9d3f276c1966843d7ce2e07f3f931",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "gen z is so UNSERIOUS 😭\nwdym someone made an\napp that is FAPPY BIRD\nfor STUDYING??",
+          "startMs": 0,
+          "endMs": 2700
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 81 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4554cba41f382eeaaf0b6569",
+      "slideId": null,
+      "sourceSha256": "6a65ca4890354e4b0cb343fe78335b10a3a75f750e1401644cb857398100583a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Wait...ChatGPT 6 Astra can do what ? 🚨💀",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 90 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-37ff10bf5f70a58eb9cd263b",
+      "slideId": null,
+      "sourceSha256": "6daa2489bac20e1a3fb95131818b293d651257c397a5a00e3382fa2b4d83f397",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I’m sorry but Walmart WHATTTTTT?! 😩😭",
+          "startMs": 0,
+          "endMs": 2100
+        }
+      ],
+      "extractedAt": "2026-11-09T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from the opening frames. All 63 decoded frames inspected for the reaction. Source claims were not fact-checked."
+    }
+  ]
+}

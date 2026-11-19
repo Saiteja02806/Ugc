@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Captions, LoaderCircle } from "lucide-react";
+import {
+  Captions,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { WorkflowAction } from "./use-workflow-finishing";
@@ -60,7 +63,7 @@ export function WorkflowCaptionEditor({ captions, disabled = false }: { captions
       <h3 className="text-sm font-medium">Captions</h3>
       <Dialog open={open} onOpenChange={value => { setOpen(value); if (value) captions.onOpen?.(); }}>
         <DialogTrigger render={<Button type="button" variant="outline" size="sm" className={styles.launcherButton} disabled={!transcript && !generating && (disabled || action.disabled)} onClick={generate} />}>
-          {generating ? <LoaderCircle className="motion-safe:animate-spin" aria-hidden="true" /> : <Captions aria-hidden="true" />}
+          {generating ? <BlocksSpinner  aria-hidden="true" /> : <Captions aria-hidden="true" />}
           {transcript ? "Review captions" : generating ? "Generating…" : "Generate captions"}
         </DialogTrigger>
         <DialogContent className={styles.dialog}>
@@ -89,7 +92,7 @@ export function WorkflowCaptionEditor({ captions, disabled = false }: { captions
                   })}</div>
                 </div>)}
               </div> : <div className={styles.empty} role="status" aria-live="polite">
-                {generating ? <LoaderCircle className="size-7 text-primary motion-safe:animate-spin" aria-hidden="true" /> : <Captions className="size-7 text-muted" aria-hidden="true" />}
+                {generating ? <BlocksSpinner className="size-7 text-primary" aria-hidden="true" /> : <Captions className="size-7 text-muted" aria-hidden="true" />}
                 <h3 className="text-base font-medium">{generating ? "Generating captions…" : "Generate captions to begin"}</h3>
                 {!generating ? <Button type="button" variant="outline" disabled={disabled || action.disabled} onClick={generate}>Generate captions</Button> : null}
               </div>}

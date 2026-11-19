@@ -109,6 +109,8 @@ test("the persistent workspace shell preserves the existing route access matrix"
     activeKey: "explore",
     defaultSidebarCollapsed: false,
   });
+  assert.deepEqual(getWorkspaceRouteConfig("/"), getWorkspaceRouteConfig("/explore"));
+  assert.deepEqual(getWorkspaceRouteConfig("/explore/"), getWorkspaceRouteConfig("/explore"));
   assert.equal(getWorkspaceRouteConfig("/explore/hook-video")?.access, "profile");
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
@@ -130,13 +132,16 @@ test("the sign-in plan query is isolated behind a production Suspense boundary",
 
 test("profile access checks are reused only inside the active Firebase account", () => {
   assert.match(rootLayout, /<WorkspaceRouteBoundary>\{children\}<\/WorkspaceRouteBoundary>/);
+  // Only a resolved signed-out session on an allowlisted workflow gets the
+  // public gallery. The route matrix still applies to the private workspace.
+  assert.match(workspaceRouteBoundary, /const guestPreview = !loading && !user && publicWorkflow !== null/);
   assert.match(
     workspaceRouteBoundary,
-    /requireAuthentication=\{route\.access !== "none"\}/,
+    /requireAuthentication=\{!guestPreview && route\.access !== "none"\}/,
   );
   assert.match(
     workspaceRouteBoundary,
-    /requireBusinessProfile=\{route\.access === "profile"\}/,
+    /requireBusinessProfile=\{!guestPreview && route\.access === "profile"\}/,
   );
   assert.match(authGuard, /if \(!requireAuthentication\)/);
   assert.match(authGuard, /getBusinessProfileGateQueryKey\(user\?\.uid/);

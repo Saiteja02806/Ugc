@@ -1,5 +1,6 @@
 "use client";
 
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Image from "next/image";
 import { Bookmark } from "lucide-react";
 import type {
@@ -52,7 +53,7 @@ export function InfluencerCanvas({
       {/* Generating State */}
       {isGenerating && (
         <div className={styles.generatingState}>
-          <div className={styles.generatingPulse} />
+          <BlocksSpinner className="size-16 text-zinc-100" />
           <div className={styles.generatingText}>Synthesizing your AI Influencer...</div>
           <div className={styles.generatingSubtext}>
             Sculpting facial geometry, applying selected proportions & rendering 8K portrait

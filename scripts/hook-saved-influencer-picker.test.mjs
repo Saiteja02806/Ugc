@@ -1,3 +1,4 @@
+import { referenceViewCount, formatReferenceViews } from "../lib/explore/video-reference-feed.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -73,6 +74,7 @@ const workspace = readFileSync(new URL("../components/explore/recreate-workspace
 const { ReferenceCard } = compile(workspace.slice(workspace.indexOf("export function ReferenceCard("), workspace.indexOf("export function ReferenceSourceAction(")), {
   getReferenceSource: () => null, referenceSourceLabel: () => "", cn: (...parts) => parts.filter(Boolean).join(" "), studio: {},
   ReferenceMedia: "ReferenceMedia", ReferenceSourceAction: "ReferenceSourceAction", RotateCcw: "RotateCcw", Check: "Check", Button: "Button",
+  useStartingFramePreload: () => () => {}, referenceViewCount, formatReferenceViews,
 });
 test("selected Hook keeps its repeatable Recreate action after returning to the gallery", () => {
   let opened = 0;

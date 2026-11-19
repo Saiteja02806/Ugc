@@ -66,7 +66,26 @@ export async function createWorkflowGenerationBatch(batch: ValidatedWorkflowVide
   if (error) {
     const message = error.message.toLowerCase();
     if (message.includes("conflict") || message.includes("request_closed")) throw new WorkflowGenerationReceiptError("This request was already resolved or belongs to different work. Refresh its saved status.", 409);
-    if (message.includes("insufficient_billing_credits")) throw new WorkflowGenerationReceiptError("There are not enough AI credits for the complete batch.", 403);
+    if (message.includes("insufficient_billing_credits")) {
+      // User decision, 2026-11-12: Talking Head is paid-only and excluded from
+      // the free video pass, so an unpaid account attempting it through the
+      // atomic Explore path gets the workflow-specific message. Paid accounts
+      // that merely lack credits keep the generic batch message.
+      const talkingHeadBatch = inputs.some((input) => {
+        const record = input as Record<string, unknown>;
+        return record.workflow === "talking_head" || typeof record.talkingHeadScript === "string";
+      });
+      if (talkingHeadBatch) {
+        const { getUserSubscription } = await import("@/lib/billing/subscription-db");
+        const subscription = await getUserSubscription(batch.userId, {
+          initializeFreeCredits: false, refreshCredits: false, strict: true,
+        });
+        if (!subscription.isActive) {
+          throw new WorkflowGenerationReceiptError("You are not allowed for talking head. Use another workflow.", 403);
+        }
+      }
+      throw new WorkflowGenerationReceiptError("There are not enough AI credits for the complete batch.", 403);
+    }
     if (message.includes("paid_subscription_required")) throw new WorkflowGenerationReceiptError("An active Starter or Growth subscription is required.", 403);
     throw new WorkflowGenerationReceiptError("Could not save the generation request. Refresh status before trying again.");
   }

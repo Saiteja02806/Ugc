@@ -1,0 +1,751 @@
+{
+  "version": 1,
+  "importedOn": "2026-11-13",
+  "sourceWorkbookSha256": "0de136ac379b904e38e83e681c7f89629072dc9355a448833e405a78bdb52f44",
+  "items": [
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Dd3MtKRNg94/",
+      "viewCount": 7400,
+      "formattedViews": "7.4K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "7.4K",
+      "referenceIds": [
+        "explore-paired-hook-d1d14b08f6dd4711ad166ded"
+      ],
+      "workbookRow": 7
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DbKZS_ViycF/",
+      "viewCount": 539200,
+      "formattedViews": "539.2K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "539.2K",
+      "referenceIds": [
+        "explore-paired-hook-62f80506cbbedab0d340f863"
+      ],
+      "workbookRow": 9
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DaZJ1haJeJQ/",
+      "viewCount": 274500,
+      "formattedViews": "274.5K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "274.5K",
+      "referenceIds": [
+        "explore-paired-hook-f24aeb3d18886faf62ca3b8c"
+      ],
+      "workbookRow": 10
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Da5kmSIyqp9/",
+      "viewCount": 467700,
+      "formattedViews": "467.7K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "467.7K",
+      "referenceIds": [
+        "explore-paired-hook-318267dcb393c3e701c8c944"
+      ],
+      "workbookRow": 13
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DeCNJW4PRQH/",
+      "viewCount": 87700,
+      "formattedViews": "87.7K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "87.7K",
+      "referenceIds": [
+        "explore-paired-hook-892b0f65083c8cf03270a7c9"
+      ],
+      "workbookRow": 14
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Dc1Wnx2Pbz9/",
+      "viewCount": 10400,
+      "formattedViews": "10.4K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "10.4K",
+      "referenceIds": [
+        "explore-paired-hook-114b58d5c22018e273a346de"
+      ],
+      "workbookRow": 15
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@tweety.flows/video/7614214530549173512",
+      "viewCount": 496900,
+      "formattedViews": "496.9K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "496.9k",
+      "referenceIds": [
+        "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b"
+      ],
+      "workbookRow": 16
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@autumn.pushclock/video/7668726250147482912",
+      "viewCount": 4300000,
+      "formattedViews": "4.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "4.3M",
+      "referenceIds": [
+        "explore-paired-hook-20446a41b05ed3e9fdb6af95"
+      ],
+      "workbookRow": 17
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@alyssa.cycletips/video/7481010099742461214",
+      "viewCount": 3900000,
+      "formattedViews": "3.9M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "3.9M",
+      "referenceIds": [
+        "explore-paired-hook-caceb6cb43d6e62137cf9892"
+      ],
+      "workbookRow": 18
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kaias_lensss/video/7385309375528783146",
+      "viewCount": 7900000,
+      "formattedViews": "7.9M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "7.9M",
+      "referenceIds": [
+        "explore-paired-hook-c7ffd19dc027af1ff4034aeb"
+      ],
+      "workbookRow": 19
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@goldrecipesdaily/video/7690266167872654612",
+      "viewCount": 1400000,
+      "formattedViews": "1.4M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.4m",
+      "referenceIds": [
+        "explore-paired-hook-b7c86d6729a69666ddf46ed5"
+      ],
+      "workbookRow": 20
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@emiliemeetstheworld/video/7664468215715745046",
+      "viewCount": 473600,
+      "formattedViews": "473.6K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "473.6k",
+      "referenceIds": [
+        "explore-paired-hook-def19968a4a8c55c52679591"
+      ],
+      "workbookRow": 21
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@marilynn.simmy/video/7610661008213888276",
+      "viewCount": 258000,
+      "formattedViews": "258K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "258K",
+      "referenceIds": [
+        "explore-paired-hook-7351dd660bc41910b9f25453"
+      ],
+      "workbookRow": 22
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kai.clm444/video/7643739505727425814",
+      "viewCount": 1600000,
+      "formattedViews": "1.6M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.6M",
+      "referenceIds": [
+        "explore-paired-hook-5be30f0749eec90b5a70bd18"
+      ],
+      "workbookRow": 23
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@cleo_raena.ai/video/7412895654680284421",
+      "viewCount": 15200000,
+      "formattedViews": "15.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "15.2M",
+      "referenceIds": [
+        "explore-paired-hook-bee95bd7a34b5d2a72775282"
+      ],
+      "workbookRow": 24
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7643522575657749782",
+      "viewCount": 905000,
+      "formattedViews": "905K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "905K",
+      "referenceIds": [
+        "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea"
+      ],
+      "workbookRow": 25
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@cookinwithmarg/video/7524061914234768673",
+      "viewCount": 2200000,
+      "formattedViews": "2.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "2.2M",
+      "referenceIds": [
+        "explore-paired-hook-c5e3806f418bbe37e864485a"
+      ],
+      "workbookRow": 26
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@nikki.scripture/video/7694873153369083167",
+      "viewCount": 2300000,
+      "formattedViews": "2.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "2.3M",
+      "referenceIds": [
+        "explore-paired-hook-185ed6ac17073e3bc1b8f6b5"
+      ],
+      "workbookRow": 27
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@detective.demi/video/7697326489888378144",
+      "viewCount": 185000,
+      "formattedViews": "185K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "185k",
+      "referenceIds": [
+        "explore-paired-hook-58afc36bd5ed01471dacbde8"
+      ],
+      "workbookRow": 28
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@catherineemilo/video/7572614871099968799",
+      "viewCount": 1000000,
+      "formattedViews": "1M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1m",
+      "referenceIds": [
+        "explore-paired-hook-c2fcbca934c26f8784f7ae51"
+      ],
+      "workbookRow": 29
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@paiige.memories/video/7657758692326100238",
+      "viewCount": 181000,
+      "formattedViews": "181K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "181K",
+      "referenceIds": [
+        "explore-paired-hook-a9835169c265dda2a517d905"
+      ],
+      "workbookRow": 30
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@katieworktips/video/7694103551483661576",
+      "viewCount": 1000,
+      "formattedViews": "1K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1k",
+      "referenceIds": [
+        "explore-paired-hook-b6546c94d061472815cb5b47"
+      ],
+      "workbookRow": 31
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kay444tldl/video/7478818137685708054",
+      "viewCount": 1300000,
+      "formattedViews": "1.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.3m",
+      "referenceIds": [
+        "explore-paired-hook-5ff13d95c5d500d082396654"
+      ],
+      "workbookRow": 33
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@emmie.solo.travel/video/7555133613725977870",
+      "viewCount": 187000,
+      "formattedViews": "187K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "187k",
+      "referenceIds": [
+        "explore-paired-hook-67a4dfa083841f0ed47aa672"
+      ],
+      "workbookRow": 34
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@yashsolotravel/video/7564146034193042710",
+      "viewCount": 1300000,
+      "formattedViews": "1.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.3M",
+      "referenceIds": [
+        "explore-paired-hook-1ab171e057013facbab6f1d0"
+      ],
+      "workbookRow": 35
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@internet.hoarder/video/7660139137521011990",
+      "viewCount": 45000,
+      "formattedViews": "45K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "45k",
+      "referenceIds": [
+        "explore-paired-hook-463165a281dab247a37fd485"
+      ],
+      "workbookRow": 36
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kay444tldl/video/7480087749635149078",
+      "viewCount": 11700000,
+      "formattedViews": "11.7M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "11.7m",
+      "referenceIds": [
+        "explore-paired-hook-457f2c213909e385e7ca9463"
+      ],
+      "workbookRow": 37
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DaE-oR1sJxj/",
+      "viewCount": 132300,
+      "formattedViews": "132.3K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "132.3K",
+      "referenceIds": [
+        "explore-paired-hook-46c32b75bdeb763839864286"
+      ],
+      "workbookRow": 38
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DdFt1dqR5DG/",
+      "viewCount": 79600,
+      "formattedViews": "79.6K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "79.6K",
+      "referenceIds": [
+        "explore-paired-hook-377dc8c56feaea78432c5c28"
+      ],
+      "workbookRow": 39
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Db_Hx-sRc_z/",
+      "viewCount": 3000000,
+      "formattedViews": "3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "3m",
+      "referenceIds": [
+        "explore-paired-hook-7c124982b13fd6b847d447b4"
+      ],
+      "workbookRow": 40
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@foodwjon/video/7695917830931336462",
+      "viewCount": 380000,
+      "formattedViews": "380K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "380k",
+      "referenceIds": [
+        "explore-paired-hook-8d1bbacd825c45f74e3eb78a"
+      ],
+      "workbookRow": 41
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@studywithjoie/video/7698674978476068103",
+      "viewCount": 54000,
+      "formattedViews": "54K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "54k",
+      "referenceIds": [
+        "explore-paired-hook-55cbf33a0f0d56548cbe2818"
+      ],
+      "workbookRow": 42
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kai444rae/video/7567971141780868374",
+      "viewCount": 158000,
+      "formattedViews": "158K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "158k",
+      "referenceIds": [
+        "explore-paired-hook-ff0b0f9fa6d78a532749579f"
+      ],
+      "workbookRow": 43
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DdA58VyRFq2/",
+      "viewCount": 7000000,
+      "formattedViews": "7M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "7m",
+      "referenceIds": [
+        "explore-paired-hook-4554cba41f382eeaaf0b6569"
+      ],
+      "workbookRow": 44
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DfP_Kt3pFX-/",
+      "viewCount": 11500000,
+      "formattedViews": "11.5M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "11.5m",
+      "referenceIds": [
+        "explore-paired-hook-37ff10bf5f70a58eb9cd263b"
+      ],
+      "workbookRow": 45
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Dfc-9e7I_g9/",
+      "viewCount": 1000000,
+      "formattedViews": "1M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1m",
+      "referenceIds": [
+        "explore-paired-hook-0c9e57769a98cec980e726a1"
+      ],
+      "workbookRow": 46
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Ddoq0hNzURo/",
+      "viewCount": 853000,
+      "formattedViews": "853K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "853k",
+      "referenceIds": [
+        "explore-paired-hook-f525568f0bb9b496bb4545fb"
+      ],
+      "workbookRow": 47
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DdyYLssougM/",
+      "viewCount": 2200000,
+      "formattedViews": "2.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "2.2m",
+      "referenceIds": [
+        "explore-paired-hook-3aa8cc9e54d14297eee33173"
+      ],
+      "workbookRow": 48
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DfV2aPXtBwM/",
+      "viewCount": 375000,
+      "formattedViews": "375K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "375k",
+      "referenceIds": [
+        "explore-paired-hook-a557969f8da32f3985ecf55e"
+      ],
+      "workbookRow": 49
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/Der5UrozwcW/",
+      "viewCount": 3800000,
+      "formattedViews": "3.8M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "3.8m",
+      "referenceIds": [
+        "explore-paired-hook-5675231d7816b695470d44db"
+      ],
+      "workbookRow": 50
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@hope.gratitudes/video/7566372734100606238",
+      "viewCount": 12500000,
+      "formattedViews": "12.5M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "12.5m",
+      "referenceIds": [
+        "explore-paired-hook-f7f9e04735c13625bea6edbe"
+      ],
+      "workbookRow": 51
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@artsycom7/video/7563642320579497223",
+      "viewCount": 405000,
+      "formattedViews": "405K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "405k",
+      "referenceIds": [
+        "explore-paired-hook-4761ac251b85f086dacb20fd"
+      ],
+      "workbookRow": 52
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@nickistrunk.cooks/video/7680996264984579341",
+      "viewCount": 1300000,
+      "formattedViews": "1.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.3m",
+      "referenceIds": [
+        "talking-nicki-kitchen-reaction"
+      ],
+      "workbookRow": 53
+    },
+    {
+      "sourceUrl": "https://www.instagram.com/reel/DZ3lQ20Psl8/",
+      "viewCount": 121000,
+      "formattedViews": "121K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "121k",
+      "referenceIds": [
+        "talking-lowlight-instagram-what"
+      ],
+      "workbookRow": 54
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7661748122833407254",
+      "viewCount": 400,
+      "formattedViews": "400",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": false,
+      "rawValue": 400,
+      "referenceIds": [
+        "talking-kamile-mirror-discovery"
+      ],
+      "workbookRow": 55
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7665993957603675414",
+      "viewCount": 66000,
+      "formattedViews": "66K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "66k",
+      "referenceIds": [
+        "talking-kamile-kitchen-discovery"
+      ],
+      "workbookRow": 56
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7699540151675915553",
+      "viewCount": 938000,
+      "formattedViews": "938K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "938k",
+      "referenceIds": [
+        "talking-kamile-car-what"
+      ],
+      "workbookRow": 57
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@kamile.eats/video/7698810635085384983",
+      "viewCount": 64,
+      "formattedViews": "64",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": false,
+      "rawValue": 64,
+      "referenceIds": [
+        "talking-kamile-lowlight-what"
+      ],
+      "workbookRow": 58
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@annie.manifests/video/7682942507872701727",
+      "viewCount": 2200000,
+      "formattedViews": "2.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "2.2M",
+      "referenceIds": [
+        "talking-warm-story"
+      ],
+      "workbookRow": 60
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958",
+      "viewCount": 223000,
+      "formattedViews": "223K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "223k'",
+      "referenceIds": [
+        "talking-room-explainer-full"
+      ],
+      "workbookRow": 61
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@nicotinebreakuplog/video/7566032305572056333",
+      "viewCount": 1200000,
+      "formattedViews": "1.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.2m",
+      "referenceIds": [
+        "talking-car-explainer"
+      ],
+      "workbookRow": 62
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@emmgr4c3/video/7686594668280237343",
+      "viewCount": 130000,
+      "formattedViews": "130K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "130k",
+      "referenceIds": [
+        "talking-emmgr4c3"
+      ],
+      "workbookRow": 65
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@tessam.bible/video/7606118432748326158",
+      "viewCount": 4800000,
+      "formattedViews": "4.8M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "4.8m",
+      "referenceIds": [
+        "talking-tessam-bible"
+      ],
+      "workbookRow": 66
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@katiemeidt8/video/7625742200697097503",
+      "viewCount": 2200000,
+      "formattedViews": "2.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "2.2m",
+      "referenceIds": [
+        "talking-katiemeidt8"
+      ],
+      "workbookRow": 68
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@sidghst/video/7517806902789836063",
+      "viewCount": 723000,
+      "formattedViews": "723K",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "723k",
+      "referenceIds": [
+        "talking-sidghst"
+      ],
+      "workbookRow": 70
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@studywithsab/video/7561981970574626068",
+      "viewCount": 3900000,
+      "formattedViews": "3.9M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "3.9m",
+      "referenceIds": [
+        "talking-studywithsab"
+      ],
+      "workbookRow": 71
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@studywithsawyer/video/7534197843867782414",
+      "viewCount": 7900000,
+      "formattedViews": "7.9M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "7.9m",
+      "referenceIds": [
+        "talking-studywithsawyer"
+      ],
+      "workbookRow": 72
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@mumtipswithginny/video/7589025547875880215",
+      "viewCount": 4200000,
+      "formattedViews": "4.2M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "4.2m",
+      "referenceIds": [
+        "talking-mumtipswithginny"
+      ],
+      "workbookRow": 73
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7681203672956603662",
+      "viewCount": 10500000,
+      "formattedViews": "10.5M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "10.5m",
+      "referenceIds": [
+        "talking-discovery-hook-v2"
+      ],
+      "workbookRow": 74
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@bittenbyaturtle/video/7686629549106547971",
+      "viewCount": 1600000,
+      "formattedViews": "1.6M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "1.6m",
+      "referenceIds": [
+        "talking-bittenbyaturtle-hook-v2"
+      ],
+      "workbookRow": 75
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@carla.eatsss/video/7662440104488684813",
+      "viewCount": 8300000,
+      "formattedViews": "8.3M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "8.3m",
+      "referenceIds": [
+        "talking-carla-eatsss-hook-v2"
+      ],
+      "workbookRow": 76
+    },
+    {
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7680426189508431118",
+      "viewCount": 5800000,
+      "formattedViews": "5.8M",
+      "verificationMethod": "user-provided-workbook",
+      "approximate": true,
+      "rawValue": "5.8m",
+      "referenceIds": [
+        "talking-taliameals-hook-v2"
+      ],
+      "workbookRow": 77
+    }
+  ]
+}

@@ -5,11 +5,11 @@ import {
   ArrowLeft,
   CheckCircle2,
   Download,
-  Loader2,
   Pencil,
   RefreshCw,
   Save,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -557,7 +557,7 @@ function DemoEditorTopBar({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {renderState === "starting" || renderState === "rendering" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <BlocksSpinner className="size-4" aria-hidden="true" />
           ) : (
             <Download className="size-4" aria-hidden="true" />
           )}
@@ -570,7 +570,7 @@ function DemoEditorTopBar({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saveState === "saving" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <BlocksSpinner className="size-4" aria-hidden="true" />
           ) : saveState === "saved" ? (
             <CheckCircle2 className="size-4" aria-hidden="true" />
           ) : (
@@ -674,7 +674,7 @@ function DemoEditorActionFooter({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saveState === "saving" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <BlocksSpinner className="size-4" aria-hidden="true" />
           ) : saveState === "saved" ? (
             <CheckCircle2 className="size-4" aria-hidden="true" />
           ) : (
@@ -753,7 +753,7 @@ function EditorLoadingState() {
           <div className="h-20 animate-pulse rounded-md bg-card-muted motion-reduce:animate-none" />
         </div>
         <div className="flex items-center gap-2 text-sm font-medium text-muted">
-          <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+          <BlocksSpinner className="size-4 text-primary" aria-hidden="true" />
           Loading editor
         </div>
       </div>

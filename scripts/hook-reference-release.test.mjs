@@ -9,7 +9,11 @@ import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release
 import octoberBatch from "../worker/src/lib/explore-hook-reference-oct23-release.json" with { type: "json" };
 import octoberRefresh from "../worker/src/lib/explore-hook-reference-oct23-refresh-release.json" with { type: "json" };
 import reclassified from "../worker/src/lib/explore-hook-wall-reclassification-release.json" with { type: "json" };
+import notbeen3 from "../worker/src/lib/explore-hook-notbeen3-release.json" with { type: "json" };
+import notbeen3Text from "../lib/explore/hook-notbeen3-text.json" with { type: "json" };
+import notbeen2 from "../worker/src/lib/explore-hook-notbeen2-release.json" with { type: "json" };
 import reclassifiedText from "../lib/explore/hook-wall-reclassification-text.json" with { type: "json" };
+import notbeen2Text from "../lib/explore/hook-notbeen2-text.json" with { type: "json" };
 import legacy from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 import textCatalog from "../lib/explore/reference-text-catalog.json" with { type: "json" };
 import { validateHookRelease } from "./hook-reference-release-readiness.mjs";
@@ -37,16 +41,21 @@ test("the active Hook gallery retains reviewed source links and respects silent 
   const batchReady = validateHookAdditionRelease(newBatch, textCatalog);
   const octoberReady = validateHookAdditionRelease(octoberBatch, textCatalog);
   const refreshReady = validateHookAdditionRelease(octoberRefresh, textCatalog);
-  const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible, ...reclassified.items];
+  const notbeenReady = validateHookAdditionRelease(notbeen2, { items: notbeen2Text.items });
+  const latestReady = validateHookAdditionRelease(notbeen3, { items: notbeen3Text.items });
+  const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible, ...octoberReady.eligible, ...refreshReady.eligible, ...reclassified.items.filter(item => !reclassified.excludedReferenceIds.includes(item.id)), ...notbeenReady.eligible, ...latestReady.eligible];
   assert.equal(ready.eligible.length, 42); assert.equal(release.items.length, 45);
-  assert.equal(additionReady.eligible.length, 31); assert.equal(additions.items.length, 31);
-  assert.equal(batchReady.eligible.length, 20);
+  assert.equal(additionReady.eligible.length, 30); assert.equal(additions.items.length, 31);
+  assert.equal(batchReady.eligible.length, 21);
   assert.equal(octoberReady.eligible.length, 1);
-  assert.equal(refreshReady.eligible.length, 8);
-  assert.equal(hooks.length, 106); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
-  assert.deepEqual(hooks.map(item => item.title), Array(106).fill("Hook"));
+  assert.equal(refreshReady.eligible.length, 7);
+  assert.equal(notbeenReady.eligible.length, 18);
+  assert.equal(hooks.length, 129); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
+  assert.deepEqual(hooks.map(item => item.title), Array(129).fill("Hook"));
+  assert.equal(hooks.some(item => item.id === "explore-paired-hook-6070b6ecbe246d879ce0bdcb"), false);
+  assert.equal(hooks.some(item => item.sourceUrl === "https://www.instagram.com/reel/DeQwSJTxiza/"), false);
   for (const hook of hooks) {
-    const registered = [...release.items, ...additions.items, ...newBatch.items, ...octoberBatch.items, ...octoberRefresh.items, ...reclassified.items].find(item => item.id === hook.id);
+    const registered = [...release.items, ...additions.items, ...newBatch.items, ...octoberBatch.items, ...octoberRefresh.items, ...reclassified.items, ...notbeen2.items, ...notbeen3.items].find(item => item.id === hook.id);
     assert.equal(hook.instagramUrl, registered.instagramUrl);
     assert.equal(hook.sourceUrl, registered.sourceUrl ?? registered.instagramUrl);
     assert.equal(hook.sourcePlatform, registered.sourcePlatform ?? (registered.instagramUrl ? "instagram" : undefined));
@@ -63,10 +72,38 @@ test("the active Hook gallery retains reviewed source links and respects silent 
       assert.ok(hook.pairedAudio.url.endsWith(`${registered.audioSha256}.mp3`));
     }
     assert.ok(hook.videoUrl.endsWith(`${registered.videoSha256}.mp4`));
-    assert.equal(getReferenceText(hook.id, null, "hook").status, [...textCatalog.items, ...reclassifiedText.items].find(item => item.referenceId === hook.id && item.slideId === null).status);
+    assert.equal(getReferenceText(hook.id, null, "hook").status, [...textCatalog.items, ...reclassifiedText.items, ...notbeen2Text.items, ...notbeen3Text.items].find(item => item.referenceId === hook.id && item.slideId === null).status);
     assert.equal(getExplorePairedReference(hook.id).audioSha256, registered.audioSha256);
   }
   assert.equal(hooks.some(item => release.excludedReferenceIds.includes(item.id)), false);
+});
+
+test("Hook 121 uses the approved 2.600-second cut across gallery, caption and Recreate", async () => {
+  const referenceId = "explore-paired-hook-8d1bbacd825c45f74e3eb78a";
+  const sourceSha256 = "8caa12e6de5bc31c4d5393369bb6635dde87918dc2e146ac048b286afee56cf4";
+  const oldSha256 = "9946c9c20f1c664951097e9a24baf0852c336ad4557ad92b6d6635ba712ba995";
+  const reference = getRecreateReference(referenceId);
+  assert.equal(reference.durationSeconds, 2.6);
+  assert.ok(reference.videoUrl.endsWith(sourceSha256 + ".mp4"));
+  assert.ok(reference.previewVideoUrl.endsWith("eff64c89e8aa9d1394515cbce7da65e72ef5ceaaad5d42b7ffd484886602e33d.mp4"));
+  const caption = getReferenceText(referenceId, null, "hook");
+  assert.equal(caption.sourceSha256, sourceSha256);
+  assert.equal(caption.blocks.at(-1).endMs, 2600);
+  const { getReferenceVideoPrompt } = await import("../lib/explore/reference-video-prompts.ts");
+  const { createHookKeyframeDraft, updateHookKeyframeDraft } = await import("../lib/explore/hook-keyframe-draft.ts");
+  const { getHookKeyframePromptPreview } = await import("../lib/explore/hook-keyframe-prompt-preview.ts");
+  const draft = updateHookKeyframeDraft(createHookKeyframeDraft({
+    ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId, sourceSha256,
+  }), { sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) }, generateAudio: false });
+  const preview = getHookKeyframePromptPreview(draft, "hook", undefined, undefined, undefined, 2.6);
+  assert.equal(preview.animationError, null);
+  assert.equal(preview.requiresDecision, false);
+  const openingEnd = Number(preview.animationPrompt.match(/OPENING: 0–([\d.]+)s:/)?.[1]);
+  assert.ok(Math.abs(openingEnd - 1.5) < 0.02, "Displayed phase rounding stays within one source frame");
+  assert.match(preview.animationPrompt, /MIDDLE: [\d.]+–1\.9s:/);
+  assert.match(preview.animationPrompt, /FINAL HOLD 2\.6–3s:/);
+  assert.match(getReferenceVideoPrompt(referenceId, reference.videoUrl), /1\.9–2\.6s:/);
+  assert.equal(getReferenceVideoPrompt(referenceId, "https://source.test/" + oldSha256 + ".mp4"), undefined);
 });
 
 test("retired references still resolve saved remix/video/audio identities without returning to browsing", () => {
@@ -84,7 +121,7 @@ test("retired references still resolve saved remix/video/audio identities withou
   assert.equal(getAssetReferenceSoundtrack({ render: { referenceSoundtrack: { version: 1, referenceId: old.id, audioSha256: old.audioSha256, volume: .35 } } }).volume, .35);
   assert.deepEqual(getRecreateReferences().filter(item => item.format !== "hook"), getRecreateReferences(true).filter(item => item.format !== "hook"));
   const previous = process.env.NODE_ENV; process.env.NODE_ENV = "development";
-  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 106); }
+  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 129); }
   finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }
 });
 

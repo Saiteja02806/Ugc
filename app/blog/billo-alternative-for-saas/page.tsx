@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: "How does pricing compare between Billo and Vidmake?",
-    answer: "Billo states that videos start at $99; format, length and optional extras affect the total. Approved videos include use in your ads and owned channels; creator-handle partnership ads are a separate service. Vidmake offers a 7-day free trial with 20 daily content pieces, followed by monthly self-serve subscriptions starting at $29 and $49.",
+    answer: "Billo states that videos start at $99; format, length and optional extras affect the total. Approved videos include use in your ads and owned channels; creator-handle partnership ads are a separate service. Vidmake's monthly self-serve subscriptions start at $29 and $49.",
   },
   {
     question: "Does Vidmake support Claude or Codex MCP automation?",
@@ -168,7 +168,7 @@ export default function BilloAlternativeForSaasPage() {
               question: faqs[3].question,
               answer: (
                 <>
-                  Plans start from $29/mo with a 7-day free trial. See{" "}
+                  Plans start from $29/mo. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -192,7 +192,7 @@ export default function BilloAlternativeForSaasPage() {
           { href: "/blog/cost-of-ugc-video-for-saas", title: "Cost of UGC Video for SaaS", description: "Creators vs agencies vs AI software unit economics." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

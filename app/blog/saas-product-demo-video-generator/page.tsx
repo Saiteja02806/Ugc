@@ -206,7 +206,8 @@ export default function SaasProductDemoVideoGeneratorPage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/guides/screen-recording-for-app-demo", title: "Recording App Demos for Vertical Video", description: "Framing, resolution, and mobile readability." },
           { href: "/guides/saas-demo-video-script", title: "SaaS Demo Video Script Template", description: "15 and 30-second scripts with software cutaways." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start testing demo hooks on the 7-day trial." },
+          { href: "/blog/ai-product-demo-video-generator", title: "What an AI Demo Generator Can and Cannot Show", description: "Where generated footage stops and real product proof starts." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start testing demo hooks on a paid plan." },
         ]}
       />
     </VideoMarketingPage>

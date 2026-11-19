@@ -9,6 +9,27 @@ import {
   getEmailSignInPath, type AuthEmailKind, type EmailPurchaseIntent,
 } from "./email-policy";
 
+// One GoogleAuth instance per server process. Every new client pays a
+// service-account JWT signing plus a token exchange against Google before any
+// work starts; caching the instance lets the library reuse and auto-refresh
+// its token, so a queued verification email is prepared without that extra
+// hand-baked handshake each time.
+const cachedIdentityAuth = { auth: null as GoogleAuth | null };
+
+async function getIdentityClient(): Promise<Awaited<ReturnType<GoogleAuth["getClient"]>>> {
+  cachedIdentityAuth.auth ??= new GoogleAuth({
+    credentials: getGoogleServiceAccountCredentials() ?? undefined,
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
+  try {
+    return await cachedIdentityAuth.auth.getClient();
+  } catch (error) {
+    // A failed creation must not poison the cache for the next attempt.
+    cachedIdentityAuth.auth = null;
+    throw error;
+  }
+}
+
 export function getAuthEmailConfiguration() {
   const key = process.env.RESEND_API_KEY?.trim();
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
@@ -30,11 +51,7 @@ export async function deliverAuthEmail(
   intent: EmailPurchaseIntent = {},
 ) {
   const config = getAuthEmailConfiguration();
-  const credentials = getGoogleServiceAccountCredentials();
-  const client = await new GoogleAuth({
-    ...(credentials ? { credentials } : {}),
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-  }).getClient();
+  const client = await getIdentityClient();
   let firebaseLink: string;
   try {
     const response = await client.request<{ oobLink?: string }>({

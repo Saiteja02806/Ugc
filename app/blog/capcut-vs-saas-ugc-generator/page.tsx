@@ -175,7 +175,7 @@ export default function CapCutVsSaasUgcGeneratorPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Yes. Start with our 7-day trial. See{" "}
+                  Yes. Choose a plan. See{" "}
                   <ArticleLink href="/pricing">pricing details</ArticleLink>.
                 </>
               ),
@@ -190,7 +190,7 @@ export default function CapCutVsSaasUgcGeneratorPage() {
           { href: "/blog/talking-head-hook-generator-saas", title: "Talking Head Hook Generator for SaaS", description: "Stop the scroll in under 3 seconds." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for short-form software ads." },
           { href: "/mcp", title: "Vidmake MCP Server", description: "Connect Claude and Codex to automate video generation." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

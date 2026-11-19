@@ -93,9 +93,9 @@ const nextConfig: NextConfig = {
     "/*": nativeMedia.otherProbeBinaries,
     // Turbopack can retain duplicate authoring copies even after filesystem
     // reads use narrow public roots. These routes never read Remotion inputs.
-    "/api/explore/hook-keyframe": ["./remotion/**/*", "./public/explore/covers/**/*"],
-    "/api/explore/hook-starting-frame": ["./remotion/**/*", "./public/explore/covers/**/*"],
-    "/e2e/hook-keyframe-preview/source": ["./remotion/**/*", "./public/explore/covers/**/*"],
+    "/api/explore/hook-keyframe": ["./remotion/**/*", "./public/explore/covers/**/*", "./public/explore/talking-head-references/v1/previews/hook-only/**/*"],
+    "/api/explore/hook-starting-frame": ["./remotion/**/*", "./public/explore/covers/**/*", "./public/explore/talking-head-references/v1/previews/hook-only/**/*"],
+    "/e2e/hook-keyframe-preview/source": ["./remotion/**/*", "./public/explore/covers/**/*", "./public/explore/talking-head-references/v1/previews/hook-only/**/*"],
     // Next applies include globs with contains:true: /mcp also matches these
     // lightweight routes. They never execute a media decoder or probe.
     "/mcp/health": ["./node_modules/ffmpeg-static/**/*", "./node_modules/ffprobe-static/**/*"],

@@ -18,6 +18,7 @@ function renderComposer(overrides = {}, scrollHeight = 20) {
     "@/components/explore/workflow-focused-composer.module.css": { default: {} },
     "lucide-react": Object.fromEntries(["Check", "ChevronDown", "Loader2", "SlidersHorizontal"].map(name => [name, name])),
     "@/components/ui/button": { Button: "button" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "@/components/generation/composer-settings-rail": { ComposerSettingsRail: "rail" },
     "@/components/ui/field": Object.fromEntries(["Field", "FieldDescription", "FieldGroup", "FieldLabel"].map(name => [name, name])),
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map(name => [name, name])),

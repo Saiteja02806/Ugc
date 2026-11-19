@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Video } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Video,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import {
   useEffect,
   useRef,
@@ -209,7 +216,7 @@ export function HookVideoDeck({
           title="Skip video"
         >
           {surpriseLoading ? (
-            <Loader2 className="size-4.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            <BlocksSpinner className="size-4.5" aria-hidden="true" />
           ) : (
             <ArrowLeft className="size-4.5" aria-hidden="true" />
           )}

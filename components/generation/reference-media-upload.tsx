@@ -1,6 +1,12 @@
 "use client";
 
-import { ImagePlus, Loader2, Plus, RefreshCw } from "lucide-react";
+import {
+  ImagePlus,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import { Button } from "@/components/ui/button";
@@ -158,7 +164,7 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
         }} />
         {inline ? preview : null}
         <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy || append && referenceCount >= maxReferences} onClick={() => inputRef.current?.click()}>
-          {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : inline ? <Plus className="size-4" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
+          {busy ? <BlocksSpinner className="size-4" aria-hidden="true" /> : inline ? <Plus className="size-4" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
         </Button>
         {!inline ? preview : null}
       </div>

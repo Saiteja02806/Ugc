@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: "How much does Vidmake cost for a side project?",
-    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required, followed by self-serve plans from $29/mo.",
+    answer: "Vidmake's self-serve plans start at $29/mo.",
   },
 ] as const;
 
@@ -183,7 +183,7 @@ export default function MarketSideProject30MinutesAWeekPage() {
               question: faqs[4].question,
               answer: (
                 <>
-                  Start with our 7-day trial. View full details on{" "}
+                  Choose a plan. View full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -198,7 +198,7 @@ export default function MarketSideProject30MinutesAWeekPage() {
           { href: "/blog/build-in-public-without-showing-face", title: "Build in Public Without Showing Face", description: "Scale video marketing anonymously with AI avatars." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
           { href: "/free-hook-lines", title: "110 Free Hook Lines", description: "Tested opening hooks for short-form software ads." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

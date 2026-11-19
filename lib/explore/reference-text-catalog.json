@@ -9286,19 +9286,19 @@
     {
       "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
       "slideId": null,
-      "sourceSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+      "sourceSha256": "f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "paris girls are you OKAY???",
           "startMs": 0,
-          "endMs": 2900
+          "endMs": 2633
         }
       ],
-      "extractedAt": "2026-10-15T12:53:01.012Z",
-      "model": "windows-ocr-en-US-v2",
-      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+      "extractedAt": "2026-11-11T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "Caption read from opening. Motion checked through final frame. Source claims are not independently verified."
     },
     {
       "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",

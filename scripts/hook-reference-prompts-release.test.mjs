@@ -1,3 +1,5 @@
+import approvedNovemberBatch from "../worker/src/lib/explore-hook-notbeen3-release.json" with { type: "json" };
+import { assertReviewedMotion } from "./assert-reviewed-motion.mjs";
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getRecreateReferences } from '../lib/explore/recreate-catalog.ts';
@@ -13,31 +15,49 @@ process.env.GCP_STORAGE_PUBLIC_BASE_URL ??= 'https://hook-release-fixture.exampl
 
 test('every active Hook resolves its reviewed prompt and matching Remix source', () => {
   const hooks = getRecreateReferences().filter(reference => reference.format === 'hook' && !reference.archived);
-  assert.equal(hooks.length, 106);
-  assert.equal(Object.keys(referenceVideoPrompts).length, 111, "historical prompt identities remain available");
+  assert.equal(hooks.length, 129);
+  assert.equal(hooks.some(reference => reference.id === "explore-paired-hook-ddcfb2950d40f37771058b73"), false);
+  assert.equal(hooks.some(reference => reference.id === "explore-paired-hook-6070b6ecbe246d879ce0bdcb"), false);
+  assert.equal(Object.keys(referenceVideoPrompts).length, 135, "historical prompt identities remain available");
   let ready = 0;
   for (const hook of hooks) {
-    const review = referenceVideoPrompts[hook.id];
+    const historical = referenceVideoPrompts[hook.id];
+    // Version B was approved on November 11; preserve the old review separately.
+    const review = hook.id === "explore-paired-hook-6365d336034633aa5070eb48"
+      ? { ...historical, sourceSha256: "f03490f0586a13dcc80a5319ca2035e246205d57980631e103ac4634ffa7545f", reviewedFrameCount: 77 }
+      : historical;
     assert.equal(review.reviewMethod, 'all_decoded_frames');
     assert.ok(review.reviewedFrameCount > 0);
     const selected = getCuratedHookFrame(hook.id, review.sourceSha256);
     const motion = getHookKeyframeMotionReviewDraft(hook.id, review.sourceSha256, selected?.index ?? 0);
-    assert.ok(hook.generationPrompt.includes(motion?.candidatePlan?.endingState ?? review.performance), hook.id);
+    assert.ok(motion?.candidatePlan, hook.id);
+    assertReviewedMotion(hook.generationPrompt, motion.candidatePlan, hook.id);
     assert.ok(hook.generationPrompt.includes(REFERENCE_TEXT_REMOVAL));
     const source = getReferenceText(hook.id, null, 'hook');
     assert.equal(source.referenceId, hook.id);
     assert.equal(source.sourceSha256, review.sourceSha256);
     assert.ok(['ready', 'no_text'].includes(source.status));
     const trimmed = sceneRelease.items.find(item => item.id === hook.id);
-    if (trimmed) {
+    if (trimmed && trimmed.replacement.videoSha256 === review.sourceSha256) {
       assert.equal(source.sourceSha256, trimmed.replacement.videoSha256);
       assert.equal(review.reviewedFrameCount, trimmed.replacement.frames);
       assert.match(source.notes, /Scene cleanup approved by user/);
-    } else assert.ok(source.notes.toLowerCase().includes(`all ${review.reviewedFrameCount} decoded frames`), hook.id);
+    } else if (hook.id === "explore-paired-hook-6365d336034633aa5070eb48") {
+      assert.match(source.notes, /Motion checked through final frame/);
+      assert.equal(source.blocks[0].endMs, 2633);
+    } else if (approvedNovemberBatch.items.some(item => item.id === hook.id)) {
+      const approved = approvedNovemberBatch.items.find(item => item.id === hook.id);
+      assert.equal(source.sourceSha256, approved.videoSha256);
+      const approvedTrimFrames = { "Hook 126": 68, "Hook 130": 87 };
+      if (approved.title in approvedTrimFrames) {
+        assert.equal(review.reviewedFrameCount, approvedTrimFrames[approved.title]);
+        assert.match(source.notes, /Motion checked through final frame/);
+      } else assert.match(source.notes, new RegExp(`all ${review.reviewedFrameCount} (?:retained )?decoded frames`, "i"));
+    } else assert.ok(new RegExp(`all ${review.reviewedFrameCount} (?:retained )?decoded frames`, "i").test(source.notes), hook.id);
     if (source.status === 'ready') ready++;
     else assert.deepEqual(source.blocks, []);
   }
-  assert.equal(ready, 104);
+  assert.equal(ready, 127);
 });
 
 const firstThree = [

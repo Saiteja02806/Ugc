@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowUpRight, Check, History, Loader2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  History,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { getImageHistoryDateLabel } from "@/lib/ai-studio/image-history";
@@ -28,7 +33,7 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
         {busy ? <p className="mb-4 text-xs text-muted" role="status">You can open an earlier image when your current request finishes.</p> : null}
         {error ? <div className="mb-4 text-sm text-muted" role="alert">{error.message}<Button variant="ghost" size="sm" onClick={onRetry}>Try again</Button></div> : null}
-        {loading && !images.length ? <p className="flex items-center gap-2 text-sm text-muted" role="status"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Loading your images…</p>
+        {loading && !images.length ? <p className="flex items-center gap-2 text-sm text-muted" role="status"><BlocksSpinner className="size-4" aria-hidden="true" />Loading your images…</p>
           : !images.length && !error ? <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
             <History className="size-5 text-muted" aria-hidden="true" />
             <p className="mt-3 text-sm font-medium">{signedIn ? "Your character images will be saved here" : "Sign in to see your character history"}</p>

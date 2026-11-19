@@ -152,7 +152,7 @@ export default function TiktokSlideshowMakerPage() {
           If your message needs motion rather than swiping, the
           <ArticleLink href="/ai-ugc-video-generator">AI UGC video generator</ArticleLink> and the
           <ArticleLink href="/guides/saas-slideshow-story-vs-tutorial">story-versus-tutorial guide</ArticleLink> cover
-          the video alternative. A free trial runs for seven days with 20 daily content pieces; see
+          the video alternative. Paid plans start at $29 a month with monthly credits; see
           <ArticleLink href="/pricing">pricing</ArticleLink>.
         </p>
 

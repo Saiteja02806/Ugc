@@ -1,3 +1,4 @@
+import { referenceViewCount, formatReferenceViews } from "../lib/explore/video-reference-feed.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -8,7 +9,7 @@ const ast = ts.createSourceFile("cards.tsx", source, ts.ScriptTarget.Latest, tru
 const declaration = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "ReferenceCard").getText(ast);
 const code = ts.transpileModule(declaration, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const exports = {}, jsx = (type, props) => ({ type, props });
-vm.runInNewContext(code, { exports, require: () => ({ jsx, jsxs: jsx }), studio: { mediaFrame: "mediaFrame", referenceRecreateButton: "referenceRecreateButton" }, cn: (...values) => values.filter(Boolean).join(" "),
+vm.runInNewContext(code, { exports, referenceViewCount, formatReferenceViews, useStartingFramePreload: () => () => {}, require: () => ({ jsx, jsxs: jsx }), studio: { mediaFrame: "mediaFrame", referenceRecreateButton: "referenceRecreateButton" }, cn: (...values) => values.filter(Boolean).join(" "),
   getReferenceSource: reference => reference.source ?? null, referenceSourceLabel: () => "Original post",
   ReferenceMedia: "ReferenceMedia", ReferenceSourceAction: "ReferenceSourceAction", Button: "Button", Check: "Check", RotateCcw: "RotateCcw" });
 const nodes = value => Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === "object" ? [value, ...nodes(value.props?.children)] : [];

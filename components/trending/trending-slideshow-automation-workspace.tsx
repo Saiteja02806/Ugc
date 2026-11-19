@@ -16,7 +16,6 @@ import {
   FolderOpen,
   Images,
   Layers,
-  LoaderCircle,
   PauseCircle,
   PlayCircle,
   Plus,
@@ -26,6 +25,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 
 import { MediaLibraryPanel } from "@/components/media/media-library-dialog";
 import { WorkflowTimePicker } from "@/components/scheduling/workflow-time-picker";
@@ -914,8 +915,8 @@ export function TrendingSlideshowAutomationWorkspace({
               role="status"
               className="flex min-h-[360px] flex-col items-center justify-center gap-3 rounded-2xl border border-border/70 bg-card p-8 text-sm text-muted"
             >
-              <LoaderCircle
-                className="size-6 animate-spin text-primary"
+              <BlocksSpinner
+                className="size-6 text-primary"
                 aria-hidden="true"
               />
               <p>Loading your Trending slideshow automation workspace…</p>

@@ -8,7 +8,6 @@ import {
   Copy,
   Download,
   FileVideo,
-  Loader2,
   Maximize2,
   Pause,
   Pencil,
@@ -23,6 +22,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
@@ -742,10 +742,7 @@ export function UploadedPostsTab({
               title="Refresh demos"
               className="inline-flex size-10 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <RefreshCw
-                className={cn("size-4", isLoading && "animate-spin")}
-                aria-hidden="true"
-              />
+              {isLoading ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
             </button>
             <button
               type="button"
@@ -902,7 +899,7 @@ export function UploadedPostsTab({
               className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-semibold text-white hover:bg-error/90 disabled:opacity-50"
             >
               {isBulkDeleting ? (
-                <Loader2 className="size-4 animate-spin" />
+                <BlocksSpinner className="size-4" />
               ) : (
                 <Trash2 className="size-4" />
               )}
@@ -1002,13 +999,7 @@ function EmbeddedDemoWorkspace({
             title="Refresh demos"
             className={demoIconActionClassName}
           >
-            <RefreshCw
-              className={cn(
-                "size-3.5",
-                isLoading && "animate-spin motion-reduce:animate-none",
-              )}
-              aria-hidden="true"
-            />
+            {isLoading ? <BlocksSpinner className="size-3.5" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
           </button>
           <button
             type="button"
@@ -1330,7 +1321,7 @@ function UploadProgress({
           ) : isDone ? (
             <CheckCircle2 className="size-5" aria-hidden="true" />
           ) : (
-            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+            <BlocksSpinner className="size-5" aria-hidden="true" />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -1415,7 +1406,7 @@ function BatchUploadQueuePanel({
       <div className="flex items-center justify-between pb-2.5 border-b border-border mb-3">
         <div className="flex items-center gap-2">
           {activeCount > 0 ? (
-            <Loader2 className="size-4 animate-spin text-primary" />
+            <BlocksSpinner className="size-4 text-primary" />
           ) : (
             <CheckCircle2 className="size-4 text-success" />
           )}
@@ -1745,7 +1736,7 @@ export function DemoCard({
               className="inline-flex size-7 shrink-0 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deleting ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                <BlocksSpinner className="size-3.5" aria-hidden="true" />
               ) : (
                 <Trash2 className="size-3.5" aria-hidden="true" />
               )}
@@ -1885,7 +1876,7 @@ function InlineTitleEditor({
           title="Save title"
         >
           {isSaving ? (
-            <Loader2 className="size-3 animate-spin" />
+            <BlocksSpinner className="size-3" />
           ) : (
             <Check className="size-3" />
           )}
@@ -2454,7 +2445,7 @@ function BulkActionBar({
         className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-error px-3 text-xs font-bold text-white transition-colors hover:bg-error/90 disabled:opacity-50"
       >
         {isDeleting ? (
-          <Loader2 className="size-3.5 animate-spin" />
+          <BlocksSpinner className="size-3.5" />
         ) : (
           <Trash2 className="size-3.5" />
         )}

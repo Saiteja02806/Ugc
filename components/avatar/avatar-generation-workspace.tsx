@@ -4,10 +4,10 @@ import {
   AlertCircle,
   CheckCircle2,
   ImageIcon,
-  Loader2,
   RefreshCw,
   UserRound,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import { useEffect, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/button";
@@ -330,7 +330,7 @@ export function AvatarGenerationWorkspace({
         >
           {isWorking ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <BlocksSpinner className="mr-2 size-4" />
               Generating
             </>
           ) : imageUrl ? (
@@ -359,7 +359,7 @@ export function AvatarGenerationWorkspace({
             ) : status === "success" ? (
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
             ) : isWorking ? (
-              <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin" />
+              <BlocksSpinner className="mt-0.5 size-4 shrink-0" />
             ) : null}
             <p>{message}</p>
           </div>

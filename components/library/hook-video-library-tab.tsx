@@ -4,12 +4,13 @@ import {
   CalendarClock,
   Eye,
   Film,
-  Loader2,
   RefreshCw,
   Sparkles,
   UserRound,
   Video,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -302,13 +303,7 @@ export function HookVideoLibraryTab({
             title="Refresh Reel hooks"
             className="inline-flex size-10 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
           >
-            <RefreshCw
-              className={cn(
-                "size-4",
-                loading && "animate-spin motion-reduce:animate-none",
-              )}
-              aria-hidden="true"
-            />
+            {loading ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -400,7 +395,7 @@ export function HookVideoLibraryTab({
                     />
                   ) : isRenderPending(item.renderStatus) ? (
                     <span className="flex size-full flex-col items-center justify-center gap-3 px-5 text-center text-white/70">
-                      <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      <BlocksSpinner className="size-6" aria-hidden="true" />
                       <span className="text-xs font-semibold">
                         Preparing finished video
                       </span>
@@ -466,7 +461,7 @@ export function HookVideoLibraryTab({
                         className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
                       >
                         {schedulingId === item.id ? (
-                          <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                          <BlocksSpinner className="size-3.5" aria-hidden="true" />
                         ) : (
                           <CalendarClock className="size-3.5" aria-hidden="true" />
                         )}

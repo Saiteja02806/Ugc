@@ -1,3 +1,5 @@
+import * as videoFeed from "../lib/explore/video-reference-feed.ts";
+import { isPaidBillingPlan } from "../lib/billing/policy.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -24,7 +26,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false, creatorCatalogue = [] } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true, planKey: "growth" }, billingQuery = {}, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false, creatorCatalogue = [] } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -53,7 +55,8 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
   "@/components/explore/lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "HookStartingFrameWorkspace" },
-  "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
+  "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription, isSuccess: true, isError: false, ...billingQuery }) },
+  "@/lib/billing/free-video-pass-badge": { freeVideoPassShowsRemainingGeneration: () => false },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
   "@/components/explore/lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "HookStartingFrameWorkspace" },
@@ -75,7 +78,8 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (...args) => { reads.push(args); return video; } },
   "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { tokens.push(owner); return "owner-token"; } },
   "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: value => typeof value === "string" && /^[\da-f-]{36}$/i.test(value) },
-  "@/lib/explore/recreate-types": referenceTypes,
+  "@/lib/explore/video-reference-feed": videoFeed, "@/lib/billing/policy": { isPaidBillingPlan }, "./reference-feed-upgrade": { ReferenceFeedUpgrade: "ReferenceFeedUpgrade" },
+    "@/lib/explore/recreate-types": referenceTypes,
   "@/lib/explore/reference-pagination": pagination,
   "@/lib/explore/local-hook-starting-frame-preview": { LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview-owner", createLocalHookStartingFramePreviewRuntime: () => ({ generationDisabledReason: "Local source preview only" }) },
   "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
@@ -91,6 +95,46 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+
+test("Hook free preview stays at ten through view controls and resize while paid, Wall and Slideshow browse all", () => {
+  const subscription = { isActive: false, planKey: "free", freeVideoPass: { available: true } };
+  const billingQuery = { isFetching: false, isFetchedAfterMount: false };
+  const hooks = catalogue.slice(0, 30).map((value, index) => ({ ...value, id: `hook-${index}`, format: "hook", sourceUrl: `https://www.tiktok.com/@creator/video/${10000 + index}`, viewCount: index * 100 }));
+  const h = harness("hook", "refId=hook-0&hookFrameDraft=00000000-0000-4000-8000-000000000002&hookRecreation=starting_image", { local: false, selected: null, catalogue: hooks, subscription, billingQuery, keyframeEnabled: true });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  const filter = () => nodes(h.render()).find(node => node.type === "FilterMenu");
+  assert.equal(cards().length, 10);
+  assert.deepEqual(cards().map(node => node.props.reference.id), hooks.slice(-10).reverse().map(value => value.id));
+  const originalSet = new Set(cards().map(node => node.props.reference.id));
+  filter().props.views.onSort("lowest");
+  assert.deepEqual(new Set(cards().map(node => node.props.reference.id)), originalSet);
+  h.resize(6); assert.equal(cards().length, 10);
+  assert.equal(nodes(h.render()).some(node => node.props?.["data-reference-scroll-end"] !== undefined), false);
+  assert.ok(nodes(h.render()).some(node => node.type === "ReferenceFeedUpgrade"));
+  filter().props.views.onFilter("unavailable"); assert.equal(cards().length, 0);
+  filter().props.onClear(); assert.equal(cards().length, 10);
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, "hook-0", "saved reference outside discovery remains recoverable");
+  subscription.isActive = true; subscription.planKey = "growth";
+  assert.ok(cards().length > 10);
+  billingQuery.isFetching = true;
+  assert.equal(cards().length, 10, "cached paid plan is bounded while revalidating");
+  assert.equal(nodes(h.render()).find(node => node.type === "ReferenceFeedUpgrade").props.loading, true);
+  subscription.isActive = false; subscription.planKey = "free";
+  billingQuery.isFetching = false;
+  assert.equal(cards().length, 10, "downgrade cannot reveal more on completion");
+  subscription.isActive = true; subscription.planKey = "growth";
+  assert.ok(cards().length > 10, "confirmed paid access restores the full feed");
+  billingQuery.isFetchedAfterMount = true; billingQuery.isFetching = true;
+  assert.ok(cards().length > 10, "child source refetch does not collapse/remount the verified paid feed");
+  subscription.isActive = false; subscription.planKey = "free";
+  billingQuery.isFetching = false;
+  assert.equal(cards().length, 10, "later authoritative downgrade still caps discovery");
+  for (const format of ["wall_text", "slideshow"]) {
+    const sibling = harness(format, "", { selected: null, catalogue: hooks.map(value => ({ ...value, format })), subscription: { isActive: false, planKey: "free" } });
+    assert.ok(nodes(sibling.render()).filter(node => node.type === "ReferenceCard").length > 10);
+    assert.equal(nodes(sibling.render()).some(node => node.type === "ReferenceFeedUpgrade"), false);
+  }
+});
 
 test("creator account switching replaces only the gallery and preserves Recreate's exact reference", () => {
   const shared = { id: "normal-hook", format: "hook", title: "Hook", slides: [], posterUrl: "/normal.png", videoUrl: "/normal.mp4" };

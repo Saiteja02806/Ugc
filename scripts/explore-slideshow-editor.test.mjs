@@ -195,6 +195,12 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
   let cursor = 0, nextRequest = 100;
   const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], libraryReads = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
   const navigations = [], browserLocation = locationHref ? { href: locationHref } : undefined;
+  const localUrls = [], revokedUrls = [];
+  const debugState = { outcomes: [] };
+  const urlClass = class extends URL {
+    static createObjectURL(value) { localUrls.push(value); return `blob:fixture-${localUrls.length}`; }
+    static revokeObjectURL(value) { revokedUrls.push(value); }
+  };
   if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
   const element = (type, props) => ({ type, props });
   const react = {
@@ -206,17 +212,22 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
   const mod = load("components/explore/format-slideshow-editor.tsx", {
     react, "react-dom": { createPortal: (children, target) => element("portal", { children, target }) }, "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
     "lucide-react": { ArrowLeft: "icon", ArrowRight: "icon", Download: "icon", Trash2: "icon" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "icon" },
     "@/components/ui/button": { Button: "Button" }, "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async value => ({ id: value, collection: "image", status: "ready", url: "https://storage.test/" + value + ".png", title: "Saved image", createdAt: "", ratio: "9:16" }) },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return uploadResult ? uploadResult(file) : { asset: { id: id(300 + uploads.length) } }; } },
     "@/lib/explore/slideshow-text": { EMPTY_SLIDE_TEXT, parseSlideText },
-    "@/lib/explore/slideshow-preparation": { prepareSlideshowSequence },
+    "@/lib/explore/slideshow-preparation": { prepareSlideshowSequence: async (slides, prepare, onProgress, concurrency) => prepareSlideshowSequence(slides, async (slide, index) => {
+      const out = await prepare(slide, index);
+      debugState.outcomes.push({ status: out.status, reason: String(out.reason), isInstance: out.reason instanceof Error });
+      return out;
+    }, onProgress, concurrency) },
     "@/lib/explore/slideshow-image-client": { fitSlideshowUpload: fitUpload },
     "@/lib/explore/slideshow-text-client": { renderSlideText: async (source, design) => { renders.push({ source, design }); return { source, design }; }, createSlideTextSvg: (design, width, height) => slideTextSvg(design, width, height, measure) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "offline-token"; } },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid }, "./slideshow-editor.module.css": { default: { preview: "preview", overlay: "overlay" } }, "./workflow-creation.module.css": { default: {} },
   }, {
-    document: {}, URL, window: { location: browserLocation, history: { state: {}, replaceState(_state, _title, url) { navigations.push(url); browserLocation.href = new URL(url, browserLocation.href).href; } }, addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: {}, URL: urlClass, window: { location: browserLocation, history: { state: {}, replaceState(_state, _title, url) { navigations.push(url); browserLocation.href = new URL(url, browserLocation.href).href; } }, addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     crypto: { randomUUID: () => id(nextRequest++) }, navigator: { locks: { request: async (_, options, callback) => { assert.equal(options.ifAvailable, true); return callback({}); } } },
     fetch: async (url, options) => {
       if (url === `/api/library/carousels/${id(99)}`) {
@@ -243,7 +254,7 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     addImage({ id: id(202), url: "https://storage.test/generated-2.png" }, 1);
     control("button", "Preview slide 1").props.onClick();
   }
-  return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations };
+  return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations, localUrls, revokedUrls, debugState };
 }
 
 test("an interrupted save restores Resume and exact slides even when a different Library slideshow is requested", async () => {
@@ -517,6 +528,76 @@ test("slide uploads send fitted files before adding owned images and retain succ
   assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(350)]);
 });
 
+for (const failureStage of ["conversion", "upload"]) {
+  for (const failedIndex of [0, 1, 2]) {
+    test(`a ${failureStage} failure at file ${failedIndex + 1} retains, saves and restores every other upload in order`, async () => {
+      const files = [0, 1, 2].map(index => ({ name: `file-${index}.png`, type: "image/png", size: 100 }));
+      const h = await editor({
+        fitUpload: async file => {
+          if (failureStage === "conversion" && file.name === files[failedIndex].name) throw new Error("Synthetic conversion failure");
+          return file;
+        },
+        uploadResult: file => {
+          if (failureStage === "upload" && file.name === files[failedIndex].name) throw new Error("Synthetic upload failure");
+          const index = files.findIndex(value => value.name === file.name);
+          return { asset: { id: id(350 + index), collection: "image", status: "ready", url: `https://storage.test/${file.name}`, title: file.name, createdAt: "", ratio: "4:5" } };
+        },
+      });
+      h.control("input", "Upload slides").props.onChange({ currentTarget: { files, value: "chosen" } });
+      await new Promise(setImmediate);
+      const expected = [id(201), id(202), ...files.flatMap((_, index) => index === failedIndex ? [] : [id(350 + index)])];
+      const draft = JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner"));
+      assert.deepEqual(draft.slides.map(slide => slide.mediaAssetId), expected);
+      assert.match(text(h.render()), /2 images added/);
+      assert.equal(h.localUrls.length, h.revokedUrls.length, "all fitted preview URLs are released");
+      assert.equal(nodes(h.render()).filter(node => node.props?.["data-slideshow-upload-pending"]).length, 0);
+      await h.clickSave("Save slideshow");
+      assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), expected);
+      const restored = await editor({ generated: false, storageState: h.storage });
+      const restoredDraft = JSON.parse(restored.storage.get("ugc-explore:slideshow-draft:v2:owner"));
+      assert.deepEqual(restoredDraft.slides.map(slide => slide.mediaAssetId), expected);
+      assert.equal(restored.requests.length, 0, "reopening never submits a new save");
+    });
+  }
+}
+
+test("a failed early upload releases later successes immediately in file order", async () => {
+  const pending = new Map();
+  const h = await editor({ uploadResult: file => new Promise((resolve, reject) => pending.set(file.name, { resolve, reject })) });
+  h.control("input", "Upload slides").props.onChange({ currentTarget: { files: ["a", "b", "c"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  await new Promise(setImmediate);
+  const ready = n => ({ asset: { id: id(n), collection: "image", status: "ready", url: `https://storage.test/${n}.png`, title: "Uploaded", createdAt: "", ratio: "4:5" } });
+  const ids = () => JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner")).slides.map(slide => slide.mediaAssetId);
+  pending.get("b").resolve(ready(352)); await new Promise(setImmediate);
+  assert.deepEqual(ids(), [id(201), id(202)], "wait for the earlier unresolved file");
+  pending.get("a").reject(new Error("Synthetic upload failure")); await new Promise(setImmediate);
+  assert.deepEqual(ids(), [id(201), id(202), id(352)], "the successful next file appears while c is still uploading");
+  assert.match(text(h.render()), /Uploading slides/);
+  pending.get("c").resolve(ready(353)); await new Promise(setImmediate);
+  assert.deepEqual(ids(), [id(201), id(202), id(352), id(353)]);
+  assert.match(text(h.render()), /2 images added/);
+});
+
+test("all failed uploads retain the previous sequence and an explicit retry adds each image once", async () => {
+  let failing = true;
+  const h = await editor({ uploadResult: file => {
+    if (failing) throw new Error("Synthetic upload failure");
+    return { asset: { id: id(file.name === "a" ? 351 : 352), collection: "image", status: "ready", url: `https://storage.test/${file.name}.png`, title: file.name, createdAt: "", ratio: "4:5" } };
+  } });
+  const choose = () => h.control("input", "Upload slides").props.onChange({ currentTarget: { files: ["a", "b"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  choose();
+  await new Promise(setImmediate);
+  const draft = JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner"));
+  assert.deepEqual(draft.slides.map(slide => slide.mediaAssetId), [id(201), id(202)]);
+  assert.doesNotMatch(text(h.render()), /images? added/);
+  assert.equal(h.localUrls.length, h.revokedUrls.length);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
+  failing = false;
+  choose(); await new Promise(setImmediate);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(351), id(352)]);
+});
+
 test("Upload slides reports active progress beside the preview and saves exactly the completed owned assets", async () => {
   const finishes = [];
   const h = await editor({ uploadResult: () => new Promise(resolve => finishes.push(resolve)) });
@@ -542,6 +623,38 @@ test("Upload slides reports active progress beside the preview and saves exactly
   assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(351), id(352)]);
 });
 
+test("each fitted upload previews in the rail instantly and its owned slide commits in file order", async () => {
+  const resolver = {};
+  const fitUpload = async file => ({ ...file, name: `portrait-4x5-${file.name}` });
+  const h = await editor({
+    fitUpload,
+    uploadResult: file => new Promise(resolve => { resolver[file.name] = resolve; }),
+  });
+  const pendingState = () => nodes(h.render()).filter(node => node.props?.["data-slideshow-upload-pending"]);
+  const persistedDraft = () => JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner"));
+  const wait = async () => { await new Promise(setImmediate); await new Promise(setImmediate); };
+  h.control("input", "Upload slides").props.onChange({ currentTarget: { files: ["a.png", "b.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  await wait();
+  // Both fitted blobs preview immediately, without owned asset identities yet.
+  assert.equal(pendingState().length, 2);
+  assert.match(text(h.render()), /Uploading image 3/);
+  assert.match(text(h.render()), /Uploading image 4/);
+  assert.deepEqual(persistedDraft().slides.map(slide => slide.mediaAssetId), [id(201), id(202)]);
+  const blobCount = h.localUrls.length;
+  // The later file cannot jump ahead of the earlier one.
+  resolver["portrait-4x5-b.png"]({ asset: { id: id(352), collection: "image", status: "ready", url: "https://storage.test/b.png", title: "b", createdAt: "", ratio: "4:5" } });
+  await wait();
+  assert.equal(pendingState().length, 2, "the fitted blob stays until its own file-order slot lands");
+  assert.deepEqual(persistedDraft().slides.map(slide => slide.mediaAssetId), [id(201), id(202)]);
+  resolver["portrait-4x5-a.png"]({ asset: { id: id(351), collection: "image", status: "ready", url: "https://storage.test/a.png", title: "a", createdAt: "", ratio: "4:5" } });
+  await wait();
+  assert.equal(pendingState().length, 0);
+  assert.doesNotMatch(text(h.render()), /Uploading slides… \d of \d processed/, "the completed upload clears its progress line");
+  assert.deepEqual(persistedDraft().slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(351), id(352)]);
+  assert.equal(h.localUrls.length, blobCount, "no extra blob URLs appear after completion");
+  assert.equal(h.revokedUrls.length, 2, "both fitted previews are revoked once committed");
+  assert.doesNotMatch(text(h.render()), /blob:/);
+});
 test("a failed valid image replacement keeps the old sequence unscheduled until explicit re-save", async () => {
   let rejectUpload, continued = 0;
   const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise((_, reject) => { rejectUpload = reject; }) });

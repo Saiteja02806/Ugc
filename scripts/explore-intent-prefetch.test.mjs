@@ -15,9 +15,11 @@ function fixture(pathname = "/explore", globals = {}) {
     react: {
       createContext: () => ({}), useContext: () => href => starts.push(href),
       useState: initial => { const index = cursor++; if (!(index in slots)) slots[index] = initial; return [slots[index], value => { slots[index] = value; }]; },
+      useRef: initial => { const index = cursor++; return slots[index] ??= { current: initial }; },
       useEffect: globals.useEffect ?? (() => {}), useCallback: callback => callback,
     },
     "lucide-react": { LoaderCircle: "spinner" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "spinner" },
   };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, { ...globals, exports, require: name => { assert.ok(name in imports, name); return imports[name]; } });
   return { starts, setPath: value => { path = value; }, render(props = {}) { cursor = 0; return exports.WorkspaceLink({ href: "/explore/slideshows", ...props }); }, feedback() { cursor = 0; return exports.WorkspaceNavigationFeedback({}); } };
@@ -28,6 +30,9 @@ test("document fallback runs once for a visible, online Explore click that never
     ["/explore", false, 1],
     ["/explore", true, 0],
     ["/explore/hook-video", false, 0],
+    // The proxy mounts the Explore home at the public root address as well.
+    ["/", false, 1],
+    ["/", true, 0],
   ]) {
     let time = 0, tick, cleanup;
     const assigned = [];
@@ -37,7 +42,7 @@ test("document fallback runs once for a visible, online Explore click that never
     const location = { origin, pathname, search: "", href: origin + pathname, assign: href => assigned.push(href) };
     const h = fixture(pathname, {
       URL, Date: { now: () => time }, document, navigator,
-      window: { location, setInterval: fn => { tick = fn; return 1; }, clearInterval: () => { tick = undefined; } },
+      window: { location, addEventListener() {}, removeEventListener() {}, setInterval: fn => { tick = fn; return 1; }, clearInterval: () => { tick = undefined; } },
       useEffect: fn => { cleanup = fn(); },
     });
     h.feedback().props.value("/explore/slideshows?view=library#cards");
@@ -57,6 +62,28 @@ test("document fallback runs once for a visible, online Explore click that never
     cleanup();
     assert.equal(tick, undefined);
   }
+});
+
+test("Analytics accepts the first click, coalesces repeats and preserves the first recovery deadline", () => {
+  const origin = "https://example.test", pathname = "/explore/create-hook";
+  let time = 30 * 60_000, tick, restore;
+  const h = fixture(pathname, { URL, Date: { now: () => time },
+    window: { location: { origin, pathname, search: "", href: origin + pathname },
+      addEventListener: (_, fn) => { restore = fn; }, setInterval: fn => { tick = fn; } },
+    useEffect: fn => fn(),
+  });
+  const start = h.feedback().props.value;
+  assert.equal(start("/analytics"), "document");
+  h.feedback();
+  time += 14_900;
+  assert.equal(start("/analytics"), "pending");
+  time += 100;
+  tick();
+  assert.ok(JSON.stringify(h.feedback()).includes("Open page in a new tab"));
+  assert.equal(start("/analytics"), "document", "explicit retry after a cancelled unload");
+  assert.equal(start("/analytics"), "pending");
+  restore({ persisted: true });
+  assert.equal(start("/analytics"), "document", "browser Back allows a fresh click");
 });
 
 for (const handler of ["onPointerEnter", "onPointerDown", "onFocus"]) {

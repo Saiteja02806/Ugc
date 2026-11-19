@@ -13,6 +13,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
 import type { MediaAsset } from "@/lib/media/types";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, isScheduleSubmissionRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { isScheduleAckMismatch, ScheduleAckMismatchError } from "@/lib/explore/schedule-ack";
 import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
 import { trimmedDemoFraming } from "@/lib/explore/format-demo";
 import { useTalkingHeadPendingComposition } from "./talking-head-pending-composition";
@@ -89,6 +90,10 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     composition, demoAudioAssetId: demoAudioSource?.id ?? demoAudioAssetId, framing: demoFraming, options, backgroundSource, backgroundPlayback: music.playback, captionDraft: captionFinishing.captionDraft, captionsReady: Boolean(captions.transcript), selectionError });
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [restored, setRestored] = useState(false);
+  // Acknowledged "already scheduled (details differ)" receipt from the
+  // schedule-ack self-heal: the composer is released, so show its guidance even
+  // though no receipt exists anymore.
+  const [ack, setAck] = useState<string | null>(null);
   const active = useRef(true), working = useRef(false), requestGeneration = useRef(0);
   const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}${draftId ? `:${draftId}` : ""}`;
   const scheduledCallback = useRef(onScheduled);
@@ -114,6 +119,20 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     catch { setError("Your post is saved on the server, but this browser could not store its recovery record. Review Scheduling."); }
     scheduledCallback.current?.();
   }, [storageKey, queryClient, ownerId, kind]);
+  // A verified scheduled/publishing/published row for the same idempotency key
+  // whose details differ from the receipt is real evidence that the earlier
+  // request was scheduled. Release the receipt so this workflow offers the next
+  // post with current choices instead of looping on the mismatch (schedule-ack).
+  const releaseAckMismatch = useCallback((saved: ScheduleReceipt, error: ScheduleAckMismatchError): boolean => {
+    if (!error.alreadyScheduled) return false;
+    if (!active.current || !ownerId) return false;
+    let priorKey: string | null = null;
+    try { priorKey = readScheduleReceipt(localStorage.getItem(storageKey), ownerId, kind)?.input.idempotencyKey ?? null; } catch { priorKey = null; }
+    if (priorKey !== saved.input.idempotencyKey) return false;
+    try { localStorage.removeItem(storageKey); } catch { /* The release remains valid across reloads. */ }
+    setReceipt(null); setMessage(error.message); setAck(error.message);
+    return true;
+  }, [storageKey, ownerId, kind]);
   const check = useCallback(async (saved: ScheduleReceipt, isCurrent: () => boolean) => {
     if (saved.scheduleId) {
       const value = await authorized(`/api/schedules/${encodeURIComponent(saved.scheduleId)}`);
@@ -124,9 +143,18 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     if (!isCurrent()) return;
     if (!Array.isArray(value.schedules)) throw new Error("Could not verify the saved scheduling request.");
     const match = value.schedules.find((s: { idempotencyKey?: string }) => s.idempotencyKey === saved.input.idempotencyKey);
-    if (match) accept(saved, { ok: true, schedule: match });
+    if (match) {
+      try { accept(saved, { ok: true, schedule: match }); }
+      catch (e) {
+        if (isScheduleAckMismatch(e)) {
+          if (releaseAckMismatch(saved, e)) return;
+          throw e;
+        }
+        throw e;
+      }
+    }
     else setMessage(saved.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : UNCONFIRMED_SCHEDULE_MESSAGE);
-  }, [accept, authorized]);
+  }, [accept, authorized, releaseAckMismatch]);
   useEffect(() => {
     if (!enabled || !ownerId) return;
     let stopped = false;
@@ -153,6 +181,10 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       const value = await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved.input) });
       if (isCurrent()) accept(saved, value);
     } catch (e) {
+      if (isScheduleAckMismatch(e)) {
+        if (releaseAckMismatch(saved, e)) return;
+        throw e;
+      }
       if (isCurrent() && isScheduleTimeRejected(e) && !saved.scheduleId) {
         const rejected = { ...saved, timeRejected: true as const };
         localStorage.setItem(storageKey, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
@@ -171,7 +203,13 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         if (kind === "hook" && Array.isArray(value.schedules) && isScheduleSubmissionRejected(e) && !saved.scheduleId && readScheduleReceipt(localStorage.getItem(storageKey), saved.owner, kind)?.input.idempotencyKey === saved.input.idempotencyKey) {
           localStorage.removeItem(storageKey); setReceipt(null); setMessage("Review your updated choices, then click Schedule post."); rejected = true;
         }
-      } catch { /* Preserve the original scheduling intent for Try again. */ }
+      } catch (verifyError) {
+        if (isScheduleAckMismatch(verifyError)) {
+          if (releaseAckMismatch(saved, verifyError)) return;
+          throw verifyError;
+        }
+        /* Preserve the original scheduling intent for Try again. */
+      }
       if (rejected) throw e;
       throw new Error("Could not schedule your post. Try again.");
     }
@@ -196,7 +234,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }
   async function start() {
     if (!enabled || !ownerId || working.current || !restored) return;
-    working.current = true; setBusy(true); setError(null);
+    working.current = true; setBusy(true); setError(null); setAck(null);
     // An explicit attempt supersedes earlier hydration reads, even when it
     // corrects a rejected time while preserving the same idempotency key.
     const generation = ++requestGeneration.current;
@@ -214,11 +252,15 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         }
         if (!prior && receipt?.scheduleId) { setReceipt(null); return; }
         if (prior?.timeRejected) {
+          const rejectedPrior = prior;
           const value = await authorized("/api/schedules");
           if (!isCurrent()) return;
           if (!Array.isArray(value.schedules)) throw new Error("Could not verify the rejected scheduling request.");
-          const match = value.schedules.find((s: { idempotencyKey?: string }) => s.idempotencyKey === prior.input.idempotencyKey);
-          if (match) { accept(prior, { ok: true, schedule: match }); return; }
+          const match = value.schedules.find((s: { idempotencyKey?: string }) => s.idempotencyKey === rejectedPrior.input.idempotencyKey);
+          if (match) {
+            try { accept(rejectedPrior, { ok: true, schedule: match }); return; }
+            catch (e) { if (isScheduleAckMismatch(e)) { if (releaseAckMismatch(rejectedPrior, e)) return; throw e; } throw e; }
+          }
         }
         if (!finishing.output) throw new Error("Prepare your finished video before scheduling.");
         const submission = await prepareSimpleWorkflowSchedule({ draft: scheduleDraft, timezone, source: { kind: "media_asset", id: finishing.output.id }, title: finishing.output.title, load: authorized });
@@ -235,6 +277,6 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }
   const output = finishing.output;
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : (scheduleDraft.publishMode === "now" || !scheduleDraft.publishMode && !scheduleDraft.date && !scheduleDraft.time) ? "Post now" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: resumeSaved && !receipt?.timeRejected ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : output && !receipt ? workflowAccountSelectionError(scheduleDraft) ?? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : (scheduleDraft.publishMode === "now" || !scheduleDraft.publishMode && !scheduleDraft.date && !scheduleDraft.time) ? "Post now" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: ack ?? (resumeSaved && !receipt?.timeRejected ? "Try again checks your earlier post with its original accounts. Your new choices are kept for another post." : output && !receipt ? workflowAccountSelectionError(scheduleDraft) ?? "Choose your accounts and time, then click Schedule post." : message), onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

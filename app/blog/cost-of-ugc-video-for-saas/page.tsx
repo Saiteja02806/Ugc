@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     question: "What is the cost of generating AI UGC videos with Vidmake?",
-    answer: "Vidmake offers a 7-day free trial with 20 daily content pieces and no credit card required. Paid monthly plans start at $29 and $49 per month, allowing founders to produce dozens of video hooks for a fraction of the cost of a single human creator.",
+    answer: "Vidmake's paid monthly plans start at $29 and $49 per month, allowing founders to produce dozens of video hooks for a fraction of the cost of a single human creator.",
   },
   {
     question: "When should a SaaS company still pay for human creators?",
@@ -168,7 +168,7 @@ export default function CostOfUgcVideoForSaasPage() {
               question: faqs[2].question,
               answer: (
                 <>
-                  Start with our 7-day free trial. See full details on{" "}
+                  Choose a plan. See full details on{" "}
                   <ArticleLink href="/pricing">pricing</ArticleLink>.
                 </>
               ),
@@ -180,7 +180,7 @@ export default function CostOfUgcVideoForSaasPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
-          { href: "/pricing", title: "Pricing & Plans", description: "Seven-day trial and monthly credit details." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Monthly credit and plan details." },
           { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "Vidmake vs Hiring UGC Creators", description: "Cost, speed, and quality compared." },
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/ai-ugc-video-generator", title: "AI UGC Video Generator", description: "Generate short-form video hooks from your software brief." },

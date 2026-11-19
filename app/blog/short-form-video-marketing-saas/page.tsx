@@ -185,7 +185,7 @@ export default function ShortFormVideoMarketingSaasPage() {
               answer: (
                 <>
                   No timeline editing skills required. Start with our{" "}
-                  <ArticleLink href="/pricing">free trial</ArticleLink>.
+                  <ArticleLink href="/pricing">plans</ArticleLink>.
                 </>
               ),
             },
@@ -199,7 +199,7 @@ export default function ShortFormVideoMarketingSaasPage() {
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/guides/social-media-marketing-for-saas", title: "Social Media Marketing for SaaS", description: "Explain the product before you ask for a demo." },
           { href: "/instagram-carousel-maker", title: "Instagram Carousel Maker", description: "Create high-converting multi-slide educational carousels." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Explore the 7-day trial and monthly credit subscriptions." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Explore monthly credit subscriptions." },
         ]}
       />
     </VideoMarketingPage>

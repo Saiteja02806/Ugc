@@ -1,6 +1,10 @@
 "use client";
 
-import { AlertCircle, Loader2, X } from "lucide-react";
+import {
+  AlertCircle,
+  X,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
@@ -118,9 +122,9 @@ export function AiStudioResults({
             aria-live="polite"
           >
             {status.tone === "progress" ? (
-              <Loader2
+              <BlocksSpinner
                 data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                
                 aria-hidden="true"
               />
             ) : status.tone === "error" ? (
@@ -170,8 +174,8 @@ export function AiStudioResults({
           aria-live="polite"
         >
           <EmptyMedia variant="icon" className="size-11 rounded-xl">
-            <Loader2
-              className="size-5 animate-spin motion-reduce:animate-none"
+            <BlocksSpinner
+              className="size-5"
               aria-hidden="true"
             />
           </EmptyMedia>

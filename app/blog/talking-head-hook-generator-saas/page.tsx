@@ -199,7 +199,8 @@ export default function TalkingHeadHookGeneratorSaasPage() {
           { href: "/blog/ai-ugc-for-saas-startups", title: "AI UGC for SaaS Startups", description: "The early-stage founder acquisition playbook." },
           { href: "/blog/saas-product-demo-video-generator", title: "SaaS Product Demo Video Generator", description: "Hook to software UI cutaway and vertical framing." },
           { href: "/guides/hook-video-with-real-app-demo", title: "Hook Video with Real App Demo", description: "Maintain visual continuity from avatar to interface." },
-          { href: "/pricing", title: "Pricing & Plans", description: "Start creating talking-head hooks on the 7-day trial." },
+          { href: "/blog/ai-talking-head-video-generator", title: "AI Talking Head Quality Checklist", description: "Identity, lip-sync, framing and truthfulness checks." },
+          { href: "/pricing", title: "Pricing & Plans", description: "Start creating talking-head hooks on a paid plan." },
         ]}
       />
     </VideoMarketingPage>

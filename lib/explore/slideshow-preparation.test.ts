@@ -33,3 +33,19 @@ test("a failed slide stops new work and waits for the other upload before releas
   assert.equal(settled, false); assert.deepEqual(started, [0,1]);
   finishOther(1); await rejected; assert.equal(settled, true);
 });
+
+test("uploads can raise their own concurrency while the save path keeps two", async () => {
+  const started: number[] = [];
+  const pending = new Map<number, (value: number) => void>();
+  const done = prepareSlideshowSequence([0,1,2,3,4], async index => {
+    started.push(index);
+    return await new Promise<number>(resolve => pending.set(index, resolve));
+  }, undefined, 4);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(started, [0,1,2,3], "four upload workers start before any completion");
+  for (const index of [0,1,2,3]) pending.get(index)!(index);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(started, [0,1,2,3,4]);
+  for (const index of [0,1,2,3,4]) pending.get(index)!(index);
+  assert.deepEqual(await done, [0,1,2,3,4]);
+});

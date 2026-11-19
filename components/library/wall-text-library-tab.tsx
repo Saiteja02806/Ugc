@@ -3,10 +3,11 @@
 import {
   CalendarClock,
   FileText,
-  Loader2,
   RefreshCw,
   RotateCcw,
 } from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -182,10 +183,7 @@ export function WallTextLibraryTab({
           title="Refresh"
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
         >
-          <RefreshCw
-            className={`size-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`}
-            aria-hidden="true"
-          />
+          {loading ? <BlocksSpinner className="size-4" /> : <RefreshCw className="size-4" aria-hidden="true" />}
         </button>
       </header>
 
@@ -196,8 +194,8 @@ export function WallTextLibraryTab({
             !embedded && "border-t border-border",
           )}
         >
-          <Loader2
-            className="mr-2 size-4 animate-spin motion-reduce:animate-none"
+          <BlocksSpinner
+            className="mr-2 size-4"
             aria-hidden="true"
           />
           Loading saved Reels
@@ -271,8 +269,8 @@ export function WallTextLibraryTab({
                       "Ready to schedule"
                     ) : (
                       <>
-                        <Loader2
-                          className="size-3.5 animate-spin motion-reduce:animate-none"
+                        <BlocksSpinner
+                          className="size-3.5"
                           aria-hidden="true"
                         />
                         Preparing video
@@ -301,8 +299,8 @@ export function WallTextLibraryTab({
                     className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
                   >
                     {preparing ? (
-                      <Loader2
-                        className="size-4 animate-spin motion-reduce:animate-none"
+                      <BlocksSpinner
+                        className="size-4"
                         aria-hidden="true"
                       />
                     ) : (

@@ -18,6 +18,7 @@ function harness(upload, overrides = {}) {
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "lucide-react": { Plus: "Plus", Loader2: "Loader2" },
+    "@/components/ui/blocks-spinner": { BlocksSpinner: "BlocksSpinner" },
     "@/components/generation/reference-upload-preview": { ReferenceUploadPreview: "ReferenceUploadPreview" },
     "@/components/ui/button": { Button: "Button" },
     "@/lib/ai-studio/reference-files": referenceFiles,

@@ -1,6 +1,10 @@
 "use client";
 
-import { FileVideo, Loader2 } from "lucide-react";
+import {
+  FileVideo,
+} from "lucide-react";
+import { BlocksSpinner } from "@/components/ui/blocks-spinner";
+
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 
@@ -136,7 +140,7 @@ function VideoPreviewMedia({ className, controls = false, muted = true,
         </div>
       ) : !hasPoster && !hasStill ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#17181b]" role="status">
-          <Loader2 className="size-5 animate-spin text-white/50 motion-reduce:animate-none" aria-hidden="true" />
+          <BlocksSpinner className="size-5 text-white/50" aria-hidden="true" />
           <span className="sr-only">Loading video preview</span>
         </div>
       ) : null}

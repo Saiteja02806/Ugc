@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticTrendingGenerationEnabled } from "@/lib/carousel/generation-hold";
 import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
@@ -16,6 +17,7 @@ export async function ensureWallTextContentPlanGeneration(params: {
   profile: BusinessProfileRecord;
 }) {
   assertTrendingFormatGenerationEnabled("wall_text");
+  assertAutomaticTrendingGenerationEnabled(params.profile.userId);
   // This is also invoked by daily-feed recovery. Keep the check before the
   // plan RPC so a deployment configuration failure cannot create a plan that
   // has no route to a worker.
@@ -35,6 +37,7 @@ export async function startWallTextFactMatchedPlanReplacementGeneration(params: 
   profile: BusinessProfileRecord;
 }) {
   assertTrendingFormatGenerationEnabled("wall_text");
+  assertAutomaticTrendingGenerationEnabled(params.profile.userId);
   assertWallTextGenerationRuntimeConfigured();
 
   const plan = await startWallTextFactMatchedPlanReplacement(params);

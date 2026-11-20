@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticTrendingGenerationEnabled } from "@/lib/carousel/generation-hold";
 import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import {
@@ -44,6 +45,7 @@ export async function enqueueTrendingHookCopyJob(params: {
   beforeDispatch?: (job: BackgroundJobRecord) => Promise<void>;
 }) {
   assertTrendingFormatGenerationEnabled("hook_video");
+  assertAutomaticTrendingGenerationEnabled(params.userId);
   const selectionVersion =
     params.selectionVersion ?? TRENDING_HOOK_SELECTION_VERSION;
   const baseIdempotencyKey = params.generationRun

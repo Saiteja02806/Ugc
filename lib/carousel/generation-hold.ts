@@ -13,3 +13,16 @@ export function assertAutomaticCarouselGenerationEnabled(userId?: string | null)
     throw new Error("Automatic Carousel generation is temporarily on hold.");
   }
 }
+
+export function isAutomaticTrendingGenerationPaused(
+  value = process.env.AUTOMATIC_CAROUSEL_GENERATION_PAUSED,
+  userId?: string | null,
+) {
+  return isAutomaticCarouselGenerationPaused(value, userId);
+}
+
+export function assertAutomaticTrendingGenerationEnabled(userId?: string | null) {
+  if (isAutomaticTrendingGenerationPaused(undefined, userId)) {
+    throw new Error("Automatic Trending generation is temporarily on hold.");
+  }
+}

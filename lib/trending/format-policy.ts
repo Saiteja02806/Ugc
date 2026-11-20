@@ -1,9 +1,10 @@
 import type { TrendingFeedFormat } from "./feed-items.ts";
 import type { TrendingContentMix } from "./content-mix.ts";
 
-// Temporary Trending product policy. Keep format implementations and saved data.
-// Keep the worker policy in worker/src/lib/trending-format-policy.ts in sync.
-export const TRENDING_SLIDESHOW_ONLY_ENABLED = true;
+// Trending format policy. All Trending formats are enabled for the pilot owner;
+// non-pilot owners remain fenced by lib/carousel/generation-hold.ts and
+// worker/src/lib/trending-format-policy.ts. Keep worker copy in sync.
+export const TRENDING_SLIDESHOW_ONLY_ENABLED = false;
 
 export const SLIDESHOW_ONLY_TRENDING_CONTENT_MIX = {
   carousel: 100,

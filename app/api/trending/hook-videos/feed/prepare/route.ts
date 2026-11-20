@@ -5,6 +5,7 @@ import {
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import {
   prepareTrendingHookIdeas,
@@ -30,6 +31,17 @@ export async function POST(request: Request) {
 
   if (!auth.ok) {
     return auth.response;
+  }
+
+  if (isAutomaticTrendingGenerationPaused(undefined, auth.user.uid)) {
+    return hookVideoJson(
+      {
+        code: "feature_unavailable",
+        error: "Hook ideas are not available.",
+        ok: false,
+      },
+      404,
+    );
   }
 
   try {

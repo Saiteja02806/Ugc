@@ -14,6 +14,7 @@ import {
   getMissingTrendingFeedEnvVars,
   getDailyCarouselPreparationState,
 } from "@/lib/trending/daily-feed";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import {
   isWallTextEnabled,
@@ -120,7 +121,8 @@ export async function GET(request: Request) {
     if (
       requestUrl.searchParams.get("retryFailed") === "1" &&
       failedFeed?.failure &&
-      failedFeed.id
+      failedFeed.id &&
+      !isAutomaticTrendingGenerationPaused(undefined, userId)
     ) {
       const retryKey = await restartFailedDailyTrendingFeedSlots({
         feedId: failedFeed.id,

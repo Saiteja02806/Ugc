@@ -24,8 +24,22 @@ test("emitted Hook guard retains all recovered frame assets and rejects unrelate
     await save("lib/explore/talking-head-source-manifest.json",JSON.stringify({items:[{file:video.slice(6)}]}));
     await save(video,"local video fixture");
     await save(talking,"png fixture"); await save(curated,"historical fixture");
-    await traces(); await checkHookPublicTraces(root);
-    for (const asset of ["public/marketing/hero.mp4","public/explore/covers/promo.mp4","public/explore/influencer-studio/face.png","remotion/public/explore/covers/sources/source.mp4"]) {
+    await mkdir(join(root,"app/e2e"), {recursive:true});
+    await traces(["public/explore/talking-head-references/v1/previews/talking-car-explainer.mp4"]);
+    await checkHookPublicTraces(root);
+    await rm(join(root,"app/e2e"), {recursive:true});
+    await save(".next/server/app-paths-manifest.json", JSON.stringify({"/e2e/video-failure-preview/page":"app/e2e/video-failure-preview/page.js"}));
+    await assert.rejects(checkHookPublicTraces(root), /Development-only/);
+    await save(".next/server/app-paths-manifest.json", JSON.stringify({
+      "/api/explore/hook-keyframe/route": "app/api/explore/hook-keyframe/route.js",
+      "/api/explore/hook-starting-frame/route": "app/api/explore/hook-starting-frame/route.js",
+    }));
+    await rm(join(root, ".next/server/app/e2e"), {recursive:true});
+    await checkHookPublicTraces(root);
+    await rm(join(root, ".next/server/app/api/explore/hook-keyframe/route.js.nft.json"));
+    await assert.rejects(checkHookPublicTraces(root), /ENOENT/);
+    await mkdir(join(root,"app/e2e"), {recursive:true});
+    for (const asset of ["public/explore/talking-head-references/v1/previews/hook-only/talking-fixture.mp4","public/marketing/hero.mp4","public/explore/covers/promo.mp4","public/explore/influencer-studio/face.png","remotion/public/explore/covers/sources/source.mp4"]) {
       await traces([asset]); await assert.rejects(checkHookPublicTraces(root),/unrelated/);
     }
     await traces([],true); await assert.rejects(checkHookPublicTraces(root),/required recovery frame missing/);
@@ -40,5 +54,5 @@ test("source-frame filesystem reads use narrow roots and retain catalogue path c
   assert.ok(source.includes('selected.publicPath !== `/explore/curated-hook-frames/v1/${selected.sha256}.png`'));
   assert.ok(source.includes('source.localFile !== `/explore/talking-head-references/v1/${source.id}.mp4`'));
   const config=await readFile("next.config.ts","utf8");
-  for (const route of ["/api/explore/hook-keyframe","/api/explore/hook-starting-frame","/e2e/hook-keyframe-preview/source"]) assert.ok(config.includes(`"${route}": ["./remotion/**/*", "./public/explore/covers/**/*"]`));
+  for (const route of ["/api/explore/hook-keyframe","/api/explore/hook-starting-frame","/e2e/hook-keyframe-preview/source"]) assert.ok(config.includes(`"${route}": ["./remotion/**/*", "./public/explore/covers/**/*", "./public/explore/talking-head-references/v1/previews/hook-only/**/*"]`));
 });

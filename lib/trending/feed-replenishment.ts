@@ -1,4 +1,5 @@
 import "server-only";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { isTrendingFormatEnabled } from "./format-policy";
 
 import {
@@ -17,7 +18,7 @@ export async function replenishTrendingFormatAfterDecision(params: {
   if (params.format === "carousel") {
     return { status: "not_applicable" as const };
   }
-  if (!isTrendingFormatEnabled(params.format)) {
+  if (!isTrendingFormatEnabled(params.format) || isAutomaticTrendingGenerationPaused(undefined, params.userId)) {
     return { status: "disabled" as const };
   }
 

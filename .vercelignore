@@ -21,6 +21,11 @@ tmp-logs/
 worker/dist/
 worker/node_modules/
 artifacts/
+# Development-only reviewer pages and fixture handlers. Keep in Git for local QA.
+/app/e2e/
+# Internal report artifacts; other docs remain available to their consumers.
+/docs/prompt-reviews/starting-frame-prompt-benchmark-report-2026-10-30.pdf
+/docs/carousel-copy-fixes-list-and-voice-provider-evidence-2026-10-12.json
 /build/
 coverage/
 landing_page/
@@ -47,6 +52,7 @@ remotion/
 public/explore/covers/vidmake-launch*
 public/explore/covers/vidmake-intro*
 vidmake-intro*
+vidmake-launch*
 
 # Do not upload plaintext private pilot source material.
 lib/explore/creator-accounts.json
@@ -92,3 +98,8 @@ public/try-ugcpilot/media/
 public/resources/reaction-hook-library-cover-v2.webp
 public/resources/reaction-hook-library-cover-v3.webp
 public/resources/ugc-pilot-hooks-cover.webp
+
+# Original promo renders: runtime uses the content-hashed derivatives.
+public/explore/covers/*-promo-v1.mp4
+# Local subtitle preview authoring fixture; published previews stay included.
+scripts/fixtures/subtitle-preview/

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (!isWallTextEnabled()) {
+    if (!isWallTextEnabled() || isAutomaticTrendingGenerationPaused(undefined, input.userId)) {
       return json({ ideaCount: 0, ok: true, skipped: "trending_format_disabled" });
     }
     const profile = await getBusinessProfileForUser(input.userId);

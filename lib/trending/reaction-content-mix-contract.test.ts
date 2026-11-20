@@ -11,11 +11,13 @@ const migration = readProjectFile(
   "supabase/migrations/20260906120000_add_reaction_trending_delivery.sql",
 );
 
-test("Adjust retains the Reaction implementation while fixing slideshow formats and exposing the style mixer", () => {
+test("Adjust exposes all four formats alongside the slideshow style mixer", () => {
   assert.match(dialog, /format: "reaction"/);
   assert.match(dialog, /label: "Reaction Reels"/);
   assert.match(dialog, /MIX_ROWS\.filter\(\(\{ format \}\) => isTrendingFormatEnabled\(format\)\)/);
   assert.match(dialog, /AVAILABLE_MIX_ROWS\.map/);
+  assert.match(dialog, /Slideshow mix/);
+  assert.match(dialog, /carouselCount < 1/);
   assert.match(route, /editable: true/);
   assert.match(route, /TRENDING_SLIDESHOW_ONLY_ENABLED && value\.carousel !== 100/);
   assert.match(route, /slideshow_style_mix: z/);

@@ -228,14 +228,20 @@ export function TrendingContentMixDialog({
     });
   }, [mix, payload]);
   const slideshowStyleAllocation = useMemo(() => {
-    if (!payload || !validateTrendingSlideshowStyleMix(slideshowStyleMix)) {
+    const carouselCount =
+      allocation?.carousel ?? payload?.entitlement.dailyLimit ?? 0;
+    if (
+      !payload ||
+      carouselCount < 1 ||
+      !validateTrendingSlideshowStyleMix(slideshowStyleMix)
+    ) {
       return null;
     }
 
     return allocateTrendingSlideshowStylesForPack({
       localDate: getBrowserLocalDate(),
       mix: slideshowStyleMix,
-      carouselCount: allocation?.carousel ?? payload.entitlement.dailyLimit,
+      carouselCount,
     });
   }, [allocation?.carousel, payload, slideshowStyleMix]);
   const hasFormatChanges = AVAILABLE_MIX_ROWS.some(
@@ -430,64 +436,7 @@ export function TrendingContentMixDialog({
                 </p>
               ) : null}
 
-              {TRENDING_SLIDESHOW_ONLY_ENABLED ? (
-                <div className="mt-4 rounded-2xl border border-border/70 bg-card p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-subtle">
-                        Slideshow mix
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        Choose the balance for your next pack
-                      </p>
-                    </div>
-                    {slideshowStyleAllocation ? (
-                      <span className="shrink-0 text-xs tabular-nums text-muted">
-                        {slideshowStyleAllocation.helpful_tips}/
-                        {slideshowStyleAllocation.product_stories_cta} cards
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div
-                    aria-label="Selected slideshow style mix"
-                    className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-border/70"
-                    role="img"
-                  >
-                    <span
-                      className="bg-primary transition-[width]"
-                      style={{ width: `${slideshowStyleMix.helpfulTips}%` }}
-                    />
-                    <span
-                      className="bg-accent-purple transition-[width]"
-                      style={{ width: `${slideshowStyleMix.productStoriesCta}%` }}
-                    />
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    <SlideshowStyleControl
-                      accentColor="var(--primary)"
-                      allocation={slideshowStyleAllocation?.helpful_tips ?? 0}
-                      description="Self-contained ideas and practical steps. No product promotion."
-                      disabled={!payload.editable || saving}
-                      label="Helpful tips"
-                      value={slideshowStyleMix.helpfulTips}
-                      onChange={(value) => updateSlideshowStyleMix("helpful_tips", value)}
-                    />
-                    <SlideshowStyleControl
-                      accentColor="var(--accent-purple)"
-                      allocation={slideshowStyleAllocation?.product_stories_cta ?? 0}
-                      description="Product-oriented stories with a clear call to action."
-                      disabled={!payload.editable || saving}
-                      label="Product stories + CTA"
-                      value={slideshowStyleMix.productStoriesCta}
-                      onChange={(value) =>
-                        updateSlideshowStyleMix("product_stories_cta", value)
-                      }
-                    />
-                  </div>
-                </div>
-              ) : (
+              {!TRENDING_SLIDESHOW_ONLY_ENABLED ? (
                 <div className="mt-4 space-y-3">
                   {AVAILABLE_MIX_ROWS.map(
                   ({
@@ -563,7 +512,67 @@ export function TrendingContentMixDialog({
                   },
                   )}
                 </div>
-              )}
+              ) : null}
+
+              {TRENDING_SLIDESHOW_ONLY_ENABLED ||
+              (allocation?.carousel ?? 0) > 0 ? (
+                <div className="mt-4 rounded-2xl border border-border/70 bg-card p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-subtle">
+                        Slideshow mix
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        Choose the balance for your next pack
+                      </p>
+                    </div>
+                    {slideshowStyleAllocation ? (
+                      <span className="shrink-0 text-xs tabular-nums text-muted">
+                        {slideshowStyleAllocation.helpful_tips}/
+                        {slideshowStyleAllocation.product_stories_cta} cards
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div
+                    aria-label="Selected slideshow style mix"
+                    className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-border/70"
+                    role="img"
+                  >
+                    <span
+                      className="bg-primary transition-[width]"
+                      style={{ width: `${slideshowStyleMix.helpfulTips}%` }}
+                    />
+                    <span
+                      className="bg-accent-purple transition-[width]"
+                      style={{ width: `${slideshowStyleMix.productStoriesCta}%` }}
+                    />
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <SlideshowStyleControl
+                      accentColor="var(--primary)"
+                      allocation={slideshowStyleAllocation?.helpful_tips ?? 0}
+                      description="Self-contained ideas and practical steps. No product promotion."
+                      disabled={!payload.editable || saving}
+                      label="Helpful tips"
+                      value={slideshowStyleMix.helpfulTips}
+                      onChange={(value) => updateSlideshowStyleMix("helpful_tips", value)}
+                    />
+                    <SlideshowStyleControl
+                      accentColor="var(--accent-purple)"
+                      allocation={slideshowStyleAllocation?.product_stories_cta ?? 0}
+                      description="Product-oriented stories with a clear call to action."
+                      disabled={!payload.editable || saving}
+                      label="Product stories + CTA"
+                      value={slideshowStyleMix.productStoriesCta}
+                      onChange={(value) =>
+                        updateSlideshowStyleMix("product_stories_cta", value)
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               <div aria-live="polite" className="mt-4 min-h-5">
                 {error ? (

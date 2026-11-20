@@ -9,6 +9,7 @@ import {
   getMissingInternalFinalizationEnvVars,
   verifyInternalFinalizationRequest,
 } from "@/lib/scheduling/internal-finalization-auth";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { enqueueTrendingWallTextRefill } from "@/lib/trending/trending-wall-text-feed";
 import { requestWallTextDailyTerminalReplacement } from "@/lib/trending/wall-text-early-delivery";
 
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
   const input = parseInput(body);
   if (!input) return json({ ok: false }, 400);
 
+  if (isAutomaticTrendingGenerationPaused(undefined, input.userId)) {
+    return json({ ok: true, replacementScheduled: false });
+  }
   const profile = await getBusinessProfileForUser(input.userId);
   if (!profile || profile.id !== input.businessProfileId || profile.profileVersion !== input.businessProfileVersion) {
     return json({ ok: true, replacementScheduled: false });

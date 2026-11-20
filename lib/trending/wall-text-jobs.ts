@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticTrendingGenerationEnabled } from "@/lib/carousel/generation-hold";
 import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import {
@@ -36,6 +37,7 @@ export function enqueueTrendingWallTextJob(params: WallTextJobParams & { dailyFe
 export function enqueueTrendingWallTextJob(params: WallTextJobParams): Promise<BackgroundJobRecord | null>;
 export async function enqueueTrendingWallTextJob(params: WallTextJobParams) {
   assertTrendingFormatGenerationEnabled("wall_text");
+  assertAutomaticTrendingGenerationEnabled(params.userId);
   // A current plan can skip the plan launcher, so guard the writer path here
   // as well as in the planner launcher. This check is intentionally before
   // daily delivery admission, which can reserve a customer's Wall slot.

@@ -123,7 +123,10 @@ import type {
 } from "@/lib/trending/hook-video-types";
 import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
-import { filterTrendingItemsForRuntime } from "@/lib/trending/format-policy";
+import {
+  filterTrendingItemsForRuntime,
+  TRENDING_SLIDESHOW_ONLY_ENABLED,
+} from "@/lib/trending/format-policy";
 
 import skeletonStyles from "./trending-post-skeleton.module.css";
 import reviewLayout from "./trending-review-layout.module.css";
@@ -1145,7 +1148,9 @@ export function TrendingWorkspace() {
               </h1>
             </div>
             <p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
-              Explore slideshows made from your business profile.
+              {TRENDING_SLIDESHOW_ONLY_ENABLED
+                ? "Explore slideshows made from your business profile."
+                : "Explore Carousel, Hook, Text on screen, and Reaction Reel content made from your business profile."}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -1475,7 +1480,9 @@ function TrendingReadyEmptyState() {
       <EmptyHeader>
         <EmptyTitle>You&apos;re all caught up</EmptyTitle>
         <EmptyDescription>
-          Check back tomorrow for fresh daily slideshows.
+          {TRENDING_SLIDESHOW_ONLY_ENABLED
+            ? "Check back tomorrow for fresh daily slideshows."
+            : "Check back tomorrow for fresh daily content."}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

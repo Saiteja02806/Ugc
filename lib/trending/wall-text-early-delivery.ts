@@ -14,6 +14,7 @@ import {
   getTrendingLocalDate,
   getTrendingPlanEntitlement,
 } from "@/lib/trending/unified-daily-feed-db";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 import { WALL_TEXT_FINAL_LAYOUT_VERSION, WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
 
@@ -119,7 +120,7 @@ export async function reconcileWallTextPlanPublications(params: {
 }
 
 async function reconcilePublication(event: Publication) {
-  if (!isWallTextEnabled()) return;
+  if (!isWallTextEnabled() || isAutomaticTrendingGenerationPaused(undefined, event.user_id)) return;
   const { data: plan, error } = await getClient().from("wall_text_content_plans")
     .select("business_profile_id,business_profile_version,status")
     .eq("id", event.plan_id).eq("user_id", event.user_id).maybeSingle();
@@ -164,6 +165,7 @@ export async function resumeIncompleteWallTextPlans(limit = 10) {
   if (error) throw new Error(`Could not list incomplete Wall-of-text plans: ${error.message}`);
   const results = [];
   for (const row of data ?? []) {
+    if (isAutomaticTrendingGenerationPaused(undefined, row.user_id)) continue;
     try {
       const profile = await getBusinessProfileForUser(row.user_id);
       if (!profile || profile.id !== row.business_profile_id || profile.profileVersion !== row.business_profile_version) continue;

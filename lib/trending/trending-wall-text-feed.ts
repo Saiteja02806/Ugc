@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticTrendingGenerationEnabled } from "@/lib/carousel/generation-hold";
 import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash, randomUUID } from "node:crypto";
@@ -97,6 +98,7 @@ export async function enqueueTrendingWallTextRefill(
   } = {},
 ) {
   assertTrendingFormatGenerationEnabled("wall_text");
+  assertAutomaticTrendingGenerationEnabled(profile.userId);
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
     1,
@@ -191,6 +193,7 @@ export async function prepareTrendingWallTextIdeas(
   } = {},
 ) {
   assertTrendingFormatGenerationEnabled("wall_text");
+  assertAutomaticTrendingGenerationEnabled(profile.userId);
   let mode = options.mode ?? "initial";
   const requestedCount = Math.min(
     Math.max(Math.trunc(options.requestedCount ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET), 1),

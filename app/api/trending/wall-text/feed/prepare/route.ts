@@ -11,6 +11,7 @@ import {
   getPublicBackgroundJob,
 } from "@/lib/jobs/background-job-contract";
 import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
+import { isAutomaticTrendingGenerationPaused } from "@/lib/carousel/generation-hold";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
@@ -45,6 +46,17 @@ export async function POST(request: Request) {
     return json(
       { error: "Could not verify your sign-in session.", ok: false },
       500,
+    );
+  }
+
+  if (isAutomaticTrendingGenerationPaused(undefined, userId)) {
+    return json(
+      {
+        code: "feature_unavailable",
+        error: "Text on screen ideas are not available.",
+        ok: false,
+      },
+      404,
     );
   }
 

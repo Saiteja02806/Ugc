@@ -1,4 +1,5 @@
 import "server-only";
+import { assertAutomaticTrendingGenerationEnabled } from "@/lib/carousel/generation-hold";
 import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash } from "node:crypto";
@@ -55,6 +56,7 @@ export async function prepareTrendingHookIdeas(
   } = {},
 ) {
   assertTrendingFormatGenerationEnabled("hook_video");
+  assertAutomaticTrendingGenerationEnabled(profile.userId);
   let mode = options.mode ?? "initial";
   const targetActive = Math.max(Math.trunc(options.targetActive ?? 6), 1);
   const source = await resolveTrendingVideoSource({

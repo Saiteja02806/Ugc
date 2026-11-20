@@ -48,7 +48,7 @@ export async function runWorkerJob(
   }
   // Settle already queued Trending video generation without paid calls. Saved
   // content and publishing/render jobs still retain their existing handlers.
-  if (isTrendingGenerationJobDisabled(job.job_type)) {
+  if (isTrendingGenerationJobDisabled(job.job_type, job.user_id)) {
     return { skipped: "trending_format_disabled" };
   }
   if (job.job_type === "generate_audio") return runGenerateAudioJob(job, context);

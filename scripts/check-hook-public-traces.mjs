@@ -3,14 +3,14 @@ import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 
-export async function checkHookPublicTraces(root = process.cwd()) {
+export async function checkHookPublicTraces(root = process.cwd(), vercelEnv = process.env.VERCEL_ENV) {
   const talking = JSON.parse(await readFile(resolve(root, "lib/explore/talking-head-frames.json"), "utf8"));
   const curated = JSON.parse(await readFile(resolve(root, "worker/src/lib/hook-curated-frames.json"), "utf8"));
   const sources = JSON.parse(await readFile(resolve(root, "lib/explore/talking-head-source-manifest.json"), "utf8"));
   const required = [...talking.items.map(row => `public${row.path}`), ...curated.frames.map(row => `public${row.publicPath}`), ...sources.items.map(row => `public${row.file}`)];
   const routes = ["api/explore/hook-keyframe", "api/explore/hook-starting-frame"];
   const qaSource = "e2e/hook-keyframe-preview/source";
-  if (!existsSync(resolve(root, "app/e2e"))) {
+  if (vercelEnv === "production" || !existsSync(resolve(root, "app/e2e/hook-keyframe-preview/source/route.ts"))) {
     const appPaths = JSON.parse(await readFile(resolve(root, ".next/server/app-paths-manifest.json"), "utf8"));
     const qaPaths = Object.keys(appPaths).filter(path => path.startsWith("/e2e/"));
     assert.deepEqual(qaPaths, [], "Development-only /e2e routes found in the packaged website");

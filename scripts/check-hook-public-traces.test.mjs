@@ -24,21 +24,23 @@ test("emitted Hook guard retains all recovered frame assets and rejects unrelate
     await save("lib/explore/talking-head-source-manifest.json",JSON.stringify({items:[{file:video.slice(6)}]}));
     await save(video,"local video fixture");
     await save(talking,"png fixture"); await save(curated,"historical fixture");
-    await mkdir(join(root,"app/e2e"), {recursive:true});
+    await save("app/e2e/hook-keyframe-preview/source/route.ts", "export {};");
     await traces(["public/explore/talking-head-references/v1/previews/talking-car-explainer.mp4"]);
-    await checkHookPublicTraces(root);
-    await rm(join(root,"app/e2e"), {recursive:true});
+    await checkHookPublicTraces(root, "development");
     await save(".next/server/app-paths-manifest.json", JSON.stringify({"/e2e/video-failure-preview/page":"app/e2e/video-failure-preview/page.js"}));
-    await assert.rejects(checkHookPublicTraces(root), /Development-only/);
+    await assert.rejects(checkHookPublicTraces(root, "production"), /Development-only/);
     await save(".next/server/app-paths-manifest.json", JSON.stringify({
       "/api/explore/hook-keyframe/route": "app/api/explore/hook-keyframe/route.js",
       "/api/explore/hook-starting-frame/route": "app/api/explore/hook-starting-frame/route.js",
     }));
     await rm(join(root, ".next/server/app/e2e"), {recursive:true});
-    await checkHookPublicTraces(root);
+    await checkHookPublicTraces(root, "production");
+    await assert.rejects(checkHookPublicTraces(root, "development"), /ENOENT/);
+    await rm(join(root,"app/e2e/hook-keyframe-preview/source/route.ts"));
+    await checkHookPublicTraces(root, "preview");
     await rm(join(root, ".next/server/app/api/explore/hook-keyframe/route.js.nft.json"));
-    await assert.rejects(checkHookPublicTraces(root), /ENOENT/);
-    await mkdir(join(root,"app/e2e"), {recursive:true});
+    await assert.rejects(checkHookPublicTraces(root, "production"), /ENOENT/);
+    await save("app/e2e/hook-keyframe-preview/source/route.ts", "export {};");
     for (const asset of ["public/explore/talking-head-references/v1/previews/hook-only/talking-fixture.mp4","public/marketing/hero.mp4","public/explore/covers/promo.mp4","public/explore/influencer-studio/face.png","remotion/public/explore/covers/sources/source.mp4"]) {
       await traces([asset]); await assert.rejects(checkHookPublicTraces(root),/unrelated/);
     }

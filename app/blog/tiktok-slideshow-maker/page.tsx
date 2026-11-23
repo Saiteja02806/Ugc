@@ -149,6 +149,9 @@ export default function TiktokSlideshowMakerPage() {
           format requirements before you export for each.
         </p>
         <p>
+          If the deck is for an app, the <ArticleLink href="/blog/tiktok-slideshow-maker-for-apps">TikTok slideshow maker for apps</ArticleLink> adds the screenshot and one-feature rules. Make the sequence in <ArticleLink href="/explore/slideshows">Slideshows</ArticleLink>.
+        </p>
+        <p>
           If your message needs motion rather than swiping, the
           <ArticleLink href="/ai-ugc-video-generator">AI UGC video generator</ArticleLink> and the
           <ArticleLink href="/guides/saas-slideshow-story-vs-tutorial">story-versus-tutorial guide</ArticleLink> cover
@@ -161,6 +164,8 @@ export default function TiktokSlideshowMakerPage() {
       <VideoRelatedLinks
         links={[
           { href: "/instagram-carousel-maker", title: "Carousel maker", description: "Create and review a complete slide sequence." },
+          { href: "/explore/slideshows", title: "Slideshows", description: "Build the deck in Explore." },
+          { href: "/blog/tiktok-slideshow-maker-for-apps", title: "Slideshows for apps", description: "One feature and a real screenshot." },
           { href: "/blog/tiktok-slideshow-view-data", title: "TikTok slideshow data", description: "28 verified posts and what their numbers show." },
           { href: "/guides/saas-carousel-feature-story", title: "Carousel feature story", description: "Structure a deck around one feature." },
           { href: "/guides/saas-slideshow-opening-slide", title: "Opening slide", description: "Make the first slide carry the message." },

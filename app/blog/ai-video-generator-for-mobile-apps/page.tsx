@@ -215,6 +215,8 @@ export default function AiVideoGeneratorForMobileAppsPage() {
           { href: "/guides/screen-recording-for-app-demo", title: "Record an app demo", description: "Capture readable footage for vertical video." },
           { href: "/guides/app-launch-video-checklist", title: "App launch video checklist", description: "A practical list before launch day." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Create the social side of the plan." },
+          { href: "/blog/ugc-ads-for-mobile-apps", title: "UGC ads for mobile apps", description: "One feature, a real screen, and short variants." },
+          { href: "/explore/hook-video", title: "Hook video", description: "Make the opening and review it before download." },
           { href: "/instagram-carousel-maker", title: "Instagram carousel maker", description: "Explain a feature with a slide sequence." },
         ]}
       />

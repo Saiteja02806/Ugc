@@ -61,7 +61,12 @@ const clusters = [
       { slug: "ai-video-generator-for-mobile-apps", title: "AI video for mobile apps", blurb: "Store preview versus social video." },
       { slug: "ai-creator-avatars-tech-products", title: "AI creator avatars for tech products", blurb: "Personas that tech audiences trust." },
       { slug: "tiktok-slideshow-maker", title: "TikTok slideshow maker", blurb: "Build a carousel people swipe through." },
+      { slug: "tiktok-slideshow-maker-for-apps", title: "TikTok slideshow maker for apps", blurb: "One feature, real screenshots, and a swipe that earns the next slide." },
       { slug: "tiktok-slideshow-view-data", title: "TikTok slideshow data study", blurb: "28 verified posts and 234M views." },
+      { slug: "hook-video-maker", title: "Hook video maker", blurb: "Turn a reference opening into a clip you review." },
+      { slug: "tiktok-hook-generator", title: "TikTok hook generator", blurb: "Write and test the first three seconds." },
+      { slug: "wall-of-text-video-maker", title: "Wall-of-text video maker", blurb: "Text on screen that a viewer can finish reading." },
+      { slug: "recreate-viral-tiktok-with-ai", title: "Recreate a viral TikTok with AI", blurb: "Adapt a structure without copying the original." },
     ],
   },
   {
@@ -76,6 +81,8 @@ const clusters = [
       { slug: "cost-of-ugc-video-for-saas", title: "Cost of UGC video for SaaS", blurb: "Creators, agencies and AI compared." },
       { slug: "ugc-agency-vs-ai-ugc-software", title: "UGC agency vs AI software", blurb: "Retainers versus self-serve production." },
       { slug: "ai-ugc-for-saas-startups", title: "AI UGC for SaaS startups", blurb: "An early-stage acquisition playbook." },
+      { slug: "ugc-ads-for-mobile-apps", title: "UGC ads for mobile apps", blurb: "One feature, a real screen, and short variants." },
+      { slug: "app-marketing-videos-for-saas", title: "App marketing videos for SaaS", blurb: "Pick the format that matches the feature." },
     ],
   },
   {
@@ -107,6 +114,7 @@ const clusters = [
       { slug: "ugc-video-generator-examples", title: "UGC video generator examples", blurb: "Real public outputs across formats." },
       { slug: "ugc-ads-with-claude-mcp", title: "UGC ads with Claude via MCP", blurb: "Run the workflow from a chat." },
       { slug: "ugc-videos-with-codex-mcp", title: "UGC videos with Codex via MCP", blurb: "Run the workflow from a terminal." },
+      { slug: "ugc-video-mcp-server", title: "UGC video MCP server", blurb: "Connect Claude, Codex, ChatGPT, or another MCP client." },
     ],
   },
 ];

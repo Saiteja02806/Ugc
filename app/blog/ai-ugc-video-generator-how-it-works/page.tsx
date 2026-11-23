@@ -150,6 +150,9 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
         <p>
           Many teams mix both: AI for hooks and concept videos, real recordings for demos and proof. Our comparison, <ArticleLink href="/blog/ugc-pilot-vs-hiring-ugc-creators">Vidmake vs hiring UGC creators</ArticleLink>, goes deeper on that trade-off.
         </p>
+        <p>
+          When you are ready to make one, <ArticleLink href="/explore/hook-video">open Hook video</ArticleLink>. Related jobs: <ArticleLink href="/blog/ugc-ads-for-mobile-apps">UGC ads for mobile apps</ArticleLink>, <ArticleLink href="/blog/hook-video-maker">the hook video maker workflow</ArticleLink>, and the <ArticleLink href="/blog/ugc-video-mcp-server">UGC video MCP server</ArticleLink> if you want the same account from Claude, Codex, or another MCP client.
+        </p>
 
         <ArticleH2>What it costs to try</ArticleH2>
         <p>
@@ -186,6 +189,8 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
           { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
           { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
           { href: "/mcp", title: "MCP server", description: "Generate from Claude or Codex with OAuth." },
+          { href: "/explore/hook-video", title: "Hook video", description: "Make an opening in Explore and review it before download." },
+          { href: "/blog/ugc-video-mcp-server", title: "UGC video MCP server", description: "What the hosted server does for Claude, Codex, and other clients." },
         ]}
       />
     </VideoMarketingPage>

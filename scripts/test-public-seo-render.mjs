@@ -70,8 +70,9 @@ for (const path of ["/brand/ugc-pilot-logo.png", "/guides/opengraph-image"]) {
   assert(asset.headers.get("content-type")?.startsWith("image/"), `Schema asset is not an image: ${path}`);
 }
 const visited = new Set();
-// The guides hub is the sitemap's indexed entry point; the root is the
-// intentionally non-indexed app surface (rewrite + noindex).
+// The guides hub is the sitemap's content-graph entry. The public root
+// rewrites to Explore and is indexable, but it is not a marketing URL in
+// this inventory, so traversal still starts at /guides.
 const queue = ["/guides"];
 while (queue.length) {
   const path = queue.shift();

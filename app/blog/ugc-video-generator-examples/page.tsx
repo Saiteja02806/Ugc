@@ -113,6 +113,7 @@ export default function UgcVideoExamplesPage() {
           { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Make a short video from a prompt and optional reference media." },
           { href: "/guides", title: "Founder guides", description: "Practical guides for the message and the review." },
+          { href: "/blog", title: "All articles", description: "Hooks, slideshows, text on screen, and the MCP server." },
         ]}
       />
     </VideoMarketingPage>

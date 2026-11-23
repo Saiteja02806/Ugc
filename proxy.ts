@@ -85,15 +85,12 @@ export function proxy(request: NextRequest) {
 
   if (!mcpHost && (request.method === "GET" || request.method === "HEAD") && pathname === "/") {
     // Serve the workflow app at the public root without changing the address.
-    // Users land directly on Explore; crawlers see 200 at "/" plus an explicit
-    // X-Robots-Tag noindex, so the intentionally non-indexed app root is never
-    // confused with a redirecting or missing page. Indexable content lives in
-    // the public sitemap (the guides network is the listed hub entry).
+    // Users land directly on Explore. The response stays a rewrite to /explore
+    // with HTTP 200 at "/". The homepage is indexable: do not set noindex here
+    // and do not redirect. /explore and other private routes stay noindex below.
     const url = request.nextUrl.clone();
     url.pathname = "/explore";
-    const response = NextResponse.rewrite(url);
-    response.headers.set("X-Robots-Tag", "noindex");
-    return response;
+    return NextResponse.rewrite(url);
   }
 
   // Authenticated pages/API rollout guards own Explore/Audio availability.

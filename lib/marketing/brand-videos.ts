@@ -139,3 +139,15 @@ export function articleJsonLd(input: { path: string; headline: string; descripti
     },
   };
 }
+
+export function breadcrumbJsonLd(items: readonly { name: string; path: string }[]) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: new URL(item.path, publicOrigin).href,
+    })),
+  };
+}

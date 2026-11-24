@@ -301,7 +301,7 @@ export function buildLlmsText() {
 
 > AI UGC video and SaaS marketing studio for founders and small product teams, with a hosted MCP server for Claude, Codex, and ChatGPT.
 
-Vidmake helps SaaS founders and small teams market their products with creator-style UGC videos, hook clips, text-led videos, speech, video edits, and Instagram carousels from the signed-in account. The studio is at ${publicOrigin}. The MCP server is ${mcpEndpoint}.
+Vidmake helps SaaS founders and small teams market their products with creator-style UGC videos, hook clips, text-led videos, speech, video edits, and Instagram carousels from the signed-in account. The public site is ${publicOrigin}. Requests to the previous host getugcpilot.com redirect there. The MCP server is ${mcpEndpoint}.
 
 ## MCP setup
 

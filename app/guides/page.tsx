@@ -7,6 +7,7 @@ import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { founderGuides } from "@/components/marketing/founder-guide-page";
 import { founderWorkflowGuides } from "@/components/marketing/founder-workflow-guide";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { MarketingResourceLinks } from "@/components/marketing/marketing-resource-links";
 
 export const metadata: Metadata = {
   title: "UGC Video & Content Marketing Guides",
@@ -176,6 +177,7 @@ export default function GuidesPage() {
           <div className="mt-8"><LandingAuthCta className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background" initialHasSession={false} /></div>
         </div>
       </section>
+      <MarketingResourceLinks />
     </main>
   );
 }

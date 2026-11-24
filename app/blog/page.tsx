@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JsonLd } from "@/components/marketing/json-ld";
+import { MarketingResourceLinks } from "@/components/marketing/marketing-resource-links";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { publicOrigin } from "@/lib/marketing/public-origin";
 
@@ -61,7 +62,12 @@ const clusters = [
       { slug: "ai-video-generator-for-mobile-apps", title: "AI video for mobile apps", blurb: "Store preview versus social video." },
       { slug: "ai-creator-avatars-tech-products", title: "AI creator avatars for tech products", blurb: "Personas that tech audiences trust." },
       { slug: "tiktok-slideshow-maker", title: "TikTok slideshow maker", blurb: "Build a carousel people swipe through." },
+      { slug: "tiktok-slideshow-maker-for-apps", title: "TikTok slideshow maker for apps", blurb: "One feature, real screenshots, and a swipe that earns the next slide." },
       { slug: "tiktok-slideshow-view-data", title: "TikTok slideshow data study", blurb: "28 verified posts and 234M views." },
+      { slug: "hook-video-maker", title: "Hook video maker", blurb: "Turn a reference opening into a clip you review." },
+      { slug: "tiktok-hook-generator", title: "TikTok hook generator", blurb: "Write and test the first three seconds." },
+      { slug: "wall-of-text-video-maker", title: "Wall-of-text video maker", blurb: "Text on screen that a viewer can finish reading." },
+      { slug: "recreate-viral-tiktok-with-ai", title: "Recreate a viral TikTok with AI", blurb: "Adapt a structure without copying the original." },
     ],
   },
   {
@@ -76,6 +82,8 @@ const clusters = [
       { slug: "cost-of-ugc-video-for-saas", title: "Cost of UGC video for SaaS", blurb: "Creators, agencies and AI compared." },
       { slug: "ugc-agency-vs-ai-ugc-software", title: "UGC agency vs AI software", blurb: "Retainers versus self-serve production." },
       { slug: "ai-ugc-for-saas-startups", title: "AI UGC for SaaS startups", blurb: "An early-stage acquisition playbook." },
+      { slug: "ugc-ads-for-mobile-apps", title: "UGC ads for mobile apps", blurb: "One feature, a real screen, and short variants." },
+      { slug: "app-marketing-videos-for-saas", title: "App marketing videos for SaaS", blurb: "Pick the format that matches the feature." },
     ],
   },
   {
@@ -107,6 +115,21 @@ const clusters = [
       { slug: "ugc-video-generator-examples", title: "UGC video generator examples", blurb: "Real public outputs across formats." },
       { slug: "ugc-ads-with-claude-mcp", title: "UGC ads with Claude via MCP", blurb: "Run the workflow from a chat." },
       { slug: "ugc-videos-with-codex-mcp", title: "UGC videos with Codex via MCP", blurb: "Run the workflow from a terminal." },
+      { slug: "ugc-video-mcp-server", title: "UGC video MCP server", blurb: "Connect Claude, Codex, ChatGPT, or another MCP client." },
+    ],
+  },
+  {
+    title: "App marketing",
+    blurb: "Long-tail jobs for an app: comparisons, slideshows, hooks, faceless posts, and a queue.",
+    posts: [
+      { slug: "clipugc-alternative", title: "ClipUGC alternative", blurb: "Public-page facts, including where their pages disagree." },
+      { slug: "unrealugc-alternative", title: "UnrealUGC alternative", blurb: "Pricing-page numbers, without their savings claims." },
+      { slug: "best-ai-ugc-tools-for-app-marketing", title: "AI UGC tools for app marketing", blurb: "A checklist. Not a ranked winner." },
+      { slug: "tiktok-slideshows-for-app-installs", title: "Slideshows for app installs", blurb: "One feature and a last slide that matches a real link." },
+      { slug: "hook-formulas-for-app-tiktoks", title: "Hook formulas for app TikToks", blurb: "Four shapes with examples you can film." },
+      { slug: "repurpose-ugc-video-into-hooks", title: "Repurpose one video into hooks", blurb: "Change the opening. Keep the same proof." },
+      { slug: "faceless-tiktok-content-for-apps", title: "Faceless TikToks for apps", blurb: "Slideshow, text, or a screen recording." },
+      { slug: "schedule-tiktok-instagram-posts-for-an-app", title: "Schedule TikTok and Instagram", blurb: "Review first. A queue is a server record." },
     ],
   },
 ];
@@ -196,6 +219,7 @@ export default function BlogIndexPage() {
           </div>
         </div>
       </section>
+      <MarketingResourceLinks />
     </main>
   );
 }

@@ -140,7 +140,9 @@ export default function AiInfluencerVideoGeneratorPage() {
           Vidmake supports a reusable identity with the approved starting image and ordered identity photos, keeping the
           generated image as the actual first frame. See the
           <ArticleLink href="/ai-ugc-video-generator">AI UGC video generator</ArticleLink> page and the
-          <ArticleLink href="/guides/talking-head-first-scene">first-scene guide</ArticleLink>. The
+          <ArticleLink href="/guides/talking-head-first-scene">first-scene guide</ArticleLink>. Use that identity in
+          <ArticleLink href="/explore/hook-video">Hook video</ArticleLink>. The
+          <ArticleLink href="/blog/hook-video-maker">hook video maker guide</ArticleLink> covers the reference and the review. The
           <ArticleLink href="/pricing">pricing page</ArticleLink> lists the paid plans.
         </p>
 
@@ -152,6 +154,8 @@ export default function AiInfluencerVideoGeneratorPage() {
           { href: "/guides/talking-head-first-scene", title: "First scene", description: "Open with the moment, not the timeline." },
           { href: "/blog/founder-story-video-for-saas", title: "Founder story video", description: "When the founder should stay on camera." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "The Vidmake workflow." },
+          { href: "/explore/hook-video", title: "Hook video", description: "Use the prepared identity in an opening you review." },
+          { href: "/blog/hook-video-maker", title: "Hook video maker", description: "Keep the reference scene and your message apart." },
           { href: "/pricing", title: "Pricing and plans", description: "Current plan details." },
           { href: "/blog/saas-video-ideas", title: "25 SaaS video ideas", description: "Ideas you can actually produce." },
         ]}

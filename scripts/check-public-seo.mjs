@@ -44,12 +44,11 @@ await check("robots", `${canonicalOrigin}/robots.txt`, (response, body) => {
 });
 await check("root serves the workflow app without redirect", `${canonicalOrigin}/`, (response, html) => {
   // The public root is the Explore workspace served by a proxy rewrite: the
-  // address never changes and crawlers see an explicit noindex instead of a
-  // redirect to a disallowed app route. The guides hub is the listed entry
-  // point for indexing.
+  // address never changes and the homepage is indexable. /explore stays
+  // disallowed in robots.txt. The guides hub remains the content graph entry.
   assert.equal(response.status, 200);
   assert.equal(new URL(response.url).href, `${canonicalOrigin}/`);
-  assert(/\bnoindex\b/i.test(response.headers.get("x-robots-tag") ?? ""));
+  assert(!/\bnoindex\b/i.test(response.headers.get("x-robots-tag") ?? ""));
   assert(!/\bnofollow\b/i.test(response.headers.get("x-robots-tag") ?? ""));
   assert(html.includes("Explore"), "Root must render the Explore workspace");
 });

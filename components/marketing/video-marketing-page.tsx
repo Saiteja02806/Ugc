@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { JsonLd } from "@/components/marketing/json-ld";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { MarketingResourceLinks } from "@/components/marketing/marketing-resource-links";
 
 export function VideoMarketingPage({
   jsonLd,
@@ -30,6 +31,7 @@ export function VideoMarketingPage({
         </div>
       </section>
       {children}
+      <MarketingResourceLinks />
     </main>
   );
 }

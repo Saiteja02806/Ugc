@@ -116,6 +116,7 @@ export default function TikTokSlideshowMakerForAppsPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/tiktok-slideshows-for-app-installs", title: "Slideshows for app installs", description: "The last slide has to match a link you actually have." },
           { href: "/explore/slideshows", title: "Slideshows", description: "Build and review the deck in Explore." },
           { href: "/blog/tiktok-slideshow-maker", title: "TikTok slideshow maker", description: "Slide count, structure, and a general review step." },
           { href: "/blog/ugc-ads-for-mobile-apps", title: "UGC ads for mobile apps", description: "When the same feature should be a video ad." },

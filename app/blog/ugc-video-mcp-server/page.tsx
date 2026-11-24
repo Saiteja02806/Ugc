@@ -108,6 +108,7 @@ export default function UgcVideoMcpServerPage() {
       <VideoRelatedLinks
         links={[
           { href: "/mcp", title: "MCP server", description: "Claude, Codex, and ChatGPT setup on one page." },
+          { href: "/blog/unrealugc-alternative", title: "UnrealUGC alternative", description: "Their public MCP page, compared only on published facts." },
           { href: "/mcp/claude", title: "Connect Claude", description: "Custom connector, OAuth, and the server URL." },
           { href: "/mcp/codex", title: "Connect Codex", description: "The config file and OAuth login." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "A full pass from chat to a reviewable ad." },

@@ -210,6 +210,7 @@ export default function UgcPilotVsHiringCreatorsPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/best-ai-ugc-tools-for-app-marketing", title: "AI UGC tools for app marketing", description: "A checklist for app screens, with no new price claim." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Generate creator-style video from a brief." },

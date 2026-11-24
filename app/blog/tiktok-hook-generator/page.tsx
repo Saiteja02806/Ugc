@@ -113,6 +113,8 @@ export default function TikTokHookGeneratorPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/tools/hook-generator", title: "Free hook line generator", description: "Three template lines from your own task. No signup." },
+          { href: "/blog/hook-formulas-for-app-tiktoks", title: "Hook formulas", description: "Four shapes for an app or SaaS opening." },
           { href: "/explore/hook-video", title: "Hook video", description: "Turn the line into a clip you can review." },
           { href: "/free-hook-lines", title: "Free hook lines", description: "110 openings you can rewrite for your product." },
           { href: "/blog/ugc-hooks", title: "20 hooks by type", description: "Examples grouped by the job the opening does." },

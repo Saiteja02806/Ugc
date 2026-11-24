@@ -268,6 +268,8 @@ export default function UgcHooksPage() {
         links={[
           { href: "/hookvideos", title: "Hook videos", description: "Preview silent AI hook clips and see how an opening looks on camera." },
           { href: "/blog/tiktok-hook-generator", title: "TikTok hook generator", description: "Write three openings and test one variable." },
+          { href: "/tools/hook-generator", title: "Free hook line generator", description: "Fill a pattern with the task your app does." },
+          { href: "/blog/hook-formulas-for-app-tiktoks", title: "Hook formulas for apps", description: "Situation, contrast, demo, and question, with examples." },
           { href: "/explore/hook-video", title: "Hook video", description: "Turn a line into a clip you review before download." },
           { href: "/free-hook-lines", title: "Free hook lines", description: "110 short openings you can copy or download as a PDF." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },

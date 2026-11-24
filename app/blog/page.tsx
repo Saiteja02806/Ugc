@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JsonLd } from "@/components/marketing/json-ld";
+import { MarketingResourceLinks } from "@/components/marketing/marketing-resource-links";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { publicOrigin } from "@/lib/marketing/public-origin";
 
@@ -117,6 +118,20 @@ const clusters = [
       { slug: "ugc-video-mcp-server", title: "UGC video MCP server", blurb: "Connect Claude, Codex, ChatGPT, or another MCP client." },
     ],
   },
+  {
+    title: "App marketing",
+    blurb: "Long-tail jobs for an app: comparisons, slideshows, hooks, faceless posts, and a queue.",
+    posts: [
+      { slug: "clipugc-alternative", title: "ClipUGC alternative", blurb: "Public-page facts, including where their pages disagree." },
+      { slug: "unrealugc-alternative", title: "UnrealUGC alternative", blurb: "Pricing-page numbers, without their savings claims." },
+      { slug: "best-ai-ugc-tools-for-app-marketing", title: "AI UGC tools for app marketing", blurb: "A checklist. Not a ranked winner." },
+      { slug: "tiktok-slideshows-for-app-installs", title: "Slideshows for app installs", blurb: "One feature and a last slide that matches a real link." },
+      { slug: "hook-formulas-for-app-tiktoks", title: "Hook formulas for app TikToks", blurb: "Four shapes with examples you can film." },
+      { slug: "repurpose-ugc-video-into-hooks", title: "Repurpose one video into hooks", blurb: "Change the opening. Keep the same proof." },
+      { slug: "faceless-tiktok-content-for-apps", title: "Faceless TikToks for apps", blurb: "Slideshow, text, or a screen recording." },
+      { slug: "schedule-tiktok-instagram-posts-for-an-app", title: "Schedule TikTok and Instagram", blurb: "Review first. A queue is a server record." },
+    ],
+  },
 ];
 
 export default function BlogIndexPage() {
@@ -204,6 +219,7 @@ export default function BlogIndexPage() {
           </div>
         </div>
       </section>
+      <MarketingResourceLinks />
     </main>
   );
 }

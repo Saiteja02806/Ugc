@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, Download } from "lucide-react";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { MarketingResourceLinks } from "@/components/marketing/marketing-resource-links";
 import { HookVideoBundle } from "@/components/marketing/hook-video-bundle";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { publicOrigin } from "@/lib/marketing/public-origin";
@@ -27,10 +28,11 @@ export default function FreeToolsPage() {
         url: `${publicOrigin}/free-tools`,
         mainEntity: {
           "@type": "ItemList",
-          numberOfItems: 2,
+          numberOfItems: 3,
           itemListElement: [
             { "@type": "ListItem", position: 1, name: "The Reaction Hook Library", url: `${publicOrigin}/free-hook-lines` },
             { "@type": "ListItem", position: 2, name: "Hook Video Library", url: `${publicOrigin}/hookvideos` },
+            { "@type": "ListItem", position: 3, name: "TikTok hook line generator", url: `${publicOrigin}/tools/hook-generator` },
           ],
         },
       }}
@@ -58,8 +60,9 @@ export default function FreeToolsPage() {
         </article>
         <HookVideoBundle compact />
       </div>
-      <p className="mt-10 text-sm leading-6 text-muted">Making a hook + demo video? <Link href="/guides/product-demo-to-short-video" className="text-primary underline underline-offset-4">Read the product-demo guide.</Link></p>
+      <p className="mt-10 text-sm leading-6 text-muted">Making a hook + demo video? <Link href="/guides/product-demo-to-short-video" className="text-primary underline underline-offset-4">Read the product-demo guide.</Link> Need a line about your own feature? <Link href="/tools/hook-generator" className="text-primary underline underline-offset-4">Use the hook line generator.</Link></p>
     </section>
-    <footer className="mx-auto flex max-w-[1120px] flex-wrap gap-x-6 gap-y-3 border-t border-border px-5 py-7 text-sm text-muted sm:px-8"><Link href="/">Vidmake</Link><Link href="/privacy">Privacy</Link><Link href="/contact">Contact</Link></footer>
+    <MarketingResourceLinks />
+    <footer className="mx-auto flex max-w-[1120px] flex-wrap gap-x-6 gap-y-3 border-t border-border px-5 py-7 text-sm text-muted sm:px-8"><Link href="/">Vidmake</Link><Link href="/privacy">Privacy</Link><Link href="/contact">Contact</Link><Link href="/mcp">MCP server</Link><Link href="/hookvideos">Hook videos</Link><Link href="/tools/hook-generator">Hook line generator</Link></footer>
   </main>;
 }
